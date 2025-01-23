@@ -19,6 +19,7 @@ const (
 // +kubebuilder:validation:Enum=github;gitea
 type PlatformTypes string
 
+//nolint:revive,stylecheck
 const (
 	PlatformType_GITHUB = "github"
 	PlatformType_GITEA  = "gitea"
@@ -53,6 +54,7 @@ type Discovery struct {
 // +kubebuilder:validation:Enum=trace;debug;info;warn;error;fatal
 type LogLevel string
 
+//nolint:revive,stylecheck
 const (
 	LogLevel_TRACE = "trace"
 	LogLevel_DEBUG = "debug"
@@ -69,14 +71,13 @@ type Logging struct {
 
 type ScalingStrategy string
 
+//nolint:revive,stylecheck
 const (
 	// ScalingStrategy_NONE A single batch be created and no parallelization will take place.
 	ScalingStrategy_NONE = "none"
 	// ScalingStrategy_SIZE Create batches based on number of repositories. If 30 repositories have been found and size
 	// is defined as 10, then 3 batches will be created.
 	ScalingStrategy_SIZE = "size"
-	// ScalingStrategy_FILTERS   = "filters"
-	// ScalingStrategy_AUTOMATIC = "automatic"
 )
 
 type Scaling struct {
@@ -127,6 +128,8 @@ type RenovatorSpec struct {
 }
 
 // RenovatorStatus defines the observed state of Renovator.
+//
+//nolint:lll
 type RenovatorStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file

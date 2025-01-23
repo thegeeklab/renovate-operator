@@ -28,8 +28,8 @@ linters:
     - forcetypeassert
     - ginkgolinter
     - gocheckcompilerdirectives
-    - gochecknoglobals
-    - gochecknoinits
+    # - gochecknoglobals
+    # - gochecknoinits
     - gocognit
     - goconst
     - gocritic
@@ -101,8 +101,10 @@ linters-settings:
 
 issues:
   exclude-rules:
-    - path: (.+)_test.go
+    - path: (_test\.go|test/.+\.go)
       linters:
         - gosec
         - gochecknoglobals
         - prealloc
+        - revive
+        - stylecheck

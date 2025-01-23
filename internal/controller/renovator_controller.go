@@ -11,7 +11,7 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
 
-// RenovatorReconciler reconciles a Renovator object
+// RenovatorReconciler reconciles a Renovator object.
 type RenovatorReconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -30,7 +30,7 @@ type RenovatorReconciler struct {
 //
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.0/pkg/reconcile
-func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *RenovatorReconciler) Reconcile(ctx context.Context, _ ctrl.Request) (ctrl.Result, error) {
 	_ = log.FromContext(ctx)
 
 	// TODO(user): your logic here
