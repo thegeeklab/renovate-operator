@@ -28,29 +28,29 @@ func main() {
 	ctx := context.Background()
 	ctxLogger := logf.FromContext(ctx)
 
-	dc, err := discovery.LoadConfig()
+	d, err := discovery.LoadConfig()
 	if err != nil {
 		ctxLogger.Error(err, "Failed to get discovery configuration")
 		panic(err.Error())
 	}
 
-	ctxLogger = ctxLogger.WithValues("namespace", dc.Namespace, "name", dc.Name)
+	ctxLogger = ctxLogger.WithValues("namespace", d.Namespace, "name", d.Name)
 
 	renovatorName := types.NamespacedName{
-		Namespace: dc.Namespace,
-		Name:      dc.Name,
+		Namespace: d.Namespace,
+		Name:      d.Name,
 	}
 
 	kubeConfig, err := rest.InClusterConfig()
 	if err != nil {
 		ctxLogger.Error(err, "Failed to initialize cluster internal kubeconfig")
 
-		if dc.KubeConfigPath == "" {
+		if d.KubeConfigPath == "" {
 			ctxLogger.Error(err, "Failed to initialize cluster external kubeconfig")
 			panic(err.Error())
 		}
 
-		kubeConfig, err = clientcmd.BuildConfigFromFlags("", dc.KubeConfigPath)
+		kubeConfig, err = clientcmd.BuildConfigFromFlags("", d.KubeConfigPath)
 		if err != nil {
 			ctxLogger.Error(err, "Failed to read defined kubeconfig")
 			panic(err.Error())
@@ -65,17 +65,17 @@ func main() {
 		panic(err.Error())
 	}
 
-	di := &renovatev1beta1.Discovery{}
+	instance := &renovatev1beta1.Renovator{}
 
-	err = cl.Get(ctx, renovatorName, di)
+	err = cl.Get(ctx, renovatorName, instance)
 	if err != nil {
 		ctxLogger.Error(err, "Failed to retrieve renovator instance")
 		panic(err.Error())
 	}
 
-	readBytes, err := os.ReadFile(dc.FilePath)
+	readBytes, err := os.ReadFile(d.FilePath)
 	if err != nil {
-		ctxLogger.Error(err, "Failed to read file", "file", dc.FilePath)
+		ctxLogger.Error(err, "Failed to read file", "file", d.FilePath)
 		panic(err.Error())
 	}
 
@@ -87,9 +87,9 @@ func main() {
 		panic(err.Error())
 	}
 
-	di.Status.Repositories = repositories
+	instance.Status.Repositories = repositories
 
-	err = cl.Status().Update(ctx, di)
+	err = cl.Status().Update(ctx, instance)
 	if err != nil {
 		ctxLogger.Error(err, "Failed to update status of renovator instance")
 		panic(err.Error())

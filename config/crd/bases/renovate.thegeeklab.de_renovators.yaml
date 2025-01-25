@@ -41,12 +41,16 @@ spec:
             properties:
               discovery:
                 properties:
-                  name:
+                  filter:
+                    items:
+                      type: string
+                    type: array
+                  schedule:
+                    default: 0 */2 * * *
                     type: string
-                  namespace:
-                    type: string
-                required:
-                - name
+                  suspend:
+                    default: false
+                    type: boolean
                 type: object
               image:
                 description: |-
@@ -179,7 +183,21 @@ spec:
                         type: object
                         x-kubernetes-map-type: atomic
                     type: object
-                  onBoarding:
+                  image:
+                    description: |-
+                      Name of the container image, supporting both tags (`<image>:<tag>`)
+                      and digests for deterministic and repeatable deployments
+                      (`<image>:<tag>@sha256:<digestValue>`)
+                    type: string
+                  imagePullPolicy:
+                    description: |-
+                      Image pull policy.
+                      One of `Always`, `Never` or `IfNotPresent`.
+                      If not defined, it defaults to `IfNotPresent`.
+                      Cannot be updated.
+                      More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+                    type: string
+                  onboarding:
                     default: true
                     type: boolean
                   platform:
@@ -293,9 +311,6 @@ spec:
                     default: 10
                     description: OnBoardingConfig object `json:"onBoardingConfig,omitempty,inline"`
                     type: integer
-                  version:
-                    default: 27.15.0
-                    type: string
                 required:
                 - platform
                 type: object
@@ -306,19 +321,19 @@ spec:
                 type: boolean
               worker:
                 properties:
+                  batchSize:
+                    type: integer
                   instances:
                     default: 1
                     description: MaxWorkers Maximum number of parallel workers to
-                      start. A single worker will only process a single batch at maximum.
+                      start. A single worker will only process a single batch.
                     format: int32
-                    type: integer
-                  size:
                     type: integer
                   strategy:
                     default: none
                     enum:
                     - none
-                    - size
+                    - batch
                     type: string
                 required:
                 - instances
@@ -448,6 +463,10 @@ spec:
                   INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
                   Important: Run "make" to regenerate code after modifying this file
                 type: boolean
+              repositories:
+                items:
+                  type: string
+                type: array
               specHash:
                 type: string
             required:

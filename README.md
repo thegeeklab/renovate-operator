@@ -1,19 +1,8 @@
 # renovate-operator
 
-// TODO(user): Add simple overview of use/purpose
-
-## Description
-
-// TODO(user): An in-depth paragraph about your project and overview of use
+This project is a Kubernetes operator for automating [Renovatebot](https://docs.renovatebot.com/) deployments. Renovate is a popular dependency update tool, and this operator makes it easier to manage Renovate instances in a Kubernetes environment.
 
 ## Getting Started
-
-### Prerequisites
-
-- go version v1.23.0+
-- docker version 17.03+.
-- kubectl version v1.11.3+.
-- Access to a Kubernetes v1.11.3+ cluster.
 
 ### To Deploy on the cluster
 
@@ -115,13 +104,11 @@ the '--force' flag and manually ensure that any custom configuration
 previously added to 'dist/chart/values.yaml' or 'dist/chart/manager/manager.yaml'
 is manually re-applied afterwards.
 
-## Contributing
+## Contributors
 
-// TODO(user): Add detailed information on how you would like others to contribute to this project
+Special thanks to all [contributors](https://github.com/thegeeklab/renovate-operator/graphs/contributors). If you would like to contribute, please see the [instructions](https://github.com/thegeeklab/renovate-operator/blob/main/CONTRIBUTING.md).
 
-**NOTE:** Run `make help` for more information on all potential `make` targets
-
-More information can be found via the [Kubebuilder Documentation](https://book.kubebuilder.io/introduction.html)
+This project is heavily inspired by [secustor/renovate-operator](https://github.com/secustor/renovate-operator/tree/master) from Sebastian Poxhofer. Thanks for your work.
 
 ## License
 

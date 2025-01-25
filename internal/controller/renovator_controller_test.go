@@ -37,7 +37,7 @@ var _ = Describe("Renovator Controller", func() {
 					},
 				}
 				resource.Default()
-				resource.Spec.RenovateConfig.Platform.Type = "github"
+				resource.Spec.Renovate.Platform.Type = "github"
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})

@@ -14,7 +14,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-type RenovateConfig struct {
+type Renovate struct {
 	Onboarding    bool                  `json:"onboarding"`
 	PrHourlyLimit int                   `json:"prHourlyLimit"`
 	DryRun        bool                  `json:"dryRun"`
@@ -71,13 +71,13 @@ func (w *Worker) reconcileConfig(ctx context.Context) (*ctrl.Result, error) {
 }
 
 func (w *Worker) createConfigMap() (*corev1.ConfigMap, error) {
-	renovateConfig := &RenovateConfig{
-		DryRun:        *w.renovatorInst.Spec.RenovateConfig.DryRun,
-		Onboarding:    *w.renovatorInst.Spec.RenovateConfig.OnBoarding,
-		PrHourlyLimit: w.renovatorInst.Spec.RenovateConfig.PrHourlyLimit,
-		AddLabels:     w.renovatorInst.Spec.RenovateConfig.AddLabels,
-		Platform:      w.renovatorInst.Spec.RenovateConfig.Platform.Type,
-		Endpoint:      w.renovatorInst.Spec.RenovateConfig.Platform.Endpoint,
+	renovateConfig := &Renovate{
+		DryRun:        *w.instance.Spec.Renovate.DryRun,
+		Onboarding:    *w.instance.Spec.Renovate.Onboarding,
+		PrHourlyLimit: w.instance.Spec.Renovate.PrHourlyLimit,
+		AddLabels:     w.instance.Spec.Renovate.AddLabels,
+		Platform:      w.instance.Spec.Renovate.Platform.Type,
+		Endpoint:      w.instance.Spec.Renovate.Platform.Endpoint,
 	}
 
 	baseConfig, err := json.Marshal(renovateConfig)
@@ -101,12 +101,12 @@ func (w *Worker) createConfigMap() (*corev1.ConfigMap, error) {
 
 	newConfigMap := &corev1.ConfigMap{
 		ObjectMeta: v1.ObjectMeta{
-			Name:      w.renovatorInst.Name,
-			Namespace: w.renovatorInst.Namespace,
+			Name:      w.instance.Name,
+			Namespace: w.instance.Namespace,
 		},
 		Data: data,
 	}
-	if err := controllerutil.SetControllerReference(w.renovatorInst, newConfigMap, w.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(w.instance, newConfigMap, w.scheme); err != nil {
 		return nil, err
 	}
 

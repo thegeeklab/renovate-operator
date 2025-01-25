@@ -8,7 +8,6 @@ import (
 	"github.com/thegeeklab/renovate-operator/pkg/worker"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -40,9 +39,9 @@ func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 	reqLogger := logf.FromContext(ctx)
 	reqLogger.V(1).Info(fmt.Sprintf("reconciling object %#q", req.NamespacedName))
 
-	renovatorInst := &renovatev1beta1.Renovator{}
+	renovatorRes := &renovatev1beta1.Renovator{}
 
-	err := r.Get(ctx, req.NamespacedName, renovatorInst)
+	err := r.Get(ctx, req.NamespacedName, renovatorRes)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -51,34 +50,7 @@ func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	namespace := req.NamespacedName.Namespace
-
-	if renovatorInst.Spec.DiscoveryRef.Namespace != "" {
-		namespace = renovatorInst.Spec.DiscoveryRef.Namespace
-	}
-
-	// Get the referenced Discovery
-	discoveryInst := &renovatev1beta1.Discovery{}
-	discoveryInstKey := types.NamespacedName{
-		Name:      renovatorInst.Spec.DiscoveryRef.Name,
-		Namespace: namespace,
-	}
-
-	if err := r.Get(ctx, discoveryInstKey, discoveryInst); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// Set owner reference
-	if err := ctrl.SetControllerReference(discoveryInst, renovatorInst, r.Scheme); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	// Update the Renovator with the owner reference
-	if err := r.Update(ctx, renovatorInst); err != nil {
-		return ctrl.Result{}, err
-	}
-
-	worker := worker.New(r.Client, req, renovatorInst, discoveryInst, r.Scheme)
+	worker := worker.New(r.Client, req, renovatorRes, r.Scheme)
 
 	result, err := worker.Reconcile(ctx)
 	if err != nil {

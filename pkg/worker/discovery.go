@@ -1,7 +1,8 @@
-package discovery
+package worker
 
 import (
 	"context"
+	"strings"
 
 	"github.com/thegeeklab/renovate-operator/discovery"
 	"github.com/thegeeklab/renovate-operator/pkg/metadata"
@@ -16,13 +17,13 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (d *Discovery) reconcileDiscovery(ctx context.Context) (*ctrl.Result, error) {
+func (w *Worker) reconcileDiscovery(ctx context.Context) (*ctrl.Result, error) {
 	ctxLogger := logf.FromContext(ctx)
 
 	// Cronjob
-	jobSpec := d.createDiscoveryJobSpec()
+	jobSpec := w.createDiscoveryJobSpec()
 
-	expectedCronJob, cjCreationErr := d.createDiscoveryCronJob(jobSpec)
+	expectedCronJob, cjCreationErr := w.createDiscoveryCronJob(jobSpec)
 	if cjCreationErr != nil {
 		return &ctrl.Result{}, cjCreationErr
 	}
@@ -35,10 +36,10 @@ func (d *Discovery) reconcileDiscovery(ctx context.Context) (*ctrl.Result, error
 
 	currentObject := batchv1.CronJob{}
 
-	err := d.client.Get(ctx, key, &currentObject)
+	err := w.client.Get(ctx, key, &currentObject)
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err = d.client.Create(ctx, expectedCronJob); err != nil {
+			if err = w.client.Create(ctx, expectedCronJob); err != nil {
 				ctxLogger.Error(err, "Failed to create Cronjob")
 
 				return &ctrl.Result{}, err
@@ -55,7 +56,7 @@ func (d *Discovery) reconcileDiscovery(ctx context.Context) (*ctrl.Result, error
 	if !equality.Semantic.DeepEqual(*expectedCronJob, currentObject) {
 		ctxLogger.Info("Updating CronJob")
 
-		err := d.client.Update(ctx, expectedCronJob)
+		err := w.client.Update(ctx, expectedCronJob)
 		if err != nil {
 			ctxLogger.Error(err, "Failed to update CronJob")
 
@@ -70,59 +71,64 @@ func (d *Discovery) reconcileDiscovery(ctx context.Context) (*ctrl.Result, error
 	return &ctrl.Result{}, nil
 }
 
-func (d *Discovery) createDiscoveryCronJob(jobSpec batchv1.JobSpec) (*batchv1.CronJob, error) {
+func (w *Worker) createDiscoveryCronJob(jobSpec batchv1.JobSpec) (*batchv1.CronJob, error) {
 	cronJob := batchv1.CronJob{
-		ObjectMeta: metadata.DiscoveryMetaData(d.req),
+		ObjectMeta: metadata.DiscoveryMetaData(w.req),
 		Spec: batchv1.CronJobSpec{
-			// Schedule:          d.instance.Spec.Discovery.Schedule,
+			// Schedule:          w.discoveryRes.Spec.Discovery.Schedule,
 			ConcurrencyPolicy: batchv1.ForbidConcurrent,
-			Suspend:           d.instance.Spec.Suspend,
+			// Suspend:           w.discoveryRes.Spec.Suspend,
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: jobSpec,
 			},
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(&d.instance, &cronJob, d.scheme); err != nil {
+	if err := controllerutil.SetControllerReference(w.instance, &cronJob, w.scheme); err != nil {
 		return nil, err
 	}
 
 	return &cronJob, nil
 }
 
-func (d *Discovery) createDiscoveryJobSpec() batchv1.JobSpec {
+func (w *Worker) createDiscoveryJobSpec() batchv1.JobSpec {
 	return batchv1.JobSpec{
 		Template: corev1.PodTemplateSpec{
 			Spec: corev1.PodSpec{
-				ServiceAccountName: metadata.GenericMetaData(d.req).Name,
+				ServiceAccountName: metadata.GenericMetaData(w.req).Name,
 				RestartPolicy:      corev1.RestartPolicyNever,
 				Volumes: renovate.StandardVolumes(corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
 						LocalObjectReference: corev1.LocalObjectReference{
-							Name: d.instance.Name,
+							Name: w.instance.Name,
 						},
 					},
 				}),
 				InitContainers: []corev1.Container{
-					renovate.Container(d.instance, []corev1.EnvVar{
+					renovate.Container(w.instance, []corev1.EnvVar{
 						{
 							Name:  "RENOVATE_AUTODISCOVER",
 							Value: "true",
+						},
+						{
+							Name:  "RENOVATE_AUTODISCOVER_FILTER",
+							Value: strings.Join(w.instance.Spec.Discovery.Filter, ","),
 						},
 					}, []string{"--write-discovered-repos", renovate.FileRenovateConfigOutput}),
 				},
 				Containers: []corev1.Container{
 					{
-						Name:  "renovate-discovery",
-						Image: "quay.io/thegeeklab/renovate-discovery:0.1.0", // TODO allow overwrite
+						Name:            "renovate-discovery",
+						Image:           w.instance.Spec.Image,
+						ImagePullPolicy: w.instance.Spec.ImagePullPolicy,
 						Env: []corev1.EnvVar{
 							{
-								Name:  discovery.EnvRenovateCrName,
-								Value: d.instance.Name,
+								Name:  discovery.EnvRenovatorInstanceName,
+								Value: w.instance.Name,
 							},
 							{
-								Name:  discovery.EnvRenovateCrNamespace,
-								Value: d.instance.Namespace,
+								Name:  discovery.EnvRenovatorInstanceNamespace,
+								Value: w.instance.Namespace,
 							},
 							{
 								Name:  discovery.EnvRenovateOutputFile,

@@ -1,22 +1,14 @@
-# Build the manager binary
-FROM docker.io/golang:1.23@sha256:8c10f21bec412f08f73aa7b97ca5ac5f28a39d8a88030ad8a339fd0a781d72b4 AS builder
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.23.5@sha256:51a6466e8dbf3e00e422eb0f7a97ac450b2d57b33617bbe8d2ee0bddcd9d0d37 AS build
+
 ARG TARGETOS
 ARG TARGETARCH
 
+ADD . /workspace
 WORKDIR /workspace
-# Copy the Go Modules manifests
-COPY go.mod go.mod
-COPY go.sum go.sum
+
 # cache deps before building and copying source so that we don't need to re-download as much
 # and so that source changes don't invalidate our downloaded layer
 RUN go mod download
-
-# Copy the go source
-COPY cmd/main.go cmd/main.go
-COPY api/ api/
-COPY internal/ internal/
-COPY pkg/ pkg/
-COPY discovery/ discovery/
 
 # Build
 # the GOARCH has not a default value to allow the binary be built according to the host where the command
@@ -24,12 +16,24 @@ COPY discovery/ discovery/
 # the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o manager cmd/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o discovery discovery/cmd/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
 FROM gcr.io/distroless/static:nonroot@sha256:6ec5aa99dc335666e79dc64e4a6c8b89c33a543a1967f20d360922a80dd21f02
+
+LABEL maintainer="Robert Kaussow <mail@thegeeklab.de>"
+LABEL org.opencontainers.image.authors="Robert Kaussow <mail@thegeeklab.de>"
+LABEL org.opencontainers.image.title="renovate-operator"
+LABEL org.opencontainers.image.url="https://github.com/thegeeklab/renovate-operator"
+LABEL org.opencontainers.image.source="https://github.com/thegeeklab/renovate-operator"
+LABEL org.opencontainers.image.documentation="https://github.com/thegeeklab/renovate-operator"
+
 WORKDIR /
-COPY --from=builder /workspace/manager .
+
+COPY --from=build /workspace/manager .
+COPY --from=build /workspace/discovery .
+
 USER 65532:65532
 
 ENTRYPOINT ["/manager"]

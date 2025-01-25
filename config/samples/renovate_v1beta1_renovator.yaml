@@ -6,4 +6,32 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: renovator-sample
 spec:
-  # TODO(user): Add fields here
+  suspend: false
+  schedule: "*/30 * * * *"
+
+  discovery:
+    suspend: false
+    filter:
+      - "octocat/*"
+
+  logging:
+    level: debug
+
+  worker:
+    strategy: batch
+    instances: 1
+    batchsize: 15
+
+  renovate:
+    platform:
+      type: "gitea"
+      endpoint: https://gitea.example.com/api/v1
+      token: "***"
+
+    dryRun: true
+    onboarding: true
+
+    githubToken:
+      secretKeyRef:
+        name: "my-secret"
+        key: "githubtoken"

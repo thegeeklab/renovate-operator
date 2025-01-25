@@ -14,35 +14,32 @@ type Batch struct {
 }
 
 type Worker struct {
-	client        client.Client
-	req           ctrl.Request
-	renovatorInst *v1beta1.Renovator
-	discoveryInst *v1beta1.Discovery
-	scheme        *runtime.Scheme
-	Batches       []Batch
+	client   client.Client
+	req      ctrl.Request
+	instance *v1beta1.Renovator
+	scheme   *runtime.Scheme
+	Batches  []Batch
 }
 
 func New(
 	client client.Client,
 	req ctrl.Request,
-	ri *v1beta1.Renovator,
-	di *v1beta1.Discovery,
+	instance *v1beta1.Renovator,
 	scheme *runtime.Scheme,
 ) *Worker {
 	w := &Worker{
-		client:        client,
-		req:           req,
-		scheme:        scheme,
-		renovatorInst: ri,
-		discoveryInst: di,
+		client:   client,
+		req:      req,
+		scheme:   scheme,
+		instance: instance,
 	}
-	repos := w.discoveryInst.Status.Repositories
+	repos := w.instance.Status.Repositories
 
 	var batches []Batch
 
-	switch w.renovatorInst.Spec.Worker.Strategy {
-	case v1beta1.WorkerStrategy_SIZE:
-		limit := w.renovatorInst.Spec.Worker.Size
+	switch w.instance.Spec.Worker.Strategy {
+	case v1beta1.WorkerStrategy_BATCH:
+		limit := w.instance.Spec.Worker.BatchSize
 		for i := 0; i < len(repos); i += limit {
 			rb := repos[i:min(i+limit, len(repos))]
 			batches = append(batches, Batch{Repositories: rb})
@@ -59,6 +56,11 @@ func New(
 
 func (w *Worker) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	resutl, err := w.reconcileConfig(ctx)
+	if err != nil {
+		return resutl, err
+	}
+
+	resutl, err = w.reconcileDiscovery(ctx)
 	if err != nil {
 		return resutl, err
 	}

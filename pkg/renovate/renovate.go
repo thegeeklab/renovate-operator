@@ -22,12 +22,17 @@ var (
 	FileRenovateConfigOutput = filepath.Join(DirRenovateBase, "repositories.json")
 )
 
-func Container(renovate v1beta1.Renovator, additionalEnVars []corev1.EnvVar, additionalArgs []string) corev1.Container {
+func Container(
+	instance *v1beta1.Renovator,
+	additionalEnVars []corev1.EnvVar,
+	additionalArgs []string,
+) corev1.Container {
 	return corev1.Container{
-		Name:  "renovate",
-		Image: ContainerImage(renovate),
-		Args:  additionalArgs,
-		Env:   append(EnvVars(renovate), additionalEnVars...),
+		Name:            "renovate",
+		Image:           instance.Spec.Renovate.Image,
+		ImagePullPolicy: instance.Spec.ImagePullPolicy,
+		Args:            additionalArgs,
+		Env:             append(EnvVars(instance), additionalEnVars...),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      VolumeWorkDir,
@@ -42,7 +47,7 @@ func Container(renovate v1beta1.Renovator, additionalEnVars []corev1.EnvVar, add
 	}
 }
 
-func EnvVars(instance v1beta1.Renovator) []corev1.EnvVar {
+func EnvVars(instance *v1beta1.Renovator) []corev1.EnvVar {
 	containerVars := []corev1.EnvVar{
 		{
 			Name:  "LOG_LEVEL",
@@ -58,21 +63,17 @@ func EnvVars(instance v1beta1.Renovator) []corev1.EnvVar {
 		},
 		{
 			Name:      "RENOVATE_TOKEN",
-			ValueFrom: &instance.Spec.RenovateConfig.Platform.Token,
+			ValueFrom: &instance.Spec.Renovate.Platform.Token,
 		},
 	}
-	if instance.Spec.RenovateConfig.GithubTokenSelector.Size() != 0 {
+	if instance.Spec.Renovate.GithubTokenSelector != nil {
 		containerVars = append(containerVars, corev1.EnvVar{
 			Name:      "GITHUB_COM_TOKEN",
-			ValueFrom: &instance.Spec.RenovateConfig.GithubTokenSelector,
+			ValueFrom: instance.Spec.Renovate.GithubTokenSelector,
 		})
 	}
 
 	return containerVars
-}
-
-func ContainerImage(instance v1beta1.Renovator) string {
-	return "renovate/renovate:" + instance.Spec.RenovateConfig.RenovateVersion
 }
 
 func StandardVolumes(volumeConfigVolumeSource corev1.VolumeSource) []corev1.Volume {

@@ -13,21 +13,21 @@ type Config struct {
 }
 
 const (
-	EnvRenovateCrName      = "SHIPPER_RENOVATE_CR_NAME"
-	EnvRenovateCrNamespace = "SHIPPER_RENOVATE_CR_NAMESPACE"
-	EnvRenovateOutputFile  = "SHIPPER_RENOVATE_OUTPUT_FILE"
-	EnvKubeConfig          = "KUBECONFIG"
+	EnvRenovatorInstanceName      = "RENOVATOR_INSTANCE_NAME"
+	EnvRenovatorInstanceNamespace = "RENOVATOR_INSTANCE_NAMESPACE"
+	EnvRenovateOutputFile         = "RENOVATE_OUTPUT_FILE"
+	EnvKubeConfig                 = "KUBECONFIG"
 )
 
 func LoadConfig() (*Config, error) {
 	aConfig := &Config{}
 
 	var err error
-	if aConfig.Name, err = setEnvVariable(EnvRenovateCrName); err != nil {
+	if aConfig.Name, err = setEnvVariable(EnvRenovatorInstanceName); err != nil {
 		return aConfig, err
 	}
 
-	if aConfig.Namespace, err = setEnvVariable(EnvRenovateCrNamespace); err != nil {
+	if aConfig.Namespace, err = setEnvVariable(EnvRenovatorInstanceNamespace); err != nil {
 		return aConfig, err
 	}
 

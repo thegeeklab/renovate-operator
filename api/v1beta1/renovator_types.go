@@ -31,19 +31,31 @@ type Platform struct {
 	Token    corev1.EnvVarSource `json:"token"`
 }
 
-type RenovateConfig struct {
+type Renovate struct {
+	// Name of the container image, supporting both tags (`<image>:<tag>`)
+	// and digests for deterministic and repeatable deployments
+	// (`<image>:<tag>@sha256:<digestValue>`)
+	Image string `json:"image,omitempty"`
+
+	// Image pull policy.
+	// One of `Always`, `Never` or `IfNotPresent`.
+	// If not defined, it defaults to `IfNotPresent`.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+	// +optional
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
 	Platform Platform `json:"platform"`
-	// +kubebuilder:default:="27.15.0"
-	RenovateVersion string `json:"version,omitempty"`
 	// +kubebuilder:default:=false
 	DryRun *bool `json:"dryRun,omitempty"`
 	// +kubebuilder:default:=true
-	OnBoarding *bool `json:"onBoarding,omitempty"`
+	Onboarding *bool `json:"onboarding,omitempty"`
 	// OnBoardingConfig object `json:"onBoardingConfig,omitempty,inline"`
 	// +kubebuilder:default:=10
-	PrHourlyLimit       int                 `json:"prHourlyLimit,omitempty"`
-	AddLabels           []string            `json:"addLabels,omitempty"`
-	GithubTokenSelector corev1.EnvVarSource `json:"githubToken,omitempty"`
+	PrHourlyLimit int      `json:"prHourlyLimit,omitempty"`
+	AddLabels     []string `json:"addLabels,omitempty"`
+
+	GithubTokenSelector *corev1.EnvVarSource `json:"githubToken,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=trace;debug;info;warn;error;fatal
@@ -70,33 +82,37 @@ type WorkerStrategy string
 const (
 	// WorkerStrategy_NONE A single batch be created and no parallelization will take place.
 	WorkerStrategy_NONE = "none"
-	// WorkerStrategy_SIZE Create batches based on number of repositories. If 30 repositories have been found and size
+	// WorkerStrategy_BATCH Create batches based on number of repositories. If 30 repositories have been found and size
 	// is defined as 10, then 3 batches will be created.
-	WorkerStrategy_SIZE = "size"
+	WorkerStrategy_BATCH = "batch"
 )
 
 type Worker struct {
-	// +kubebuilder:validation:Enum=none;size
+	// +kubebuilder:validation:Enum=none;batch
 	// +kubebuilder:default:="none"
 	Strategy WorkerStrategy `json:"strategy,omitempty"`
 
-	// MaxWorkers Maximum number of parallel workers to start. A single worker will only process a single batch at maximum.
+	// MaxWorkers Maximum number of parallel workers to start. A single worker will only process a single batch.
 	// +kubebuilder:default:=1
 	Instances int32 `json:"instances"`
 
-	Size int `json:"size,omitempty"`
+	BatchSize int `json:"batchSize,omitempty"`
 }
 
-type DiscoveryRef struct {
-	Name      string `json:"name"`
-	Namespace string `json:"namespace,omitempty"`
+type Discovery struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=false
+	Suspend *bool `json:"suspend"`
+
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:="0 */2 * * *"
+	Schedule string `json:"schedule"`
+
+	Filter []string `json:"filter,omitempty"`
 }
 
 // RenovatorSpec defines the desired state of Renovator.
 type RenovatorSpec struct {
-	// INSERT ADDITIONAL SPEC FIELDS - desired state of cluster
-	// Important: Run "make" to regenerate code after modifying this file
-
 	// Name of the container image, supporting both tags (`<image>:<tag>`)
 	// and digests for deterministic and repeatable deployments
 	// (`<image>:<tag>@sha256:<digestValue>`)
@@ -110,9 +126,9 @@ type RenovatorSpec struct {
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
-	RenovateConfig RenovateConfig `json:"renovate"`
+	Renovate Renovate `json:"renovate"`
 
-	DiscoveryRef DiscoveryRef `json:"discovery"`
+	Discovery Discovery `json:"discovery"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default:=false
@@ -133,11 +149,12 @@ type RenovatorSpec struct {
 type RenovatorStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Ready      bool               `json:"ready"`
-	Failed     int                `json:"failed,omitempty"`
-	Phase      metav1.Condition   `json:"phase,omitempty"`
-	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
-	SpecHash   string             `json:"specHash,omitempty"`
+	Ready        bool               `json:"ready"`
+	Failed       int                `json:"failed,omitempty"`
+	Phase        metav1.Condition   `json:"phase,omitempty"`
+	Conditions   []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	SpecHash     string             `json:"specHash,omitempty"`
+	Repositories []string           `json:"repositories,omitempty"`
 }
 
 // +kubebuilder:object:root=true
