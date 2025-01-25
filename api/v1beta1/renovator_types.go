@@ -26,9 +26,9 @@ const (
 )
 
 type Platform struct {
-	PlatformType PlatformTypes       `json:"type"`
-	Endpoint     string              `json:"endpoint"`
-	Token        corev1.EnvVarSource `json:"token"`
+	Type     PlatformTypes       `json:"type"`
+	Endpoint string              `json:"endpoint"`
+	Token    corev1.EnvVarSource `json:"token"`
 }
 
 type RenovateConfig struct {
@@ -44,11 +44,6 @@ type RenovateConfig struct {
 	PrHourlyLimit       int                 `json:"prHourlyLimit,omitempty"`
 	AddLabels           []string            `json:"addLabels,omitempty"`
 	GithubTokenSelector corev1.EnvVarSource `json:"githubToken,omitempty"`
-}
-type Discovery struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:="0 */2 * * *"
-	Schedule string `json:"schedule"`
 }
 
 // +kubebuilder:validation:Enum=trace;debug;info;warn;error;fatal
@@ -69,27 +64,32 @@ type Logging struct {
 	Level LogLevel `json:"level"`
 }
 
-type ScalingStrategy string
+type WorkerStrategy string
 
 //nolint:revive,stylecheck
 const (
-	// ScalingStrategy_NONE A single batch be created and no parallelization will take place.
-	ScalingStrategy_NONE = "none"
-	// ScalingStrategy_SIZE Create batches based on number of repositories. If 30 repositories have been found and size
+	// WorkerStrategy_NONE A single batch be created and no parallelization will take place.
+	WorkerStrategy_NONE = "none"
+	// WorkerStrategy_SIZE Create batches based on number of repositories. If 30 repositories have been found and size
 	// is defined as 10, then 3 batches will be created.
-	ScalingStrategy_SIZE = "size"
+	WorkerStrategy_SIZE = "size"
 )
 
-type Scaling struct {
+type Worker struct {
 	// +kubebuilder:validation:Enum=none;size
 	// +kubebuilder:default:="none"
-	Strategy ScalingStrategy `json:"strategy,omitempty"`
+	Strategy WorkerStrategy `json:"strategy,omitempty"`
 
 	// MaxWorkers Maximum number of parallel workers to start. A single worker will only process a single batch at maximum.
 	// +kubebuilder:default:=1
-	MaxWorkers int32 `json:"maxWorkers"`
+	Instances int32 `json:"instances"`
 
 	Size int `json:"size,omitempty"`
+}
+
+type DiscoveryRef struct {
+	Name      string `json:"name"`
+	Namespace string `json:"namespace,omitempty"`
 }
 
 // RenovatorSpec defines the desired state of Renovator.
@@ -112,7 +112,7 @@ type RenovatorSpec struct {
 
 	RenovateConfig RenovateConfig `json:"renovate"`
 
-	Discovery Discovery `json:"discovery,omitempty"`
+	DiscoveryRef DiscoveryRef `json:"discovery"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default:=false
@@ -124,7 +124,7 @@ type RenovatorSpec struct {
 	Logging Logging `json:"logging"`
 
 	// +kubebuilder:validation:Optional
-	Scaling Scaling `json:"scaling"`
+	Worker Worker `json:"worker"`
 }
 
 // RenovatorStatus defines the observed state of Renovator.
@@ -133,12 +133,11 @@ type RenovatorSpec struct {
 type RenovatorStatus struct {
 	// INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
 	// Important: Run "make" to regenerate code after modifying this file
-	Ready        bool               `json:"ready"`
-	Failed       int                `json:"failed,omitempty"`
-	Phase        metav1.Condition   `json:"phase,omitempty"`
-	Conditions   []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
-	SpecHash     string             `json:"specHash,omitempty"`
-	Repositories []string           `json:"repositories,omitempty"`
+	Ready      bool               `json:"ready"`
+	Failed     int                `json:"failed,omitempty"`
+	Phase      metav1.Condition   `json:"phase,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	SpecHash   string             `json:"specHash,omitempty"`
 }
 
 // +kubebuilder:object:root=true

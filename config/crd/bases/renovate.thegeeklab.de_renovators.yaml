@@ -41,9 +41,12 @@ spec:
             properties:
               discovery:
                 properties:
-                  schedule:
-                    default: 0 */2 * * *
+                  name:
                     type: string
+                  namespace:
+                    type: string
+                required:
+                - name
                 type: object
               image:
                 description: |-
@@ -296,9 +299,14 @@ spec:
                 required:
                 - platform
                 type: object
-              scaling:
+              schedule:
+                type: string
+              suspend:
+                default: false
+                type: boolean
+              worker:
                 properties:
-                  maxWorkers:
+                  instances:
                     default: 1
                     description: MaxWorkers Maximum number of parallel workers to
                       start. A single worker will only process a single batch at maximum.
@@ -313,14 +321,10 @@ spec:
                     - size
                     type: string
                 required:
-                - maxWorkers
+                - instances
                 type: object
-              schedule:
-                type: string
-              suspend:
-                default: false
-                type: boolean
             required:
+            - discovery
             - renovate
             - schedule
             type: object
@@ -444,10 +448,6 @@ spec:
                   INSERT ADDITIONAL STATUS FIELD - define observed state of cluster
                   Important: Run "make" to regenerate code after modifying this file
                 type: boolean
-              repositories:
-                items:
-                  type: string
-                type: array
               specHash:
                 type: string
             required:

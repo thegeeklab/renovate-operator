@@ -14,7 +14,7 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
 
-var _ = Describe("Renovator Controller", func() {
+var _ = Describe("Discovery Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-resource"
 
@@ -24,36 +24,35 @@ var _ = Describe("Renovator Controller", func() {
 			Name:      resourceName,
 			Namespace: "default", // TODO(user):Modify as needed
 		}
-		renovator := &renovatev1beta1.Renovator{}
+		discovery := &renovatev1beta1.Discovery{}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Renovator")
-			err := k8sClient.Get(ctx, typeNamespacedName, renovator)
+			By("creating the custom resource for the Kind Discovery")
+			err := k8sClient.Get(ctx, typeNamespacedName, discovery)
 			if err != nil && errors.IsNotFound(err) {
-				resource := &renovatev1beta1.Renovator{
+				resource := &renovatev1beta1.Discovery{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
+					// TODO(user): Specify other spec details if needed.
 				}
-				resource.Default()
-				resource.Spec.RenovateConfig.Platform.Type = "github"
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
-			resource := &renovatev1beta1.Renovator{}
+			resource := &renovatev1beta1.Discovery{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance Renovator")
+			By("Cleanup the specific resource instance Discovery")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &RenovatorReconciler{
+			controllerReconciler := &DiscoveryReconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
 			}
