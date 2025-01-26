@@ -20,13 +20,16 @@ spec:
   worker:
     strategy: batch
     instances: 1
-    batchsize: 15
+    batchSize: 15
 
   renovate:
     platform:
       type: "gitea"
       endpoint: https://gitea.example.com/api/v1
-      token: "***"
+      token:
+        secretKeyRef:
+          name: "my-secret"
+          key: "platform_token"
 
     dryRun: true
     onboarding: true
@@ -34,4 +37,4 @@ spec:
     githubToken:
       secretKeyRef:
         name: "my-secret"
-        key: "githubtoken"
+        key: "github_token"

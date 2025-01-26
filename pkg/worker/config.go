@@ -20,7 +20,7 @@ type Renovate struct {
 	DryRun        bool                  `json:"dryRun"`
 	Platform      v1beta1.PlatformTypes `json:"platform"`
 	Endpoint      string                `json:"endpoint"`
-	AddLabels     []string              `json:"addLabels"`
+	AddLabels     []string              `json:"addLabels,omitempty"`
 }
 
 func (w *Worker) reconcileConfig(ctx context.Context) (*ctrl.Result, error) {
@@ -38,12 +38,12 @@ func (w *Worker) reconcileConfig(ctx context.Context) (*ctrl.Result, error) {
 	if err != nil {
 		if errors.IsNotFound(err) {
 			if err = w.client.Create(ctx, expectedCCM); err != nil {
-				ctxLogger.Error(err, "Failed to create ControlConfigMap")
+				ctxLogger.Error(err, "Failed to create ConfigMap")
 
 				return nil, err
 			}
 
-			ctxLogger.Info("Created ControlConfigMap")
+			ctxLogger.Info("Created ConfigMap")
 
 			return &ctrl.Result{Requeue: true}, nil
 		}

@@ -60,6 +60,11 @@ func (w *Worker) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		return resutl, err
 	}
 
+	resutl, err = w.reconcileServiceAccount(ctx)
+	if err != nil {
+		return resutl, err
+	}
+
 	resutl, err = w.reconcileDiscovery(ctx)
 	if err != nil {
 		return resutl, err
