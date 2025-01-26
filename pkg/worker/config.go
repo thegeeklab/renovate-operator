@@ -53,16 +53,16 @@ func (w *Worker) reconcileConfig(ctx context.Context) (*ctrl.Result, error) {
 
 	// update CCM if necessary
 	if !equality.Semantic.DeepDerivative(expectedCCM.Data, currentCCM.Data) {
-		ctxLogger.Info("Updating base config")
+		ctxLogger.Info("Updating ConfigMap")
 
 		err := w.client.Update(ctx, expectedCCM)
 		if err != nil {
-			ctxLogger.Error(err, "Failed to update base config")
+			ctxLogger.Error(err, "Failed to update ConfigMap")
 
 			return &ctrl.Result{}, err
 		}
 
-		ctxLogger.Info("Updated base config")
+		ctxLogger.Info("Updated ConfigMap")
 
 		return &ctrl.Result{Requeue: true}, nil
 	}
