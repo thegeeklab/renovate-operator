@@ -75,7 +75,7 @@ func main() {
 	flag.StringVar(&watchNamespace, "watch-namespace", "", "The namespace the controller will watch.")
 
 	opts := zap.Options{
-		Development: true,
+		Development: false,
 	}
 	opts.BindFlags(flag.CommandLine)
 
