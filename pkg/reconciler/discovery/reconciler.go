@@ -33,33 +33,21 @@ func Reconcile(
 
 	results := &reconciler.Results{}
 
-	res, err := r.reconcileServiceAccount(ctx)
-	if err != nil {
-		return res, err
+	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
+		r.reconcileServiceAccount,
+		r.reconcileRole,
+		r.reconcileRoleBinding,
+		r.reconcileCronJob,
 	}
 
-	results.Collect(res)
+	for _, reconcileFunc := range reconcileFuncs {
+		res, err := reconcileFunc(ctx)
+		if err != nil {
+			return res, err
+		}
 
-	res, err = r.reconcileRole(ctx)
-	if err != nil {
-		return res, err
+		results.Collect(res)
 	}
-
-	results.Collect(res)
-
-	res, err = r.reconcileRoleBinding(ctx)
-	if err != nil {
-		return res, err
-	}
-
-	results.Collect(res)
-
-	res, err = r.reconcileCronJob(ctx)
-	if err != nil {
-		return res, err
-	}
-
-	results.Collect(res)
 
 	return results.ToResult(), nil
 }
