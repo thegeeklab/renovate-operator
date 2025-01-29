@@ -15,6 +15,7 @@ import (
 	"k8s.io/client-go/tools/clientcmd"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
 
 var scheme = runtime.NewScheme()
@@ -25,8 +26,12 @@ func init() {
 }
 
 func main() {
+	logf.SetLogger(zap.New(zap.JSONEncoder()))
+
 	ctx := context.Background()
 	ctxLogger := logf.FromContext(ctx)
+
+	ctxLogger.Info("Starting discovery process")
 
 	d, err := discovery.LoadConfig()
 	if err != nil {
@@ -67,6 +72,8 @@ func main() {
 
 	instance := &renovatev1beta1.Renovator{}
 
+	ctxLogger.Info("Retrieving renovator instance", "name", d.Name, "namespace", d.Namespace)
+
 	err = cl.Get(ctx, renovatorName, instance)
 	if err != nil {
 		ctxLogger.Error(err, "Failed to retrieve renovator instance")
@@ -87,6 +94,8 @@ func main() {
 		ctxLogger.Error(err, "Failed to unmarshal json")
 		panic(err.Error())
 	}
+
+	ctxLogger.Info("Repository list", "repositories", repoList)
 
 	// Create enriched repository objects
 	repositories := make([]renovatev1beta1.Repository, 0)

@@ -50,14 +50,12 @@ func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	res, err := discovery.Reconcile(ctx, r.Client, r.Scheme, req, renovatorRes)
-	if err != nil {
-		return *res, err
+	if res, err := discovery.Reconcile(ctx, r.Client, r.Scheme, req, renovatorRes); err != nil {
+		return handleReconcileResult(res, err)
 	}
 
-	res, err = worker.Reconcile(ctx, r.Client, r.Scheme, req, renovatorRes)
-	if err != nil {
-		return *res, err
+	if res, err := worker.Reconcile(ctx, r.Client, r.Scheme, req, renovatorRes); err != nil {
+		return handleReconcileResult(res, err)
 	}
 
 	return ctrl.Result{}, nil
@@ -69,4 +67,16 @@ func (r *RenovatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&renovatev1beta1.Renovator{}).
 		Named("renovator").
 		Complete(r)
+}
+
+func handleReconcileResult(res *ctrl.Result, err error) (ctrl.Result, error) {
+	if err != nil {
+		if res != nil {
+			return *res, err
+		}
+
+		return ctrl.Result{}, err
+	}
+
+	return ctrl.Result{}, nil
 }

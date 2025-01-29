@@ -5,17 +5,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-type RenovatorStatusPhase string
-
-const (
-	RenovatorStatusPhasePending     RenovatorStatusPhase = "Pending"
-	RenovatorStatusPhaseCreating    RenovatorStatusPhase = "Creating"
-	RenovatorStatusPhaseCreated     RenovatorStatusPhase = "Created"
-	RenovatorStatusPhaseTerminating RenovatorStatusPhase = "Terminating"
-	RenovatorStatusPhaseDeleted     RenovatorStatusPhase = "Deleted"
-	RenovatorStatusPhaseError       RenovatorStatusPhase = "Error"
-)
-
 // +kubebuilder:validation:Enum=github;gitea
 type PlatformTypes string
 
@@ -162,7 +151,6 @@ type RenovatorStatus struct {
 	// Important: Run "make" to regenerate code after modifying this file
 	Ready        bool               `json:"ready"`
 	Failed       int                `json:"failed,omitempty"`
-	Phase        metav1.Condition   `json:"phase,omitempty"`
 	Conditions   []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 	SpecHash     string             `json:"specHash,omitempty"`
 	Repositories []Repository       `json:"repositories,omitempty"`

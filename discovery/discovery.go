@@ -20,24 +20,24 @@ const (
 )
 
 func LoadConfig() (*Config, error) {
-	aConfig := &Config{}
+	cfg := &Config{}
 
 	var err error
-	if aConfig.Name, err = setEnvVariable(EnvRenovatorInstanceName); err != nil {
-		return aConfig, err
+	if cfg.Name, err = setEnvVariable(EnvRenovatorInstanceName); err != nil {
+		return cfg, err
 	}
 
-	if aConfig.Namespace, err = setEnvVariable(EnvRenovatorInstanceNamespace); err != nil {
-		return aConfig, err
+	if cfg.Namespace, err = setEnvVariable(EnvRenovatorInstanceNamespace); err != nil {
+		return cfg, err
 	}
 
-	if aConfig.FilePath, err = setEnvVariable(EnvRenovateOutputFile); err != nil {
-		return aConfig, err
+	if cfg.FilePath, err = setEnvVariable(EnvRenovateOutputFile); err != nil {
+		return cfg, err
 	}
 
-	aConfig.KubeConfigPath, _ = setEnvVariable(EnvKubeConfig)
+	cfg.KubeConfigPath, _ = setEnvVariable(EnvKubeConfig)
 
-	return aConfig, nil
+	return cfg, nil
 }
 
 func setEnvVariable(envVariable string) (string, error) {

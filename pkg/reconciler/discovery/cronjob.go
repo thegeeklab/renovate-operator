@@ -22,7 +22,7 @@ func (r *discoveryReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Resul
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &corev1.ServiceAccount{}, expected, equality.CronJobEqual)
+	return r.ReconcileResource(ctx, &batchv1.CronJob{}, expected, equality.CronJobEqual)
 }
 
 func (r *discoveryReconciler) createCronJob(jobSpec batchv1.JobSpec) (*batchv1.CronJob, error) {
@@ -74,6 +74,7 @@ func (r *discoveryReconciler) createJobSpec() batchv1.JobSpec {
 					{
 						Name:            "renovate-discovery",
 						Image:           r.instance.Spec.Image,
+						Command:         []string{"/discovery"},
 						ImagePullPolicy: r.instance.Spec.ImagePullPolicy,
 						Env: []corev1.EnvVar{
 							{
