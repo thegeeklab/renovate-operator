@@ -79,12 +79,41 @@ func main() {
 		panic(err.Error())
 	}
 
-	repositories := make([]string, 0)
+	// Parse the original repository list
+	var repoList []string
 
-	err = json.Unmarshal(readBytes, repositories)
+	err = json.Unmarshal(readBytes, &repoList)
 	if err != nil {
 		ctxLogger.Error(err, "Failed to unmarshal json")
 		panic(err.Error())
+	}
+
+	// Create enriched repository objects
+	repositories := make([]renovatev1beta1.Repository, 0)
+	for _, repo := range repoList {
+		repositories = append(repositories, renovatev1beta1.Repository{
+			Name: repo,
+		})
+	}
+
+	// Get current repositories from status
+	currentRepos := make(map[string]bool)
+	for _, repo := range instance.Status.Repositories {
+		currentRepos[repo.Name] = true
+	}
+
+	var removedRepos []string
+
+	if instance.Status.Repositories != nil {
+		for _, existingRepo := range instance.Status.Repositories {
+			if !currentRepos[existingRepo.Name] {
+				removedRepos = append(removedRepos, existingRepo.Name)
+			}
+		}
+	}
+
+	if len(removedRepos) > 0 {
+		ctxLogger.Info("Repositories removed from status", "removed", removedRepos)
 	}
 
 	instance.Status.Repositories = repositories

@@ -3,7 +3,7 @@ package renovate
 import (
 	"path/filepath"
 
-	"github.com/thegeeklab/renovate-operator/api/v1beta1"
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 )
 
@@ -23,7 +23,7 @@ var (
 )
 
 func Container(
-	instance *v1beta1.Renovator,
+	instance *renovatev1beta1.Renovator,
 	additionalEnVars []corev1.EnvVar,
 	additionalArgs []string,
 ) corev1.Container {
@@ -47,7 +47,7 @@ func Container(
 	}
 }
 
-func EnvVars(instance *v1beta1.Renovator) []corev1.EnvVar {
+func EnvVars(instance *renovatev1beta1.Renovator) []corev1.EnvVar {
 	containerVars := []corev1.EnvVar{
 		{
 			Name:  "LOG_LEVEL",

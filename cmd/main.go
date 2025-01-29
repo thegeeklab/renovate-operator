@@ -41,7 +41,6 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
-//nolint:maintidx
 func main() {
 	var (
 		metricsAddr                                      string

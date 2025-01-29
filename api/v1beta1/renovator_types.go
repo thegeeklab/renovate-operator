@@ -111,6 +111,17 @@ type Discovery struct {
 	Filter []string `json:"filter,omitempty"`
 }
 
+type Repository struct {
+	Name string `json:"name"`
+
+	// +kubebuilder:validation:Optional
+	WebhookID string `json:"webhookId,omitempty"`
+}
+
+type Repositories struct {
+	Repositories []Repository `json:"repositories,omitempty"`
+}
+
 // RenovatorSpec defines the desired state of Renovator.
 type RenovatorSpec struct {
 	// Name of the container image, supporting both tags (`<image>:<tag>`)
@@ -154,7 +165,7 @@ type RenovatorStatus struct {
 	Phase        metav1.Condition   `json:"phase,omitempty"`
 	Conditions   []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 	SpecHash     string             `json:"specHash,omitempty"`
-	Repositories []string           `json:"repositories,omitempty"`
+	Repositories []Repository       `json:"repositories,omitempty"`
 }
 
 // +kubebuilder:object:root=true

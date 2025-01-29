@@ -5,8 +5,8 @@ import (
 	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/util"
-	"github.com/thegeeklab/renovate-operator/pkg/worker"
+	"github.com/thegeeklab/renovate-operator/pkg/reconciler/discovery"
+	"github.com/thegeeklab/renovate-operator/pkg/reconciler/worker"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -20,10 +20,12 @@ type RenovatorReconciler struct {
 	Scheme *runtime.Scheme
 }
 
+//nolint:lll
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovators,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovators/status,verbs=get;update;patch
@@ -48,10 +50,17 @@ func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	worker := worker.New(r.Client, req, renovatorRes, r.Scheme)
-	result, err := worker.Reconcile(ctx)
+	res, err := discovery.Reconcile(ctx, r.Client, r.Scheme, req, renovatorRes)
+	if err != nil {
+		return *res, err
+	}
 
-	return util.HandleError(ctx, result, err)
+	res, err = worker.Reconcile(ctx, r.Client, r.Scheme, req, renovatorRes)
+	if err != nil {
+		return *res, err
+	}
+
+	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

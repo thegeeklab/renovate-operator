@@ -465,7 +465,14 @@ spec:
                 type: boolean
               repositories:
                 items:
-                  type: string
+                  properties:
+                    name:
+                      type: string
+                    webhookId:
+                      type: string
+                  required:
+                  - name
+                  type: object
                 type: array
               specHash:
                 type: string
