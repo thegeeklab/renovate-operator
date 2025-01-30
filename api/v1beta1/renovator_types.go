@@ -65,23 +65,23 @@ type Logging struct {
 	Level LogLevel `json:"level"`
 }
 
-type WorkerStrategy string
+type RunnerStrategy string
 
 //nolint:revive,stylecheck
 const (
-	// WorkerStrategy_NONE A single batch be created and no parallelization will take place.
-	WorkerStrategy_NONE = "none"
-	// WorkerStrategy_BATCH Create batches based on number of repositories. If 30 repositories have been found and size
+	// RunnerStrategy_NONE A single batch be created and no parallelization will take place.
+	RunnerStrategy_NONE = "none"
+	// RunnerStrategy_BATCH Create batches based on number of repositories. If 30 repositories have been found and size
 	// is defined as 10, then 3 batches will be created.
-	WorkerStrategy_BATCH = "batch"
+	RunnerStrategy_BATCH = "batch"
 )
 
-type Worker struct {
+type Runner struct {
 	// +kubebuilder:validation:Enum=none;batch
 	// +kubebuilder:default:="none"
-	Strategy WorkerStrategy `json:"strategy,omitempty"`
+	Strategy RunnerStrategy `json:"strategy,omitempty"`
 
-	// MaxWorkers Maximum number of parallel workers to start. A single worker will only process a single batch.
+	// MaxRunners Maximum number of parallel runners to start. A single runner will only process a single batch.
 	// +kubebuilder:default:=1
 	Instances int32 `json:"instances"`
 
@@ -140,7 +140,7 @@ type RenovatorSpec struct {
 	Logging Logging `json:"logging"`
 
 	// +kubebuilder:validation:Optional
-	Worker Worker `json:"worker"`
+	Runner Runner `json:"runner"`
 }
 
 // RenovatorStatus defines the observed state of Renovator.

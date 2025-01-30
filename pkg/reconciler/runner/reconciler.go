@@ -1,4 +1,4 @@
-package worker
+package runner
 
 import (
 	"context"
@@ -14,7 +14,7 @@ type Batch struct {
 	Repositories []renovatev1beta1.Repository
 }
 
-type workerReconciler struct {
+type runnerReconciler struct {
 	*reconciler.GenericReconciler
 	instance *renovatev1beta1.Renovator
 	batches  []Batch
@@ -27,7 +27,7 @@ func Reconcile(
 	req ctrl.Request,
 	instance *renovatev1beta1.Renovator,
 ) (*ctrl.Result, error) {
-	r := &workerReconciler{
+	r := &runnerReconciler{
 		GenericReconciler: &reconciler.GenericReconciler{
 			Client: client,
 			Scheme: scheme,
@@ -39,14 +39,14 @@ func Reconcile(
 
 	var batches []Batch
 
-	switch r.instance.Spec.Worker.Strategy {
-	case renovatev1beta1.WorkerStrategy_BATCH:
-		limit := r.instance.Spec.Worker.BatchSize
+	switch r.instance.Spec.Runner.Strategy {
+	case renovatev1beta1.RunnerStrategy_BATCH:
+		limit := r.instance.Spec.Runner.BatchSize
 		for i := 0; i < len(repos); i += limit {
 			batch := repos[i:min(i+limit, len(repos))]
 			batches = append(batches, Batch{Repositories: batch})
 		}
-	case renovatev1beta1.WorkerStrategy_NONE:
+	case renovatev1beta1.RunnerStrategy_NONE:
 	default:
 		batches = append(batches, Batch{Repositories: repos})
 	}

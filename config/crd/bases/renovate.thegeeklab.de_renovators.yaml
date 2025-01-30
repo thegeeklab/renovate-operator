@@ -314,19 +314,14 @@ spec:
                 required:
                 - platform
                 type: object
-              schedule:
-                type: string
-              suspend:
-                default: false
-                type: boolean
-              worker:
+              runner:
                 properties:
                   batchSize:
                     type: integer
                   instances:
                     default: 1
-                    description: MaxWorkers Maximum number of parallel workers to
-                      start. A single worker will only process a single batch.
+                    description: MaxRunners Maximum number of parallel runners to
+                      start. A single runner will only process a single batch.
                     format: int32
                     type: integer
                   strategy:
@@ -338,6 +333,11 @@ spec:
                 required:
                 - instances
                 type: object
+              schedule:
+                type: string
+              suspend:
+                default: false
+                type: boolean
             required:
             - discovery
             - renovate

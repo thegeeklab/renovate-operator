@@ -1,4 +1,4 @@
-package worker
+package runner
 
 import (
 	"context"
@@ -21,7 +21,7 @@ type Renovate struct {
 	AddLabels     []string                      `json:"addLabels,omitempty"`
 }
 
-func (r *workerReconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, error) {
+func (r *runnerReconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, error) {
 	expected, err := r.createConfigMap()
 	if err != nil {
 		return &ctrl.Result{}, err
@@ -30,7 +30,7 @@ func (r *workerReconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result
 	return r.ReconcileResource(ctx, &corev1.ConfigMap{}, expected, equality.ConfigMapEqual)
 }
 
-func (r *workerReconciler) createConfigMap() (*corev1.ConfigMap, error) {
+func (r *runnerReconciler) createConfigMap() (*corev1.ConfigMap, error) {
 	renovateConfig := &Renovate{
 		DryRun:        *r.instance.Spec.Renovate.DryRun,
 		Onboarding:    *r.instance.Spec.Renovate.Onboarding,

@@ -6,7 +6,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/reconciler/discovery"
-	"github.com/thegeeklab/renovate-operator/pkg/reconciler/worker"
+	"github.com/thegeeklab/renovate-operator/pkg/reconciler/runner"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -54,7 +54,7 @@ func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return handleReconcileResult(res, err)
 	}
 
-	if res, err := worker.Reconcile(ctx, r.Client, r.Scheme, req, renovatorRes); err != nil {
+	if res, err := runner.Reconcile(ctx, r.Client, r.Scheme, req, renovatorRes); err != nil {
 		return handleReconcileResult(res, err)
 	}
 

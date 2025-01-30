@@ -17,7 +17,7 @@ spec:
   logging:
     level: debug
 
-  worker:
+  runner:
     strategy: batch
     instances: 1
     batchSize: 15

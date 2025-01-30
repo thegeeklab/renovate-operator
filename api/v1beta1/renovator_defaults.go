@@ -5,12 +5,12 @@ func (r *Renovator) Default() {
 		r.Spec.Logging.Level = "info"
 	}
 
-	if r.Spec.Worker.Strategy == "" {
-		r.Spec.Worker.Strategy = "none"
+	if r.Spec.Runner.Strategy == "" {
+		r.Spec.Runner.Strategy = "none"
 	}
 
-	if r.Spec.Worker.Instances == 0 {
-		r.Spec.Worker.Instances = 1
+	if r.Spec.Runner.Instances == 0 {
+		r.Spec.Runner.Instances = 1
 	}
 
 	if r.Spec.Discovery.Schedule == "" {

@@ -4,7 +4,7 @@ import "strings"
 
 const (
 	discoveryGroupName = "discovery"
-	workerGroupName    = "worker"
+	runnerGroupName    = "runner"
 )
 
 func buildName(name, group string) string {
