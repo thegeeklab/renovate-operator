@@ -3,9 +3,12 @@ package main
 import (
 	"context"
 	"os"
+	"strings"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/discovery"
+	"k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -72,8 +75,6 @@ func main() {
 
 	instance := &renovatev1beta1.Renovator{}
 
-	ctxLogger.Info("Retrieving renovator instance", "name", d.Name, "namespace", d.Namespace)
-
 	err = cl.Get(ctx, renovatorName, instance)
 	if err != nil {
 		ctxLogger.Error(err, "Failed to retrieve renovator instance")
@@ -86,50 +87,64 @@ func main() {
 		panic(err.Error())
 	}
 
-	// Parse the original repository list
-	var repoList []string
+	var discoveredRepos []string
 
-	err = json.Unmarshal(readBytes, &repoList)
+	err = json.Unmarshal(readBytes, &discoveredRepos)
 	if err != nil {
 		ctxLogger.Error(err, "Failed to unmarshal json")
 		panic(err.Error())
 	}
 
-	ctxLogger.Info("Repository list", "repositories", repoList)
+	ctxLogger.Info("Repository list", "repositories", discoveredRepos)
 
-	// Create enriched repository objects
-	repositories := make([]renovatev1beta1.Repository, 0)
-	for _, repo := range repoList {
-		repositories = append(repositories, renovatev1beta1.Repository{
-			Name: repo,
-		})
-	}
+	// Create GitRepo CRs for discovered repos
+	discoveredRepoMatcher := make(map[string]bool, 0)
+	for _, repo := range discoveredRepos {
+		discoveredRepoMatcher[repo] = true
 
-	// Get current repositories from status
-	currentRepos := make(map[string]bool)
-	for _, repo := range instance.Status.Repositories {
-		currentRepos[repo.Name] = true
-	}
+		gitRepo := &renovatev1beta1.GitRepo{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      sanitizeRepoName(repo),
+				Namespace: d.Namespace,
+				OwnerReferences: []metav1.OwnerReference{
+					*metav1.NewControllerRef(instance, renovatev1beta1.GroupVersion.WithKind("Renovator")),
+				},
+			},
+			Spec: renovatev1beta1.GitRepoSpec{
+				Name: repo,
+			},
+		}
 
-	var removedRepos []string
-
-	if instance.Status.Repositories != nil {
-		for _, existingRepo := range instance.Status.Repositories {
-			if !currentRepos[existingRepo.Name] {
-				removedRepos = append(removedRepos, existingRepo.Name)
-			}
+		err = cl.Create(ctx, gitRepo)
+		if err != nil && !errors.IsAlreadyExists(err) {
+			ctxLogger.Error(err, "Failed to create GitRepo", "repo", repo)
 		}
 	}
 
-	if len(removedRepos) > 0 {
-		ctxLogger.Info("Repositories removed from status", "removed", removedRepos)
-	}
-
-	instance.Status.Repositories = repositories
-
-	err = cl.Status().Update(ctx, instance)
-	if err != nil {
-		ctxLogger.Error(err, "Failed to update status of renovator instance")
+	// Clean up removed repos
+	existingRepos := &renovatev1beta1.GitRepoList{}
+	if err := cl.List(ctx, existingRepos, client.InNamespace(d.Namespace)); err != nil {
+		ctxLogger.Error(err, "Failed to list GitRepos")
 		panic(err.Error())
 	}
+
+	for _, repo := range existingRepos.Items {
+		if discoveredRepoMatcher[repo.Spec.Name] || !metav1.IsControlledBy(&repo, instance) {
+			continue
+		}
+
+		if err := cl.Delete(ctx, &repo); err != nil {
+			ctxLogger.Error(err, "Failed to delete GitRepo", "repo", repo.Name)
+
+			continue
+		}
+
+		ctxLogger.Info("Deleted GitRepo", "repo", repo.Name)
+	}
+}
+
+func sanitizeRepoName(repo string) string {
+	sanitized := strings.ToLower(strings.ReplaceAll(repo, "/", "-"))
+
+	return "repo-" + sanitized
 }

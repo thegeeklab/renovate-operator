@@ -40,8 +40,8 @@ func (r *discoveryReconciler) createRole() (*rbacv1.Role, error) {
 			},
 			{
 				APIGroups: []string{renovatev1beta1.GroupVersion.Group},
-				Resources: []string{"renovators/status"},
-				Verbs:     []string{"get", "patch", "update"},
+				Resources: []string{"gitrepos"},
+				Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
 			},
 		},
 	}

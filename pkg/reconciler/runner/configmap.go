@@ -49,15 +49,15 @@ func (r *runnerReconciler) createConfigMap() (*corev1.ConfigMap, error) {
 		"renovate.json": string(baseConfig),
 	}
 
-	// if batches could be retrieved add them
-	if r.batches != nil {
-		batchesString, err := json.Marshal(r.batches)
-		if err != nil {
-			return nil, err
-		}
+	// // if batches could be retrieved add them
+	// if r.batches != nil {
+	// 	batchesString, err := json.Marshal(r.batches)
+	// 	if err != nil {
+	// 		return nil, err
+	// 	}
 
-		data["batches"] = string(batchesString)
-	}
+	// 	data["batches"] = string(batchesString)
+	// }
 
 	newConfigMap := &corev1.ConfigMap{
 		ObjectMeta: v1.ObjectMeta{
