@@ -9,6 +9,6 @@ steps:
   - name: spellcheck
     image: ghcr.io/streetsidesoftware/cspell
     commands:
-      - cspell --gitignore .
+      - cspell-cli --gitignore .
     environment:
       FORCE_COLOR: "true"
