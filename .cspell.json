@@ -1,0 +1,77 @@
+{
+  "version": "0.2",
+  "language": "en",
+  "dictionaries": ["en_us", "go"],
+  "words": [
+    "thegeeklab",
+    "kubebuilder",
+    "GOARCH",
+    "distroless",
+    "Kaussow",
+    "secustor",
+    "Poxhofer",
+    "kubeconfig",
+    "gitrepos",
+    "certmanager",
+    "controllerutil",
+    "autodiscover",
+    "prometheuses",
+    "crds",
+    "tmpl",
+    "nonroot",
+    "kustomization",
+    "healthz",
+    "readyz",
+    "apimachinery",
+    "admissionregistration",
+    "utilruntime",
+    "serviceaccounts",
+    "finalizers",
+    "rolebindings",
+    "renovatorlog",
+    "prometheusrules",
+    "clusterissuers",
+    "prometheusagents",
+    "certificaterequests",
+    "subresource",
+    "renovatebot",
+    "gitea",
+    "clientgoscheme",
+    "certwatcher",
+    "metricsserver",
+    "clientcmd"
+  ],
+  "ignorePaths": [
+    "*_test.go",
+    ".cspell.json",
+    ".git/**/*",
+    ".gitignore",
+    ".golangci.yaml",
+    ".vscode",
+    "Makefile",
+    "go.mod",
+    // generated
+    "go.sum",
+    "renovate.json",
+    "*zz_generated*.go",
+    "config/**/*.yaml"
+  ],
+  "ignoreRegExpList": [
+    // ignore mulltiline imports
+    "import\\s*\\((.|[\r\n])*?\\)",
+    // ignore single line imports
+    "import\\s*.*\".*?\"",
+    // ignore go generate directive
+    "//\\s*go:generate.*",
+    // ignore nolint directive
+    "//\\s*nolint:.*",
+    // ignore docker image names
+    "\\s*docker\\.io/.*",
+    ".*v1beta1.*",
+    ".*corev1.*",
+    ".*rbacv1.*",
+    ".*batchv1.*",
+    ".*metav1.*"
+  ],
+  "enableFiletypes": ["dockercompose"]
+}
