@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"os"
 	"testing"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -10,9 +11,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-func TestGitRepo(t *testing.T) {
+func TestDiscovery(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "GitRepo Suite")
+	RunSpecs(t, "Discovery Suite")
 }
 
 var _ = Describe("GitRepo", func() {
@@ -75,5 +76,31 @@ var _ = Describe("CreateGitRepo", func() {
 		Expect(ownerRef.UID).To(Equal(owner.UID))
 		Expect(ownerRef.Kind).To(Equal("Renovator"))
 		Expect(ownerRef.Controller).To(PointTo(BeTrue()))
+	})
+})
+
+var _ = Describe("parseEnv", func() {
+	BeforeEach(func() {
+		os.Clearenv()
+	})
+
+	It("should return environment variable value when set", func() {
+		os.Setenv("TEST_VAR", "test-value")
+		value, err := parseEnv("TEST_VAR")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(value).To(Equal("test-value"))
+	})
+
+	It("should return error when environment variable is not set", func() {
+		value, err := parseEnv("NONEXISTENT_VAR")
+		Expect(err).To(MatchError(ErrEnvVarNotDefined))
+		Expect(value).To(BeEmpty())
+	})
+
+	It("should handle empty environment variable value", func() {
+		os.Setenv("EMPTY_VAR", "")
+		value, err := parseEnv("EMPTY_VAR")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(value).To(BeEmpty())
 	})
 })

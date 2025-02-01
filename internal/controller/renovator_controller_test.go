@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
@@ -22,22 +23,53 @@ var _ = Describe("Renovator Controller", func() {
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
-			Namespace: "default", // TODO(user):Modify as needed
+			Namespace: "default",
 		}
-		renovator := &renovatev1beta1.Renovator{}
 
 		BeforeEach(func() {
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "renovate-token-secret",
+					Namespace: "default",
+				},
+				Type: corev1.SecretTypeOpaque,
+				StringData: map[string]string{
+					"token": "dummy-token",
+				},
+			}
+			err := k8sClient.Create(ctx, secret)
+			if err != nil {
+				Expect(errors.IsAlreadyExists(err)).To(BeTrue())
+			} else {
+				Expect(err).NotTo(HaveOccurred())
+			}
+
 			By("creating the custom resource for the Kind Renovator")
-			err := k8sClient.Get(ctx, typeNamespacedName, renovator)
+			err = k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Renovator{})
 			if err != nil && errors.IsNotFound(err) {
 				resource := &renovatev1beta1.Renovator{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
+					Spec: renovatev1beta1.RenovatorSpec{
+						Renovate: renovatev1beta1.Renovate{
+							Platform: renovatev1beta1.Platform{
+								Type: "github",
+								Token: corev1.EnvVarSource{
+									SecretKeyRef: &corev1.SecretKeySelector{
+										LocalObjectReference: corev1.LocalObjectReference{
+											Name: "renovate-token-secret",
+										},
+										Key: "token",
+									},
+								},
+								Endpoint: "https://api.github.com/",
+							},
+						},
+					},
 				}
 				resource.Default()
-				resource.Spec.Renovate.Platform.Type = "github"
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
