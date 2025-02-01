@@ -18,7 +18,7 @@ steps:
 
   - name: pushrm-dockerhub
     image: docker.io/chko/docker-pushrm:1
-    depends_on: [markdownlint, spellcheck, link-validation]
+    depends_on: [markdownlint, link-validation]
     environment:
       DOCKER_PASS:
         from_secret: docker_password
@@ -35,7 +35,7 @@ steps:
 
   - name: pushrm-quay
     image: docker.io/chko/docker-pushrm:1
-    depends_on: [markdownlint, spellcheck, link-validation]
+    depends_on: [markdownlint, link-validation]
     environment:
       APIKEY__QUAY_IO:
         from_secret: quay_token
