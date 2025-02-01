@@ -108,3 +108,5 @@ issues:
         - prealloc
         - revive
         - stylecheck
+        - err113
+        - errorlint

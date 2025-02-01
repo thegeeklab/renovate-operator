@@ -12,8 +12,12 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
 
-// log is for logging in this package.
-var renovatorlog = logf.Log.WithName("renovator-resource")
+var (
+	// log is for logging in this package.
+	renovatorlog = logf.Log.WithName("renovator-resource")
+
+	ErrRenovatorObjectType = fmt.Errorf("expected an Renovator object but got other type")
+)
 
 // SetupRenovatorWebhookWithManager registers the webhook for Renovator in the manager.
 func SetupRenovatorWebhookWithManager(mgr ctrl.Manager) error {
@@ -41,7 +45,7 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, obj runtime.Object
 	renovator, ok := obj.(*renovatev1beta1.Renovator)
 
 	if !ok {
-		return fmt.Errorf("expected an Renovator object but got %T", obj)
+		return fmt.Errorf("%w: %T", ErrRenovatorObjectType, obj)
 	}
 
 	renovatorlog.Info("Defaulting for Renovator", "name", renovator.GetName())

@@ -1,0 +1,58 @@
+---
+when:
+  - event: [pull_request, tag]
+  - event: [push, manual]
+    branch:
+      - ${CI_REPO_DEFAULT_BRANCH}
+
+steps:
+  - name: markdownlint
+    image: quay.io/thegeeklab/markdownlint-cli
+    commands:
+      - markdownlint 'README.md' 'CONTRIBUTING.md'
+
+  - name: spellcheck
+    image: quay.io/thegeeklab/alpine-tools
+    commands:
+      - spellchecker --files 'docs/**/*.md' 'README.md' 'CONTRIBUTING.md' -d .dictionary -p spell indefinite-article syntax-urls
+    environment:
+      FORCE_COLOR: "true"
+
+  - name: link-validation
+    image: docker.io/lycheeverse/lychee
+    commands:
+      - lychee --no-progress --format detailed README.md
+
+  - name: pushrm-dockerhub
+    image: docker.io/chko/docker-pushrm:1
+    depends_on: [markdownlint, spellcheck, link-validation]
+    environment:
+      DOCKER_PASS:
+        from_secret: docker_password
+      DOCKER_USER:
+        from_secret: docker_username
+      PUSHRM_FILE: README.md
+      PUSHRM_SHORT: Semantic versioning tool for git based on conventional commits
+      PUSHRM_TARGET: ${CI_REPO}
+    when:
+      - event: [push, manual]
+        branch:
+          - ${CI_REPO_DEFAULT_BRANCH}
+        status: [success]
+
+  - name: pushrm-quay
+    image: docker.io/chko/docker-pushrm:1
+    depends_on: [markdownlint, spellcheck, link-validation]
+    environment:
+      APIKEY__QUAY_IO:
+        from_secret: quay_token
+      PUSHRM_FILE: README.md
+      PUSHRM_TARGET: quay.io/${CI_REPO}
+    when:
+      - event: [push, manual]
+        branch:
+          - ${CI_REPO_DEFAULT_BRANCH}
+        status: [success]
+
+depends_on:
+  - build-container
