@@ -53,8 +53,8 @@ var _ = Describe("Renovator Controller", func() {
 						Namespace: "default",
 					},
 					Spec: renovatev1beta1.RenovatorSpec{
-						Renovate: renovatev1beta1.Renovate{
-							Platform: renovatev1beta1.Platform{
+						Renovate: renovatev1beta1.RenovateSpec{
+							Platform: renovatev1beta1.PlatformSpec{
 								Type: "github",
 								Token: corev1.EnvVarSource{
 									SecretKeyRef: &corev1.SecretKeySelector{

@@ -14,13 +14,13 @@ const (
 	PlatformType_GITEA  = "gitea"
 )
 
-type Platform struct {
+type PlatformSpec struct {
 	Type     PlatformTypes       `json:"type"`
 	Endpoint string              `json:"endpoint"`
 	Token    corev1.EnvVarSource `json:"token"`
 }
 
-type Renovate struct {
+type RenovateSpec struct {
 	// Name of the container image, supporting both tags (`<image>:<tag>`)
 	// and digests for deterministic and repeatable deployments
 	// (`<image>:<tag>@sha256:<digestValue>`)
@@ -34,7 +34,7 @@ type Renovate struct {
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
-	Platform Platform `json:"platform"`
+	Platform PlatformSpec `json:"platform"`
 	// +kubebuilder:default:=false
 	DryRun *bool `json:"dryRun,omitempty"`
 	// +kubebuilder:default:=true
@@ -60,7 +60,7 @@ const (
 	LogLevel_FATAL = "fatal"
 )
 
-type Logging struct {
+type LoggingSpec struct {
 	// +kubebuilder:default=info
 	Level LogLevel `json:"level"`
 }
@@ -76,7 +76,7 @@ const (
 	RunnerStrategy_BATCH = "batch"
 )
 
-type Runner struct {
+type RunnerSpec struct {
 	// +kubebuilder:validation:Enum=none;batch
 	// +kubebuilder:default:="none"
 	Strategy RunnerStrategy `json:"strategy,omitempty"`
@@ -88,7 +88,7 @@ type Runner struct {
 	BatchSize int `json:"batchSize,omitempty"`
 }
 
-type Discovery struct {
+type DiscoverySpec struct {
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default:=false
 	Suspend *bool `json:"suspend"`
@@ -115,9 +115,9 @@ type RenovatorSpec struct {
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
-	Renovate Renovate `json:"renovate"`
+	Renovate RenovateSpec `json:"renovate"`
 
-	Discovery Discovery `json:"discovery"`
+	Discovery DiscoverySpec `json:"discovery"`
 
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default:=false
@@ -126,10 +126,10 @@ type RenovatorSpec struct {
 	Schedule string `json:"schedule"`
 
 	// +kubebuilder:validation:Optional
-	Logging Logging `json:"logging"`
+	Logging LoggingSpec `json:"logging"`
 
 	// +kubebuilder:validation:Optional
-	Runner Runner `json:"runner"`
+	Runner RunnerSpec `json:"runner"`
 }
 
 // RenovatorStatus defines the observed state of Renovator.

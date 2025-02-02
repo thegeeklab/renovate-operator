@@ -51,7 +51,7 @@ func (r *discoveryReconciler) createJobSpec() batchv1.JobSpec {
 			Spec: corev1.PodSpec{
 				ServiceAccountName: metadata.GenericMetaData(r.Req).Name,
 				RestartPolicy:      corev1.RestartPolicyNever,
-				Volumes: renovate.StandardVolumes(corev1.VolumeSource{
+				Volumes: renovate.DefaultVolumes(corev1.VolumeSource{
 					ConfigMap: &corev1.ConfigMapVolumeSource{
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: r.instance.Name,
@@ -59,7 +59,7 @@ func (r *discoveryReconciler) createJobSpec() batchv1.JobSpec {
 					},
 				}),
 				InitContainers: []corev1.Container{
-					renovate.Container(r.instance, []corev1.EnvVar{
+					renovate.DefaultContainer(r.instance, []corev1.EnvVar{
 						{
 							Name:  "RENOVATE_AUTODISCOVER",
 							Value: "true",

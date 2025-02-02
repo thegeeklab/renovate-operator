@@ -22,7 +22,7 @@ var (
 	FileRenovateConfigOutput = filepath.Join(DirRenovateBase, "repositories.json")
 )
 
-func Container(
+func DefaultContainer(
 	instance *renovatev1beta1.Renovator,
 	additionalEnVars []corev1.EnvVar,
 	additionalArgs []string,
@@ -32,7 +32,7 @@ func Container(
 		Image:           instance.Spec.Renovate.Image,
 		ImagePullPolicy: instance.Spec.ImagePullPolicy,
 		Args:            additionalArgs,
-		Env:             append(EnvVars(instance), additionalEnVars...),
+		Env:             append(DefaultEnvVars(instance), additionalEnVars...),
 		VolumeMounts: []corev1.VolumeMount{
 			{
 				Name:      VolumeWorkDir,
@@ -47,7 +47,7 @@ func Container(
 	}
 }
 
-func EnvVars(instance *renovatev1beta1.Renovator) []corev1.EnvVar {
+func DefaultEnvVars(instance *renovatev1beta1.Renovator) []corev1.EnvVar {
 	containerVars := []corev1.EnvVar{
 		{
 			Name:  "LOG_LEVEL",
@@ -76,7 +76,7 @@ func EnvVars(instance *renovatev1beta1.Renovator) []corev1.EnvVar {
 	return containerVars
 }
 
-func StandardVolumes(volumeConfigVolumeSource corev1.VolumeSource) []corev1.Volume {
+func DefaultVolumes(volumeConfigVolumeSource corev1.VolumeSource) []corev1.Volume {
 	return []corev1.Volume{
 		{
 			Name: VolumeWorkDir,
