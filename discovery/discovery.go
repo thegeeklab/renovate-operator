@@ -2,8 +2,8 @@ package discovery
 
 import (
 	"fmt"
-	"os"
 
+	"github.com/thegeeklab/renovate-operator/pkg/util"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/clientcmd"
@@ -16,8 +16,8 @@ type Discovery struct {
 	FilePath       string
 	KubeconfigPath string
 
-	Client client.Client
-	Scheme *runtime.Scheme
+	KubeClient client.Client
+	Scheme     *runtime.Scheme
 
 	kubeconfig *rest.Config
 }
@@ -29,10 +29,7 @@ const (
 	EnvKubeconfig                 = "KUBECONFIG"
 )
 
-var (
-	ErrDiscoveryClient  = fmt.Errorf("failed to create discovery client")
-	ErrEnvVarNotDefined = fmt.Errorf("environment variable not defined")
-)
+var ErrDiscoveryClient = fmt.Errorf("failed to create discovery client")
 
 func New(scheme *runtime.Scheme) (*Discovery, error) {
 	d := &Discovery{
@@ -40,19 +37,19 @@ func New(scheme *runtime.Scheme) (*Discovery, error) {
 	}
 
 	var err error
-	if d.Name, err = parseEnv(EnvRenovatorInstanceName); err != nil {
+	if d.Name, err = util.ParseEnv(EnvRenovatorInstanceName); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDiscoveryClient, err)
 	}
 
-	if d.Namespace, err = parseEnv(EnvRenovatorInstanceNamespace); err != nil {
+	if d.Namespace, err = util.ParseEnv(EnvRenovatorInstanceNamespace); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDiscoveryClient, err)
 	}
 
-	if d.FilePath, err = parseEnv(EnvRenovateOutputFile); err != nil {
+	if d.FilePath, err = util.ParseEnv(EnvRenovateOutputFile); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDiscoveryClient, err)
 	}
 
-	d.KubeconfigPath, _ = parseEnv(EnvKubeconfig)
+	d.KubeconfigPath, _ = util.ParseEnv(EnvKubeconfig)
 
 	if err := d.getKubeconfig(); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDiscoveryClient, err)
@@ -63,14 +60,6 @@ func New(scheme *runtime.Scheme) (*Discovery, error) {
 	}
 
 	return d, nil
-}
-
-func parseEnv(envVariable string) (string, error) {
-	if value, isSet := os.LookupEnv(envVariable); isSet {
-		return value, nil
-	}
-
-	return "", fmt.Errorf("%w: %s", ErrEnvVarNotDefined, envVariable)
 }
 
 func (d *Discovery) getKubeconfig() error {
@@ -97,7 +86,7 @@ func (d *Discovery) getKubernetesClient() error {
 		return err
 	}
 
-	d.Client = cl
+	d.KubeClient = cl
 
 	return nil
 }

@@ -37,7 +37,7 @@ var _ = Describe("Renovator Controller", func() {
 					"token": "dummy-token",
 				},
 			}
-			err := k8sClient.Create(ctx, secret)
+			err := kubeClient.Create(ctx, secret)
 			if err != nil {
 				Expect(errors.IsAlreadyExists(err)).To(BeTrue())
 			} else {
@@ -45,7 +45,7 @@ var _ = Describe("Renovator Controller", func() {
 			}
 
 			By("creating the custom resource for the Kind Renovator")
-			err = k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Renovator{})
+			err = kubeClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Renovator{})
 			if err != nil && errors.IsNotFound(err) {
 				resource := &renovatev1beta1.Renovator{
 					ObjectMeta: metav1.ObjectMeta{
@@ -70,24 +70,26 @@ var _ = Describe("Renovator Controller", func() {
 					},
 				}
 				resource.Default()
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				resource.Spec.Schedule = "0 0 * * *"
+				Expect(kubeClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
 			resource := &renovatev1beta1.Renovator{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
+			err := kubeClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Cleanup the specific resource instance Renovator")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			Expect(kubeClient.Delete(ctx, resource)).To(Succeed())
 		})
+
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &RenovatorReconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+				Client: kubeClient,
+				Scheme: kubeClient.Scheme(),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

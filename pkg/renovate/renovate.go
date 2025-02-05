@@ -8,18 +8,19 @@ import (
 )
 
 const (
-	VolumeConfig    = "config"
-	VolumeRawConfig = "raw-config"
-	VolumeWorkDir   = "workdir"
+	VolumeRenovateConfig = "renovate-config"
+	VolumeRenovateTmp    = "renovate-tmp"
+	VolumeRenovateBase   = "renovate-base"
 
-	DirRenovateBase   = "/tmp/renovate"
 	DirRenovateConfig = "/etc/config/renovate"
-	DirRawConfig      = "/tmp/rawConfigs"
+	DirRenovateTmp    = "/tmp/renovate"
 )
 
 var (
 	FileRenovateConfig       = filepath.Join(DirRenovateConfig, "renovate.json")
-	FileRenovateConfigOutput = filepath.Join(DirRenovateBase, "repositories.json")
+	FileRenovateTmp          = filepath.Join(DirRenovateTmp, "renovate.json")
+	FileRenovateRepositories = filepath.Join(DirRenovateTmp, "repositories.json")
+	FileRenovateBatches      = filepath.Join(DirRenovateTmp, "batches.json")
 )
 
 func DefaultContainer(
@@ -35,11 +36,11 @@ func DefaultContainer(
 		Env:             append(DefaultEnvVars(instance), additionalEnVars...),
 		VolumeMounts: []corev1.VolumeMount{
 			{
-				Name:      VolumeWorkDir,
-				MountPath: DirRenovateBase,
+				Name:      VolumeRenovateBase,
+				MountPath: DirRenovateTmp,
 			},
 			{
-				Name:      VolumeConfig,
+				Name:      VolumeRenovateConfig,
 				ReadOnly:  true,
 				MountPath: DirRenovateConfig,
 			},
@@ -55,7 +56,7 @@ func DefaultEnvVars(instance *renovatev1beta1.Renovator) []corev1.EnvVar {
 		},
 		{
 			Name:  "RENOVATE_BASE_DIR",
-			Value: DirRenovateBase,
+			Value: DirRenovateTmp,
 		},
 		{
 			Name:  "RENOVATE_CONFIG_FILE",
@@ -76,16 +77,10 @@ func DefaultEnvVars(instance *renovatev1beta1.Renovator) []corev1.EnvVar {
 	return containerVars
 }
 
-func DefaultVolumes(volumeConfigVolumeSource corev1.VolumeSource) []corev1.Volume {
+func DefaultVolume(volumeConfigVolumeSource corev1.VolumeSource) []corev1.Volume {
 	return []corev1.Volume{
 		{
-			Name: VolumeWorkDir,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
-		{
-			Name:         VolumeConfig,
+			Name:         VolumeRenovateConfig,
 			VolumeSource: volumeConfigVolumeSource,
 		},
 	}

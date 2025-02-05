@@ -11,6 +11,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -68,6 +69,11 @@ func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 func (r *RenovatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Renovator{}).
+		Watches(&renovatev1beta1.GitRepo{}, handler.EnqueueRequestForOwner(
+			r.Scheme,
+			mgr.GetRESTMapper(),
+			&renovatev1beta1.Renovator{},
+		)).
 		Named("renovator").
 		Complete(r)
 }

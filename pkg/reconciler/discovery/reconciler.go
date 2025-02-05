@@ -17,16 +17,16 @@ type discoveryReconciler struct {
 
 func Reconcile(
 	ctx context.Context,
-	client client.Client,
+	kubeClient client.Client,
 	scheme *runtime.Scheme,
 	req ctrl.Request,
 	instance *renovatev1beta1.Renovator,
 ) (*ctrl.Result, error) {
 	r := &discoveryReconciler{
 		GenericReconciler: &reconciler.GenericReconciler{
-			Client: client,
-			Scheme: scheme,
-			Req:    req,
+			KubeClient: kubeClient,
+			Scheme:     scheme,
+			Req:        req,
 		},
 		instance: instance,
 	}

@@ -88,8 +88,11 @@ spec:
                       type: string
                     type: array
                   dryRun:
-                    default: false
-                    type: boolean
+                    enum:
+                    - extract
+                    - lookup
+                    - full
+                    type: string
                   githubToken:
                     description: EnvVarSource represents a source for the value of
                       an EnvVar.
@@ -406,6 +409,10 @@ spec:
                 type: integer
               ready:
                 type: boolean
+              repositories:
+                items:
+                  type: string
+                type: array
               specHash:
                 type: string
             required:

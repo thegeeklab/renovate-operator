@@ -6,7 +6,7 @@ import (
 )
 
 // +kubebuilder:validation:Enum=github;gitea
-type PlatformTypes string
+type PlatformType string
 
 //nolint:revive,stylecheck
 const (
@@ -15,10 +15,20 @@ const (
 )
 
 type PlatformSpec struct {
-	Type     PlatformTypes       `json:"type"`
+	Type     PlatformType        `json:"type"`
 	Endpoint string              `json:"endpoint"`
 	Token    corev1.EnvVarSource `json:"token"`
 }
+
+// +kubebuilder:validation:Enum=extract;lookup;full
+type DryRun string
+
+//nolint:revive,stylecheck
+const (
+	DryRun_EXTRACT = "extract"
+	DryRun_LOOKUP  = "lookup"
+	DryRun_FULL    = "full"
+)
 
 type RenovateSpec struct {
 	// Name of the container image, supporting both tags (`<image>:<tag>`)
@@ -35,8 +45,7 @@ type RenovateSpec struct {
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
 	Platform PlatformSpec `json:"platform"`
-	// +kubebuilder:default:=false
-	DryRun *bool `json:"dryRun,omitempty"`
+	DryRun   DryRun       `json:"dryRun,omitempty"`
 	// +kubebuilder:default:=true
 	Onboarding *bool `json:"onboarding,omitempty"`
 	// OnBoardingConfig object `json:"onBoardingConfig,omitempty,inline"`
@@ -136,10 +145,11 @@ type RenovatorSpec struct {
 //
 //nolint:lll
 type RenovatorStatus struct {
-	Ready      bool               `json:"ready"`
-	Failed     int                `json:"failed,omitempty"`
-	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
-	SpecHash   string             `json:"specHash,omitempty"`
+	Ready        bool               `json:"ready"`
+	Failed       int                `json:"failed,omitempty"`
+	Conditions   []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	SpecHash     string             `json:"specHash,omitempty"`
+	Repositories []string           `json:"repositories,omitempty"`
 }
 
 // +kubebuilder:object:root=true

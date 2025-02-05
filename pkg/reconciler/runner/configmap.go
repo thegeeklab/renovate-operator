@@ -13,12 +13,13 @@ import (
 )
 
 type Renovate struct {
-	Onboarding    bool                          `json:"onboarding"`
-	PrHourlyLimit int                           `json:"prHourlyLimit"`
-	DryRun        bool                          `json:"dryRun"`
-	Platform      renovatev1beta1.PlatformTypes `json:"platform"`
-	Endpoint      string                        `json:"endpoint"`
-	AddLabels     []string                      `json:"addLabels,omitempty"`
+	Onboarding    bool                         `json:"onboarding"`
+	PrHourlyLimit int                          `json:"prHourlyLimit"`
+	DryRun        renovatev1beta1.DryRun       `json:"dryRun"`
+	Platform      renovatev1beta1.PlatformType `json:"platform"`
+	Endpoint      string                       `json:"endpoint"`
+	AddLabels     []string                     `json:"addLabels,omitempty"`
+	Repositories  []string                     `json:"repositories"`
 }
 
 func (r *runnerReconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, error) {
@@ -32,12 +33,13 @@ func (r *runnerReconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result
 
 func (r *runnerReconciler) createConfigMap() (*corev1.ConfigMap, error) {
 	renovateConfig := &Renovate{
-		DryRun:        *r.instance.Spec.Renovate.DryRun,
+		DryRun:        r.instance.Spec.Renovate.DryRun,
 		Onboarding:    *r.instance.Spec.Renovate.Onboarding,
 		PrHourlyLimit: r.instance.Spec.Renovate.PrHourlyLimit,
 		AddLabels:     r.instance.Spec.Renovate.AddLabels,
 		Platform:      r.instance.Spec.Renovate.Platform.Type,
 		Endpoint:      r.instance.Spec.Renovate.Platform.Endpoint,
+		Repositories:  []string{},
 	}
 
 	baseConfig, err := json.Marshal(renovateConfig)
@@ -49,15 +51,15 @@ func (r *runnerReconciler) createConfigMap() (*corev1.ConfigMap, error) {
 		"renovate.json": string(baseConfig),
 	}
 
-	// // if batches could be retrieved add them
-	// if r.batches != nil {
-	// 	batchesString, err := json.Marshal(r.batches)
-	// 	if err != nil {
-	// 		return nil, err
-	// 	}
+	// if batches could be retrieved add them
+	if r.batches != nil {
+		batchesString, err := json.Marshal(r.batches)
+		if err != nil {
+			return nil, err
+		}
 
-	// 	data["batches"] = string(batchesString)
-	// }
+		data["batches.json"] = string(batchesString)
+	}
 
 	newConfigMap := &corev1.ConfigMap{
 		ObjectMeta: v1.ObjectMeta{

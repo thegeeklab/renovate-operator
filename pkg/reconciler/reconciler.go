@@ -15,9 +15,9 @@ import (
 type ResourceComparator func(current, desired client.Object) bool
 
 type GenericReconciler struct {
-	Client client.Client
-	Scheme *runtime.Scheme
-	Req    ctrl.Request
+	KubeClient client.Client
+	Scheme     *runtime.Scheme
+	Req        ctrl.Request
 }
 
 func (r *GenericReconciler) ReconcileResource(
@@ -35,14 +35,14 @@ func (r *GenericReconciler) ReconcileResource(
 
 	current.GetObjectKind().SetGroupVersionKind(gvk)
 
-	err := r.Client.Get(ctx, key, current)
+	err := r.KubeClient.Get(ctx, key, current)
 
 	resourceKind := current.GetObjectKind().GroupVersionKind().Kind
 	resourceName := current.GetName()
 
 	if err != nil {
 		if errors.IsNotFound(err) {
-			if err = r.Client.Create(ctx, expected); err != nil {
+			if err = r.KubeClient.Create(ctx, expected); err != nil {
 				ctxLogger.Error(err, fmt.Sprintf("Failed to create %s", resourceKind), "resourceName", resourceName)
 
 				return nil, err
@@ -67,7 +67,7 @@ func (r *GenericReconciler) ReconcileResource(
 
 		ctxLogger.Info(fmt.Sprintf("Updating %s", resourceKind), "resourceName", resourceName)
 
-		if err = r.Client.Update(ctx, expected); err != nil {
+		if err = r.KubeClient.Update(ctx, expected); err != nil {
 			ctxLogger.Error(err, "Failed to update", "resourceName", resourceName)
 
 			return nil, err

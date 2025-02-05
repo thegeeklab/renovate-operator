@@ -95,7 +95,7 @@ var _ = Describe("DefaultEnvVars", func() {
 
 		Expect(envVars).To(ContainElements(
 			corev1.EnvVar{Name: "LOG_LEVEL", Value: "debug"},
-			corev1.EnvVar{Name: "RENOVATE_BASE_DIR", Value: DirRenovateBase},
+			corev1.EnvVar{Name: "RENOVATE_BASE_DIR", Value: DirRenovateTmp},
 			corev1.EnvVar{Name: "RENOVATE_CONFIG_FILE", Value: FileRenovateConfig},
 		))
 	})
@@ -120,7 +120,7 @@ var _ = Describe("DefaultEnvVars", func() {
 	})
 })
 
-var _ = Describe("DefaultVolumes", func() {
+var _ = Describe("DefaultVolume", func() {
 	It("should create volumes with provided config source", func() {
 		configSource := corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -130,12 +130,10 @@ var _ = Describe("DefaultVolumes", func() {
 			},
 		}
 
-		volumes := DefaultVolumes(configSource)
+		volumes := DefaultVolume(configSource)
 
-		Expect(volumes).To(HaveLen(2))
-		Expect(volumes[0].Name).To(Equal(VolumeWorkDir))
-		Expect(volumes[0].VolumeSource.EmptyDir).NotTo(BeNil())
-		Expect(volumes[1].Name).To(Equal(VolumeConfig))
-		Expect(volumes[1].VolumeSource).To(Equal(configSource))
+		Expect(volumes).To(HaveLen(1))
+		Expect(volumes[0].Name).To(Equal(VolumeRenovateConfig))
+		Expect(volumes[0].VolumeSource).To(Equal(configSource))
 	})
 })

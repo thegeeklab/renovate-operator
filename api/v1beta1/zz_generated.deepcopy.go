@@ -166,11 +166,6 @@ func (in *PlatformSpec) DeepCopy() *PlatformSpec {
 func (in *RenovateSpec) DeepCopyInto(out *RenovateSpec) {
 	*out = *in
 	in.Platform.DeepCopyInto(&out.Platform)
-	if in.DryRun != nil {
-		in, out := &in.DryRun, &out.DryRun
-		*out = new(bool)
-		**out = **in
-	}
 	if in.Onboarding != nil {
 		in, out := &in.Onboarding, &out.Onboarding
 		*out = new(bool)
@@ -290,6 +285,11 @@ func (in *RenovatorStatus) DeepCopyInto(out *RenovatorStatus) {
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
+	}
+	if in.Repositories != nil {
+		in, out := &in.Repositories, &out.Repositories
+		*out = make([]string, len(*in))
+		copy(*out, *in)
 	}
 }
 

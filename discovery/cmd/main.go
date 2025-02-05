@@ -64,7 +64,7 @@ func run(ctx context.Context) error {
 		Name:      d.Name,
 	}
 
-	if err := d.Client.Get(ctx, renovatorName, renovator); err != nil {
+	if err := d.KubeClient.Get(ctx, renovatorName, renovator); err != nil {
 		return err
 	}
 
@@ -76,7 +76,7 @@ func run(ctx context.Context) error {
 
 		r := discovery.CreateGitRepo(renovator, d.Namespace, repo)
 
-		err := d.Client.Create(ctx, r)
+		err := d.KubeClient.Create(ctx, r)
 		if err != nil && !errors.IsAlreadyExists(err) {
 			ctxLogger.Error(err, "Failed to create GitRepo", "repo", repo)
 		}
@@ -84,7 +84,7 @@ func run(ctx context.Context) error {
 
 	// Clean up removed repos
 	existingRepos := &renovatev1beta1.GitRepoList{}
-	if err := d.Client.List(ctx, existingRepos, client.InNamespace(d.Namespace)); err != nil {
+	if err := d.KubeClient.List(ctx, existingRepos, client.InNamespace(d.Namespace)); err != nil {
 		return err
 	}
 
@@ -93,7 +93,7 @@ func run(ctx context.Context) error {
 			continue
 		}
 
-		if err := d.Client.Delete(ctx, &repo); err != nil {
+		if err := d.KubeClient.Delete(ctx, &repo); err != nil {
 			ctxLogger.Error(err, "Failed to delete GitRepo", "repo", repo.Name)
 
 			continue
