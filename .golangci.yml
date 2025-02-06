@@ -89,7 +89,7 @@ linters:
   fast: false
 
 run:
-  timeout: 3m
+  timeout: 10m
 
 linters-settings:
   tagliatelle:
