@@ -1,6 +1,6 @@
 module github.com/thegeeklab/renovate-operator
 
-go 1.24.0
+go 1.24.1
 
 godebug default=go1.23
 
