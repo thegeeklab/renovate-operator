@@ -57,9 +57,6 @@ func (r *runnerReconciler) reconcileRenovatorJobs(ctx context.Context) (*ctrl.Re
 		return &ctrl.Result{RequeueAfter: 30 * time.Second}, nil
 	}
 
-	// Create job spec template
-	jobSpec := r.createJobSpecForRenovatorJob()
-
 	// Create RenovatorJobs for each batch
 	for i, batch := range r.batches {
 		if runningJobs >= maxParallel {
@@ -72,6 +69,9 @@ func (r *runnerReconciler) reconcileRenovatorJobs(ctx context.Context) (*ctrl.Re
 		if r.batchHasJob(existingJobs, batch) {
 			continue
 		}
+
+		// Create job spec with batch index
+		jobSpec := r.createJobSpecForRenovatorJob(i)
 
 		renovatorJob := &renovatev1beta1.RenovatorJob{
 			ObjectMeta: metav1.ObjectMeta{
@@ -171,13 +171,13 @@ func (r *runnerReconciler) cleanupOldJobs(ctx context.Context, existingJobs *ren
 	return nil
 }
 
-func (r *runnerReconciler) createJobSpecForRenovatorJob() *batchv1.JobSpec {
+func (r *runnerReconciler) createJobSpecForRenovatorJob(batchIndex int) *batchv1.JobSpec {
 	return &batchv1.JobSpec{
-		Template: r.createPodTemplateSpec(),
+		Template: r.createPodTemplateSpec(batchIndex),
 	}
 }
 
-func (r *runnerReconciler) createPodTemplateSpec() corev1.PodTemplateSpec {
+func (r *runnerReconciler) createPodTemplateSpec(batchIndex int) corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
 		ObjectMeta: metav1.ObjectMeta{
 			Labels: map[string]string{
@@ -226,6 +226,10 @@ func (r *runnerReconciler) createPodTemplateSpec() corev1.PodTemplateSpec {
 						{
 							Name:  dispatcher.EnvRenovateBatches,
 							Value: renovate.FileRenovateBatches,
+						},
+						{
+							Name:  "JOB_COMPLETION_INDEX",
+							Value: fmt.Sprintf("%d", batchIndex),
 						},
 					},
 					VolumeMounts: []corev1.VolumeMount{
