@@ -41,20 +41,32 @@ func Reconcile(
 	r.batches = batches
 
 	results := &reconciler.Results{}
+	var res *ctrl.Result
 
-	res, err := r.reconcileConfigMap(ctx)
+	// Reconcile CronJob for scheduled runs
+	res, err = r.reconcileCronJob(ctx)
 	if err != nil {
 		return res, err
 	}
 
 	results.Collect(res)
 
-	res, err = r.reconcileRenovatorJobs(ctx)
+	res, err = r.reconcileConfigMap(ctx)
 	if err != nil {
 		return res, err
 	}
 
 	results.Collect(res)
+
+	// Only reconcile RenovatorJobs if no schedule is set (immediate mode)
+	if r.instance.Spec.Schedule == "" {
+		res, err = r.reconcileRenovatorJobs(ctx)
+		if err != nil {
+			return res, err
+		}
+
+		results.Collect(res)
+	}
 
 	return results.ToResult(), nil
 }

@@ -1,0 +1,48 @@
+apiVersion: renovate.thegeeklab.de/v1beta1
+kind: Renovator
+metadata:
+  labels:
+    app.kubernetes.io/name: renovate-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: renovator-scheduled-sample
+spec:
+  # Schedule for running renovate jobs (cron format)
+  # This example runs every day at 2 AM
+  schedule: "0 2 * * *"
+  
+  # Optional: suspend scheduled runs
+  suspend: false
+  
+  # Renovate configuration
+  renovate:
+    image: renovate/renovate:latest
+    platform:
+      type: github
+      endpoint: https://api.github.com
+      token:
+        secretKeyRef:
+          name: renovate-secrets
+          key: GITHUB_TOKEN
+    dryRun: extract
+    onboarding: true
+    prHourlyLimit: 2
+    addLabels:
+      - renovate
+      - dependencies
+
+  # Discovery configuration (optional, can run on its own schedule)
+  discovery:
+    suspend: false
+    schedule: "0 */2 * * *"
+    filter:
+      - "my-org/*"
+
+  # Runner configuration
+  runner:
+    strategy: batch
+    instances: 3
+    batchSize: 10
+
+  # Logging configuration
+  logging:
+    level: info 

@@ -91,6 +91,7 @@ build: manifests generate fmt vet ## Build binaries.
 	$(GO) build -o bin/manager cmd/main.go
 	$(GO) build -o bin/discovery discovery/cmd/main.go
 	$(GO) build -o bin/dispatcher dispatcher/cmd/main.go
+	$(GO) build -o bin/job-scheduler jobscheduler/cmd/main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
