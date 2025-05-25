@@ -43,6 +43,11 @@ func (r *discoveryReconciler) createRole() (*rbacv1.Role, error) {
 				Resources: []string{"gitrepos"},
 				Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
 			},
+			{
+				APIGroups: []string{renovatev1beta1.GroupVersion.Group},
+				Resources: []string{"renovatorjobs"},
+				Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
+			},
 		},
 	}
 	if err := controllerutil.SetControllerReference(r.instance, role, r.Scheme); err != nil {
