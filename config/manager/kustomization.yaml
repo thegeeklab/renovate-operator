@@ -4,5 +4,5 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 images:
 - name: controller
-  newName: reg.rso.dev/theorigamicorporation/renovate-operator
-  newTag: v1.0.0
+  newName: docker.io/thegeeklab/renovate-operator
+  newTag: devel

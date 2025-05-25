@@ -48,6 +48,7 @@ func (r *discoveryReconciler) createJobSpec() batchv1.JobSpec {
 		Template: corev1.PodTemplateSpec{
 			Spec: corev1.PodSpec{
 				ServiceAccountName: metadata.GenericMetaData(r.Req).Name,
+				ImagePullSecrets:   r.instance.Spec.ImagePullSecrets,
 				RestartPolicy:      corev1.RestartPolicyNever,
 				Volumes: append(
 					renovate.DefaultVolume(corev1.VolumeSource{

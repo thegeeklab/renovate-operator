@@ -186,7 +186,8 @@ func (r *runnerReconciler) createPodTemplateSpec() corev1.PodTemplateSpec {
 			},
 		},
 		Spec: corev1.PodSpec{
-			RestartPolicy: corev1.RestartPolicyNever,
+			ImagePullSecrets: r.instance.Spec.ImagePullSecrets,
+			RestartPolicy:    corev1.RestartPolicyNever,
 			Volumes: append(
 				renovate.DefaultVolume(corev1.VolumeSource{
 					EmptyDir: &corev1.EmptyDirVolumeSource{},
