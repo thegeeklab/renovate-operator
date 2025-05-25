@@ -6,6 +6,24 @@ This project is a Kubernetes operator for automating [Renovate Bot](https://docs
 
 ## Getting Started
 
+### Prerequisites
+
+**cert-manager**
+
+This operator requires [cert-manager](https://cert-manager.io/) to be installed in your cluster for webhook certificate management. The webhooks are used for validating and mutating the custom resources.
+
+To install cert-manager:
+```Shell
+kubectl apply -f https://github.com/cert-manager/cert-manager/releases/download/v1.16.2/cert-manager.yaml
+```
+
+Wait for cert-manager to be ready:
+```Shell
+kubectl wait --for=condition=Available --timeout=300s deployment --all -n cert-manager
+```
+
+> **NOTE:** For production environments, please refer to the [official cert-manager documentation](https://cert-manager.io/docs/installation/) for recommended installation methods and configuration options.
+
 ### To Deploy on the cluster
 
 **Build and push your image to the location specified by `IMG`:**
@@ -16,7 +34,7 @@ make docker-build docker-push IMG=<some-registry>/renovate-operator:tag
 
 > **NOTE:** This image ought to be published in the personal registry you specified.
 > And it is required to have access to pull the image from the working environment.
-> Make sure you have the proper permission to the registry if the above commands don’t work.
+> Make sure you have the proper permission to the registry if the above commands don't work.
 
 **Install the CRDs into the cluster:**
 

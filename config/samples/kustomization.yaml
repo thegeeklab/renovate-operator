@@ -1,5 +1,6 @@
 ## Append samples of your project ##
 resources:
 - renovate_v1beta1_renovator.yaml
+- renovate_v1beta1_renovator_github.yaml
 - renovate_v1beta1_gitrepo.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

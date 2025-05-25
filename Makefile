@@ -8,6 +8,8 @@ GOLANGCI_LINT_PACKAGE ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@
 
 # Image URL to use all building image targets
 IMG ?= docker.io/thegeeklab/renovate-operator:devel
+# To use a custom image, run: make deploy IMG=myregistry/myimage:tag
+# or export IMG=myregistry/myimage:tag before running make commands
 
 GO ?= go
 SOURCES ?= $(shell find . -name "*.go" -type f)
@@ -103,11 +105,22 @@ PLATFORMS ?= linux/amd64,linux/arm64
 docker-buildx: ## Build container image for cross-platform support.
 	docker buildx build --platform=$(PLATFORMS) --tag ${IMG} -f Containerfile.multiarch .
 
+.PHONY: docker-push
+docker-push: docker-build ## Build and push container image.
+	docker push ${IMG}
+
+.PHONY: docker-buildx-push
+docker-buildx-push: ## Build and push container image for cross-platform support.
+	docker buildx build --push --platform=$(PLATFORMS) --tag ${IMG} -f Containerfile.multiarch .
+
 .PHONY: build-installer
 build-installer: manifests generate kustomize ## Generate a consolidated YAML with CRDs and deployment.
 	mkdir -p dist
+	@cp config/manager/kustomization.yaml config/manager/kustomization.yaml.bak
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default > dist/install.yaml
+	@mv config/manager/kustomization.yaml.bak config/manager/kustomization.yaml
+	@echo "Generated installer at dist/install.yaml with image: ${IMG}"
 
 ##@ Deployment
 
@@ -123,8 +136,27 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
+	@cp config/manager/kustomization.yaml config/manager/kustomization.yaml.bak
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
+	@mv config/manager/kustomization.yaml.bak config/manager/kustomization.yaml
+	@echo "Deployed with image: ${IMG}"
+
+.PHONY: verify-image
+verify-image: manifests kustomize ## Verify what image would be deployed without actually deploying.
+	@echo "Current IMG setting: ${IMG}"
+	@echo "---"
+	@echo "Current kustomization.yaml image settings:"
+	@grep -A2 "name: controller" config/manager/kustomization.yaml || true
+	@echo "---"
+	@echo "Simulating deploy with IMG=${IMG}:"
+	@cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	@echo "Updated kustomization.yaml:"
+	@grep -A2 "name: controller" config/manager/kustomization.yaml || true
+	@echo "---"
+	@echo "Image in generated manifest:"
+	@$(KUSTOMIZE) build config/default | grep "image:" | grep -v "imagePullPolicy" | head -1 || echo "Could not find image in manifest"
+	@git checkout config/manager/kustomization.yaml 2>/dev/null || true
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with IGNORE_NOT_FOUND=true to ignore resource not found errors during deletion.

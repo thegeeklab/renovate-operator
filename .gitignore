@@ -19,6 +19,12 @@ go.work
 # Kubernetes Generated files - skip generated files, except for vendored files
 !vendor/**/zz_generated.*
 
+# go-sum backup files
+*.sum.backup
+
+# backup files
+*.bak
+
 # editor and IDE paraphernalia
 .idea
 .vscode
