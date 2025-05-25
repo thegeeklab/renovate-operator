@@ -80,6 +80,51 @@ make uninstall
 make undeploy
 ```
 
+## Custom Resources
+
+### Renovator
+
+The main custom resource that defines a Renovate instance configuration. It manages:
+- Discovery of repositories via scheduled jobs
+- Configuration for the Renovate bot
+- Runner settings for parallel processing
+
+### GitRepo
+
+Represents a git repository to be processed by Renovate. These are typically created by the discovery process.
+
+### RenovatorJob
+
+Manages the execution of Renovate on batches of repositories. Features:
+- Groups repositories for batch processing
+- Tracks processing status (Pending, Running, Succeeded, Failed)
+- References the Kubernetes Job that runs the actual Renovate process
+- Supports parallel execution with configurable limits
+
+The operator automatically creates RenovatorJob CRs based on:
+- The runner configuration in the Renovator CR
+- Available GitRepo resources
+- Configured parallelism limits
+
+Example RenovatorJob:
+```yaml
+apiVersion: renovate.thegeeklab.de/v1beta1
+kind: RenovatorJob
+metadata:
+  name: renovator-batch-0
+spec:
+  renovatorName: my-renovator
+  repositories:
+    - "myorg/repo1"
+    - "myorg/repo2"
+  batchId: "batch-0"
+  priority: 0
+  jobSpec:
+    template:
+      spec:
+        # Pod specification for running Renovate
+```
+
 ## Project Distribution
 
 Following the options to release and provide this solution to the users.

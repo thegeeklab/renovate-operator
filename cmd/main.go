@@ -225,6 +225,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err = (&controller.RenovatorJobReconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "RenovatorJob")
+		os.Exit(1)
+	}
+
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		if err = webhookrenovatev1beta1.SetupRenovatorWebhookWithManager(mgr); err != nil {
 			setupLog.Error(err, "unable to create webhook", "webhook", "Renovator")

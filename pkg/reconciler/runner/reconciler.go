@@ -49,7 +49,7 @@ func Reconcile(
 
 	results.Collect(res)
 
-	res, err = r.reconcileCronJob(ctx)
+	res, err = r.reconcileRenovatorJobs(ctx)
 	if err != nil {
 		return res, err
 	}

@@ -1,0 +1,26 @@
+apiVersion: renovate.thegeeklab.de/v1beta1
+kind: RenovatorJob
+metadata:
+  labels:
+    app.kubernetes.io/name: renovate-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: renovatorjob-sample
+  namespace: renovate
+spec:
+  renovatorName: renovator-sample
+  repositories:
+    - "myorg/repo1"
+    - "myorg/repo2"
+    - "myorg/repo3"
+  batchId: "batch-0"
+  priority: 0
+  jobSpec:
+    template:
+      spec:
+        restartPolicy: Never
+        containers:
+        - name: renovate
+          image: ghcr.io/renovatebot/renovate:latest
+          env:
+          - name: LOG_LEVEL
+            value: debug 

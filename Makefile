@@ -128,7 +128,10 @@ IGNORE_NOT_FOUND ?= false
 
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
+    # K8s adds last-applied-configuration annotation to the CRDs.
+	# which causes is invalid: metadata.annotations: Too long: may not be more than 262144 bytes
+	# so we need to apply server-side
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply --server-side -f -
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with IGNORE_NOT_FOUND=true to ignore resource not found errors during deletion.
@@ -141,6 +144,7 @@ deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
 	@mv config/manager/kustomization.yaml.bak config/manager/kustomization.yaml
 	@echo "Deployed with image: ${IMG}"
+# kubectl patch deployment renovate-operator-controller-manager -n renovate-operator-system --patch "{\"spec\":{\"template\":{\"spec\":{\"containers\":[{\"name\":\"manager\",\"image\":\"${IMG}\"}],\"imagePullSecrets\":[{\"name\":\"regcred\"}]}}}}"
 
 .PHONY: verify-image
 verify-image: manifests kustomize ## Verify what image would be deployed without actually deploying.
