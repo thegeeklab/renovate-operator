@@ -4,14 +4,12 @@ metadata:
   labels:
     app.kubernetes.io/name: renovate-operator
     app.kubernetes.io/managed-by: kustomize
-  name: renovatorjob-sample
+  name: renovatorjob-theorigamicorporation-job
   namespace: renovate
 spec:
-  renovatorName: renovator-sample
+  renovatorName: theorigamicorporation-renovator
   repositories:
-    - "myorg/repo1"
-    - "myorg/repo2"
-    - "myorg/repo3"
+    - "theorigamicorporation/toc-deployments-intra"
   batchId: "batch-0"
   priority: 0
   jobSpec:

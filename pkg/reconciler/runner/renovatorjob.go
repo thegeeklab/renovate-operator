@@ -179,6 +179,12 @@ func (r *runnerReconciler) createJobSpecForRenovatorJob() *batchv1.JobSpec {
 
 func (r *runnerReconciler) createPodTemplateSpec() corev1.PodTemplateSpec {
 	return corev1.PodTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: map[string]string{
+				"app.kubernetes.io/managed-by": "renovate-operator",
+				"app.kubernetes.io/name":       "renovator-runner",
+			},
+		},
 		Spec: corev1.PodSpec{
 			RestartPolicy: corev1.RestartPolicyNever,
 			Volumes: append(

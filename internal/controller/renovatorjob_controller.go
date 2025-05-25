@@ -48,8 +48,8 @@ func (r *RenovatorJobReconciler) Reconcile(ctx context.Context, req ctrl.Request
 	}
 
 	// Add finalizer for cleanup
-	if !controllerutil.ContainsFinalizer(renovatorJob, "renovatorjob.finalizers.renovate.thegeeklab.de") {
-		controllerutil.AddFinalizer(renovatorJob, "renovatorjob.finalizers.renovate.thegeeklab.de")
+	if !controllerutil.ContainsFinalizer(renovatorJob, "renovate.thegeeklab.de/renovatorjob") {
+		controllerutil.AddFinalizer(renovatorJob, "renovate.thegeeklab.de/renovatorjob")
 		if err := r.Update(ctx, renovatorJob); err != nil {
 			return ctrl.Result{}, err
 		}
@@ -94,7 +94,50 @@ func (r *RenovatorJobReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
+	// Check if the job already exists
+	existingJob := &batchv1.Job{}
+	err = r.Get(ctx, types.NamespacedName{Name: job.Name, Namespace: job.Namespace}, existingJob)
+	if err == nil {
+		// Job already exists, update the status with the existing job reference
+		logger.Info("Job already exists for RenovatorJob", "jobName", job.Name)
+		renovatorJob.Status.JobRef = &corev1.LocalObjectReference{
+			Name: existingJob.Name,
+		}
+		if renovatorJob.Status.Phase == "" {
+			renovatorJob.Status.Phase = renovatev1beta1.JobPhasePending
+			now := metav1.NewTime(time.Now())
+			renovatorJob.Status.StartTime = &now
+		}
+		if err := r.Status().Update(ctx, renovatorJob); err != nil {
+			return ctrl.Result{}, err
+		}
+		// Update status based on the existing job
+		return r.updateStatusFromJob(ctx, renovatorJob, existingJob)
+	}
+
+	if !errors.IsNotFound(err) {
+		// Some other error occurred
+		return ctrl.Result{}, err
+	}
+
+	// Job doesn't exist, create it
 	if err := r.Create(ctx, job); err != nil {
+		if errors.IsAlreadyExists(err) {
+			// Handle race condition where job was created between our check and create
+			logger.Info("Job was created by another reconciliation", "jobName", job.Name)
+			renovatorJob.Status.JobRef = &corev1.LocalObjectReference{
+				Name: job.Name,
+			}
+			if renovatorJob.Status.Phase == "" {
+				renovatorJob.Status.Phase = renovatev1beta1.JobPhasePending
+				now := metav1.NewTime(time.Now())
+				renovatorJob.Status.StartTime = &now
+			}
+			if err := r.Status().Update(ctx, renovatorJob); err != nil {
+				return ctrl.Result{}, err
+			}
+			return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+		}
 		logger.Error(err, "Failed to create Job", "name", job.Name)
 		return ctrl.Result{}, err
 	}
@@ -117,6 +160,13 @@ func (r *RenovatorJobReconciler) Reconcile(ctx context.Context, req ctrl.Request
 func (r *RenovatorJobReconciler) createJob(renovatorJob *renovatev1beta1.RenovatorJob) *batchv1.Job {
 	// Create job spec based on the RenovatorJob spec
 	jobSpec := renovatorJob.Spec.JobSpec.DeepCopy()
+
+	// Create clean metadata for the pod template
+	cleanMeta := metav1.ObjectMeta{
+		Labels:      jobSpec.Template.ObjectMeta.Labels,
+		Annotations: jobSpec.Template.ObjectMeta.Annotations,
+	}
+	jobSpec.Template.ObjectMeta = cleanMeta
 
 	// Add environment variables for repositories
 	if len(jobSpec.Template.Spec.Containers) > 0 {
@@ -231,7 +281,7 @@ func (r *RenovatorJobReconciler) finalize(ctx context.Context, renovatorJob *ren
 	}
 
 	// Remove finalizer
-	controllerutil.RemoveFinalizer(renovatorJob, "renovatorjob.finalizers.renovate.thegeeklab.de")
+	controllerutil.RemoveFinalizer(renovatorJob, "renovate.thegeeklab.de/renovatorjob")
 	if err := r.Update(ctx, renovatorJob); err != nil {
 		return ctrl.Result{}, err
 	}
