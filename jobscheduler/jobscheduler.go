@@ -2,6 +2,8 @@ package jobscheduler
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/hex"
 	"encoding/json"
 	"fmt"
 	"os"
@@ -186,7 +188,7 @@ func (js *JobScheduler) countRunningJobs(ctx context.Context) (int32, error) {
 }
 
 func (js *JobScheduler) createRenovatorJob(ctx context.Context, renovator *renovatev1beta1.Renovator, batch util.Batch, batchIndex int) error {
-	jobName := fmt.Sprintf("%s-scheduled-batch-%d-%d", js.RenovatorName, batchIndex, time.Now().Unix())
+	jobName := js.generateJobName(batchIndex)
 
 	// Create job spec for this batch
 	jobSpec := js.createJobSpecForBatch(renovator, batchIndex)
@@ -216,6 +218,39 @@ func (js *JobScheduler) createRenovatorJob(ctx context.Context, renovator *renov
 	}
 
 	return js.KubeClient.Create(ctx, renovatorJob)
+}
+
+// generateJobName creates a shorter job name that fits within Kubernetes limits
+// Format: <renovator-prefix>-b<batch>-<hash>
+// Example: myapp-b0-a1b2c3 (max ~50 chars, leaving room for -job suffix)
+func (js *JobScheduler) generateJobName(batchIndex int) string {
+	// Create a hash of the renovator name + timestamp for uniqueness
+	timestamp := time.Now().Unix()
+	hashInput := fmt.Sprintf("%s-%d", js.RenovatorName, timestamp)
+	hash := md5.Sum([]byte(hashInput))
+	shortHash := hex.EncodeToString(hash[:])[:6] // Use first 6 chars of hash
+
+	// Truncate renovator name if too long
+	maxRenovatorLen := 35 // Leave room for -b<batch>-<hash> and potential -job suffix
+	renovatorPrefix := js.RenovatorName
+	if len(renovatorPrefix) > maxRenovatorLen {
+		renovatorPrefix = renovatorPrefix[:maxRenovatorLen]
+	}
+
+	// Generate the job name: <prefix>-b<batch>-<hash>
+	jobName := fmt.Sprintf("%s-b%d-%s", renovatorPrefix, batchIndex, shortHash)
+
+	// Ensure total length is under 50 chars (leaving room for -job suffix)
+	if len(jobName) > 50 {
+		// Further truncate if needed
+		excess := len(jobName) - 50
+		if len(renovatorPrefix) > excess {
+			renovatorPrefix = renovatorPrefix[:len(renovatorPrefix)-excess]
+			jobName = fmt.Sprintf("%s-b%d-%s", renovatorPrefix, batchIndex, shortHash)
+		}
+	}
+
+	return jobName
 }
 
 func (js *JobScheduler) createJobSpecForBatch(renovator *renovatev1beta1.Renovator, batchIndex int) *batchv1.JobSpec {

@@ -3,7 +3,9 @@ package jobscheduler
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
+	"strings"
 	"testing"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
@@ -217,4 +219,92 @@ func TestJobScheduler_countRunningJobs(t *testing.T) {
 	if count != 1 {
 		t.Errorf("Expected 1 running job, got %d", count)
 	}
+}
+
+func TestJobScheduler_generateJobName(t *testing.T) {
+	tests := []struct {
+		name           string
+		renovatorName  string
+		batchIndex     int
+		expectedMaxLen int
+	}{
+		{
+			name:           "short renovator name",
+			renovatorName:  "test-renovator",
+			batchIndex:     0,
+			expectedMaxLen: 50, // Should be well under limit
+		},
+		{
+			name:           "long renovator name",
+			renovatorName:  "theorigamicorporation-very-long-renovator-name-that-exceeds-limits",
+			batchIndex:     9,
+			expectedMaxLen: 50, // Should be truncated to fit
+		},
+		{
+			name:           "medium renovator name",
+			renovatorName:  "medium-length-renovator-name",
+			batchIndex:     5,
+			expectedMaxLen: 50,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			js := &JobScheduler{
+				RenovatorName: tt.renovatorName,
+			}
+
+			jobName := js.generateJobName(tt.batchIndex)
+
+			// Check length constraints
+			if len(jobName) > tt.expectedMaxLen {
+				t.Errorf("Generated job name '%s' is too long: %d chars (max %d)",
+					jobName, len(jobName), tt.expectedMaxLen)
+			}
+
+			// Check that it contains the batch index
+			expectedBatch := fmt.Sprintf("b%d", tt.batchIndex)
+			if !strings.Contains(jobName, expectedBatch) {
+				t.Errorf("Generated job name '%s' should contain batch identifier '%s'",
+					jobName, expectedBatch)
+			}
+
+			// Check that the name is valid for Kubernetes (DNS-1123 subdomain)
+			if !isValidKubernetesName(jobName) {
+				t.Errorf("Generated job name '%s' is not a valid Kubernetes name", jobName)
+			}
+
+			// Simulate adding "-job" suffix (what RenovatorJob controller does)
+			fullJobName := jobName + "-job"
+			if len(fullJobName) > 63 {
+				t.Errorf("Full job name '%s' exceeds Kubernetes limit: %d chars (max 63)",
+					fullJobName, len(fullJobName))
+			}
+		})
+	}
+}
+
+// isValidKubernetesName checks if a name is valid for Kubernetes resources
+func isValidKubernetesName(name string) bool {
+	if len(name) == 0 || len(name) > 63 {
+		return false
+	}
+
+	// Must start and end with alphanumeric
+	if !isAlphaNumeric(name[0]) || !isAlphaNumeric(name[len(name)-1]) {
+		return false
+	}
+
+	// Can contain alphanumeric and hyphens
+	for _, r := range name {
+		if !isAlphaNumeric(byte(r)) && r != '-' {
+			return false
+		}
+	}
+
+	return true
+}
+
+func isAlphaNumeric(b byte) bool {
+	return (b >= 'a' && b <= 'z') || (b >= '0' && b <= '9')
 }

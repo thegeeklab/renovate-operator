@@ -195,21 +195,45 @@ func (r *RenovatorJobReconciler) createJob(renovatorJob *renovatev1beta1.Renovat
 		}
 	}
 
+	// Generate job name, ensuring it doesn't exceed Kubernetes limits
+	jobName := r.generateJobName(renovatorJob.Name)
+
+	// Truncate instance label if needed (max 63 chars for labels)
+	instanceLabel := renovatorJob.Name
+	if len(instanceLabel) > 63 {
+		instanceLabel = instanceLabel[:63]
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-job", renovatorJob.Name),
+			Name:      jobName,
 			Namespace: renovatorJob.Namespace,
 			Labels: map[string]string{
 				"app.kubernetes.io/managed-by": "renovate-operator",
 				"app.kubernetes.io/name":       "renovator-job",
-				"app.kubernetes.io/instance":   renovatorJob.Name,
-				"renovatorjob.renovate/name":   renovatorJob.Name,
+				"app.kubernetes.io/instance":   instanceLabel,
+				"renovatorjob.renovate/name":   renovatorJob.Spec.RenovatorName,
 			},
 		},
 		Spec: *jobSpec,
 	}
 
 	return job
+}
+
+// generateJobName creates a job name that fits within Kubernetes limits
+// If the RenovatorJob name + "-job" exceeds 63 chars, truncate appropriately
+func (r *RenovatorJobReconciler) generateJobName(renovatorJobName string) string {
+	jobSuffix := "-job"
+	maxLength := 63 - len(jobSuffix)
+
+	if len(renovatorJobName) <= maxLength {
+		return fmt.Sprintf("%s%s", renovatorJobName, jobSuffix)
+	}
+
+	// Truncate the renovator job name to fit
+	truncatedName := renovatorJobName[:maxLength]
+	return fmt.Sprintf("%s%s", truncatedName, jobSuffix)
 }
 
 func (r *RenovatorJobReconciler) updateStatusFromJob(ctx context.Context, renovatorJob *renovatev1beta1.RenovatorJob, job *batchv1.Job) (ctrl.Result, error) {

@@ -1,7 +1,9 @@
 package discovery
 
 import (
+	"fmt"
 	"testing"
+	"time"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/reconciler"
@@ -60,9 +62,9 @@ func TestCreateRole(t *testing.T) {
 
 	// Check that all required permissions are present
 	expectedPermissions := map[string][]string{
-		"renovators":     {"get"},
-		"gitrepos":       {"get", "list", "create", "update", "patch", "delete"},
-		"renovatorjobs":  {"get", "list", "create", "update", "patch", "delete"},
+		"renovators":    {"get"},
+		"gitrepos":      {"get", "list", "create", "update", "patch", "delete"},
+		"renovatorjobs": {"get", "list", "create", "update", "patch", "delete"},
 	}
 
 	if len(role.Rules) != len(expectedPermissions) {
@@ -176,4 +178,19 @@ func TestCreateRoleBinding(t *testing.T) {
 	if roleBinding.RoleRef.Name != "test-renovator" {
 		t.Errorf("Expected role ref name 'test-renovator', got '%s'", roleBinding.RoleRef.Name)
 	}
-} 
+}
+
+func TestJobName(t *testing.T) {
+	// Setup
+	js := &renovatev1beta1.RenovatorJob{
+		RenovatorName: "theorigamicorporation",
+	}
+
+	// Execute
+	jobName := fmt.Sprintf("%s-scheduled-batch-%d-%d", js.RenovatorName, batchIndex, time.Now().Unix())
+
+	// Verify
+	if len(jobName) > 63 {
+		t.Errorf("Job name exceeds 63 characters: %s", jobName)
+	}
+}
