@@ -62,7 +62,7 @@ func TestRenovatorJobReconciler_generateJobName(t *testing.T) {
 			if len(expectedPrefix) > maxLength {
 				expectedPrefix = expectedPrefix[:maxLength]
 			}
-			
+
 			actualPrefix := jobName[:len(jobName)-4] // Remove "-job" suffix
 			if actualPrefix != expectedPrefix {
 				t.Errorf("Expected prefix '%s', got '%s'", expectedPrefix, actualPrefix)
