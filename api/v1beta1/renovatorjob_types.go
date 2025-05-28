@@ -36,6 +36,10 @@ type RenovatorJobSpec struct {
 	// +kubebuilder:default:=0
 	// +optional
 	Priority int32 `json:"priority,omitempty"`
+
+	// TTLSecondsAfterFinished is the TTL for automatic deletion of finished jobs
+	// +optional
+	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
 }
 
 // RenovatorJobStatus defines the observed state of RenovatorJob.

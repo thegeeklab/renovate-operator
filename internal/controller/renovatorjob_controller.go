@@ -162,11 +162,22 @@ func (r *RenovatorJobReconciler) createJob(renovatorJob *renovatev1beta1.Renovat
 	jobSpec := renovatorJob.Spec.JobSpec.DeepCopy()
 
 	// Create clean metadata for the pod template
+	// Ensure we only copy the fields we need and don't include creationTimestamp
 	cleanMeta := metav1.ObjectMeta{
 		Labels:      jobSpec.Template.ObjectMeta.Labels,
 		Annotations: jobSpec.Template.ObjectMeta.Annotations,
+		// Explicitly omit creationTimestamp and other system fields
 	}
 	jobSpec.Template.ObjectMeta = cleanMeta
+
+	// Set TTLSecondsAfterFinished if provided in the RenovatorJobSpec
+	if renovatorJob.Spec.TTLSecondsAfterFinished != nil {
+		jobSpec.TTLSecondsAfterFinished = renovatorJob.Spec.TTLSecondsAfterFinished
+	} else {
+		// Default TTL - 1 hour
+		ttl := int32(3600)
+		jobSpec.TTLSecondsAfterFinished = &ttl
+	}
 
 	// Add environment variables for repositories
 	if len(jobSpec.Template.Spec.Containers) > 0 {

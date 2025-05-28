@@ -155,26 +155,55 @@ func (r *runnerReconciler) batchHasJob(existingJobs *renovatev1beta1.RenovatorJo
 }
 
 func (r *runnerReconciler) cleanupOldJobs(ctx context.Context, existingJobs *renovatev1beta1.RenovatorJobList) error {
+	logger := log.FromContext(ctx)
 	cutoffTime := time.Now().Add(-1 * time.Hour)
+	cleanedJobs := 0
 
-	for _, job := range existingJobs.Items {
+	for i := range existingJobs.Items {
+		job := &existingJobs.Items[i]
 		// Only cleanup completed or failed jobs
 		if job.Status.Phase == renovatev1beta1.JobPhaseSucceeded || job.Status.Phase == renovatev1beta1.JobPhaseFailed {
+			// Check if the job has completed and is older than the cutoff time
 			if job.Status.CompletionTime != nil && job.Status.CompletionTime.Time.Before(cutoffTime) {
-				if err := r.KubeClient.Delete(ctx, &job); err != nil && !errors.IsNotFound(err) {
-					return err
+				logger.Info("Cleaning up old job", "name", job.Name, "namespace", job.Namespace,
+					"phase", job.Status.Phase, "completionTime", job.Status.CompletionTime.Time)
+
+				if err := r.KubeClient.Delete(ctx, job); err != nil {
+					if !errors.IsNotFound(err) {
+						logger.Error(err, "Failed to delete old job", "name", job.Name)
+						return err
+					}
+					// Job already deleted, just log it
+					logger.Info("Job already deleted", "name", job.Name)
+				} else {
+					cleanedJobs++
 				}
+			} else {
+				// Log why we're not cleaning up this job
+				logger.V(4).Info("Not cleaning up job yet", "name", job.Name,
+					"completionTime", job.Status.CompletionTime,
+					"cutoffTime", cutoffTime)
 			}
 		}
+	}
+
+	if cleanedJobs > 0 {
+		logger.Info("Cleaned up old jobs", "count", cleanedJobs)
 	}
 
 	return nil
 }
 
 func (r *runnerReconciler) createJobSpecForRenovatorJob(batchIndex int) *batchv1.JobSpec {
-	return &batchv1.JobSpec{
+	jobSpec := &batchv1.JobSpec{
 		Template: r.createPodTemplateSpec(batchIndex),
 	}
+
+	// Set TTL for automatic job cleanup (3600 seconds = 1 hour)
+	ttl := int32(3600)
+	jobSpec.TTLSecondsAfterFinished = &ttl
+
+	return jobSpec
 }
 
 func (r *runnerReconciler) createPodTemplateSpec(batchIndex int) corev1.PodTemplateSpec {
