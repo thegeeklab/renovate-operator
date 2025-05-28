@@ -18,6 +18,7 @@ RUN go mod download
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bin/manager cmd/main.go
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bin/discovery discovery/cmd/main.go
 RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bin/dispatcher dispatcher/cmd/main.go
+RUN CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bin/job-scheduler jobscheduler/cmd/main.go
 
 # Use distroless as minimal base image to package the manager binary
 # Refer to https://github.com/GoogleContainerTools/distroless for more details
@@ -35,6 +36,7 @@ WORKDIR /
 COPY --from=build /workspace/bin/manager .
 COPY --from=build /workspace/bin/discovery .
 COPY --from=build /workspace/bin/dispatcher .
+COPY --from=build /workspace/bin/job-scheduler .
 
 USER 65532:65532
 
