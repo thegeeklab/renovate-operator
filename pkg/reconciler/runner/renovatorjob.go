@@ -161,29 +161,49 @@ func (r *runnerReconciler) cleanupOldJobs(ctx context.Context, existingJobs *ren
 
 	for i := range existingJobs.Items {
 		job := &existingJobs.Items[i]
+
+		shouldCleanup := false
+		reason := ""
+
 		// Only cleanup completed or failed jobs
 		if job.Status.Phase == renovatev1beta1.JobPhaseSucceeded || job.Status.Phase == renovatev1beta1.JobPhaseFailed {
 			// Check if the job has completed and is older than the cutoff time
 			if job.Status.CompletionTime != nil && job.Status.CompletionTime.Time.Before(cutoffTime) {
-				logger.Info("Cleaning up old job", "name", job.Name, "namespace", job.Namespace,
-					"phase", job.Status.Phase, "completionTime", job.Status.CompletionTime.Time)
-
-				if err := r.KubeClient.Delete(ctx, job); err != nil {
-					if !errors.IsNotFound(err) {
-						logger.Error(err, "Failed to delete old job", "name", job.Name)
-						return err
-					}
-					// Job already deleted, just log it
-					logger.Info("Job already deleted", "name", job.Name)
-				} else {
-					cleanedJobs++
+				shouldCleanup = true
+				reason = "completed and older than cutoff time"
+			} else if job.Status.CompletionTime == nil {
+				// Fallback: check creation time for jobs without completion time
+				if job.CreationTimestamp.Time.Before(cutoffTime.Add(-1 * time.Hour)) { // Extra hour buffer
+					shouldCleanup = true
+					reason = "old job without completion time"
 				}
-			} else {
-				// Log why we're not cleaning up this job
-				logger.V(4).Info("Not cleaning up job yet", "name", job.Name,
-					"completionTime", job.Status.CompletionTime,
-					"cutoffTime", cutoffTime)
 			}
+		}
+
+		if shouldCleanup {
+			logger.Info("Cleaning up old job", "name", job.Name, "namespace", job.Namespace,
+				"phase", job.Status.Phase,
+				"completionTime", job.Status.CompletionTime,
+				"creationTime", job.CreationTimestamp.Time,
+				"reason", reason)
+
+			if err := r.KubeClient.Delete(ctx, job); err != nil {
+				if !errors.IsNotFound(err) {
+					logger.Error(err, "Failed to delete old job", "name", job.Name)
+					return err
+				}
+				// Job already deleted, just log it
+				logger.Info("Job already deleted", "name", job.Name)
+			} else {
+				cleanedJobs++
+			}
+		} else {
+			// Log why we're not cleaning up this job
+			logger.V(4).Info("Not cleaning up job yet", "name", job.Name,
+				"phase", job.Status.Phase,
+				"completionTime", job.Status.CompletionTime,
+				"creationTime", job.CreationTimestamp.Time,
+				"cutoffTime", cutoffTime)
 		}
 	}
 

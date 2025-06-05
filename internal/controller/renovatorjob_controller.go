@@ -47,6 +47,8 @@ func (r *RenovatorJobReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return ctrl.Result{}, err
 	}
 
+	logger.V(1).Info("Reconciling RenovatorJob", "name", renovatorJob.Name, "phase", renovatorJob.Status.Phase)
+
 	// Add finalizer for cleanup
 	if !controllerutil.ContainsFinalizer(renovatorJob, "renovate.thegeeklab.de/renovatorjob") {
 		controllerutil.AddFinalizer(renovatorJob, "renovate.thegeeklab.de/renovatorjob")
@@ -60,6 +62,16 @@ func (r *RenovatorJobReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		return r.finalize(ctx, renovatorJob)
 	}
 
+	// Check for automatic cleanup of completed jobs
+	if r.shouldCleanupRenovatorJob(renovatorJob) {
+		logger.Info("Cleaning up completed RenovatorJob", "name", renovatorJob.Name, "phase", renovatorJob.Status.Phase)
+		if err := r.Delete(ctx, renovatorJob); err != nil {
+			logger.Error(err, "Failed to delete RenovatorJob", "name", renovatorJob.Name)
+			return ctrl.Result{}, err
+		}
+		return ctrl.Result{}, nil
+	}
+
 	// Check if we already have a job reference
 	if renovatorJob.Status.JobRef != nil {
 		// Check the status of the existing job
@@ -70,10 +82,9 @@ func (r *RenovatorJobReconciler) Reconcile(ctx context.Context, req ctrl.Request
 		}, job)
 		if err != nil {
 			if errors.IsNotFound(err) {
-				// Job was deleted, update status
-				renovatorJob.Status.Phase = renovatev1beta1.JobPhaseFailed
-				renovatorJob.Status.Message = "Job was deleted"
-				if err := r.Status().Update(ctx, renovatorJob); err != nil {
+				// Job was deleted, delete the renovator job
+				if err := r.Delete(ctx, renovatorJob); err != nil {
+					logger.Error(err, "Failed to delete RenovatorJob", "name", renovatorJob.Name)
 					return ctrl.Result{}, err
 				}
 				return ctrl.Result{}, nil
@@ -289,7 +300,40 @@ func (r *RenovatorJobReconciler) updateStatusFromJob(ctx context.Context, renova
 		return ctrl.Result{RequeueAfter: 10 * time.Second}, nil
 	}
 
+	// For completed jobs, schedule cleanup check
+	if renovatorJob.Status.Phase == renovatev1beta1.JobPhaseSucceeded || renovatorJob.Status.Phase == renovatev1beta1.JobPhaseFailed {
+		return ctrl.Result{RequeueAfter: 30 * time.Second}, nil
+	}
+
 	return ctrl.Result{}, nil
+}
+
+// shouldCleanupRenovatorJob determines whether a RenovatorJob should be automatically cleaned up
+func (r *RenovatorJobReconciler) shouldCleanupRenovatorJob(renovatorJob *renovatev1beta1.RenovatorJob) bool {
+	// Only cleanup jobs in terminal states
+	if renovatorJob.Status.Phase != renovatev1beta1.JobPhaseSucceeded && renovatorJob.Status.Phase != renovatev1beta1.JobPhaseFailed {
+		return false
+	}
+
+	// Must have a completion time
+	if renovatorJob.Status.CompletionTime == nil {
+		return false
+	}
+
+	// Default cleanup after 2 hours for completed jobs
+	defaultCleanupDelay := 2 * time.Hour
+
+	// Use custom TTL if specified, otherwise use default
+	var cleanupDelay time.Duration
+	if renovatorJob.Spec.TTLSecondsAfterFinished != nil {
+		// Add some buffer time after TTL to ensure job cleanup happened first
+		cleanupDelay = time.Duration(*renovatorJob.Spec.TTLSecondsAfterFinished)*time.Second + 30*time.Minute
+	} else {
+		cleanupDelay = defaultCleanupDelay
+	}
+
+	cutoffTime := time.Now().Add(-cleanupDelay)
+	return renovatorJob.Status.CompletionTime.Time.Before(cutoffTime)
 }
 
 func (r *RenovatorJobReconciler) finalize(ctx context.Context, renovatorJob *renovatev1beta1.RenovatorJob) (ctrl.Result, error) {

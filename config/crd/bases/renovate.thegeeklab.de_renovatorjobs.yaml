@@ -8541,6 +8541,11 @@ spec:
                 items:
                   type: string
                 type: array
+              ttlSecondsAfterFinished:
+                description: TTLSecondsAfterFinished is the TTL for automatic deletion
+                  of finished jobs
+                format: int32
+                type: integer
             required:
             - jobSpec
             - renovatorName
