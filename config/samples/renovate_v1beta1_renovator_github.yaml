@@ -1,0 +1,49 @@
+apiVersion: renovate.thegeeklab.de/v1beta1
+kind: Renovator
+metadata:
+  labels:
+    app.kubernetes.io/name: renovate-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: renovator-github-sample
+spec:
+  suspend: false
+  schedule: "*/30 * * * *"
+
+  discovery:
+    suspend: false
+    filter:
+      - "myorg/*"
+
+  logging:
+    level: info
+
+  runner:
+    strategy: batch
+    instances: 2
+    batchSize: 10
+
+  renovate:
+    platform:
+      type: "github"
+      # endpoint is optional for github, defaults to https://api.github.com
+      # endpoint: https://github.enterprise.example.com/api/v3
+      token:
+        secretKeyRef:
+          name: "github-token-secret"
+          key: "token"
+
+    # dryRun options: extract, lookup, or full
+    # omit this field to run in normal mode
+    # dryRun: "lookup"
+    
+    onboarding: true
+    prHourlyLimit: 5
+    addLabels:
+      - "renovate"
+      - "dependencies"
+
+    # Optional: GitHub token for accessing github.com packages
+    githubToken:
+      secretKeyRef:
+        name: "github-token-secret"
+        key: "token" 

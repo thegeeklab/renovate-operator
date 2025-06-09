@@ -25,13 +25,15 @@ spec:
   renovate:
     platform:
       type: "gitea"
+      # endpoint is required for gitea, optional for github (uses default https://api.github.com)
       endpoint: https://gitea.example.com/api/v1
       token:
         secretKeyRef:
           name: "my-secret"
           key: "platform_token"
 
-    dryRun: true
+    # dryRun can be: extract, lookup, or full
+    dryRun: "full"
     onboarding: true
 
     githubToken:
