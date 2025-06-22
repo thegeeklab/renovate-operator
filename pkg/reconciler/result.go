@@ -16,7 +16,7 @@ func (r *Results) Collect(res *ctrl.Result) {
 		return
 	}
 
-	r.shouldRequeue = r.shouldRequeue || res.Requeue
+	r.shouldRequeue = r.shouldRequeue || (res.RequeueAfter > 0)
 	if res.RequeueAfter > 0 {
 		if r.minRequeueAfter == 0 || res.RequeueAfter < r.minRequeueAfter {
 			r.minRequeueAfter = res.RequeueAfter
