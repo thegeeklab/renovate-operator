@@ -315,6 +315,7 @@ func serviceAccountToken() (string, error) {
 
 		// Parse the JSON output to extract the token
 		var token tokenRequest
+
 		err = json.Unmarshal(output, &token)
 		g.Expect(err).NotTo(HaveOccurred())
 

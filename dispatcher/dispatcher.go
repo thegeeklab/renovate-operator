@@ -67,7 +67,6 @@ func (d *Dispatcher) MergeConfig(baseConfig, batchConfig []byte, index int) ([]b
 		batches []map[string]any
 		err     error
 	)
-
 	if err := json.Unmarshal(baseConfig, &base); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMergeConfig, err)
 	}

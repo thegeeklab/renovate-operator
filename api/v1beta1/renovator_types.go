@@ -8,7 +8,7 @@ import (
 // +kubebuilder:validation:Enum=github;gitea
 type PlatformType string
 
-//nolint:revive,stylecheck
+//nolint:revive
 const (
 	PlatformType_GITHUB = "github"
 	PlatformType_GITEA  = "gitea"
@@ -23,7 +23,7 @@ type PlatformSpec struct {
 // +kubebuilder:validation:Enum=extract;lookup;full
 type DryRun string
 
-//nolint:revive,stylecheck
+//nolint:revive
 const (
 	DryRun_EXTRACT = "extract"
 	DryRun_LOOKUP  = "lookup"
@@ -59,7 +59,7 @@ type RenovateSpec struct {
 // +kubebuilder:validation:Enum=trace;debug;info;warn;error;fatal
 type LogLevel string
 
-//nolint:revive,stylecheck
+//nolint:revive
 const (
 	LogLevel_TRACE = "trace"
 	LogLevel_DEBUG = "debug"
@@ -76,7 +76,7 @@ type LoggingSpec struct {
 
 type RunnerStrategy string
 
-//nolint:revive,stylecheck
+//nolint:revive
 const (
 	// RunnerStrategy_NONE A single batch be created and no parallelization will take place.
 	RunnerStrategy_NONE = "none"

@@ -73,7 +73,7 @@ linters:
     - usestdlibvars
     - usetesting
     - whitespace
-    - wsl
+    - wsl_v5
     - zerologlint
   settings:
     tagliatelle:

@@ -23,7 +23,7 @@ var _ = Describe("Results", func() {
 		})
 
 		It("should set shouldRequeue when Requeue is true", func() {
-			results.Collect(&ctrl.Result{Requeue: true})
+			results.Collect(&ctrl.Result{RequeueAfter: time.Second})
 			Expect(results.shouldRequeue).To(BeTrue())
 		})
 
@@ -41,8 +41,8 @@ var _ = Describe("Results", func() {
 		})
 
 		It("should maintain shouldRequeue state across multiple collections", func() {
-			results.Collect(&ctrl.Result{Requeue: true})
-			results.Collect(&ctrl.Result{Requeue: false})
+			results.Collect(&ctrl.Result{RequeueAfter: time.Second})
+			results.Collect(&ctrl.Result{RequeueAfter: 0})
 			Expect(results.shouldRequeue).To(BeTrue())
 		})
 	})
