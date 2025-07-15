@@ -76,6 +76,13 @@ linters:
     - wsl_v5
     - zerologlint
   settings:
+    revive:
+      rules:
+        - name: var-naming
+          arguments:
+            - []
+            - []
+            - - skipPackageNameChecks: true
     tagliatelle:
       case:
         rules:
