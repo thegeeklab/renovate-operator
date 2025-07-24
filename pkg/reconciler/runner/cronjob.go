@@ -3,28 +3,25 @@ package runner
 import (
 	"context"
 	"fmt"
-	"math"
 
-	"github.com/thegeeklab/renovate-operator/dispatcher"
 	"github.com/thegeeklab/renovate-operator/pkg/equality"
 	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/renovate"
-	"github.com/thegeeklab/renovate-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-var ErrMaxBatchCount = fmt.Errorf("max batch count reached")
-
 func (r *runnerReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
-	spec, err := r.createJobSpec(r.batches)
-	if err != nil {
-		return &ctrl.Result{}, err
+	// Only create CronJob if schedule is specified
+	if r.instance.Spec.Schedule == "" {
+		// If no schedule, return without creating CronJob
+		return &ctrl.Result{}, nil
 	}
 
-	expected, err := r.createCronJob(spec)
+	expected, err := r.createCronJob()
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
@@ -32,7 +29,7 @@ func (r *runnerReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, 
 	return r.ReconcileResource(ctx, &batchv1.CronJob{}, expected, equality.CronJobEqual)
 }
 
-func (r *runnerReconciler) createCronJob(spec batchv1.JobSpec) (*batchv1.CronJob, error) {
+func (r *runnerReconciler) createCronJob() (*batchv1.CronJob, error) {
 	cronJob := &batchv1.CronJob{
 		ObjectMeta: metadata.RunnerMetaData(r.Req),
 		Spec: batchv1.CronJobSpec{
@@ -40,7 +37,7 @@ func (r *runnerReconciler) createCronJob(spec batchv1.JobSpec) (*batchv1.CronJob
 			ConcurrencyPolicy: batchv1.ForbidConcurrent,
 			Suspend:           r.instance.Spec.Suspend,
 			JobTemplate: batchv1.JobTemplateSpec{
-				Spec: spec,
+				Spec: r.createJobSpecForCronJob(),
 			},
 		},
 	}
@@ -52,80 +49,81 @@ func (r *runnerReconciler) createCronJob(spec batchv1.JobSpec) (*batchv1.CronJob
 	return cronJob, nil
 }
 
-func (r *runnerReconciler) createJobSpec(batches []util.Batch) (batchv1.JobSpec, error) {
-	batchCount := len(batches)
-	if batchCount > math.MaxInt32 {
-		return batchv1.JobSpec{}, fmt.Errorf("%w: %d", ErrMaxBatchCount, batchCount)
-	}
-
-	completionMode := batchv1.IndexedCompletion
-	completions := int32(batchCount)
-	parallelism := r.instance.Spec.Runner.Instances
-
+func (r *runnerReconciler) createJobSpecForCronJob() batchv1.JobSpec {
+	// Create a Job that will create RenovatorJobs for all batches
+	// The Job will be created by the CronJob on schedule
 	return batchv1.JobSpec{
-		CompletionMode: &completionMode,
-		Completions:    &completions,
-		Parallelism:    &parallelism,
 		Template: corev1.PodTemplateSpec{
-			Spec: corev1.PodSpec{
-				RestartPolicy: corev1.RestartPolicyNever,
-				Volumes: append(
-					renovate.DefaultVolume(corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					}),
-					corev1.Volume{
-						Name: renovate.VolumeRenovateTmp,
-						VolumeSource: corev1.VolumeSource{
-							ConfigMap: &corev1.ConfigMapVolumeSource{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: r.instance.Name,
-								},
-							},
-						},
-					},
-					corev1.Volume{
-						Name: renovate.VolumeRenovateBase,
-						VolumeSource: corev1.VolumeSource{
-							EmptyDir: &corev1.EmptyDirVolumeSource{},
-						},
-					}),
-				InitContainers: []corev1.Container{
-					{
-						Name:            "renovate-dispatcher",
-						Image:           r.instance.Spec.Image,
-						Command:         []string{"/dispatcher"},
-						ImagePullPolicy: r.instance.Spec.ImagePullPolicy,
-						Env: []corev1.EnvVar{
-							{
-								Name:  dispatcher.EnvRenovateRawConfig,
-								Value: renovate.FileRenovateTmp,
-							},
-							{
-								Name:  dispatcher.EnvRenovateConfig,
-								Value: renovate.FileRenovateConfig,
-							},
-							{
-								Name:  dispatcher.EnvRenovateBatches,
-								Value: renovate.FileRenovateBatches,
-							},
-						},
-						VolumeMounts: []corev1.VolumeMount{
-							{
-								Name:      renovate.VolumeRenovateConfig,
-								MountPath: renovate.DirRenovateConfig,
-							},
-							{
-								Name:      renovate.VolumeRenovateTmp,
-								ReadOnly:  true,
-								MountPath: renovate.DirRenovateTmp,
-							},
+			ObjectMeta: metav1.ObjectMeta{
+				Labels: map[string]string{
+					"app.kubernetes.io/managed-by": "renovate-operator",
+					"app.kubernetes.io/name":       "renovator-scheduled-runner",
+					"renovator.renovate/name":      r.instance.Name,
+				},
+			},
+			Spec: r.createScheduledPodSpec(),
+		},
+	}
+}
+
+func (r *runnerReconciler) createScheduledPodSpec() corev1.PodSpec {
+	// Create pod spec that will create RenovatorJobs for all batches
+	return corev1.PodSpec{
+		ServiceAccountName: metadata.GenericMetaData(r.Req).Name,
+		ImagePullSecrets:   r.instance.Spec.ImagePullSecrets,
+		RestartPolicy:      corev1.RestartPolicyNever,
+		Volumes: append(
+			renovate.DefaultVolume(corev1.VolumeSource{
+				EmptyDir: &corev1.EmptyDirVolumeSource{},
+			}),
+			corev1.Volume{
+				Name: renovate.VolumeRenovateTmp,
+				VolumeSource: corev1.VolumeSource{
+					ConfigMap: &corev1.ConfigMapVolumeSource{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: r.instance.Name,
 						},
 					},
 				},
-				Containers: []corev1.Container{
-					renovate.DefaultContainer(r.instance, []corev1.EnvVar{}, []string{}),
+			},
+			corev1.Volume{
+				Name: renovate.VolumeRenovateBase,
+				VolumeSource: corev1.VolumeSource{
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
+				},
+			}),
+		Containers: []corev1.Container{
+			{
+				Name:            "renovate-job-scheduler",
+				Image:           r.instance.Spec.Image,
+				Command:         []string{"/job-scheduler"},
+				ImagePullPolicy: r.instance.Spec.ImagePullPolicy,
+				Env: []corev1.EnvVar{
+					{
+						Name:  "RENOVATOR_NAME",
+						Value: r.instance.Name,
+					},
+					{
+						Name:  "RENOVATOR_NAMESPACE",
+						Value: r.instance.Namespace,
+					},
+					{
+						Name:  "BATCH_CONFIG_FILE",
+						Value: renovate.FileRenovateBatches,
+					},
+					{
+						Name:  "MAX_PARALLEL_JOBS",
+						Value: fmt.Sprintf("%d", r.instance.Spec.Runner.Instances),
+					},
+				},
+				VolumeMounts: []corev1.VolumeMount{
+					{
+						Name:      renovate.VolumeRenovateTmp,
+						ReadOnly:  true,
+						MountPath: renovate.DirRenovateTmp,
+					},
 				},
 			},
 		},
-	}, nil
+	}
 }

@@ -44,6 +44,11 @@ type RenovateSpec struct {
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace
+	// to use for pulling any of the images used by this Pod.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
+
 	Platform PlatformSpec `json:"platform"`
 	DryRun   DryRun       `json:"dryRun,omitempty"`
 	// +kubebuilder:default:=true
@@ -123,6 +128,11 @@ type RenovatorSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
 	// +optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// ImagePullSecrets is an optional list of references to secrets in the same namespace
+	// to use for pulling any of the images used by this Pod.
+	// +optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 
 	Renovate RenovateSpec `json:"renovate"`
 
