@@ -92,8 +92,14 @@ type RunnerSpec struct {
 
 	// MaxRunners Maximum number of parallel runners to start. A single runner will only process a single batch.
 	// +kubebuilder:default:=1
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=100
 	Instances int32 `json:"instances"`
 
+	// BatchSize Number of repositories per batch. Only used when strategy is 'batch'.
+	// If not specified, defaults to a reasonable size based on the number of repositories and instances.
+	// +kubebuilder:validation:Minimum=1
+	// +kubebuilder:validation:Maximum=1000
 	BatchSize int `json:"batchSize,omitempty"`
 }
 
