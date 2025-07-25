@@ -39,7 +39,10 @@
     "clientgoscheme",
     "certwatcher",
     "metricsserver",
-    "clientcmd"
+    "clientcmd",
+    "octocat",
+    "mycompany",
+    "anotherorg"
   ],
   "ignorePaths": [
     ".woodpecker",

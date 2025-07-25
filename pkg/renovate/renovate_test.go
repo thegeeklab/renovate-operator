@@ -101,7 +101,7 @@ var _ = Describe("DefaultEnvVars", func() {
 	})
 
 	It("should include GitHub token when selector is provided", func() {
-		instance.Spec.Renovate.GithubTokenSelector = &corev1.EnvVarSource{
+		instance.Spec.Renovate.GithubToken = &corev1.EnvVarSource{
 			SecretKeyRef: &corev1.SecretKeySelector{
 				LocalObjectReference: corev1.LocalObjectReference{
 					Name: "github-token",
@@ -114,7 +114,7 @@ var _ = Describe("DefaultEnvVars", func() {
 		Expect(envVars).To(ContainElement(
 			corev1.EnvVar{
 				Name:      "GITHUB_COM_TOKEN",
-				ValueFrom: instance.Spec.Renovate.GithubTokenSelector,
+				ValueFrom: instance.Spec.Renovate.GithubToken,
 			},
 		))
 	})

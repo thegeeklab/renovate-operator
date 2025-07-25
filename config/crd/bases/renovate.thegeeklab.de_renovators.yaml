@@ -320,12 +320,19 @@ spec:
               runner:
                 properties:
                   batchSize:
+                    description: |-
+                      BatchSize Number of repositories per batch. Only used when strategy is 'batch'.
+                      If not specified, defaults to a reasonable size based on the number of repositories and instances.
+                    maximum: 1000
+                    minimum: 1
                     type: integer
                   instances:
                     default: 1
                     description: MaxRunners Maximum number of parallel runners to
                       start. A single runner will only process a single batch.
                     format: int32
+                    maximum: 100
+                    minimum: 1
                     type: integer
                   strategy:
                     default: none

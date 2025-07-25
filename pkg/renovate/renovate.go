@@ -67,10 +67,10 @@ func DefaultEnvVars(instance *renovatev1beta1.Renovator) []corev1.EnvVar {
 			ValueFrom: &instance.Spec.Renovate.Platform.Token,
 		},
 	}
-	if instance.Spec.Renovate.GithubTokenSelector != nil {
+	if instance.Spec.Renovate.GithubToken != nil {
 		containerVars = append(containerVars, corev1.EnvVar{
 			Name:      "GITHUB_COM_TOKEN",
-			ValueFrom: instance.Spec.Renovate.GithubTokenSelector,
+			ValueFrom: instance.Spec.Renovate.GithubToken,
 		})
 	}
 

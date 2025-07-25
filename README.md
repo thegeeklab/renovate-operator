@@ -1,12 +1,30 @@
 # renovate-operator
 
-This project is a Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com/) deployments. Renovate is a popular dependency update tool, and this operator makes it easier to manage Renovate instances in a Kubernetes environment.
+[![Build Status](https://ci.thegeeklab.de/api/badges/thegeeklab/renovate-operator/status.svg)](https://ci.thegeeklab.de/repos/thegeeklab/renovate-operator)
+[![Go Report Card](https://goreportcard.com/badge/github.com/thegeeklab/renovate-operator)](https://goreportcard.com/report/github.com/thegeeklab/renovate-operator)
+[![GitHub contributors](https://img.shields.io/github/contributors/thegeeklab/renovate-operator)](https://github.com/thegeeklab/renovate-operator/graphs/contributors)
+[![License: MIT](https://img.shields.io/github/license/thegeeklab/renovate-operator)](https://github.com/thegeeklab/renovate-operator/blob/main/LICENSE)
+
+A Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com/) deployments with advanced parallel processing capabilities. This operator provides automated dependency updates for your repositories with intelligent batching and resource management.
+
+## ✨ Features
+
+- **🚀 Parallel Processing**: Intelligent repository batching for faster dependency updates
+- **🔄 Automated Scheduling**: CronJob-based scheduling with configurable intervals
+- **🔍 Repository Discovery**: Automatic discovery of repositories from Git platforms
+- **🎯 Platform Support**: GitHub, Gitea, and more Git platforms
 
 > **WARNING:** This project is still in development and is not yet ready for production use.
 
-## Getting Started
+## Quick Start
 
-### To Deploy on the cluster
+### Prerequisites
+
+- Kubernetes cluster (1.24+)
+- kubectl configured
+- Git platform credentials (GitHub, Gitea, etc.)
+
+### Installation
 
 **Build and push your image to the location specified by `IMG`:**
 
@@ -42,7 +60,7 @@ kubectl apply -k config/samples/
 
 > **NOTE**: Ensure that the samples has default values to test it out.
 
-### To Uninstall
+### Uninstall
 
 **Delete the instances (CRs) from the cluster:**
 
