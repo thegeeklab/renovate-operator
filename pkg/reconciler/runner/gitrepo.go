@@ -41,7 +41,7 @@ func (r *runnerReconciler) CreateBatches(ctx context.Context) ([]util.Batch, err
 	switch r.instance.Spec.Runner.Strategy {
 	case renovatev1beta1.RunnerStrategy_BATCH:
 		batchSize := r.calculateOptimalBatchSize(repoCount)
-		
+
 		for i := 0; i < repoCount; i += batchSize {
 			end := min(i+batchSize, repoCount)
 			batch := repos[i:end]
@@ -57,8 +57,15 @@ func (r *runnerReconciler) CreateBatches(ctx context.Context) ([]util.Batch, err
 	return batches, nil
 }
 
-// calculateOptimalBatchSize determines the best batch size based on configuration and repository count
+// calculateOptimalBatchSize determines the best batch size based on configuration and repository count.
 func (r *runnerReconciler) calculateOptimalBatchSize(repoCount int) int {
+	// Aim for 2-3 batches per instance to allow for good parallelization
+	// while keeping batch sizes reasonable
+	instanceMultiplier := 3
+
+	// Cap at 50 repositories per batch to avoid excessively long-running jobs
+	maxBatchSize := 50
+
 	// If BatchSize is explicitly set, use it
 	if r.instance.Spec.Runner.BatchSize > 0 {
 		return r.instance.Spec.Runner.BatchSize
@@ -70,17 +77,14 @@ func (r *runnerReconciler) calculateOptimalBatchSize(repoCount int) int {
 		instances = 1
 	}
 
-	// Aim for 2-3 batches per instance to allow for good parallelization
-	// while keeping batch sizes reasonable
-	targetBatches := instances * 3
+	targetBatches := instances * instanceMultiplier
 	optimalBatchSize := repoCount / targetBatches
 
 	// Ensure batch size is within reasonable bounds
 	if optimalBatchSize < 1 {
 		optimalBatchSize = 1
-	} else if optimalBatchSize > 50 {
-		// Cap at 50 repositories per batch to avoid excessively long-running jobs
-		optimalBatchSize = 50
+	} else if optimalBatchSize > maxBatchSize {
+		optimalBatchSize = maxBatchSize
 	}
 
 	return optimalBatchSize

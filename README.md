@@ -68,7 +68,7 @@ A Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com
              key: token
      discovery:
        filter:
-         - "myorg/*" # Discover all repos in 'myorg'
+         - "octocat/*" # Discover all repos in 'octocat'
    ```
 
 4. **Apply the configuration:**
@@ -83,7 +83,6 @@ A Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com
 - **[Configuration Guide](docs/configuration.md)** - Complete configuration reference
 - **[API Reference](docs/api-reference.md)** - Complete API documentation
 - **[Architecture Overview](docs/architecture.md)** - Understanding the operator components
-- **[Troubleshooting](docs/troubleshooting.md)** - Common issues and solutions
 
 ## 🏗️ Development
 

@@ -1,6 +1,6 @@
 # renovate-operator documentation
 
-Welcome to the comprehensive documentation for the renovate-operator! This documentation will help you get started, configure, deploy, and troubleshoot your Renovate automation.
+Welcome to the comprehensive documentation for the renovate-operator!
 
 - **[Main README](../README.md)** - Quick start and overview
 - **[Installation Guide](installation.md)** - How to install and deploy the operator

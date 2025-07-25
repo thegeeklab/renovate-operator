@@ -122,8 +122,8 @@ Repository filters support glob patterns:
 
 ```yaml
 filter:
-  - "myorg/*" # Include all repos in myorg
-  - "!myorg/archived-*" # Exclude archived repos (! prefix)
+  - "octocat/*" # Include all repos in octocat
+  - "!octocat/archived-*" # Exclude archived repos (! prefix)
   - "team-*/backend-*" # Include specific patterns
 ```
 

@@ -135,55 +135,52 @@ var _ = Describe("CreateBatches", func() {
 		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
 	})
 
-	Context("with NONE strategy", func() {
-		BeforeEach(func() {
-			repositories := []string{"repo1", "repo2", "repo3", "repo4", "repo5"}
-			var gitRepos []client.Object
-			
-			for _, repo := range repositories {
-				gitRepo := &renovatev1beta1.GitRepo{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      repo,
+	setupTest := func(strategy renovatev1beta1.RunnerStrategy, instances, batchSize int, repos ...string) {
+		var gitRepos []client.Object
+		for _, repo := range repos {
+			gitRepos = append(gitRepos, &renovatev1beta1.GitRepo{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      repo,
+					Namespace: "test-namespace",
+				},
+				Spec: renovatev1beta1.GitRepoSpec{Name: repo},
+			})
+		}
+
+		fakeClient = fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(gitRepos...).
+			Build()
+
+		r = &runnerReconciler{
+			GenericReconciler: &reconciler.GenericReconciler{
+				KubeClient: fakeClient,
+				Req: ctrl.Request{
+					NamespacedName: client.ObjectKey{
+						Name:      "test-renovator",
 						Namespace: "test-namespace",
 					},
-					Spec: renovatev1beta1.GitRepoSpec{
-						Name: repo,
-					},
-				}
-				gitRepos = append(gitRepos, gitRepo)
-			}
-
-			fakeClient = fake.NewClientBuilder().
-				WithScheme(scheme).
-				WithObjects(gitRepos...).
-				Build()
-
-			instance := &renovatev1beta1.Renovator{
+				},
+			},
+			instance: &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
 					Namespace: "test-namespace",
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Runner: renovatev1beta1.RunnerSpec{
-						Strategy:  renovatev1beta1.RunnerStrategy_NONE,
-						Instances: 3,
-						BatchSize: 0,
+						Strategy:  strategy,
+						Instances: int32(instances),
+						BatchSize: batchSize,
 					},
 				},
-			}
+			},
+		}
+	}
 
-			r = &runnerReconciler{
-				GenericReconciler: &reconciler.GenericReconciler{
-					KubeClient: fakeClient,
-					Req: ctrl.Request{
-						NamespacedName: client.ObjectKey{
-							Name:      "test-renovator",
-							Namespace: "test-namespace",
-						},
-					},
-				},
-				instance: instance,
-			}
+	Context("with NONE strategy", func() {
+		BeforeEach(func() {
+			setupTest(renovatev1beta1.RunnerStrategy_NONE, 3, 0, "repo1", "repo2", "repo3", "repo4", "repo5")
 		})
 
 		It("should create single batch with all repositories", func() {
@@ -196,53 +193,7 @@ var _ = Describe("CreateBatches", func() {
 
 	Context("with BATCH strategy and explicit size", func() {
 		BeforeEach(func() {
-			repositories := []string{"repo1", "repo2", "repo3", "repo4", "repo5"}
-			var gitRepos []client.Object
-			
-			for _, repo := range repositories {
-				gitRepo := &renovatev1beta1.GitRepo{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      repo,
-						Namespace: "test-namespace",
-					},
-					Spec: renovatev1beta1.GitRepoSpec{
-						Name: repo,
-					},
-				}
-				gitRepos = append(gitRepos, gitRepo)
-			}
-
-			fakeClient = fake.NewClientBuilder().
-				WithScheme(scheme).
-				WithObjects(gitRepos...).
-				Build()
-
-			instance := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "test-namespace",
-				},
-				Spec: renovatev1beta1.RenovatorSpec{
-					Runner: renovatev1beta1.RunnerSpec{
-						Strategy:  renovatev1beta1.RunnerStrategy_BATCH,
-						Instances: 2,
-						BatchSize: 2,
-					},
-				},
-			}
-
-			r = &runnerReconciler{
-				GenericReconciler: &reconciler.GenericReconciler{
-					KubeClient: fakeClient,
-					Req: ctrl.Request{
-						NamespacedName: client.ObjectKey{
-							Name:      "test-renovator",
-							Namespace: "test-namespace",
-						},
-					},
-				},
-				instance: instance,
-			}
+			setupTest(renovatev1beta1.RunnerStrategy_BATCH, 2, 2, "repo1", "repo2", "repo3", "repo4", "repo5")
 		})
 
 		It("should create multiple batches with specified size", func() {
@@ -259,7 +210,7 @@ var _ = Describe("CreateBatches", func() {
 		BeforeEach(func() {
 			repositories := []string{"repo1", "repo2", "repo3", "repo4", "repo5", "repo6"}
 			var gitRepos []client.Object
-			
+
 			for _, repo := range repositories {
 				gitRepo := &renovatev1beta1.GitRepo{
 					ObjectMeta: metav1.ObjectMeta{
@@ -310,7 +261,7 @@ var _ = Describe("CreateBatches", func() {
 			batches, err := r.CreateBatches(context.TODO())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(batches).To(HaveLen(6)) // 6 repos / 1 per batch (6 / (2*3) = 1)
-			
+
 			for _, batch := range batches {
 				Expect(batch.Repositories).To(HaveLen(1))
 			}

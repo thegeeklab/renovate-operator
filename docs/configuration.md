@@ -212,8 +212,8 @@ spec:
     suspend: false
     schedule: "0 1 * * *"
     filter:
-      - "myorg/*"
-      - "!myorg/archived-*"
+      - "octocat/*"
+      - "!octocat/archived-*"
 ```
 
 ### Discovery Fields
@@ -230,21 +230,21 @@ spec:
 spec:
   discovery:
     filter:
-      # Include all repositories in 'myorg'
-      - "myorg/*"
+      # Include all repositories in 'octocat'
+      - "octocat/*"
 
       # Include specific repositories
-      - "myorg/important-repo"
+      - "octocat/important-repo"
       - "anotherorg/critical-app"
 
       # Exclude patterns (use ! prefix)
-      - "!myorg/archived-*"
+      - "!octocat/archived-*"
       - "!*/test-*"
-      - "!myorg/legacy-system"
+      - "!octocat/legacy-system"
 
       # Include only certain types
-      - "myorg/*-api"
-      - "myorg/*-service"
+      - "octocat/*-api"
+      - "octocat/*-service"
 ```
 
 ### Advanced Discovery
