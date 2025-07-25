@@ -53,7 +53,7 @@ type RenovateSpec struct {
 	PrHourlyLimit int      `json:"prHourlyLimit,omitempty"`
 	AddLabels     []string `json:"addLabels,omitempty"`
 
-	GithubTokenSelector *corev1.EnvVarSource `json:"githubToken,omitempty"`
+	GithubToken *corev1.EnvVarSource `json:"githubToken,omitempty"`
 }
 
 // +kubebuilder:validation:Enum=trace;debug;info;warn;error;fatal

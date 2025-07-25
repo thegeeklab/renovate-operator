@@ -176,8 +176,8 @@ func (in *RenovateSpec) DeepCopyInto(out *RenovateSpec) {
 		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
-	if in.GithubTokenSelector != nil {
-		in, out := &in.GithubTokenSelector, &out.GithubTokenSelector
+	if in.GithubToken != nil {
+		in, out := &in.GithubToken, &out.GithubToken
 		*out = new(corev1.EnvVarSource)
 		(*in).DeepCopyInto(*out)
 	}

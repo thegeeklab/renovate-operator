@@ -8,8 +8,7 @@ This guide provides comprehensive information about configuring the renovate-ope
 - [Renovate Settings](#renovate-settings)
 - [Discovery Configuration](#discovery-configuration)
 - [Runner Configuration](#runner-configuration)
-- [Security Configuration](#security-configuration)
-- [Advanced Configuration](#advanced-configuration)
+- [Complete Example](#complete-example)
 
 ## Renovator Configuration
 
@@ -85,54 +84,6 @@ schedule: "0 3 * * 0"
 
 Configure Renovate behavior including platform connections, dry run modes, rate limiting, and other bot-specific settings.
 
-### GitHub Configuration
-
-```yaml
-spec:
-  renovate:
-    platform:
-      type: github
-      endpoint: https://api.github.com
-      token:
-        secretKeyRef:
-          name: github-secret
-          key: token
-    githubToken:
-      secretKeyRef:
-        name: github-secret
-        key: token
-```
-
-### Gitea Configuration
-
-```yaml
-spec:
-  renovate:
-    platform:
-      type: gitea
-      endpoint: https://gitea.company.com/api/v1
-      token:
-        secretKeyRef:
-          name: gitea-secret
-          key: token
-```
-
-### Creating Platform Secrets
-
-```bash
-# GitHub
-kubectl create secret generic github-secret \
-  --from-literal=token=ghp_your_github_token_here
-
-# Gitea
-kubectl create secret generic gitea-secret \
-  --from-literal=token=your_gitea_token_here
-```
-
-### Renovate Behavior Settings
-
-Configure additional Renovate behavior options:
-
 ```yaml
 spec:
   renovate:
@@ -159,14 +110,38 @@ spec:
       - "renovate"
 ```
 
-#### Renovate Fields
-
 | Field           | Type    | Default | Description                                |
 | --------------- | ------- | ------- | ------------------------------------------ |
 | `dryRun`        | enum    | `false` | Dry run mode (`extract`, `lookup`, `full`) |
 | `onboarding`    | boolean | `true`  | Enable repository onboarding               |
 | `prHourlyLimit` | integer | `10`    | Pull requests per hour limit               |
 | `addLabels`     | array   | `[]`    | Labels to add to PRs                       |
+
+### GitHub Configuration
+
+Create platform secret:
+
+```bash
+# GitHub
+kubectl create secret generic github-secret \
+  --from-literal=token=ghp_your_github_token_here
+```
+
+```yaml
+spec:
+  renovate:
+    platform:
+      type: github
+      endpoint: https://api.github.com
+      token:
+        secretKeyRef:
+          name: github-secret
+          key: token
+    githubToken:
+      secretKeyRef:
+        name: github-secret
+        key: token
+```
 
 #### Dry Run Modes
 
@@ -187,19 +162,6 @@ spec:
     dryRun: full
 ```
 
-#### Production Configuration
-
-```yaml
-spec:
-  renovate:
-    dryRun: false # Enable actual PR creation
-    onboarding: true # Enable onboarding for new repos
-    prHourlyLimit: 5 # Conservative rate limiting
-    addLabels:
-      - "dependencies"
-      - "automated"
-```
-
 ## Discovery Configuration
 
 Control how repositories are discovered and filtered.
@@ -215,8 +177,6 @@ spec:
       - "octocat/*"
       - "!octocat/archived-*"
 ```
-
-### Discovery Fields
 
 | Field      | Type    | Default         | Description                                       |
 | ---------- | ------- | --------------- | ------------------------------------------------- |
@@ -265,6 +225,12 @@ spec:
 
 Configure parallel processing and job execution. The Renovate Operator supports efficient parallel processing of repositories through its built-in batching strategy, allowing you to significantly reduce total runtime for large repository sets.
 
+| Field       | Type    | Default | Description                            |
+| ----------- | ------- | ------- | -------------------------------------- |
+| `strategy`  | enum    | `none`  | Execution strategy (`none` or `batch`) |
+| `instances` | integer | `1`     | Number of parallel workers (1-100)     |
+| `batchSize` | integer | auto    | Repositories per batch (1-1000)        |
+
 ### Runner Strategies
 
 #### None Strategy (Sequential)
@@ -298,14 +264,6 @@ spec:
     # batchSize omitted - automatically calculated based on repo count and instances
 ```
 
-### Runner Fields
-
-| Field       | Type    | Default | Description                            |
-| ----------- | ------- | ------- | -------------------------------------- |
-| `strategy`  | enum    | `none`  | Execution strategy (`none` or `batch`) |
-| `instances` | integer | `1`     | Number of parallel workers (1-100)     |
-| `batchSize` | integer | auto    | Repositories per batch (1-1000)        |
-
 ### How Parallel Processing Works
 
 The operator uses Kubernetes [Indexed Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/#completion-mode) to achieve parallel processing:
@@ -327,36 +285,6 @@ When `batchSize` is not specified, the operator automatically calculates optimal
 ### Performance Tuning Guidelines
 
 Choose appropriate configuration based on your repository count and infrastructure:
-
-#### Small Teams (< 50 repositories)
-
-```yaml
-spec:
-  runner:
-    strategy: batch
-    instances: 2
-    batchSize: 15
-```
-
-#### Medium Teams (50-200 repositories)
-
-```yaml
-spec:
-  runner:
-    strategy: batch
-    instances: 4
-    batchSize: 25
-```
-
-#### Large Organizations (200+ repositories)
-
-```yaml
-spec:
-  runner:
-    strategy: batch
-    instances: 8
-    batchSize: 30
-```
 
 **Performance Considerations:**
 
@@ -381,75 +309,14 @@ If you're currently using `strategy: none` and experiencing long runtimes:
 3. Gradually increase instances if cluster resources allow
 4. Adjust batch size based on performance
 
-## Security Configuration
-
-### Service Account Configuration
-
-```yaml
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: renovate-sa
-  namespace: renovate
----
-apiVersion: renovate.thegeeklab.de/v1beta1
-kind: Renovator
-metadata:
-  name: secure-renovator
-spec:
-  serviceAccountName: renovate-sa
-  # ... other configuration
-```
-
-### Network Policies
-
-```yaml
-apiVersion: networking.k8s.io/v1
-kind: NetworkPolicy
-metadata:
-  name: renovate-network-policy
-  namespace: renovate
-spec:
-  podSelector:
-    matchLabels:
-      app.kubernetes.io/name: renovator-runner
-  policyTypes:
-    - Egress
-  egress:
-    - to: []
-      ports:
-        - protocol: TCP
-          port: 443 # HTTPS to Git platforms
-        - protocol: TCP
-          port: 80 # HTTP if needed
-```
-
-### Resource Limits
-
-```yaml
-spec:
-  resources:
-    limits:
-      cpu: "2"
-      memory: "4Gi"
-    requests:
-      cpu: "500m"
-      memory: "1Gi"
-```
-
-## Advanced Configuration
-
-### Complete Production Example
+## Complete Example
 
 ```yaml
 apiVersion: renovate.thegeeklab.de/v1beta1
 kind: Renovator
 metadata:
-  name: production-renovator
+  name: renovator
   namespace: renovate
-  labels:
-    environment: production
-    team: platform
 spec:
   # Global settings
   suspend: false
@@ -465,7 +332,7 @@ spec:
       endpoint: https://api.github.com
       token:
         secretKeyRef:
-          name: github-production-token
+          name: github-token
           key: token
 
     # Renovate behavior
@@ -480,7 +347,7 @@ spec:
     # GitHub token for enhanced rate limits
     githubToken:
       secretKeyRef:
-        name: github-production-token
+        name: github-token
         key: token
 
   # Discovery configuration
