@@ -9,7 +9,7 @@ steps:
   - name: markdownlint
     image: quay.io/thegeeklab/markdownlint-cli
     commands:
-      - markdownlint -c .markdownlint.yml README.md CONTRIBUTING.md docs/
+      - markdownlint README.md CONTRIBUTING.md docs/
 
   - name: link-validation
     image: docker.io/lycheeverse/lychee
