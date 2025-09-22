@@ -4,7 +4,6 @@ GOFUMPT_PACKAGE_VERSION := v0.9.1
 GOLANGCI_LINT_PACKAGE_VERSION := v2.5.0
 
 GOFUMPT_PACKAGE ?= mvdan.cc/gofumpt@$(GOFUMPT_PACKAGE_VERSION)
-GOLANGCI_LINT_PACKAGE ?= github.com/golangci/golangci-lint/v2/cmd/golangci-lint@$(GOLANGCI_LINT_PACKAGE_VERSION)
 
 # Image URL to use all building image targets
 IMG ?= docker.io/thegeeklab/renovate-operator:devel
@@ -35,9 +34,9 @@ help: ## Display this help.
 
 .PHONY: deps
 deps:
+	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(shell go env GOPATH)/bin $(GOLANGCI_LINT_PACKAGE_VERSION)
 	$(GO) mod download
 	$(GO) install $(GOFUMPT_PACKAGE)
-	$(GO) install $(GOLANGCI_LINT_PACKAGE)
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -49,7 +48,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
-	$(GO) run $(GOFUMPT_PACKAGE) -extra -w $(SOURCES)
+	$(shell go env GOPATH)/bin/gofumpt -extra -w $(SOURCES)
 
 .PHONY: vet
 vet: ## Run go vet against code.
@@ -77,7 +76,7 @@ test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated 
 
 .PHONY: golangci-lint
 golangci-lint:
-	$(GO) run $(GOLANGCI_LINT_PACKAGE) run
+	$(shell go env GOPATH)/bin/golangci-lint run
 
 .PHONY: lint
 lint: golangci-lint
