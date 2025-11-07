@@ -2,6 +2,8 @@
 GOFUMPT_PACKAGE_VERSION := v0.9.2
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_PACKAGE_VERSION := v2.6.0
+# renovate: datasource=github-releases depName=cert-manager/cert-manager
+CERT_MANAGER_VERSION := v1.15.3
 
 GOFUMPT_PACKAGE ?= mvdan.cc/gofumpt@$(GOFUMPT_PACKAGE_VERSION)
 
@@ -22,6 +24,14 @@ endif
 # Options are set to exit when a recipe line exits non-zero or a piped command fails.
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
+
+# Check if kind is installed
+define check-kind-installed
+@command -v kind >/dev/null 2>&1 || { \
+	echo "Kind is not installed. Please install Kind manually."; \
+	exit 1; \
+}
+endef
 
 .PHONY: all
 all: build
@@ -58,16 +68,59 @@ vet: ## Run go vet against code.
 test: manifests generate fmt vet setup-envtest ## Run tests.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GO) test $$($(GO) list ./... | grep -v /e2e) -coverprofile cover.out
 
+.PHONY: kind-create
+kind-create: ## Create a Kind cluster from hack/kind.yaml and optionally deploy cert-manager.
+	$(call check-kind-installed)
+	@kind get clusters | grep -q renovate-operator || { \
+		echo "Creating Kind cluster..."; \
+		kind create cluster --config hack/kind.yaml --name $(KIND_CLUSTER) || { \
+			echo "Failed to create Kind cluster."; \
+			exit 1; \
+		}; \
+	}
+	@if [ "$(CERT_MANAGER_INSTALL_SKIP)" != "true" ]; then \
+		echo "Installing cert-manager..."; \
+		$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/$(CERT_MANAGER_VERSION)/cert-manager.yaml || { \
+			echo "Failed to install cert-manager."; \
+			exit 1; \
+		}; \
+		$(KUBECTL) wait --for=condition=Available --timeout=300s deployment/cert-manager -n cert-manager || { \
+			echo "cert-manager deployment not available after 300 seconds."; \
+			exit 1; \
+		}; \
+	else \
+		echo "Skipping cert-manager installation as requested."; \
+	fi
+
+.PHONY: kind-load
+kind-load: ## Load the manager image into the Kind cluster.
+	$(call check-kind-installed)
+	@kind get clusters | grep -q $(KIND_CLUSTER) || { \
+		echo "No Kind cluster is running. Please start a Kind cluster before loading the image."; \
+		exit 1; \
+	}
+	kind load docker-image ${IMG} --name $(KIND_CLUSTER)
+
+.PHONY: kind-delete
+kind-delete: ## Delete the Kind cluster.
+	$(call check-kind-installed)
+	@kind get clusters | grep -q $(KIND_CLUSTER) && { \
+		echo "Deleting Kind cluster..."; \
+		kind delete cluster --name $(KIND_CLUSTER) || { \
+			echo "Failed to delete Kind cluster."; \
+			exit 1; \
+		}; \
+	} || { \
+		echo "No Kind cluster named $(KIND_CLUSTER) exists."; \
+	}
+
 # The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
 # Prometheus and CertManager are installed by default; skip with:
 # - PROMETHEUS_INSTALL_SKIP=true
 # - CERT_MANAGER_INSTALL_SKIP=true
 .PHONY: test-e2e
 test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
-	@command -v kind >/dev/null 2>&1 || { \
-		echo "Kind is not installed. Please install Kind manually."; \
-		exit 1; \
-	}
+	$(call check-kind-installed)
 	@kind get clusters | grep -q $(KIND_CLUSTER) || { \
 		echo "No Kind cluster is running. Please start a Kind cluster before running the e2e tests."; \
 		exit 1; \
