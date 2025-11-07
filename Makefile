@@ -85,13 +85,13 @@ lint: golangci-lint
 
 .PHONY: build
 build: manifests generate fmt vet ## Build binaries.
-	$(GO) build -o bin/manager cmd/main.go
-	$(GO) build -o bin/discovery discovery/cmd/main.go
-	$(GO) build -o bin/dispatcher dispatcher/cmd/main.go
+	$(GO) build -o bin/manager cmd/renovate-operator/main.go
+	$(GO) build -o bin/discovery cmd/discovery/main.go
+	$(GO) build -o bin/dispatcher cmd/dispatcher/main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	$(GO) run ./cmd/main.go
+	$(GO) run ./cmd/renovate-operator/main.go
 
 .PHONY: docker-build
 docker-build: ## Build container image.

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/equality"
 	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	rbacv1 "k8s.io/api/rbac/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -17,7 +16,7 @@ func (r *discoveryReconciler) reconcileRole(ctx context.Context) (*ctrl.Result, 
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &rbacv1.Role{}, expected, equality.RoleEqual)
+	return r.ReconcileResource(ctx, &rbacv1.Role{}, expected)
 }
 
 func (r *discoveryReconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.Result, error) {
@@ -26,7 +25,7 @@ func (r *discoveryReconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.R
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &rbacv1.RoleBinding{}, expected, equality.RoleBindingEqual)
+	return r.ReconcileResource(ctx, &rbacv1.RoleBinding{}, expected)
 }
 
 func (r *discoveryReconciler) createRole() (*rbacv1.Role, error) {

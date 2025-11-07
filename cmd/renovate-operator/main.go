@@ -24,8 +24,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/controller"
-	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
+	"github.com/thegeeklab/renovate-operator/pkg/controller"
+	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/pkg/webhook/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
 

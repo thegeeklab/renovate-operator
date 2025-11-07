@@ -52,7 +52,7 @@ The main operator binary that runs in the cluster and manages all Custom Resourc
 - Handles resource reconciliation
 - Provides health checks and metrics
 
-**Location:** `cmd/main.go`
+**Location:** `cmd/renovate-operator/main.go`
 
 ### 2. Controllers
 
@@ -60,7 +60,7 @@ The main operator binary that runs in the cluster and manages all Custom Resourc
 
 The primary controller responsible for managing the complete Renovator lifecycle.
 
-**Location:** `internal/controller/renovator_controller.go`
+**Location:** `pkg/controller/renovator_controller.go`
 
 **Functions:**
 
