@@ -33,6 +33,14 @@ define check-kind-installed
 }
 endef
 
+# Check if kind cluster is running
+define check-kind-cluster-running
+@kind get clusters | grep -q $(KIND_CLUSTER) || { \
+	echo "No Kind cluster is running. Please start a Kind cluster before running this command."; \
+	exit 1; \
+}
+endef
+
 .PHONY: all
 all: build
 
@@ -95,10 +103,7 @@ kind-create: ## Create a Kind cluster from hack/kind.yaml and optionally deploy 
 .PHONY: kind-load
 kind-load: ## Load the manager image into the Kind cluster.
 	$(call check-kind-installed)
-	@kind get clusters | grep -q $(KIND_CLUSTER) || { \
-		echo "No Kind cluster is running. Please start a Kind cluster before loading the image."; \
-		exit 1; \
-	}
+	$(call check-kind-cluster-running)
 	kind load docker-image ${IMG} --name $(KIND_CLUSTER)
 
 .PHONY: kind-delete
@@ -110,9 +115,7 @@ kind-delete: ## Delete the Kind cluster.
 			echo "Failed to delete Kind cluster."; \
 			exit 1; \
 		}; \
-	} || { \
-		echo "No Kind cluster named $(KIND_CLUSTER) exists."; \
-	}
+	} || echo "No Kind cluster named $(KIND_CLUSTER) exists."
 
 # The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
 # Prometheus and CertManager are installed by default; skip with:
@@ -121,10 +124,7 @@ kind-delete: ## Delete the Kind cluster.
 .PHONY: test-e2e
 test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
 	$(call check-kind-installed)
-	@kind get clusters | grep -q $(KIND_CLUSTER) || { \
-		echo "No Kind cluster is running. Please start a Kind cluster before running the e2e tests."; \
-		exit 1; \
-	}
+	$(call check-kind-cluster-running)
 	$(GO) test ./test/e2e/ -v -ginkgo.v
 
 .PHONY: golangci-lint
