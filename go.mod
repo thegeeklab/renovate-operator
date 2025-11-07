@@ -2,8 +2,6 @@ module github.com/thegeeklab/renovate-operator
 
 go 1.25.3
 
-godebug default=go1.23
-
 require (
 	github.com/google/go-cmp v0.7.0
 	github.com/onsi/ginkgo/v2 v2.27.2

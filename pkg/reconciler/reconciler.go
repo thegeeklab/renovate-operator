@@ -5,14 +5,13 @@ import (
 	"fmt"
 
 	"github.com/google/go-cmp/cmp"
+	"k8s.io/apimachinery/pkg/api/equality"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
-
-type ResourceComparator func(current, desired client.Object) bool
 
 type GenericReconciler struct {
 	KubeClient client.Client
@@ -23,7 +22,6 @@ type GenericReconciler struct {
 func (r *GenericReconciler) ReconcileResource(
 	ctx context.Context,
 	current, expected client.Object,
-	equal ResourceComparator,
 ) (*ctrl.Result, error) {
 	ctxLogger := logf.FromContext(ctx)
 
@@ -56,7 +54,8 @@ func (r *GenericReconciler) ReconcileResource(
 		return nil, err
 	}
 
-	if equal != nil && !equal(expected, current) {
+	// Use Kubernetes' built-in equality function for comparison
+	if !equality.Semantic.DeepDerivative(expected, current) {
 		diff := cmp.Diff(current, expected)
 
 		ctxLogger.V(1).Info("Resource differs",

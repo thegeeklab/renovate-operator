@@ -4,8 +4,7 @@ import (
 	"context"
 	"strings"
 
-	"github.com/thegeeklab/renovate-operator/discovery"
-	"github.com/thegeeklab/renovate-operator/pkg/equality"
+	"github.com/thegeeklab/renovate-operator/pkg/discovery"
 	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/renovate"
 	batchv1 "k8s.io/api/batch/v1"
@@ -20,7 +19,7 @@ func (r *discoveryReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Resul
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &batchv1.CronJob{}, expected, equality.CronJobEqual)
+	return r.ReconcileResource(ctx, &batchv1.CronJob{}, expected)
 }
 
 func (r *discoveryReconciler) createCronJob() (*batchv1.CronJob, error) {

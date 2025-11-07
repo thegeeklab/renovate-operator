@@ -5,8 +5,7 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/thegeeklab/renovate-operator/dispatcher"
-	"github.com/thegeeklab/renovate-operator/pkg/equality"
+	"github.com/thegeeklab/renovate-operator/pkg/dispatcher"
 	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/renovate"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
@@ -29,7 +28,7 @@ func (r *runnerReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, 
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &batchv1.CronJob{}, expected, equality.CronJobEqual)
+	return r.ReconcileResource(ctx, &batchv1.CronJob{}, expected)
 }
 
 func (r *runnerReconciler) createCronJob(spec batchv1.JobSpec) (*batchv1.CronJob, error) {

@@ -4,7 +4,6 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/equality"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/json"
@@ -28,7 +27,7 @@ func (r *runnerReconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &corev1.ConfigMap{}, expected, equality.ConfigMapEqual)
+	return r.ReconcileResource(ctx, &corev1.ConfigMap{}, expected)
 }
 
 func (r *runnerReconciler) createConfigMap() (*corev1.ConfigMap, error) {

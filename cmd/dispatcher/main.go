@@ -5,7 +5,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/thegeeklab/renovate-operator/dispatcher"
+	"github.com/thegeeklab/renovate-operator/pkg/dispatcher"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 )
