@@ -29,7 +29,8 @@ metadata:
   name: string # Required: Renovator instance name
   namespace: string # Optional: Kubernetes namespace
   labels: map[string]string # Optional: Kubernetes labels
-  annotations: map[string]string # Optional: Kubernetes annotations
+  annotations:
+    renovate.thegeeklab.de/operation: "discover" # Optional: Trigger immediate Git repo discovery
 ```
 
 ### Spec
@@ -317,3 +318,11 @@ status:
       reason: "RepositoryReady"
       message: "Repository is ready for processing"
 ```
+
+### Supported Annotations
+
+The following annotations are supported for the Renovator CRD:
+
+| Annotation Key                     | Description                          | Values     |
+| ---------------------------------- | ------------------------------------ | ---------- |
+| `renovate.thegeeklab.de/operation` | Trigger immediate git repo discovery | `discover` |
