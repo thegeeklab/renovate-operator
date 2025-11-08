@@ -105,22 +105,16 @@ var _ = Describe("CronJob Reconciliation", func() {
 	})
 
 	Describe("isDiscoverOperationRequested", func() {
-		Context("when discovery annotation is present", func() {
-			BeforeEach(func() {
-				r.instance.Annotations = map[string]string{
-					renovatev1beta1.AnnotationOperation: string(renovatev1beta1.OperationDiscover),
-				}
-			})
+		It("should return correct value based on annotation presence", func() {
+			// Test when annotation is present
+			r.instance.Annotations = map[string]string{
+				renovatev1beta1.AnnotationOperation: string(renovatev1beta1.OperationDiscover),
+			}
+			Expect(r.isDiscoverOperationRequested()).To(BeTrue())
 
-			It("should return true", func() {
-				Expect(r.isDiscoverOperationRequested()).To(BeTrue())
-			})
-		})
-
-		Context("when discovery annotation is not present", func() {
-			It("should return false", func() {
-				Expect(r.isDiscoverOperationRequested()).To(BeFalse())
-			})
+			// Test when annotation is not present
+			r.instance.Annotations = map[string]string{}
+			Expect(r.isDiscoverOperationRequested()).To(BeFalse())
 		})
 	})
 
@@ -189,34 +183,28 @@ var _ = Describe("CronJob Reconciliation", func() {
 	})
 
 	Describe("hasRunningDiscoveryJob", func() {
-		Context("when a discovery job is running", func() {
-			BeforeEach(func() {
-				// Mock a running job
-				existingJob := &batchv1.Job{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      metadata.DiscoveryName(r.Req),
-						Namespace: r.instance.Namespace,
-					},
-					Status: batchv1.JobStatus{
-						Active: 1,
-					},
-				}
-				Expect(mockKubeClient.Create(ctx, existingJob)).To(Succeed())
-			})
+		It("should return correct value based on job status", func() {
+			// Test when job is running
+			existingJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      metadata.DiscoveryName(r.Req),
+					Namespace: r.instance.Namespace,
+				},
+				Status: batchv1.JobStatus{
+					Active: 1,
+				},
+			}
+			Expect(mockKubeClient.Create(ctx, existingJob)).To(Succeed())
 
-			It("should return true", func() {
-				hasRunning, err := r.hasRunningDiscoveryJob(ctx)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(hasRunning).To(BeTrue())
-			})
-		})
+			hasRunning, err := r.hasRunningDiscoveryJob(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(hasRunning).To(BeTrue())
 
-		Context("when no discovery job is running", func() {
-			It("should return false", func() {
-				hasRunning, err := r.hasRunningDiscoveryJob(ctx)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(hasRunning).To(BeFalse())
-			})
+			// Test when no job is running
+			Expect(mockKubeClient.Delete(ctx, existingJob)).To(Succeed())
+			hasRunning, err = r.hasRunningDiscoveryJob(ctx)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(hasRunning).To(BeFalse())
 		})
 	})
 
