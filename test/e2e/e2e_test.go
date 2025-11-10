@@ -128,12 +128,14 @@ var _ = Describe("Manager", Ordered, func() {
 			By("validating that the controller-manager pod is running as expected")
 			verifyControllerUp := func(g Gomega) {
 				// Get the name of the controller-manager pod
+				template := `{{ range .items }}` +
+					`{{ if not .metadata.deletionTimestamp }}` +
+					`{{ .metadata.name }}{{ "\n" }}` +
+					`{{ end }}` +
+					`{{ end }}`
 				cmd := exec.CommandContext(context.Background(), "kubectl", "get",
 					"pods", "-l", "control-plane=controller-manager",
-					"-o", "go-template={{ range .items }}"+
-						"{{ if not .metadata.deletionTimestamp }}"+
-						"{{ .metadata.name }}"+
-						"{{ \"\\n\" }}{{ end }}{{ end }}",
+					"-o", "go-template="+template,
 					"-n", namespace,
 				)
 
@@ -282,6 +284,61 @@ var _ = Describe("Manager", Ordered, func() {
 		//    fmt.Sprintf(`controller_runtime_reconcile_total{controller="%s",result="success"} 1`,
 		//    strings.ToLower(<Kind>),
 		// ))
+
+		It("should be able to list Jobs in the batch API group", func() {
+			By("creating a test Job in the namespace")
+			jobYaml := `
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: test-job
+  namespace: %s
+spec:
+  template:
+    spec:
+      containers:
+      - name: test
+        image: busybox
+        command: ["echo", "hello"]
+      restartPolicy: Never
+`
+			jobFile, err := os.CreateTemp("", "test-job-*.yaml")
+			Expect(err).NotTo(HaveOccurred())
+			defer os.Remove(jobFile.Name())
+
+			_, err = jobFile.Write([]byte(fmt.Sprintf(jobYaml, namespace)))
+			Expect(err).NotTo(HaveOccurred())
+			err = jobFile.Close()
+			Expect(err).NotTo(HaveOccurred())
+
+			cmd := exec.CommandContext(context.Background(), "kubectl", "apply", "-f", jobFile.Name())
+			_, err = utils.Run(cmd)
+			Expect(err).NotTo(HaveOccurred())
+
+			// Clean up the job after the test
+			defer func() {
+				cmd := exec.CommandContext(context.Background(), "kubectl", "delete", "job", "test-job", "-n", namespace)
+				_, _ = utils.Run(cmd)
+			}()
+
+			By("verifying the controller can list Jobs without errors")
+			// This will implicitly test the RBAC permissions as the controller needs to list Jobs
+			// for its discovery functionality
+			verifyJobListing := func(g Gomega) {
+				// We don't need to explicitly call the controller's listing function
+				// as the error would have occurred during normal operation if permissions were missing
+				// Instead, we verify that no RBAC errors are reported in the controller logs
+
+				cmd := exec.CommandContext(context.Background(), "kubectl", "logs", controllerPodName, "-n", namespace)
+				logs, err := utils.Run(cmd)
+				g.Expect(err).NotTo(HaveOccurred())
+
+				// Check that there are no "jobs.batch is forbidden" errors in the logs
+				g.Expect(logs).NotTo(ContainSubstring("jobs.batch is forbidden"),
+					"Controller should have permission to list Jobs")
+			}
+			Eventually(verifyJobListing).Should(Succeed())
+		})
 	})
 })
 

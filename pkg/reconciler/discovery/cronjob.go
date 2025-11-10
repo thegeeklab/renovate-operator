@@ -11,6 +11,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/pkg/renovate"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -89,8 +90,11 @@ func (r *discoveryReconciler) hasRunningDiscoveryJob(ctx context.Context) (bool,
 
 func (r *discoveryReconciler) createDiscoveryJob() (*batchv1.Job, error) {
 	job := &batchv1.Job{
-		ObjectMeta: metadata.DiscoveryMetaData(r.Req),
-		Spec:       r.createJobSpec(),
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: metadata.DiscoveryName(r.Req) + "-",
+			Namespace:    r.instance.Namespace,
+		},
+		Spec: r.createJobSpec(),
 	}
 
 	if err := controllerutil.SetControllerReference(r.instance, job, r.Scheme); err != nil {

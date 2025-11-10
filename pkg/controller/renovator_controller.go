@@ -10,9 +10,12 @@ import (
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
 // RenovatorReconciler reconciles a Renovator object.
@@ -22,6 +25,7 @@ type RenovatorReconciler struct {
 }
 
 //nolint:lll
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
@@ -68,7 +72,9 @@ func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 // SetupWithManager sets up the controller with the Manager.
 func (r *RenovatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&renovatev1beta1.Renovator{}).
+		For(&renovatev1beta1.Renovator{}, builder.WithPredicates(
+			predicate.Or(predicate.GenerationChangedPredicate{}, r.HasOperationAnnotation()),
+		)).
 		Watches(&renovatev1beta1.GitRepo{}, handler.EnqueueRequestForOwner(
 			r.Scheme,
 			mgr.GetRESTMapper(),
@@ -76,6 +82,24 @@ func (r *RenovatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)).
 		Named("renovator").
 		Complete(r)
+}
+
+// HasOperationAnnotation returns a predicate which returns true when the object has an operation annotation.
+func (r *RenovatorReconciler) HasOperationAnnotation() predicate.Funcs {
+	hasOperationAnnotation := func(annotations map[string]string) bool {
+		return annotations[renovatev1beta1.AnnotationOperation] != ""
+	}
+
+	return predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return hasOperationAnnotation(e.Object.GetAnnotations())
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return !hasOperationAnnotation(e.ObjectOld.GetAnnotations()) && hasOperationAnnotation(e.ObjectNew.GetAnnotations())
+		},
+		DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
+		GenericFunc: func(_ event.GenericEvent) bool { return false },
+	}
 }
 
 func handleReconcileResult(res *ctrl.Result, err error) (ctrl.Result, error) {
