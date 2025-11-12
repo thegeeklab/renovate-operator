@@ -4,39 +4,26 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/reconciler"
+	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type discoveryReconciler struct {
-	*reconciler.GenericReconciler
-	instance *renovatev1beta1.Renovator
+type DiscoveryReconciler struct {
+	client.Client
+	Scheme   *runtime.Scheme
+	Req      ctrl.Request
+	Instance *renovatev1beta1.Renovator
 }
 
-func Reconcile(
-	ctx context.Context,
-	kubeClient client.Client,
-	scheme *runtime.Scheme,
-	req ctrl.Request,
-	instance *renovatev1beta1.Renovator,
-) (*ctrl.Result, error) {
-	r := &discoveryReconciler{
-		GenericReconciler: &reconciler.GenericReconciler{
-			KubeClient: kubeClient,
-			Scheme:     scheme,
-			Req:        req,
-		},
-		instance: instance,
-	}
-
+func (r *DiscoveryReconciler) Reconcile(ctx context.Context, res *renovatev1beta1.Renovator) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
-		r.reconcileServiceAccount,
 		r.reconcileRole,
 		r.reconcileRoleBinding,
+		r.reconcileServiceAccount,
 		r.reconcileCronJob,
 	}
 

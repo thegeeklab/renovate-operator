@@ -1,9 +1,12 @@
-package metadata
+package discovery
 
 import (
+	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
+
+const discoveryGroupName = "discovery"
 
 func DiscoveryMetaData(request ctrl.Request) v1.ObjectMeta {
 	return v1.ObjectMeta{
@@ -13,5 +16,5 @@ func DiscoveryMetaData(request ctrl.Request) v1.ObjectMeta {
 }
 
 func DiscoveryName(request ctrl.Request) string {
-	return buildName(request.Name, discoveryGroupName)
+	return metadata.BuildName(request.Name, discoveryGroupName)
 }

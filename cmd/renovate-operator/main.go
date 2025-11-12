@@ -24,7 +24,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/controller"
+	"github.com/thegeeklab/renovate-operator/pkg/controller/renovator"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/pkg/webhook/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
@@ -217,7 +217,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err = (&controller.RenovatorReconciler{
+	if err = (&renovator.Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {

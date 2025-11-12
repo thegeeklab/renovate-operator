@@ -1,4 +1,4 @@
-package controller
+package renovator
 
 import (
 	"context"
@@ -87,7 +87,7 @@ var _ = Describe("Renovator Controller", func() {
 
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
-			controllerReconciler := &RenovatorReconciler{
+			controllerReconciler := &Reconciler{
 				Client: kubeClient,
 				Scheme: kubeClient.Scheme(),
 			}

@@ -1,4 +1,4 @@
-package metadata
+package discovery
 
 import (
 	. "github.com/onsi/ginkgo/v2"

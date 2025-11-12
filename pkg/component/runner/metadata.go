@@ -1,9 +1,12 @@
-package metadata
+package runner
 
 import (
+	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
+
+const runnerGroupName = "runner"
 
 func RunnerMetaData(request ctrl.Request) v1.ObjectMeta {
 	return v1.ObjectMeta{
@@ -13,5 +16,5 @@ func RunnerMetaData(request ctrl.Request) v1.ObjectMeta {
 }
 
 func RunnerName(request ctrl.Request) string {
-	return buildName(request.Name, runnerGroupName)
+	return metadata.BuildName(request.Name, runnerGroupName)
 }

@@ -9,6 +9,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/pkg/discovery"
 	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/renovate"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +18,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-func (r *discoveryReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
+func (r *DiscoveryReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
 	// Check if immediate discovery is requested via annotation
 	if r.isDiscoverOperationRequested() {
 		return r.handleImmediateDiscovery(ctx)
@@ -26,13 +27,13 @@ func (r *discoveryReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Resul
 	return r.handleScheduledDiscovery(ctx)
 }
 
-func (r *discoveryReconciler) isDiscoverOperationRequested() bool {
-	val, ok := r.instance.Annotations[renovatev1beta1.AnnotationOperation]
+func (r *DiscoveryReconciler) isDiscoverOperationRequested() bool {
+	val, ok := r.Instance.Annotations[renovatev1beta1.AnnotationOperation]
 
 	return ok && strings.EqualFold(val, string(renovatev1beta1.OperationDiscover))
 }
 
-func (r *discoveryReconciler) handleImmediateDiscovery(ctx context.Context) (*ctrl.Result, error) {
+func (r *DiscoveryReconciler) handleImmediateDiscovery(ctx context.Context) (*ctrl.Result, error) {
 	// Check if there's already a discovery job running
 	hasRunningJob, err := r.hasRunningDiscoveryJob(ctx)
 	if err != nil {
@@ -45,7 +46,7 @@ func (r *discoveryReconciler) handleImmediateDiscovery(ctx context.Context) (*ct
 	}
 
 	// Create a one-time job for immediate discovery
-	job, err := r.createDiscoveryJob()
+	obj, err := r.createDiscoveryJob()
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
@@ -55,27 +56,46 @@ func (r *discoveryReconciler) handleImmediateDiscovery(ctx context.Context) (*ct
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &batchv1.Job{}, job)
-}
-
-func (r *discoveryReconciler) handleScheduledDiscovery(ctx context.Context) (*ctrl.Result, error) {
-	// Normal scheduled discovery
-	expected, err := r.createCronJob()
+	_, err = k8s.CreateOrUpdate(ctx, r.Client, obj, r.Instance, nil)
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &batchv1.CronJob{}, expected)
+	return &ctrl.Result{}, nil
 }
 
-func (r *discoveryReconciler) hasRunningDiscoveryJob(ctx context.Context) (bool, error) {
+func (r *DiscoveryReconciler) handleScheduledDiscovery(ctx context.Context) (*ctrl.Result, error) {
+	obj := &batchv1.CronJob{ObjectMeta: DiscoveryMetaData(r.Req)}
+
+	op, err := k8s.CreateOrUpdate(ctx, r.Client, obj, r.Instance, func() error {
+		r.updateCronJob(obj)
+
+		return nil
+	})
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	if op == controllerutil.OperationResultUpdated {
+		if err := r.DeleteAllOf(ctx, &batchv1.Job{},
+			client.InNamespace(r.Req.Namespace),
+			client.MatchingLabels(DiscoveryJobLabels()),
+			client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil {
+			return &ctrl.Result{}, err
+		}
+	}
+
+	return &ctrl.Result{}, nil
+}
+
+func (r *DiscoveryReconciler) hasRunningDiscoveryJob(ctx context.Context) (bool, error) {
 	// Check for active discovery jobs
 	existingJobs := &batchv1.JobList{}
-	if err := r.KubeClient.List(ctx, existingJobs, client.InNamespace(r.instance.Namespace)); err != nil {
+	if err := r.List(ctx, existingJobs, client.InNamespace(r.Instance.Namespace)); err != nil {
 		return false, err
 	}
 
-	discoveryName := metadata.DiscoveryName(r.Req)
+	discoveryName := DiscoveryName(r.Req)
 	for _, job := range existingJobs.Items {
 		// Check both manually created discovery jobs and jobs created by CronJob
 		if job.Name == discoveryName || strings.HasPrefix(job.Name, discoveryName) {
@@ -88,54 +108,48 @@ func (r *discoveryReconciler) hasRunningDiscoveryJob(ctx context.Context) (bool,
 	return false, nil
 }
 
-func (r *discoveryReconciler) createDiscoveryJob() (*batchv1.Job, error) {
+func (r *DiscoveryReconciler) createDiscoveryJob() (*batchv1.Job, error) {
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: metadata.DiscoveryName(r.Req) + "-",
-			Namespace:    r.instance.Namespace,
+			GenerateName: DiscoveryName(r.Req) + "-",
+			Namespace:    r.Instance.Namespace,
 		},
 		Spec: r.createJobSpec(),
 	}
 
-	if err := controllerutil.SetControllerReference(r.instance, job, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(r.Instance, job, r.Scheme); err != nil {
 		return nil, err
 	}
 
 	return job, nil
 }
 
-func (r *discoveryReconciler) removeDiscoveryAnnotation(ctx context.Context) error {
+func (r *DiscoveryReconciler) removeDiscoveryAnnotation(ctx context.Context) error {
 	// Remove the annotation to prevent repeated immediate discoveries
-	if r.instance.Annotations == nil {
-		r.instance.Annotations = make(map[string]string)
+	if r.Instance.Annotations == nil {
+		r.Instance.Annotations = make(map[string]string)
 	}
 
-	delete(r.instance.Annotations, renovatev1beta1.AnnotationOperation)
+	delete(r.Instance.Annotations, renovatev1beta1.AnnotationOperation)
 
-	return r.KubeClient.Update(ctx, r.instance)
+	return r.Update(ctx, r.Instance)
 }
 
-func (r *discoveryReconciler) createCronJob() (*batchv1.CronJob, error) {
-	cronJob := &batchv1.CronJob{
-		ObjectMeta: metadata.DiscoveryMetaData(r.Req),
-		Spec: batchv1.CronJobSpec{
-			Schedule:          r.instance.Spec.Discovery.Schedule,
-			ConcurrencyPolicy: batchv1.ForbidConcurrent,
-			Suspend:           r.instance.Spec.Discovery.Suspend,
-			JobTemplate: batchv1.JobTemplateSpec{
-				Spec: r.createJobSpec(),
-			},
+func (r *DiscoveryReconciler) updateCronJob(job *batchv1.CronJob) *batchv1.CronJob {
+	job.Spec.Schedule = r.Instance.Spec.Discovery.Schedule
+	job.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
+	job.Spec.Suspend = r.Instance.Spec.Discovery.Suspend
+	job.Spec.JobTemplate = batchv1.JobTemplateSpec{
+		ObjectMeta: metav1.ObjectMeta{
+			Labels: DiscoveryJobLabels(),
 		},
+		Spec: r.createJobSpec(),
 	}
 
-	if err := controllerutil.SetControllerReference(r.instance, cronJob, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	return cronJob, nil
+	return job
 }
 
-func (r *discoveryReconciler) createJobSpec() batchv1.JobSpec {
+func (r *DiscoveryReconciler) createJobSpec() batchv1.JobSpec {
 	return batchv1.JobSpec{
 		Template: corev1.PodTemplateSpec{
 			Spec: corev1.PodSpec{
@@ -145,7 +159,7 @@ func (r *discoveryReconciler) createJobSpec() batchv1.JobSpec {
 					renovate.DefaultVolume(corev1.VolumeSource{
 						ConfigMap: &corev1.ConfigMapVolumeSource{
 							LocalObjectReference: corev1.LocalObjectReference{
-								Name: r.instance.Name,
+								Name: r.Instance.Name,
 							},
 						},
 					}),
@@ -156,31 +170,31 @@ func (r *discoveryReconciler) createJobSpec() batchv1.JobSpec {
 						},
 					}),
 				InitContainers: []corev1.Container{
-					renovate.DefaultContainer(r.instance, []corev1.EnvVar{
+					renovate.DefaultContainer(r.Instance, []corev1.EnvVar{
 						{
 							Name:  "RENOVATE_AUTODISCOVER",
 							Value: "true",
 						},
 						{
 							Name:  "RENOVATE_AUTODISCOVER_FILTER",
-							Value: strings.Join(r.instance.Spec.Discovery.Filter, ","),
+							Value: strings.Join(r.Instance.Spec.Discovery.Filter, ","),
 						},
 					}, []string{"--write-discovered-repos", renovate.FileRenovateRepositories}),
 				},
 				Containers: []corev1.Container{
 					{
 						Name:            "renovate-discovery",
-						Image:           r.instance.Spec.Image,
+						Image:           r.Instance.Spec.Image,
 						Command:         []string{"/discovery"},
-						ImagePullPolicy: r.instance.Spec.ImagePullPolicy,
+						ImagePullPolicy: r.Instance.Spec.ImagePullPolicy,
 						Env: []corev1.EnvVar{
 							{
 								Name:  discovery.EnvRenovatorInstanceName,
-								Value: r.instance.Name,
+								Value: r.Instance.Name,
 							},
 							{
 								Name:  discovery.EnvRenovatorInstanceNamespace,
-								Value: r.instance.Namespace,
+								Value: r.Instance.Namespace,
 							},
 							{
 								Name:  discovery.EnvRenovateOutputFile,
@@ -197,5 +211,11 @@ func (r *discoveryReconciler) createJobSpec() batchv1.JobSpec {
 				},
 			},
 		},
+	}
+}
+
+func DiscoveryJobLabels() map[string]string {
+	return map[string]string{
+		"renovate.thegeeklab.de/job-type": "cron",
 	}
 }

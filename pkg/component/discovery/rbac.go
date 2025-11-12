@@ -7,28 +7,48 @@ import (
 	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	rbacv1 "k8s.io/api/rbac/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (r *discoveryReconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
-	expected, err := r.createRole()
+func (r *DiscoveryReconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
+	ctxLogger := logf.FromContext(ctx)
+
+	obj, err := r.createRole()
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &rbacv1.Role{}, expected)
-}
-
-func (r *discoveryReconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.Result, error) {
-	expected, err := r.createRoleBinding()
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, obj, nil)
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &rbacv1.RoleBinding{}, expected)
+	ctxLogger.V(1).Info("Discovery RBAC Role", "object", client.ObjectKeyFromObject(obj), "operation", op)
+
+	return &ctrl.Result{}, nil
 }
 
-func (r *discoveryReconciler) createRole() (*rbacv1.Role, error) {
+func (r *DiscoveryReconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.Result, error) {
+	ctxLogger := logf.FromContext(ctx)
+
+	obj, err := r.createRoleBinding()
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, obj, nil)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	ctxLogger.V(1).Info("Discovery RBAC RoleBinding", "object", client.ObjectKeyFromObject(obj), "operation", op)
+
+	return &ctrl.Result{}, nil
+}
+
+func (r *DiscoveryReconciler) createRole() (*rbacv1.Role, error) {
 	role := &rbacv1.Role{
 		ObjectMeta: metadata.GenericMetaData(r.Req),
 		Rules: []rbacv1.PolicyRule{
@@ -44,14 +64,14 @@ func (r *discoveryReconciler) createRole() (*rbacv1.Role, error) {
 			},
 		},
 	}
-	if err := controllerutil.SetControllerReference(r.instance, role, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(r.Instance, role, r.Scheme); err != nil {
 		return nil, err
 	}
 
 	return role, nil
 }
 
-func (r *discoveryReconciler) createRoleBinding() (*rbacv1.RoleBinding, error) {
+func (r *DiscoveryReconciler) createRoleBinding() (*rbacv1.RoleBinding, error) {
 	roleBinding := &rbacv1.RoleBinding{
 		ObjectMeta: metadata.GenericMetaData(r.Req),
 		Subjects: []rbacv1.Subject{
@@ -67,7 +87,7 @@ func (r *discoveryReconciler) createRoleBinding() (*rbacv1.RoleBinding, error) {
 			Name:     metadata.GenericMetaData(r.Req).Name,
 		},
 	}
-	if err := controllerutil.SetControllerReference(r.instance, roleBinding, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(r.Instance, roleBinding, r.Scheme); err != nil {
 		return nil, err
 	}
 

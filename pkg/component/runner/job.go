@@ -6,52 +6,61 @@ import (
 	"math"
 
 	"github.com/thegeeklab/renovate-operator/pkg/dispatcher"
-	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/renovate"
-	"github.com/thegeeklab/renovate-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 var ErrMaxBatchCount = fmt.Errorf("max batch count reached")
 
-func (r *runnerReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
-	spec, err := r.createJobSpec(r.batches)
+func (r *RunnerReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
+	ctxLogger := logf.FromContext(ctx)
+
+	spec, err := r.createJobSpec(r.Batches)
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
 
-	expected, err := r.createCronJob(spec)
+	obj, err := r.createCronJob(spec)
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
 
-	return r.ReconcileResource(ctx, &batchv1.CronJob{}, expected)
+	op, err := ctrl.CreateOrUpdate(ctx, r.Client, obj, nil)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	ctxLogger.V(1).Info("Runner CronJob", "object", client.ObjectKeyFromObject(obj), "operation", op)
+
+	return &ctrl.Result{}, nil
 }
 
-func (r *runnerReconciler) createCronJob(spec batchv1.JobSpec) (*batchv1.CronJob, error) {
+func (r *RunnerReconciler) createCronJob(spec batchv1.JobSpec) (*batchv1.CronJob, error) {
 	cronJob := &batchv1.CronJob{
-		ObjectMeta: metadata.RunnerMetaData(r.Req),
+		ObjectMeta: RunnerMetaData(r.Req),
 		Spec: batchv1.CronJobSpec{
-			Schedule:          r.instance.Spec.Schedule,
+			Schedule:          r.Instance.Spec.Schedule,
 			ConcurrencyPolicy: batchv1.ForbidConcurrent,
-			Suspend:           r.instance.Spec.Suspend,
+			Suspend:           r.Instance.Spec.Suspend,
 			JobTemplate: batchv1.JobTemplateSpec{
 				Spec: spec,
 			},
 		},
 	}
 
-	if err := controllerutil.SetControllerReference(r.instance, cronJob, r.Scheme); err != nil {
+	if err := controllerutil.SetControllerReference(r.Instance, cronJob, r.Scheme); err != nil {
 		return nil, err
 	}
 
 	return cronJob, nil
 }
 
-func (r *runnerReconciler) createJobSpec(batches []util.Batch) (batchv1.JobSpec, error) {
+func (r *RunnerReconciler) createJobSpec(batches []Batch) (batchv1.JobSpec, error) {
 	batchCount := len(batches)
 	if batchCount > math.MaxInt32 {
 		return batchv1.JobSpec{}, fmt.Errorf("%w: %d", ErrMaxBatchCount, batchCount)
@@ -59,7 +68,7 @@ func (r *runnerReconciler) createJobSpec(batches []util.Batch) (batchv1.JobSpec,
 
 	completionMode := batchv1.IndexedCompletion
 	completions := int32(batchCount)
-	parallelism := r.instance.Spec.Runner.Instances
+	parallelism := r.Instance.Spec.Runner.Instances
 
 	return batchv1.JobSpec{
 		CompletionMode: &completionMode,
@@ -77,7 +86,7 @@ func (r *runnerReconciler) createJobSpec(batches []util.Batch) (batchv1.JobSpec,
 						VolumeSource: corev1.VolumeSource{
 							ConfigMap: &corev1.ConfigMapVolumeSource{
 								LocalObjectReference: corev1.LocalObjectReference{
-									Name: r.instance.Name,
+									Name: r.Instance.Name,
 								},
 							},
 						},
@@ -91,9 +100,9 @@ func (r *runnerReconciler) createJobSpec(batches []util.Batch) (batchv1.JobSpec,
 				InitContainers: []corev1.Container{
 					{
 						Name:            "renovate-dispatcher",
-						Image:           r.instance.Spec.Image,
+						Image:           r.Instance.Spec.Image,
 						Command:         []string{"/dispatcher"},
-						ImagePullPolicy: r.instance.Spec.ImagePullPolicy,
+						ImagePullPolicy: r.Instance.Spec.ImagePullPolicy,
 						Env: []corev1.EnvVar{
 							{
 								Name:  dispatcher.EnvRenovateRawConfig,
@@ -122,7 +131,7 @@ func (r *runnerReconciler) createJobSpec(batches []util.Batch) (batchv1.JobSpec,
 					},
 				},
 				Containers: []corev1.Container{
-					renovate.DefaultContainer(r.instance, []corev1.EnvVar{}, []string{}),
+					renovate.DefaultContainer(r.Instance, []corev1.EnvVar{}, []string{}),
 				},
 			},
 		},

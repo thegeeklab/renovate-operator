@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/reconciler"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -17,12 +16,12 @@ import (
 )
 
 var _ = Describe("calculateOptimalBatchSize", func() {
-	var r *runnerReconciler
+	var r *RunnerReconciler
 
 	Context("when explicit batch size is provided", func() {
 		BeforeEach(func() {
-			r = &runnerReconciler{
-				instance: &renovatev1beta1.Renovator{
+			r = &RunnerReconciler{
+				Instance: &renovatev1beta1.Renovator{
 					Spec: renovatev1beta1.RenovatorSpec{
 						Runner: renovatev1beta1.RunnerSpec{
 							Instances: 2,
@@ -42,8 +41,8 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 	Context("when batch size is auto-calculated", func() {
 		Context("with multiple instances and many repositories", func() {
 			BeforeEach(func() {
-				r = &runnerReconciler{
-					instance: &renovatev1beta1.Renovator{
+				r = &RunnerReconciler{
+					Instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
 								Instances: 4,
@@ -62,8 +61,8 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 
 		Context("with batch size exceeding maximum cap", func() {
 			BeforeEach(func() {
-				r = &runnerReconciler{
-					instance: &renovatev1beta1.Renovator{
+				r = &RunnerReconciler{
+					Instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
 								Instances: 1,
@@ -82,8 +81,8 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 
 		Context("with very few repositories", func() {
 			BeforeEach(func() {
-				r = &runnerReconciler{
-					instance: &renovatev1beta1.Renovator{
+				r = &RunnerReconciler{
+					Instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
 								Instances: 10,
@@ -102,8 +101,8 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 
 		Context("with single instance", func() {
 			BeforeEach(func() {
-				r = &runnerReconciler{
-					instance: &renovatev1beta1.Renovator{
+				r = &RunnerReconciler{
+					Instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
 								Instances: 1,
@@ -126,7 +125,7 @@ var _ = Describe("CreateBatches", func() {
 	var (
 		scheme     *runtime.Scheme
 		fakeClient client.Client
-		r          *runnerReconciler
+		r          *RunnerReconciler
 	)
 
 	BeforeEach(func() {
@@ -152,17 +151,15 @@ var _ = Describe("CreateBatches", func() {
 			WithObjects(gitRepos...).
 			Build()
 
-		r = &runnerReconciler{
-			GenericReconciler: &reconciler.GenericReconciler{
-				KubeClient: fakeClient,
-				Req: ctrl.Request{
-					NamespacedName: client.ObjectKey{
-						Name:      "test-renovator",
-						Namespace: "test-namespace",
-					},
+		r = &RunnerReconciler{
+			Client: fakeClient,
+			Req: ctrl.Request{
+				NamespacedName: client.ObjectKey{
+					Name:      "test-renovator",
+					Namespace: "test-namespace",
 				},
 			},
-			instance: &renovatev1beta1.Renovator{
+			Instance: &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
 					Namespace: "test-namespace",
@@ -243,17 +240,15 @@ var _ = Describe("CreateBatches", func() {
 				},
 			}
 
-			r = &runnerReconciler{
-				GenericReconciler: &reconciler.GenericReconciler{
-					KubeClient: fakeClient,
-					Req: ctrl.Request{
-						NamespacedName: client.ObjectKey{
-							Name:      "test-renovator",
-							Namespace: "test-namespace",
-						},
+			r = &RunnerReconciler{
+				Client: fakeClient,
+				Req: ctrl.Request{
+					NamespacedName: client.ObjectKey{
+						Name:      "test-renovator",
+						Namespace: "test-namespace",
 					},
 				},
-				instance: instance,
+				Instance: instance,
 			}
 		})
 
@@ -288,17 +283,15 @@ var _ = Describe("CreateBatches", func() {
 				},
 			}
 
-			r = &runnerReconciler{
-				GenericReconciler: &reconciler.GenericReconciler{
-					KubeClient: fakeClient,
-					Req: ctrl.Request{
-						NamespacedName: client.ObjectKey{
-							Name:      "test-renovator",
-							Namespace: "test-namespace",
-						},
+			r = &RunnerReconciler{
+				Client: fakeClient,
+				Req: ctrl.Request{
+					NamespacedName: client.ObjectKey{
+						Name:      "test-renovator",
+						Namespace: "test-namespace",
 					},
 				},
-				instance: instance,
+				Instance: instance,
 			}
 		})
 

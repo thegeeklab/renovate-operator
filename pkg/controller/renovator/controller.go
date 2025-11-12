@@ -1,12 +1,13 @@
-package controller
+package renovator
 
 import (
 	"context"
 	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/reconciler/discovery"
-	"github.com/thegeeklab/renovate-operator/pkg/reconciler/runner"
+	"github.com/thegeeklab/renovate-operator/pkg/component/discovery"
+	"github.com/thegeeklab/renovate-operator/pkg/component/runner"
+	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -18,8 +19,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-// RenovatorReconciler reconciles a Renovator object.
-type RenovatorReconciler struct {
+// Reconciler reconciles a Renovator object.
+type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
 }
@@ -43,13 +44,13 @@ type RenovatorReconciler struct {
 // move the current state of the cluster closer to the desired state.
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.0/pkg/reconcile
-func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	ctxLogger := logf.FromContext(ctx)
 	ctxLogger.V(1).Info(fmt.Sprintf("reconciling object %#q", req.NamespacedName))
 
-	renovatorRes := &renovatev1beta1.Renovator{}
+	rr := &renovatev1beta1.Renovator{}
 
-	err := r.Get(ctx, req.NamespacedName, renovatorRes)
+	err := r.Get(ctx, req.NamespacedName, rr)
 	if err != nil {
 		if errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -58,11 +59,30 @@ func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 		return ctrl.Result{}, err
 	}
 
-	if res, err := discovery.Reconcile(ctx, r.Client, r.Scheme, req, renovatorRes); err != nil {
+	discovery := &discovery.DiscoveryReconciler{
+		Client:   r.Client,
+		Scheme:   r.Scheme,
+		Req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: rr.Namespace, Name: rr.Name}},
+		Instance: rr,
+	}
+
+	if res, err := discovery.Reconcile(ctx, rr); err != nil {
 		return handleReconcileResult(res, err)
 	}
 
-	if res, err := runner.Reconcile(ctx, r.Client, r.Scheme, req, renovatorRes); err != nil {
+	runner := &runner.RunnerReconciler{
+		Client:   r.Client,
+		Scheme:   r.Scheme,
+		Req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: rr.Namespace, Name: rr.Name}},
+		Instance: rr,
+	}
+
+	runner.Batches, err = runner.CreateBatches(ctx)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	if res, err := runner.Reconcile(ctx, rr); err != nil {
 		return handleReconcileResult(res, err)
 	}
 
@@ -70,7 +90,7 @@ func (r *RenovatorReconciler) Reconcile(ctx context.Context, req ctrl.Request) (
 }
 
 // SetupWithManager sets up the controller with the Manager.
-func (r *RenovatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
+func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Renovator{}, builder.WithPredicates(
 			predicate.Or(predicate.GenerationChangedPredicate{}, r.HasOperationAnnotation()),
@@ -79,13 +99,18 @@ func (r *RenovatorReconciler) SetupWithManager(mgr ctrl.Manager) error {
 			r.Scheme,
 			mgr.GetRESTMapper(),
 			&renovatev1beta1.Renovator{},
+		), builder.WithPredicates(
+			predicate.Or(predicate.GenerationChangedPredicate{}, r.HasOperationAnnotation()),
 		)).
+		Owns(&renovatev1beta1.GitRepo{}).
+		Owns(&batchv1.Job{}).
+		Owns(&batchv1.CronJob{}).
 		Named("renovator").
 		Complete(r)
 }
 
 // HasOperationAnnotation returns a predicate which returns true when the object has an operation annotation.
-func (r *RenovatorReconciler) HasOperationAnnotation() predicate.Funcs {
+func (r *Reconciler) HasOperationAnnotation() predicate.Funcs {
 	hasOperationAnnotation := func(annotations map[string]string) bool {
 		return annotations[renovatev1beta1.AnnotationOperation] != ""
 	}
