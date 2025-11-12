@@ -16,11 +16,11 @@ import (
 )
 
 var _ = Describe("calculateOptimalBatchSize", func() {
-	var r *RunnerReconciler
+	var r *Reconciler
 
 	Context("when explicit batch size is provided", func() {
 		BeforeEach(func() {
-			r = &RunnerReconciler{
+			r = &Reconciler{
 				Instance: &renovatev1beta1.Renovator{
 					Spec: renovatev1beta1.RenovatorSpec{
 						Runner: renovatev1beta1.RunnerSpec{
@@ -41,7 +41,7 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 	Context("when batch size is auto-calculated", func() {
 		Context("with multiple instances and many repositories", func() {
 			BeforeEach(func() {
-				r = &RunnerReconciler{
+				r = &Reconciler{
 					Instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
@@ -61,7 +61,7 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 
 		Context("with batch size exceeding maximum cap", func() {
 			BeforeEach(func() {
-				r = &RunnerReconciler{
+				r = &Reconciler{
 					Instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
@@ -81,7 +81,7 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 
 		Context("with very few repositories", func() {
 			BeforeEach(func() {
-				r = &RunnerReconciler{
+				r = &Reconciler{
 					Instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
@@ -101,7 +101,7 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 
 		Context("with single instance", func() {
 			BeforeEach(func() {
-				r = &RunnerReconciler{
+				r = &Reconciler{
 					Instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
@@ -125,7 +125,7 @@ var _ = Describe("CreateBatches", func() {
 	var (
 		scheme     *runtime.Scheme
 		fakeClient client.Client
-		r          *RunnerReconciler
+		r          *Reconciler
 	)
 
 	BeforeEach(func() {
@@ -151,7 +151,7 @@ var _ = Describe("CreateBatches", func() {
 			WithObjects(gitRepos...).
 			Build()
 
-		r = &RunnerReconciler{
+		r = &Reconciler{
 			Client: fakeClient,
 			Req: ctrl.Request{
 				NamespacedName: client.ObjectKey{
@@ -240,7 +240,7 @@ var _ = Describe("CreateBatches", func() {
 				},
 			}
 
-			r = &RunnerReconciler{
+			r = &Reconciler{
 				Client: fakeClient,
 				Req: ctrl.Request{
 					NamespacedName: client.ObjectKey{
@@ -283,7 +283,7 @@ var _ = Describe("CreateBatches", func() {
 				},
 			}
 
-			r = &RunnerReconciler{
+			r = &Reconciler{
 				Client: fakeClient,
 				Req: ctrl.Request{
 					NamespacedName: client.ObjectKey{

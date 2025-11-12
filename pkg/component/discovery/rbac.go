@@ -12,7 +12,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (r *DiscoveryReconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
+func (r *Reconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
 	ctxLogger := logf.FromContext(ctx)
 
 	obj, err := r.createRole()
@@ -30,7 +30,7 @@ func (r *DiscoveryReconciler) reconcileRole(ctx context.Context) (*ctrl.Result, 
 	return &ctrl.Result{}, nil
 }
 
-func (r *DiscoveryReconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.Result, error) {
+func (r *Reconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.Result, error) {
 	ctxLogger := logf.FromContext(ctx)
 
 	obj, err := r.createRoleBinding()
@@ -48,7 +48,7 @@ func (r *DiscoveryReconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.R
 	return &ctrl.Result{}, nil
 }
 
-func (r *DiscoveryReconciler) createRole() (*rbacv1.Role, error) {
+func (r *Reconciler) createRole() (*rbacv1.Role, error) {
 	role := &rbacv1.Role{
 		ObjectMeta: metadata.GenericMetaData(r.Req),
 		Rules: []rbacv1.PolicyRule{
@@ -71,7 +71,7 @@ func (r *DiscoveryReconciler) createRole() (*rbacv1.Role, error) {
 	return role, nil
 }
 
-func (r *DiscoveryReconciler) createRoleBinding() (*rbacv1.RoleBinding, error) {
+func (r *Reconciler) createRoleBinding() (*rbacv1.RoleBinding, error) {
 	roleBinding := &rbacv1.RoleBinding{
 		ObjectMeta: metadata.GenericMetaData(r.Req),
 		Subjects: []rbacv1.Subject{

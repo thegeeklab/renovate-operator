@@ -59,7 +59,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	discovery := &discovery.DiscoveryReconciler{
+	discovery := &discovery.Reconciler{
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: rr.Namespace, Name: rr.Name}},
@@ -70,7 +70,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return handleReconcileResult(res, err)
 	}
 
-	runner := &runner.RunnerReconciler{
+	runner := &runner.Reconciler{
 		Client:   r.Client,
 		Scheme:   r.Scheme,
 		Req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: rr.Namespace, Name: rr.Name}},

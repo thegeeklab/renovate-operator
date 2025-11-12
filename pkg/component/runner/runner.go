@@ -7,7 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-func (r *RunnerReconciler) ListRepositories(ctx context.Context) ([]string, error) {
+func (r *Reconciler) ListRepositories(ctx context.Context) ([]string, error) {
 	var gitRepoList renovatev1beta1.GitRepoList
 
 	repos := make([]string, 0)
@@ -23,7 +23,7 @@ func (r *RunnerReconciler) ListRepositories(ctx context.Context) ([]string, erro
 	return repos, nil
 }
 
-func (r *RunnerReconciler) CreateBatches(ctx context.Context) ([]Batch, error) {
+func (r *Reconciler) CreateBatches(ctx context.Context) ([]Batch, error) {
 	var batches []Batch
 
 	repos, err := r.ListRepositories(ctx)
@@ -57,7 +57,7 @@ func (r *RunnerReconciler) CreateBatches(ctx context.Context) ([]Batch, error) {
 }
 
 // calculateOptimalBatchSize determines the best batch size based on configuration and repository count.
-func (r *RunnerReconciler) calculateOptimalBatchSize(repoCount int) int {
+func (r *Reconciler) calculateOptimalBatchSize(repoCount int) int {
 	// Aim for 2-3 batches per instance to allow for good parallelization
 	// while keeping batch sizes reasonable
 	instanceMultiplier := 3

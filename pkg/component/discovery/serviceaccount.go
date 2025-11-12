@@ -11,7 +11,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (r *DiscoveryReconciler) reconcileServiceAccount(ctx context.Context) (*ctrl.Result, error) {
+func (r *Reconciler) reconcileServiceAccount(ctx context.Context) (*ctrl.Result, error) {
 	ctxLogger := logf.FromContext(ctx)
 
 	obj, err := r.createServiceAccount()
@@ -29,7 +29,7 @@ func (r *DiscoveryReconciler) reconcileServiceAccount(ctx context.Context) (*ctr
 	return &ctrl.Result{}, nil
 }
 
-func (r *DiscoveryReconciler) createServiceAccount() (*corev1.ServiceAccount, error) {
+func (r *Reconciler) createServiceAccount() (*corev1.ServiceAccount, error) {
 	sa := &corev1.ServiceAccount{
 		ObjectMeta: metadata.GenericMetaData(r.Req),
 	}

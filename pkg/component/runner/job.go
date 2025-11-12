@@ -17,7 +17,7 @@ import (
 
 var ErrMaxBatchCount = fmt.Errorf("max batch count reached")
 
-func (r *RunnerReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
+func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
 	ctxLogger := logf.FromContext(ctx)
 
 	spec, err := r.createJobSpec(r.Batches)
@@ -40,7 +40,7 @@ func (r *RunnerReconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, 
 	return &ctrl.Result{}, nil
 }
 
-func (r *RunnerReconciler) createCronJob(spec batchv1.JobSpec) (*batchv1.CronJob, error) {
+func (r *Reconciler) createCronJob(spec batchv1.JobSpec) (*batchv1.CronJob, error) {
 	cronJob := &batchv1.CronJob{
 		ObjectMeta: RunnerMetaData(r.Req),
 		Spec: batchv1.CronJobSpec{
@@ -60,7 +60,7 @@ func (r *RunnerReconciler) createCronJob(spec batchv1.JobSpec) (*batchv1.CronJob
 	return cronJob, nil
 }
 
-func (r *RunnerReconciler) createJobSpec(batches []Batch) (batchv1.JobSpec, error) {
+func (r *Reconciler) createJobSpec(batches []Batch) (batchv1.JobSpec, error) {
 	batchCount := len(batches)
 	if batchCount > math.MaxInt32 {
 		return batchv1.JobSpec{}, fmt.Errorf("%w: %d", ErrMaxBatchCount, batchCount)

@@ -10,14 +10,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type DiscoveryReconciler struct {
+type Reconciler struct {
 	client.Client
 	Scheme   *runtime.Scheme
 	Req      ctrl.Request
 	Instance *renovatev1beta1.Renovator
 }
 
-func (r *DiscoveryReconciler) Reconcile(ctx context.Context, res *renovatev1beta1.Renovator) (*ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, res *renovatev1beta1.Renovator) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){

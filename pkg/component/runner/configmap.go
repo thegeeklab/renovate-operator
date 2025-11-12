@@ -12,7 +12,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (r *RunnerReconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, error) {
+func (r *Reconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, error) {
 	ctxLogger := logf.FromContext(ctx)
 
 	obj, err := r.createConfigMap()
@@ -32,7 +32,7 @@ func (r *RunnerReconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result
 	return &ctrl.Result{}, nil
 }
 
-func (r *RunnerReconciler) createConfigMap() (*corev1.ConfigMap, error) {
+func (r *Reconciler) createConfigMap() (*corev1.ConfigMap, error) {
 	renovateConfig := &Renovate{
 		DryRun:        r.Instance.Spec.Renovate.DryRun,
 		Onboarding:    *r.Instance.Spec.Renovate.Onboarding,
