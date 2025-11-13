@@ -5,91 +5,93 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/metadata"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
+	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-func (r *Reconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
-	ctxLogger := logf.FromContext(ctx)
-
-	obj, err := r.createRole()
+func (r *Reconciler) reconcileServiceAccount(ctx context.Context) (*ctrl.Result, error) {
+	sa, err := r.createServiceAccount()
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
 
-	op, err := ctrl.CreateOrUpdate(ctx, r.Client, obj, nil)
+	_, err = k8s.CreateOrUpdate(ctx, r.Client, sa, r.instance, nil)
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
-
-	ctxLogger.V(1).Info("Discovery RBAC Role", "object", client.ObjectKeyFromObject(obj), "operation", op)
 
 	return &ctrl.Result{}, nil
+}
+
+func (r *Reconciler) createServiceAccount() (*corev1.ServiceAccount, error) {
+	sa := &corev1.ServiceAccount{ObjectMeta: metadata.GenericMetaData(r.req)}
+
+	if err := controllerutil.SetControllerReference(r.instance, sa, r.scheme); err != nil {
+		return nil, err
+	}
+
+	return sa, nil
+}
+
+func (r *Reconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
+	role := &rbacv1.Role{ObjectMeta: metadata.GenericMetaData(r.req)}
+
+	_, err := k8s.CreateOrUpdate(ctx, r.Client, role, r.instance, func() error {
+		return r.updateRole(role)
+	})
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	return &ctrl.Result{}, nil
+}
+
+func (r *Reconciler) updateRole(role *rbacv1.Role) error {
+	role.Rules = []rbacv1.PolicyRule{
+		{
+			APIGroups: []string{renovatev1beta1.GroupVersion.Group},
+			Resources: []string{"renovators"},
+			Verbs:     []string{"get"},
+		},
+		{
+			APIGroups: []string{renovatev1beta1.GroupVersion.Group},
+			Resources: []string{"gitrepos"},
+			Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
+		},
+	}
+
+	return nil
 }
 
 func (r *Reconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.Result, error) {
-	ctxLogger := logf.FromContext(ctx)
+	rb := &rbacv1.RoleBinding{ObjectMeta: metadata.GenericMetaData(r.req)}
 
-	obj, err := r.createRoleBinding()
+	_, err := k8s.CreateOrUpdate(ctx, r.Client, rb, r.instance, func() error {
+		return r.updateRoleBinding(rb)
+	})
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
-
-	op, err := ctrl.CreateOrUpdate(ctx, r.Client, obj, nil)
-	if err != nil {
-		return &ctrl.Result{}, err
-	}
-
-	ctxLogger.V(1).Info("Discovery RBAC RoleBinding", "object", client.ObjectKeyFromObject(obj), "operation", op)
 
 	return &ctrl.Result{}, nil
 }
 
-func (r *Reconciler) createRole() (*rbacv1.Role, error) {
-	role := &rbacv1.Role{
-		ObjectMeta: metadata.GenericMetaData(r.Req),
-		Rules: []rbacv1.PolicyRule{
-			{
-				APIGroups: []string{renovatev1beta1.GroupVersion.Group},
-				Resources: []string{"renovators"},
-				Verbs:     []string{"get"},
-			},
-			{
-				APIGroups: []string{renovatev1beta1.GroupVersion.Group},
-				Resources: []string{"gitrepos"},
-				Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
-			},
+func (r *Reconciler) updateRoleBinding(rb *rbacv1.RoleBinding) error {
+	rb.Subjects = []rbacv1.Subject{
+		{
+			Kind:      "ServiceAccount",
+			Name:      metadata.GenericMetaData(r.req).Name,
+			Namespace: r.req.Namespace,
 		},
 	}
-	if err := controllerutil.SetControllerReference(r.Instance, role, r.Scheme); err != nil {
-		return nil, err
+	rb.RoleRef = rbacv1.RoleRef{
+		APIGroup: "rbac.authorization.k8s.io",
+		Kind:     "Role",
+		Name:     metadata.GenericMetaData(r.req).Name,
 	}
 
-	return role, nil
-}
-
-func (r *Reconciler) createRoleBinding() (*rbacv1.RoleBinding, error) {
-	roleBinding := &rbacv1.RoleBinding{
-		ObjectMeta: metadata.GenericMetaData(r.Req),
-		Subjects: []rbacv1.Subject{
-			{
-				Kind:      "ServiceAccount",
-				Name:      metadata.GenericMetaData(r.Req).Name,
-				Namespace: r.Req.Namespace,
-			},
-		},
-		RoleRef: rbacv1.RoleRef{
-			APIGroup: "rbac.authorization.k8s.io",
-			Kind:     "Role",
-			Name:     metadata.GenericMetaData(r.Req).Name,
-		},
-	}
-	if err := controllerutil.SetControllerReference(r.Instance, roleBinding, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	return roleBinding, nil
+	return nil
 }

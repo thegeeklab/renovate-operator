@@ -3,75 +3,43 @@ package runner
 import (
 	"context"
 
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/json"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
-	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func (r *Reconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, error) {
-	ctxLogger := logf.FromContext(ctx)
+	cm := &corev1.ConfigMap{ObjectMeta: RunnerMetaData(r.req)}
 
-	obj, err := r.createConfigMap()
-	if err != nil {
-		return &ctrl.Result{}, err
-	}
-
-	op, err := ctrl.CreateOrUpdate(ctx, r.Client, obj, func() error {
-		return nil
+	_, err := k8s.CreateOrUpdate(ctx, r.Client, cm, r.instance, func() error {
+		return r.updateConfigMap(cm)
 	})
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
 
-	ctxLogger.V(1).Info("Runner ConfigMap", "object", client.ObjectKeyFromObject(obj), "operation", op)
-
 	return &ctrl.Result{}, nil
 }
 
-func (r *Reconciler) createConfigMap() (*corev1.ConfigMap, error) {
-	renovateConfig := &Renovate{
-		DryRun:        r.Instance.Spec.Renovate.DryRun,
-		Onboarding:    *r.Instance.Spec.Renovate.Onboarding,
-		PrHourlyLimit: r.Instance.Spec.Renovate.PrHourlyLimit,
-		AddLabels:     r.Instance.Spec.Renovate.AddLabels,
-		Platform:      r.Instance.Spec.Renovate.Platform.Type,
-		Endpoint:      r.Instance.Spec.Renovate.Platform.Endpoint,
-		Repositories:  []string{},
-	}
+func (r *Reconciler) updateConfigMap(cm *corev1.ConfigMap) error {
+	data := make(map[string]string, 0)
 
-	baseConfig, err := json.Marshal(renovateConfig)
+	renovate, err := json.Marshal(r.renovateConfig)
 	if err != nil {
-		return nil, err
+		return err
 	}
 
-	data := map[string]string{
-		"renovate.json": string(baseConfig),
+	data["renovate.json"] = string(renovate)
+
+	batches, err := json.Marshal(r.batches)
+	if err != nil {
+		return err
 	}
 
-	// if batches could be retrieved add them
-	if r.Batches != nil {
-		batchesString, err := json.Marshal(r.Batches)
-		if err != nil {
-			return nil, err
-		}
+	data["batches.json"] = string(batches)
 
-		data["batches.json"] = string(batchesString)
-	}
+	cm.Data = data
 
-	cm := &corev1.ConfigMap{
-		ObjectMeta: v1.ObjectMeta{
-			Name:      r.Instance.Name,
-			Namespace: r.Instance.Namespace,
-		},
-		Data: data,
-	}
-	if err := controllerutil.SetControllerReference(r.Instance, cm, r.Scheme); err != nil {
-		return nil, err
-	}
-
-	return cm, nil
+	return nil
 }

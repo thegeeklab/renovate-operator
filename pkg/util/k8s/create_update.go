@@ -19,8 +19,10 @@ func CreateOrUpdate(
 	ctxLogger := log.FromContext(ctx)
 
 	op, err := controllerutil.CreateOrUpdate(ctx, c, obj, func() error {
-		if err := mutate(); err != nil {
-			return err
+		if mutate != nil {
+			if err := mutate(); err != nil {
+				return err
+			}
 		}
 
 		if owner != nil {
@@ -34,7 +36,8 @@ func CreateOrUpdate(
 	if err != nil {
 		ctxLogger.Error(
 			err, "Failed to ensure resource",
-			"resource", obj.GetObjectKind().GroupVersionKind().Kind, "operation", op,
+			"key", client.ObjectKeyFromObject(obj).String(),
+			"operation", op,
 		)
 
 		return controllerutil.OperationResultNone, err
@@ -43,7 +46,8 @@ func CreateOrUpdate(
 	if op != controllerutil.OperationResultNone {
 		ctxLogger.Info(
 			"Resource reconciled",
-			"resource", obj.GetObjectKind().GroupVersionKind().Kind, "operation", op,
+			"key", client.ObjectKeyFromObject(obj).String(),
+			"operation", op,
 		)
 	}
 

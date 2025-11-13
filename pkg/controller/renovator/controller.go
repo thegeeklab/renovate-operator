@@ -26,7 +26,7 @@ type Reconciler struct {
 }
 
 //nolint:lll
-// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete;deletecollection
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
@@ -59,25 +59,16 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	discovery := &discovery.Reconciler{
-		Client:   r.Client,
-		Scheme:   r.Scheme,
-		Req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: rr.Namespace, Name: rr.Name}},
-		Instance: rr,
+	discovery, err := discovery.NewReconciler(ctx, r.Client, r.Scheme, rr)
+	if err != nil {
+		return ctrl.Result{}, err
 	}
 
 	if res, err := discovery.Reconcile(ctx, rr); err != nil {
 		return handleReconcileResult(res, err)
 	}
 
-	runner := &runner.Reconciler{
-		Client:   r.Client,
-		Scheme:   r.Scheme,
-		Req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: rr.Namespace, Name: rr.Name}},
-		Instance: rr,
-	}
-
-	runner.Batches, err = runner.CreateBatches(ctx)
+	runner, err := runner.NewReconciler(ctx, r.Client, r.Scheme, rr)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

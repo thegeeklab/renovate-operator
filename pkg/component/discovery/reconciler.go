@@ -12,9 +12,23 @@ import (
 
 type Reconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	Req      ctrl.Request
-	Instance *renovatev1beta1.Renovator
+	scheme   *runtime.Scheme
+	req      ctrl.Request
+	instance *renovatev1beta1.Renovator
+}
+
+func NewReconciler(
+	_ context.Context,
+	c client.Client,
+	scheme *runtime.Scheme,
+	instance *renovatev1beta1.Renovator,
+) (*Reconciler, error) {
+	return &Reconciler{
+		Client:   c,
+		scheme:   scheme,
+		req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
+		instance: instance,
+	}, nil
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context, res *renovatev1beta1.Renovator) (*ctrl.Result, error) {

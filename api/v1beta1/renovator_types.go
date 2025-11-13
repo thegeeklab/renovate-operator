@@ -18,8 +18,15 @@ const (
 
 	// AnnotationOperation is the annotation used to trigger operations.
 	AnnotationOperation = "renovate.thegeeklab.de/operation"
+
 	// OperationDiscover is the value used to trigger immediate discovery.
 	OperationDiscover OperationType = "discover"
+
+	// JobTypeLabelKey is the label key used to identify job types.
+	JobTypeLabelKey = "renovate.thegeeklab.de/job-type"
+
+	// JobTypeLabelValue is the value used for cron jobs.
+	JobTypeLabelValue = "cron"
 )
 
 type PlatformSpec struct {

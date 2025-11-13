@@ -6,7 +6,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-const runnerGroupName = "runner"
+const RunnerGroupName = "runner"
 
 func RunnerMetaData(request ctrl.Request) v1.ObjectMeta {
 	return v1.ObjectMeta{
@@ -16,5 +16,5 @@ func RunnerMetaData(request ctrl.Request) v1.ObjectMeta {
 }
 
 func RunnerName(request ctrl.Request) string {
-	return metadata.BuildName(request.Name, runnerGroupName)
+	return metadata.BuildName(request.Name, RunnerGroupName)
 }
