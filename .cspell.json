@@ -72,6 +72,8 @@
     "//\\s*nolint:.*",
     // ignore docker image names
     "\\s*docker\\.io/.*",
+    // ignore kubebuilder
+    "\\+kubebuilder:.*",
     // ignore colors
     "color: .*",
     ".*v1beta1.*",

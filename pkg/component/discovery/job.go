@@ -38,7 +38,7 @@ func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error)
 func (r *Reconciler) handleBatchJob(ctx context.Context) (*ctrl.Result, error) {
 	hasRunningJob, err := r.hasRunningJob(ctx)
 	if err != nil {
-		return &ctrl.Result{}, fmt.Errorf("failed to check running jobs: %w", err)
+		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to check running jobs: %w", err)
 	}
 
 	if hasRunningJob {
@@ -58,11 +58,11 @@ func (r *Reconciler) handleBatchJob(ctx context.Context) (*ctrl.Result, error) {
 
 	_, err = k8s.CreateOrPatch(ctx, r.Client, job, r.instance, nil)
 	if err != nil {
-		return &ctrl.Result{}, fmt.Errorf("failed to create or update job: %w", err)
+		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to create or update job: %w", err)
 	}
 
 	if err := r.removeDiscoveryAnnotation(ctx); err != nil {
-		return &ctrl.Result{}, fmt.Errorf("failed to remove discovery annotation: %w", err)
+		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to remove discovery annotation: %w", err)
 	}
 
 	return &ctrl.Result{}, nil
@@ -75,15 +75,16 @@ func (r *Reconciler) handleCronJob(ctx context.Context) (*ctrl.Result, error) {
 		return r.updateCronJob(job)
 	})
 	if err != nil {
-		return &ctrl.Result{}, fmt.Errorf("failed to create or update cron job: %w", err)
+		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to create or update cron job: %w", err)
 	}
 
 	if op == controllerutil.OperationResultUpdated {
+		// Clean up old jobs when CronJob is updated
 		if err := r.DeleteAllOf(ctx, &batchv1.Job{},
 			client.InNamespace(r.req.Namespace),
 			client.MatchingLabels(DiscoveryJobLabels()),
 			client.PropagationPolicy(metav1.DeletePropagationForeground)); err != nil {
-			return &ctrl.Result{}, fmt.Errorf("failed to delete old jobs: %w", err)
+			return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to delete old jobs: %w", err)
 		}
 	}
 
@@ -91,17 +92,20 @@ func (r *Reconciler) handleCronJob(ctx context.Context) (*ctrl.Result, error) {
 }
 
 func (r *Reconciler) hasRunningJob(ctx context.Context) (bool, error) {
-	// Check for active discovery jobs
+	// Check for active discovery jobs with our specific labels
 	existingJobs := &batchv1.JobList{}
-	if err := r.List(ctx, existingJobs, client.InNamespace(r.instance.Namespace)); err != nil {
+	if err := r.List(ctx, existingJobs,
+		client.InNamespace(r.instance.Namespace),
+		client.MatchingLabels(DiscoveryJobLabels())); err != nil {
 		return false, fmt.Errorf("failed to list existing jobs: %w", err)
 	}
 
 	discoveryName := DiscoveryName(r.req)
 	for _, job := range existingJobs.Items {
 		// Check both manually created discovery jobs and jobs created by CronJob
-		if job.Name == discoveryName || strings.HasPrefix(job.Name, discoveryName) {
-			if job.Status.Active > 0 {
+		if job.Name == discoveryName || strings.HasPrefix(job.Name, discoveryName+"-") {
+			// Consider job as running if it's active or hasn't completed yet
+			if job.Status.Active > 0 || (job.Status.Succeeded == 0 && job.Status.Failed == 0) {
 				return true, nil
 			}
 		}
@@ -139,23 +143,35 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) {
 	spec.Template.Spec.ServiceAccountName = metadata.GenericMetaData(r.req).Name
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 
-	spec.Template.Spec.Volumes = append(
-		renovate.DefaultVolume(corev1.VolumeSource{
-			ConfigMap: &corev1.ConfigMapVolumeSource{
-				DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
-				LocalObjectReference: corev1.LocalObjectReference{
-					Name: r.instance.Name,
+	r.setJobVolumes(&spec.Template.Spec)
+	r.setInitContainers(&spec.Template.Spec)
+	r.setMainContainer(&spec.Template.Spec)
+}
+
+func (r *Reconciler) setJobVolumes(podSpec *corev1.PodSpec) {
+	podSpec.Volumes = []corev1.Volume{
+		{
+			Name: renovate.VolumeRenovateConfig,
+			VolumeSource: corev1.VolumeSource{
+				ConfigMap: &corev1.ConfigMapVolumeSource{
+					DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
+					LocalObjectReference: corev1.LocalObjectReference{
+						Name: r.instance.Name,
+					},
 				},
 			},
-		}),
-		corev1.Volume{
+		},
+		{
 			Name: renovate.VolumeRenovateBase,
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
-		})
+		},
+	}
+}
 
-	spec.Template.Spec.InitContainers = []corev1.Container{
+func (r *Reconciler) setInitContainers(podSpec *corev1.PodSpec) {
+	podSpec.InitContainers = []corev1.Container{
 		renovate.DefaultContainer(r.instance, []corev1.EnvVar{
 			{
 				Name:  "RENOVATE_AUTODISCOVER",
@@ -167,8 +183,10 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) {
 			},
 		}, []string{"--write-discovered-repos", renovate.FileRenovateRepositories}),
 	}
+}
 
-	spec.Template.Spec.Containers = []corev1.Container{
+func (r *Reconciler) setMainContainer(podSpec *corev1.PodSpec) {
+	podSpec.Containers = []corev1.Container{
 		{
 			Name:            "renovate-discovery",
 			Image:           r.instance.Spec.Image,

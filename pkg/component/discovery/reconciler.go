@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
@@ -31,9 +32,13 @@ func NewReconciler(
 	}, nil
 }
 
-func (r *Reconciler) Reconcile(ctx context.Context, res *renovatev1beta1.Renovator) (*ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context, instance *renovatev1beta1.Renovator) (*ctrl.Result, error) {
+	// Update the instance reference to ensure we're working with the latest version
+	r.instance = instance
+
 	results := &reconciler.Results{}
 
+	// Define the reconciliation order
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
 		r.reconcileRole,
 		r.reconcileRoleBinding,
@@ -41,10 +46,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, res *renovatev1beta1.Renovat
 		r.reconcileCronJob,
 	}
 
+	// Execute each reconciliation step
 	for _, reconcileFunc := range reconcileFuncs {
 		res, err := reconcileFunc(ctx)
 		if err != nil {
-			return res, err
+			return &ctrl.Result{Requeue: true}, fmt.Errorf("reconciliation failed: %w", err)
 		}
 
 		results.Collect(res)
