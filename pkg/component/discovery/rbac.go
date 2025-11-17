@@ -9,16 +9,14 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (r *Reconciler) reconcileServiceAccount(ctx context.Context) (*ctrl.Result, error) {
-	sa, err := r.createServiceAccount()
-	if err != nil {
-		return &ctrl.Result{}, err
-	}
+	sa := &corev1.ServiceAccount{ObjectMeta: metadata.GenericMetaData(r.req)}
 
-	_, err = k8s.CreateOrUpdate(ctx, r.Client, sa, r.instance, nil)
+	_, err := k8s.CreateOrPatch(ctx, r.Client, sa, r.instance, func() error {
+		return r.updateServiceAccount(sa)
+	})
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
@@ -26,20 +24,14 @@ func (r *Reconciler) reconcileServiceAccount(ctx context.Context) (*ctrl.Result,
 	return &ctrl.Result{}, nil
 }
 
-func (r *Reconciler) createServiceAccount() (*corev1.ServiceAccount, error) {
-	sa := &corev1.ServiceAccount{ObjectMeta: metadata.GenericMetaData(r.req)}
-
-	if err := controllerutil.SetControllerReference(r.instance, sa, r.scheme); err != nil {
-		return nil, err
-	}
-
-	return sa, nil
+func (r *Reconciler) updateServiceAccount(_ *corev1.ServiceAccount) error {
+	return nil
 }
 
 func (r *Reconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
 	role := &rbacv1.Role{ObjectMeta: metadata.GenericMetaData(r.req)}
 
-	_, err := k8s.CreateOrUpdate(ctx, r.Client, role, r.instance, func() error {
+	_, err := k8s.CreateOrPatch(ctx, r.Client, role, r.instance, func() error {
 		return r.updateRole(role)
 	})
 	if err != nil {
@@ -69,7 +61,7 @@ func (r *Reconciler) updateRole(role *rbacv1.Role) error {
 func (r *Reconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.Result, error) {
 	rb := &rbacv1.RoleBinding{ObjectMeta: metadata.GenericMetaData(r.req)}
 
-	_, err := k8s.CreateOrUpdate(ctx, r.Client, rb, r.instance, func() error {
+	_, err := k8s.CreateOrPatch(ctx, r.Client, rb, r.instance, func() error {
 		return r.updateRoleBinding(rb)
 	})
 	if err != nil {

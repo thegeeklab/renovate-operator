@@ -45,8 +45,8 @@ type Reconciler struct {
 // For more details, check Reconcile and its Result here:
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.0/pkg/reconcile
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
-	ctxLogger := logf.FromContext(ctx)
-	ctxLogger.V(1).Info(fmt.Sprintf("reconciling object %#q", req.NamespacedName))
+	log := logf.FromContext(ctx)
+	log.V(1).Info(fmt.Sprintf("Reconciling object %#q", req.NamespacedName))
 
 	rr := &renovatev1beta1.Renovator{}
 

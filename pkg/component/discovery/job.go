@@ -7,6 +7,7 @@ import (
 	"time"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/pkg/discovery"
 	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/renovate"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
@@ -44,18 +45,24 @@ func (r *Reconciler) handleBatchJob(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{RequeueAfter: RequeueDelay}, nil
 	}
 
-	job, err := r.createBatchJob()
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: DiscoveryName(r.req) + "-",
+			Namespace:    r.instance.Namespace,
+			Labels:       DiscoveryJobLabels(),
+		},
+		Spec: batchv1.JobSpec{},
+	}
+
+	r.updateJobSpec(&job.Spec)
+
+	_, err = k8s.CreateOrPatch(ctx, r.Client, job, r.instance, nil)
 	if err != nil {
-		return &ctrl.Result{}, fmt.Errorf("failed to create batch job: %w", err)
+		return &ctrl.Result{}, fmt.Errorf("failed to create or update job: %w", err)
 	}
 
 	if err := r.removeDiscoveryAnnotation(ctx); err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to remove discovery annotation: %w", err)
-	}
-
-	_, err = k8s.CreateOrUpdate(ctx, r.Client, job, r.instance, nil)
-	if err != nil {
-		return &ctrl.Result{}, fmt.Errorf("failed to create or update job: %w", err)
 	}
 
 	return &ctrl.Result{}, nil
@@ -64,7 +71,7 @@ func (r *Reconciler) handleBatchJob(ctx context.Context) (*ctrl.Result, error) {
 func (r *Reconciler) handleCronJob(ctx context.Context) (*ctrl.Result, error) {
 	job := &batchv1.CronJob{ObjectMeta: DiscoveryMetaData(r.req)}
 
-	op, err := k8s.CreateOrUpdate(ctx, r.Client, job, r.instance, func() error {
+	op, err := k8s.CreateOrPatch(ctx, r.Client, job, r.instance, func() error {
 		return r.updateCronJob(job)
 	})
 	if err != nil {
@@ -103,25 +110,6 @@ func (r *Reconciler) hasRunningJob(ctx context.Context) (bool, error) {
 	return false, nil
 }
 
-func (r *Reconciler) createBatchJob() (*batchv1.Job, error) {
-	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: DiscoveryName(r.req) + "-",
-			Namespace:    r.instance.Namespace,
-			Labels:       DiscoveryJobLabels(),
-		},
-		Spec: batchv1.JobSpec{},
-	}
-
-	r.updateJobSpec(&job.Spec)
-
-	if err := controllerutil.SetControllerReference(r.instance, job, r.scheme); err != nil {
-		return nil, fmt.Errorf("failed to set controller reference: %w", err)
-	}
-
-	return job, nil
-}
-
 func (r *Reconciler) removeDiscoveryAnnotation(ctx context.Context) error {
 	if r.instance.Annotations == nil {
 		r.instance.Annotations = make(map[string]string)
@@ -151,8 +139,6 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) {
 	spec.Template.Spec.ServiceAccountName = metadata.GenericMetaData(r.req).Name
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 
-	fmt.Println("Before: ", spec.Template.Spec.Volumes)
-
 	spec.Template.Spec.Volumes = append(
 		renovate.DefaultVolume(corev1.VolumeSource{
 			ConfigMap: &corev1.ConfigMapVolumeSource{
@@ -169,46 +155,45 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) {
 			},
 		})
 
-	fmt.Println("After: ", spec.Template.Spec.Volumes)
+	spec.Template.Spec.InitContainers = []corev1.Container{
+		renovate.DefaultContainer(r.instance, []corev1.EnvVar{
+			{
+				Name:  "RENOVATE_AUTODISCOVER",
+				Value: "true",
+			},
+			{
+				Name:  "RENOVATE_AUTODISCOVER_FILTER",
+				Value: strings.Join(r.instance.Spec.Discovery.Filter, ","),
+			},
+		}, []string{"--write-discovered-repos", renovate.FileRenovateRepositories}),
+	}
 
-	// spec.Template.Spec.InitContainers = []corev1.Container{
-	// 	renovate.DefaultContainer(r.instance, []corev1.EnvVar{
-	// 		{
-	// 			Name:  "RENOVATE_AUTODISCOVER",
-	// 			Value: "true",
-	// 		},
-	// 		{
-	// 			Name:  "RENOVATE_AUTODISCOVER_FILTER",
-	// 			Value: strings.Join(r.instance.Spec.Discovery.Filter, ","),
-	// 		},
-	// 	}, []string{"--write-discovered-repos", renovate.FileRenovateRepositories}),
-	// }
-	// spec.Template.Spec.Containers = []corev1.Container{
-	// 	{
-	// 		Name:            "renovate-discovery",
-	// 		Image:           r.instance.Spec.Image,
-	// 		Command:         []string{"/discovery"},
-	// 		ImagePullPolicy: r.instance.Spec.ImagePullPolicy,
-	// 		Env: []corev1.EnvVar{
-	// 			{
-	// 				Name:  discovery.EnvRenovatorInstanceName,
-	// 				Value: r.instance.Name,
-	// 			},
-	// 			{
-	// 				Name:  discovery.EnvRenovatorInstanceNamespace,
-	// 				Value: r.instance.Namespace,
-	// 			},
-	// 			{
-	// 				Name:  discovery.EnvRenovateOutputFile,
-	// 				Value: renovate.FileRenovateRepositories,
-	// 			},
-	// 		},
-	// 		VolumeMounts: []corev1.VolumeMount{
-	// 			{
-	// 				Name:      renovate.VolumeRenovateBase,
-	// 				MountPath: renovate.DirRenovateTmp,
-	// 			},
-	// 		},
-	// 	},
-	// }
+	spec.Template.Spec.Containers = []corev1.Container{
+		{
+			Name:            "renovate-discovery",
+			Image:           r.instance.Spec.Image,
+			Command:         []string{"/discovery"},
+			ImagePullPolicy: r.instance.Spec.ImagePullPolicy,
+			Env: []corev1.EnvVar{
+				{
+					Name:  discovery.EnvRenovatorInstanceName,
+					Value: r.instance.Name,
+				},
+				{
+					Name:  discovery.EnvRenovatorInstanceNamespace,
+					Value: r.instance.Namespace,
+				},
+				{
+					Name:  discovery.EnvRenovateOutputFile,
+					Value: renovate.FileRenovateRepositories,
+				},
+			},
+			VolumeMounts: []corev1.VolumeMount{
+				{
+					Name:      renovate.VolumeRenovateBase,
+					MountPath: renovate.DirRenovateTmp,
+				},
+			},
+		},
+	}
 }

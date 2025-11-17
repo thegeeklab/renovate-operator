@@ -19,7 +19,7 @@ var ErrMaxBatchCount = fmt.Errorf("max batch count reached")
 func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
 	job := &batchv1.CronJob{ObjectMeta: RunnerMetaData(r.req)}
 
-	_, err := k8s.CreateOrUpdate(ctx, r.Client, job, r.instance, func() error {
+	_, err := k8s.CreateOrPatch(ctx, r.Client, job, r.instance, func() error {
 		return r.updateCronJob(job)
 	})
 	if err != nil {
@@ -60,6 +60,7 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) error {
 			Name: renovate.VolumeRenovateTmp,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
+					DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: r.instance.Name,
 					},

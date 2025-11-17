@@ -69,7 +69,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, res *renovatev1beta1.Renovat
 
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
 		r.reconcileConfigMap,
-		// r.reconcileCronJob,
+		r.reconcileCronJob,
 	}
 
 	for _, reconcileFunc := range reconcileFuncs {

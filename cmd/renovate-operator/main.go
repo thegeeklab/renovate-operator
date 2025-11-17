@@ -89,7 +89,7 @@ func main() {
 	// - https://github.com/advisories/GHSA-qppj-fm5r-hxr3
 	// - https://github.com/advisories/GHSA-4374-p667-p6c8
 	disableHTTP2 := func(c *tls.Config) {
-		setupLog.Info("disabling http/2")
+		setupLog.Info("Disabling HTTP/2")
 
 		c.NextProtos = []string{"http/1.1"}
 	}
@@ -165,7 +165,7 @@ func main() {
 			filepath.Join(metricsCertPath, metricsCertKey),
 		)
 		if err != nil {
-			setupLog.Error(err, "to initialize metrics certificate watcher", "error", err)
+			setupLog.Error(err, "Failed to initialize metrics certificate watcher", "error", err)
 			os.Exit(1)
 		}
 
@@ -213,7 +213,7 @@ func main() {
 
 	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
 	if err != nil {
-		setupLog.Error(err, "unable to start manager")
+		setupLog.Error(err, "Unable to start manager")
 		os.Exit(1)
 	}
 
@@ -221,13 +221,13 @@ func main() {
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "unable to create controller", "controller", "Renovator")
+		setupLog.Error(err, "Unable to create controller", "controller", "Renovator")
 		os.Exit(1)
 	}
 
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		if err = webhookrenovatev1beta1.SetupRenovatorWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "unable to create webhook", "webhook", "Renovator")
+			setupLog.Error(err, "Unable to create webhook", "webhook", "Renovator")
 			os.Exit(1)
 		}
 	}
@@ -238,7 +238,7 @@ func main() {
 		setupLog.Info("Adding metrics certificate watcher to manager")
 
 		if err := mgr.Add(metricsCertWatcher); err != nil {
-			setupLog.Error(err, "unable to add metrics certificate watcher to manager")
+			setupLog.Error(err, "Unable to add metrics certificate watcher to manager")
 			os.Exit(1)
 		}
 	}
@@ -247,25 +247,25 @@ func main() {
 		setupLog.Info("Adding webhook certificate watcher to manager")
 
 		if err := mgr.Add(webhookCertWatcher); err != nil {
-			setupLog.Error(err, "unable to add webhook certificate watcher to manager")
+			setupLog.Error(err, "Unable to add webhook certificate watcher to manager")
 			os.Exit(1)
 		}
 	}
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up health check")
+		setupLog.Error(err, "Unable to set up health check")
 		os.Exit(1)
 	}
 
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "unable to set up ready check")
+		setupLog.Error(err, "Unable to set up ready check")
 		os.Exit(1)
 	}
 
-	setupLog.Info("starting manager")
+	setupLog.Info("Starting manager")
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "problem running manager")
+		setupLog.Error(err, "Problem running manager")
 		os.Exit(1)
 	}
 }

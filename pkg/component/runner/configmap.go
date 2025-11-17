@@ -5,14 +5,18 @@ import (
 
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/json"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
 func (r *Reconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, error) {
-	cm := &corev1.ConfigMap{ObjectMeta: RunnerMetaData(r.req)}
+	cm := &corev1.ConfigMap{ObjectMeta: v1.ObjectMeta{
+		Name:      r.instance.Name,
+		Namespace: r.instance.Namespace,
+	}}
 
-	_, err := k8s.CreateOrUpdate(ctx, r.Client, cm, r.instance, func() error {
+	_, err := k8s.CreateOrPatch(ctx, r.Client, cm, r.instance, func() error {
 		return r.updateConfigMap(cm)
 	})
 	if err != nil {

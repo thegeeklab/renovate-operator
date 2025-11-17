@@ -48,7 +48,7 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, obj runtime.Object
 		return fmt.Errorf("%w: %T", ErrRenovatorObjectType, obj)
 	}
 
-	renovatorlog.Info("Defaulting for Renovator", "name", renovator.GetName())
+	renovatorlog.Info("Defaulting for renovator", "name", renovator.GetName())
 
 	renovator.Default()
 
