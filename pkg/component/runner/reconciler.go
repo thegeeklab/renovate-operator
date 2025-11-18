@@ -94,8 +94,8 @@ func (r *Reconciler) listRepositories(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
-	for i, repo := range gitRepoList.Items {
-		repos[i] = repo.Spec.Name
+	for _, repo := range gitRepoList.Items {
+		repos = append(repos, repo.Spec.Name)
 	}
 
 	return repos, nil
