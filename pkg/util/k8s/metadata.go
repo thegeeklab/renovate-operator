@@ -5,7 +5,7 @@ import (
 
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"
-	"sigs.k8s.io/controller-runtime/pkg/client/apiutil"
+	api_util "sigs.k8s.io/controller-runtime/pkg/client/apiutil"
 )
 
 func trimList(gvk schema.GroupVersionKind) schema.GroupVersionKind {
@@ -20,7 +20,7 @@ func GVK(scheme *runtime.Scheme, obj runtime.Object) schema.GroupVersionKind {
 		return trimList(gvk)
 	}
 
-	gvk, _ = apiutil.GVKForObject(obj, scheme)
+	gvk, _ = api_util.GVKForObject(obj, scheme)
 
 	return trimList(gvk)
 }

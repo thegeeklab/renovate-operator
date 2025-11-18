@@ -9,4 +9,4 @@ steps:
   - name: spellcheck
     image: ghcr.io/streetsidesoftware/cspell
     commands:
-      - cspell-cli --gitignore "**/{.*,*,.*/**,*/**}" --color
+      - cspell-cli lint . --gitignore --color
