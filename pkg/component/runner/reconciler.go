@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"math"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
@@ -30,7 +31,7 @@ type Renovate struct {
 	Platform      renovatev1beta1.PlatformType `json:"platform"`
 	Endpoint      string                       `json:"endpoint"`
 	AddLabels     []string                     `json:"addLabels,omitempty"`
-	Repositories  []string                     `json:"repositories"`
+	Repositories  []string                     `json:"repositories,omitempty"`
 }
 
 func NewReconciler(
@@ -73,12 +74,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, res *renovatev1beta1.Renovat
 	}
 
 	for _, reconcileFunc := range reconcileFuncs {
-		res, err := reconcileFunc(ctx)
+		result, err := reconcileFunc(ctx)
 		if err != nil {
-			return res, err
+			return result, err
 		}
 
-		results.Collect(res)
+		results.Collect(result)
 	}
 
 	return results.ToResult(), nil
@@ -93,8 +94,8 @@ func (r *Reconciler) listRepositories(ctx context.Context) ([]string, error) {
 		return nil, err
 	}
 
-	for _, repo := range gitRepoList.Items {
-		repos = append(repos, repo.Spec.Name)
+	for i, repo := range gitRepoList.Items {
+		repos[i] = repo.Spec.Name
 	}
 
 	return repos, nil
@@ -119,28 +120,27 @@ func (r *Reconciler) createBatches(ctx context.Context) ([]Batch, error) {
 		batchSize := r.calculateOptimalBatchSize(repoCount)
 
 		for i := 0; i < repoCount; i += batchSize {
-			end := min(i+batchSize, repoCount)
+			end := int(math.Min(float64(i+batchSize), float64(repoCount)))
 			batch := repos[i:end]
 			batches = append(batches, Batch{Repositories: batch})
 		}
+
+		return batches, nil
+
 	case renovatev1beta1.RunnerStrategy_NONE:
 		fallthrough
 	default:
 		// NONE strategy and unknown strategies: process all repositories in a single batch
-		batches = append(batches, Batch{Repositories: repos})
+		return []Batch{{Repositories: repos}}, nil
 	}
-
-	return batches, nil
 }
 
 // calculateOptimalBatchSize determines the best batch size based on configuration and repository count.
 func (r *Reconciler) calculateOptimalBatchSize(repoCount int) int {
-	// Aim for 2-3 batches per instance to allow for good parallelization
-	// while keeping batch sizes reasonable
-	instanceMultiplier := 3
-
-	// Cap at 50 repositories per batch to avoid excessively long-running jobs
-	maxBatchSize := 50
+	const (
+		instanceMultiplier = 3  // Aim for 2-3 batches per instance
+		maxBatchSize       = 50 // Cap at 50 repositories per batch
+	)
 
 	// If BatchSize is explicitly set, use it
 	if r.instance.Spec.Runner.BatchSize > 0 {

@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -11,8 +12,8 @@ import (
 )
 
 var (
-	ErrReadFile  = fmt.Errorf("failed to read file")
-	ErrWriteFile = fmt.Errorf("failed to write file")
+	ErrReadFile  = errors.New("failed to read file")
+	ErrWriteFile = errors.New("failed to write file")
 )
 
 func main() {

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"fmt"
 
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -20,29 +21,36 @@ func (r *Reconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, erro
 		return r.updateConfigMap(cm)
 	})
 	if err != nil {
-		return &ctrl.Result{}, err
+		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to create or update config map: %w", err)
 	}
 
 	return &ctrl.Result{}, nil
 }
 
 func (r *Reconciler) updateConfigMap(cm *corev1.ConfigMap) error {
-	data := make(map[string]string, 0)
+	data := make(map[string]string)
 
-	renovate, err := json.Marshal(r.renovateConfig)
+	// Validate and serialize renovate config
+	renovateConfig, err := json.Marshal(r.renovateConfig)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to serialize renovate config: %w", err)
 	}
 
-	data["renovate.json"] = string(renovate)
-
-	batches, err := json.Marshal(r.batches)
-	if err != nil {
-		return err
+	if len(renovateConfig) > 0 {
+		data["renovate.json"] = string(renovateConfig)
 	}
 
-	data["batches.json"] = string(batches)
+	// Validate and serialize batches
+	batchesData, err := json.Marshal(r.batches)
+	if err != nil {
+		return fmt.Errorf("failed to serialize batches: %w", err)
+	}
 
+	if len(batchesData) > 0 {
+		data["batches.json"] = string(batchesData)
+	}
+
+	// Set the data in the config map
 	cm.Data = data
 
 	return nil

@@ -2,13 +2,12 @@ package renovator
 
 import (
 	"context"
-	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/component/discovery"
 	"github.com/thegeeklab/renovate-operator/pkg/component/runner"
 	batchv1 "k8s.io/api/batch/v1"
-	"k8s.io/apimachinery/pkg/api/errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
@@ -46,13 +45,12 @@ type Reconciler struct {
 // - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.0/pkg/reconcile
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
-	log.V(1).Info(fmt.Sprintf("Reconciling object %#q", req.NamespacedName))
+	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
 	rr := &renovatev1beta1.Renovator{}
 
-	err := r.Get(ctx, req.NamespacedName, rr)
-	if err != nil {
-		if errors.IsNotFound(err) {
+	if err := r.Get(ctx, req.NamespacedName, rr); err != nil {
+		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
 

@@ -10,22 +10,16 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 func (r *Reconciler) reconcileServiceAccount(ctx context.Context) (*ctrl.Result, error) {
 	sa := &corev1.ServiceAccount{ObjectMeta: metadata.GenericMetaData(r.req)}
 
-	op, err := k8s.CreateOrPatch(ctx, r.Client, sa, r.instance, func() error {
+	_, err := k8s.CreateOrPatch(ctx, r.Client, sa, r.instance, func() error {
 		return r.updateServiceAccount(sa)
 	})
 	if err != nil {
 		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to create or update service account: %w", err)
-	}
-
-	// If the service account was just created, we should reconcile the role binding
-	if op == controllerutil.OperationResultCreated {
-		return &ctrl.Result{Requeue: true}, nil
 	}
 
 	return &ctrl.Result{}, nil
@@ -38,16 +32,11 @@ func (r *Reconciler) updateServiceAccount(_ *corev1.ServiceAccount) error {
 func (r *Reconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
 	role := &rbacv1.Role{ObjectMeta: metadata.GenericMetaData(r.req)}
 
-	op, err := k8s.CreateOrPatch(ctx, r.Client, role, r.instance, func() error {
+	_, err := k8s.CreateOrPatch(ctx, r.Client, role, r.instance, func() error {
 		return r.updateRole(role)
 	})
 	if err != nil {
 		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to create or update role: %w", err)
-	}
-
-	// If the role was just created, we should reconcile the role binding
-	if op == controllerutil.OperationResultCreated {
-		return &ctrl.Result{Requeue: true}, nil
 	}
 
 	return &ctrl.Result{}, nil

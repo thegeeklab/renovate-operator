@@ -11,7 +11,7 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-// CreateOrUpdate is a wrapper function that creates or updates a Kubernetes object
+// CreateOrPatch is a wrapper function that creates or updates a Kubernetes object
 // with the specified owner and mutation function.
 func CreateOrPatch(
 	ctx context.Context,
@@ -38,7 +38,8 @@ func CreateOrPatch(
 	})
 	if err != nil {
 		log.Error(
-			err, fmt.Sprintf("Failed to reconcile object %#q", client.ObjectKeyFromObject(obj).String()),
+			err, "Failed to reconcile object",
+			"object", client.ObjectKeyFromObject(obj).String(),
 			"kind", GVK(c.Scheme(), obj).Kind,
 			"operation", op,
 		)
@@ -48,7 +49,8 @@ func CreateOrPatch(
 
 	if op != controllerutil.OperationResultNone {
 		log.Info(
-			fmt.Sprintf("Reconciled object %#q", client.ObjectKeyFromObject(obj).String()),
+			"Reconciled object",
+			"object", client.ObjectKeyFromObject(obj).String(),
 			"kind", GVK(c.Scheme(), obj).Kind,
 			"operation", op,
 		)

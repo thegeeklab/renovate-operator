@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,7 +17,7 @@ var (
 	// log is for logging in this package.
 	renovatorlog = logf.Log.WithName("renovator-resource")
 
-	ErrRenovatorObjectType = fmt.Errorf("expected an Renovator object but got other type")
+	ErrRenovatorObjectType = errors.New("expected a renovator object but got other type")
 )
 
 // SetupRenovatorWebhookWithManager registers the webhook for Renovator in the manager.

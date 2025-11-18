@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/discovery"
-	"k8s.io/apimachinery/pkg/api/errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,7 +23,7 @@ import (
 var (
 	scheme = runtime.NewScheme()
 
-	ErrReadDiscoveryFile = fmt.Errorf("failed to read discovery file")
+	ErrReadDiscoveryFile = errors.New("failed to read discovery file")
 )
 
 func init() {
@@ -76,7 +77,7 @@ func run(ctx context.Context) error {
 		r := discovery.CreateGitRepo(renovator, d.Namespace, repo)
 
 		err := d.KubeClient.Create(ctx, r)
-		if err != nil && !errors.IsAlreadyExists(err) {
+		if err != nil && !api_errors.IsAlreadyExists(err) {
 			log.Error(err, "Failed to create GitRepo", "repo", repo)
 		}
 	}

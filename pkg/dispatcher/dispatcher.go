@@ -2,6 +2,7 @@ package dispatcher
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"maps"
 	"strconv"
@@ -10,9 +11,9 @@ import (
 )
 
 var (
-	ErrInvalidBatchIndex = fmt.Errorf("batch index out of bounds")
-	ErrMergeConfig       = fmt.Errorf("failed to merge config")
-	ErrDispatcherClient  = fmt.Errorf("failed to create dispatcher client")
+	ErrInvalidBatchIndex = errors.New("batch index out of bounds")
+	ErrMergeConfig       = errors.New("failed to merge config")
+	ErrDispatcherClient  = errors.New("failed to create dispatcher client")
 )
 
 type Dispatcher struct {

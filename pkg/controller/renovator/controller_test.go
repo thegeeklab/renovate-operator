@@ -5,7 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/apimachinery/pkg/api/errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
@@ -39,14 +39,14 @@ var _ = Describe("Renovator Controller", func() {
 			}
 			err := kubeClient.Create(ctx, secret)
 			if err != nil {
-				Expect(errors.IsAlreadyExists(err)).To(BeTrue())
+				Expect(api_errors.IsAlreadyExists(err)).To(BeTrue())
 			} else {
 				Expect(err).NotTo(HaveOccurred())
 			}
 
 			By("creating the custom resource for the Kind Renovator")
 			err = kubeClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Renovator{})
-			if err != nil && errors.IsNotFound(err) {
+			if err != nil && api_errors.IsNotFound(err) {
 				resource := &renovatev1beta1.Renovator{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,

@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -14,7 +15,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-var ErrMaxBatchCount = fmt.Errorf("max batch count reached")
+var ErrMaxBatchCount = errors.New("max batch count reached")
 
 func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
 	job := &batchv1.CronJob{ObjectMeta: RunnerMetaData(r.req)}
@@ -34,11 +35,7 @@ func (r *Reconciler) updateCronJob(job *batchv1.CronJob) error {
 	job.Spec.ConcurrencyPolicy = batchv1.ForbidConcurrent
 	job.Spec.Suspend = r.instance.Spec.Suspend
 
-	if err := r.updateJobSpec(&job.Spec.JobTemplate.Spec); err != nil {
-		return err
-	}
-
-	return nil
+	return r.updateJobSpec(&job.Spec.JobTemplate.Spec)
 }
 
 func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) error {
@@ -72,7 +69,8 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) error {
 			VolumeSource: corev1.VolumeSource{
 				EmptyDir: &corev1.EmptyDirVolumeSource{},
 			},
-		})
+		},
+	)
 
 	spec.Template.Spec.InitContainers = []corev1.Container{
 		{

@@ -6,7 +6,10 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-const RunnerGroupName = "runner"
+const (
+	// RunnerGroupName is the group name used for runner components.
+	RunnerGroupName = "runner"
+)
 
 func RunnerMetaData(request ctrl.Request) v1.ObjectMeta {
 	return v1.ObjectMeta{
