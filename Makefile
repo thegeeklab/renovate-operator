@@ -6,6 +6,7 @@ GOLANGCI_LINT_PACKAGE_VERSION := v2.6.2
 CERT_MANAGER_VERSION := v1.19.1
 
 GOFUMPT_PACKAGE ?= mvdan.cc/gofumpt@$(GOFUMPT_PACKAGE_VERSION)
+GOTESTSUM_PACKAGE ?= gotest.tools/gotestsum@latest
 
 # Image URL to use all building image targets
 IMG ?= docker.io/thegeeklab/renovate-operator:devel
@@ -55,6 +56,7 @@ deps:
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(shell go env GOPATH)/bin $(GOLANGCI_LINT_PACKAGE_VERSION)
 	$(GO) mod download
 	$(GO) install $(GOFUMPT_PACKAGE)
+	$(GO) install $(GOTESTSUM_PACKAGE)
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -74,7 +76,7 @@ vet: ## Run go vet against code.
 
 .PHONY: test
 test: manifests generate fmt vet setup-envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GO) test $$($(GO) list ./... | grep -v /e2e) -coverprofile cover.out
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(shell go env GOPATH)/bin/gotestsum $$($(GO) list ./... | grep -v /e2e) -coverprofile cover.out
 
 .PHONY: kind-create
 kind-create: ## Create a Kind cluster from hack/kind.yaml and optionally deploy cert-manager.

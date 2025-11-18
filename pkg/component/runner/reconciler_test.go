@@ -7,7 +7,6 @@ import (
 	. "github.com/onsi/gomega"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/reconciler"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -17,11 +16,11 @@ import (
 )
 
 var _ = Describe("calculateOptimalBatchSize", func() {
-	var r *runnerReconciler
+	var r *Reconciler
 
 	Context("when explicit batch size is provided", func() {
 		BeforeEach(func() {
-			r = &runnerReconciler{
+			r = &Reconciler{
 				instance: &renovatev1beta1.Renovator{
 					Spec: renovatev1beta1.RenovatorSpec{
 						Runner: renovatev1beta1.RunnerSpec{
@@ -42,7 +41,7 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 	Context("when batch size is auto-calculated", func() {
 		Context("with multiple instances and many repositories", func() {
 			BeforeEach(func() {
-				r = &runnerReconciler{
+				r = &Reconciler{
 					instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
@@ -62,7 +61,7 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 
 		Context("with batch size exceeding maximum cap", func() {
 			BeforeEach(func() {
-				r = &runnerReconciler{
+				r = &Reconciler{
 					instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
@@ -82,7 +81,7 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 
 		Context("with very few repositories", func() {
 			BeforeEach(func() {
-				r = &runnerReconciler{
+				r = &Reconciler{
 					instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
@@ -102,7 +101,7 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 
 		Context("with single instance", func() {
 			BeforeEach(func() {
-				r = &runnerReconciler{
+				r = &Reconciler{
 					instance: &renovatev1beta1.Renovator{
 						Spec: renovatev1beta1.RenovatorSpec{
 							Runner: renovatev1beta1.RunnerSpec{
@@ -122,11 +121,11 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 	})
 })
 
-var _ = Describe("CreateBatches", func() {
+var _ = Describe("createBatches", func() {
 	var (
 		scheme     *runtime.Scheme
 		fakeClient client.Client
-		r          *runnerReconciler
+		r          *Reconciler
 	)
 
 	BeforeEach(func() {
@@ -152,14 +151,12 @@ var _ = Describe("CreateBatches", func() {
 			WithObjects(gitRepos...).
 			Build()
 
-		r = &runnerReconciler{
-			GenericReconciler: &reconciler.GenericReconciler{
-				KubeClient: fakeClient,
-				Req: ctrl.Request{
-					NamespacedName: client.ObjectKey{
-						Name:      "test-renovator",
-						Namespace: "test-namespace",
-					},
+		r = &Reconciler{
+			Client: fakeClient,
+			req: ctrl.Request{
+				NamespacedName: client.ObjectKey{
+					Name:      "test-renovator",
+					Namespace: "test-namespace",
 				},
 			},
 			instance: &renovatev1beta1.Renovator{
@@ -184,7 +181,7 @@ var _ = Describe("CreateBatches", func() {
 		})
 
 		It("should create single batch with all repositories", func() {
-			batches, err := r.CreateBatches(context.TODO())
+			batches, err := r.createBatches(context.TODO())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(batches).To(HaveLen(1))
 			Expect(batches[0].Repositories).To(HaveLen(5))
@@ -197,7 +194,7 @@ var _ = Describe("CreateBatches", func() {
 		})
 
 		It("should create multiple batches with specified size", func() {
-			batches, err := r.CreateBatches(context.TODO())
+			batches, err := r.createBatches(context.TODO())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(batches).To(HaveLen(3))
 			Expect(batches[0].Repositories).To(HaveLen(2))
@@ -243,14 +240,12 @@ var _ = Describe("CreateBatches", func() {
 				},
 			}
 
-			r = &runnerReconciler{
-				GenericReconciler: &reconciler.GenericReconciler{
-					KubeClient: fakeClient,
-					Req: ctrl.Request{
-						NamespacedName: client.ObjectKey{
-							Name:      "test-renovator",
-							Namespace: "test-namespace",
-						},
+			r = &Reconciler{
+				Client: fakeClient,
+				req: ctrl.Request{
+					NamespacedName: client.ObjectKey{
+						Name:      "test-renovator",
+						Namespace: "test-namespace",
 					},
 				},
 				instance: instance,
@@ -258,7 +253,7 @@ var _ = Describe("CreateBatches", func() {
 		})
 
 		It("should create batches with auto-calculated size", func() {
-			batches, err := r.CreateBatches(context.TODO())
+			batches, err := r.createBatches(context.TODO())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(batches).To(HaveLen(6)) // 6 repos / 1 per batch (6 / (2*3) = 1)
 
@@ -288,14 +283,12 @@ var _ = Describe("CreateBatches", func() {
 				},
 			}
 
-			r = &runnerReconciler{
-				GenericReconciler: &reconciler.GenericReconciler{
-					KubeClient: fakeClient,
-					Req: ctrl.Request{
-						NamespacedName: client.ObjectKey{
-							Name:      "test-renovator",
-							Namespace: "test-namespace",
-						},
+			r = &Reconciler{
+				Client: fakeClient,
+				req: ctrl.Request{
+					NamespacedName: client.ObjectKey{
+						Name:      "test-renovator",
+						Namespace: "test-namespace",
 					},
 				},
 				instance: instance,
@@ -303,7 +296,7 @@ var _ = Describe("CreateBatches", func() {
 		})
 
 		It("should return empty batch list", func() {
-			batches, err := r.CreateBatches(context.TODO())
+			batches, err := r.createBatches(context.TODO())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(batches).To(BeEmpty())
 		})

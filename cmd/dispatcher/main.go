@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
@@ -11,8 +12,8 @@ import (
 )
 
 var (
-	ErrReadFile  = fmt.Errorf("failed to read file")
-	ErrWriteFile = fmt.Errorf("failed to write file")
+	ErrReadFile  = errors.New("failed to read file")
+	ErrWriteFile = errors.New("failed to write file")
 )
 
 func main() {
@@ -25,28 +26,28 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	ctxLogger := logf.FromContext(ctx)
+	log := logf.FromContext(ctx)
 
 	d, err := dispatcher.New()
 	if err != nil {
 		return err
 	}
 
-	ctxLogger.Info("Dispatch batch")
+	log.Info("Dispatch batch")
 
 	rawConfig, err := os.ReadFile(d.RawConfigFile)
 	if err != nil {
 		return fmt.Errorf("%w: %s: %w", ErrReadFile, d.RawConfigFile, err)
 	}
 
-	ctxLogger.V(1).Info("Read raw renovate config", "content", rawConfig)
+	log.V(1).Info("Read raw renovate config", "content", rawConfig)
 
 	batchesConfig, err := os.ReadFile(d.BatchesFile)
 	if err != nil {
 		return fmt.Errorf("%w: %s, %w", ErrReadFile, d.BatchesFile, err)
 	}
 
-	ctxLogger.V(1).Info("Read batches config", "content", batchesConfig)
+	log.V(1).Info("Read batches config", "content", batchesConfig)
 
 	mergedConfig, err := d.MergeConfig(rawConfig, batchesConfig, int(d.JobCompletionIndex))
 	if err != nil {

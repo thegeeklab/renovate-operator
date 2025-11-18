@@ -2,12 +2,7 @@ package metadata
 
 import "strings"
 
-const (
-	discoveryGroupName = "discovery"
-	runnerGroupName    = "runner"
-)
-
-func buildName(name, group string) string {
+func BuildName(name, group string) string {
 	builder := strings.Builder{}
 	builder.WriteString(name)
 	builder.WriteRune('-')

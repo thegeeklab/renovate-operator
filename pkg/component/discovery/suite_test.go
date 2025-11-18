@@ -1,4 +1,4 @@
-package runner
+package discovery
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestRunner(t *testing.T) {
+func TestDiscovery(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Runner Suite")
+	RunSpecs(t, "Discovery Suite")
 }

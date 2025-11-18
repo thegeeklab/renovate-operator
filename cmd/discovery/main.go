@@ -2,12 +2,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/discovery"
-	"k8s.io/apimachinery/pkg/api/errors"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -22,7 +23,7 @@ import (
 var (
 	scheme = runtime.NewScheme()
 
-	ErrReadDiscoveryFile = fmt.Errorf("failed to read discovery file")
+	ErrReadDiscoveryFile = errors.New("failed to read discovery file")
 )
 
 func init() {
@@ -40,21 +41,20 @@ func main() {
 }
 
 func run(ctx context.Context) error {
-	ctxLogger := logf.FromContext(ctx)
-
 	d, err := discovery.New(scheme)
 	if err != nil {
 		return err
 	}
 
-	ctxLogger = ctxLogger.WithValues("namespace", d.Namespace, "name", d.Name)
+	log := logf.FromContext(ctx).
+		WithValues("namespace", d.Namespace, "name", d.Name)
 
 	discoveredRepos, err := readDiscoveryFile(d.FilePath)
 	if err != nil {
 		return err
 	}
 
-	ctxLogger.Info("Repository list", "repositories", discoveredRepos)
+	log.Info("Repository list", "repositories", discoveredRepos)
 
 	// Get renovator instance as owner ref
 	renovator := &renovatev1beta1.Renovator{}
@@ -77,8 +77,8 @@ func run(ctx context.Context) error {
 		r := discovery.CreateGitRepo(renovator, d.Namespace, repo)
 
 		err := d.KubeClient.Create(ctx, r)
-		if err != nil && !errors.IsAlreadyExists(err) {
-			ctxLogger.Error(err, "Failed to create GitRepo", "repo", repo)
+		if err != nil && !api_errors.IsAlreadyExists(err) {
+			log.Error(err, "Failed to create GitRepo", "repo", repo)
 		}
 	}
 
@@ -94,12 +94,12 @@ func run(ctx context.Context) error {
 		}
 
 		if err := d.KubeClient.Delete(ctx, &repo); err != nil {
-			ctxLogger.Error(err, "Failed to delete GitRepo", "repo", repo.Name)
+			log.Error(err, "Failed to delete GitRepo", "repo", repo.Name)
 
 			continue
 		}
 
-		ctxLogger.Info("Deleted GitRepo", "repo", repo.Name)
+		log.Info("Deleted GitRepo", "repo", repo.Name)
 	}
 
 	return nil

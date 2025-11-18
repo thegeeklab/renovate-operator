@@ -1,4 +1,4 @@
-package reconciler
+package runner_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestReconciler(t *testing.T) {
+func TestRunner(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Reconciler Suite")
+	RunSpecs(t, "Runner Suite")
 }

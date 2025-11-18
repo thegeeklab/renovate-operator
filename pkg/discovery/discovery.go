@@ -1,6 +1,7 @@
 package discovery
 
 import (
+	"errors"
 	"fmt"
 
 	"github.com/thegeeklab/renovate-operator/pkg/util"
@@ -29,7 +30,7 @@ const (
 	EnvKubeconfig                 = "KUBECONFIG"
 )
 
-var ErrDiscoveryClient = fmt.Errorf("failed to create discovery client")
+var ErrDiscoveryClient = errors.New("failed to create discovery client")
 
 func New(scheme *runtime.Scheme) (*Discovery, error) {
 	d := &Discovery{
