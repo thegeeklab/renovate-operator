@@ -18,7 +18,7 @@ import (
 var ErrMaxBatchCount = errors.New("max batch count reached")
 
 func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
-	job := &batchv1.CronJob{ObjectMeta: RunnerMetaData(r.req)}
+	job := &batchv1.CronJob{ObjectMeta: RunnerMetadata(r.req)}
 
 	_, err := k8s.CreateOrPatch(ctx, r.Client, job, r.instance, func() error {
 		return r.updateCronJob(job)

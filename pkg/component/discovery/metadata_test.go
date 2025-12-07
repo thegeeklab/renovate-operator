@@ -7,7 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var _ = Describe("DiscoveryMetaData", func() {
+var _ = Describe("DiscoveryMetadata", func() {
 	var request reconcile.Request
 
 	BeforeEach(func() {
@@ -20,14 +20,14 @@ var _ = Describe("DiscoveryMetaData", func() {
 	})
 
 	It("should create discovery metadata with correct name and namespace", func() {
-		metadata := DiscoveryMetaData(request)
+		metadata := DiscoveryMetadata(request)
 		Expect(metadata.Name).To(Equal("test-name-discovery"))
 		Expect(metadata.Namespace).To(Equal("test-namespace"))
 	})
 
 	It("should handle empty namespace in request", func() {
 		request.Namespace = ""
-		metadata := DiscoveryMetaData(request)
+		metadata := DiscoveryMetadata(request)
 		Expect(metadata.Name).To(Equal("test-name-discovery"))
 		Expect(metadata.Namespace).To(BeEmpty())
 	})

@@ -7,7 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var _ = Describe("GenericMetaData", func() {
+var _ = Describe("GenericMetadata", func() {
 	var request reconcile.Request
 
 	BeforeEach(func() {
@@ -20,7 +20,7 @@ var _ = Describe("GenericMetaData", func() {
 	})
 
 	It("should create metadata with correct name and namespace", func() {
-		metadata := GenericMetaData(request)
+		metadata := GenericMetadata(request)
 		Expect(metadata.Name).To(Equal("test-name"))
 		Expect(metadata.Namespace).To(Equal("test-namespace"))
 	})
@@ -28,8 +28,18 @@ var _ = Describe("GenericMetaData", func() {
 	It("should handle empty name and namespace", func() {
 		request.Name = ""
 		request.Namespace = ""
-		metadata := GenericMetaData(request)
+		metadata := GenericMetadata(request)
 		Expect(metadata.Name).To(BeEmpty())
 		Expect(metadata.Namespace).To(BeEmpty())
+	})
+
+	It("should allow setting a custom name suffix", func() {
+		metadata := GenericMetadata(request, "suffix")
+		Expect(metadata.Name).To(Equal("test-name-suffix"))
+	})
+
+	It("should handle empty suffix", func() {
+		metadata := GenericMetadata(request, "")
+		Expect(metadata.Name).To(Equal("test-name"))
 	})
 })

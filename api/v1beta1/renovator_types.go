@@ -100,6 +100,22 @@ const (
 	RunnerStrategy_BATCH = "batch"
 )
 
+// ImageSpec defines the container image specification.
+type ImageSpec struct {
+	// Name of the container image, supporting both tags (`<image>:<tag>`)
+	// and digests for deterministic and repeatable deployments
+	// (`<image>:<tag>@sha256:<digestValue>`)
+	Image string `json:"image,omitempty"`
+
+	// Image pull policy.
+	// One of `Always`, `Never` or `IfNotPresent`.
+	// If not defined, it defaults to `IfNotPresent`.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+	// +optional
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+}
+
 type RunnerSpec struct {
 	// +kubebuilder:validation:Enum=none;batch
 	// +kubebuilder:default:="none"
@@ -118,32 +134,9 @@ type RunnerSpec struct {
 	BatchSize int `json:"batchSize,omitempty"`
 }
 
-type DiscoverySpec struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:=false
-	Suspend *bool `json:"suspend"`
-
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:="0 */2 * * *"
-	Schedule string `json:"schedule"`
-
-	Filter []string `json:"filter,omitempty"`
-}
-
 // RenovatorSpec defines the desired state of Renovator.
 type RenovatorSpec struct {
-	// Name of the container image, supporting both tags (`<image>:<tag>`)
-	// and digests for deterministic and repeatable deployments
-	// (`<image>:<tag>@sha256:<digestValue>`)
-	Image string `json:"image,omitempty"`
-
-	// Image pull policy.
-	// One of `Always`, `Never` or `IfNotPresent`.
-	// If not defined, it defaults to `IfNotPresent`.
-	// Cannot be updated.
-	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
-	// +optional
-	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+	ImageSpec `json:",inline"`
 
 	Renovate RenovateSpec `json:"renovate"`
 

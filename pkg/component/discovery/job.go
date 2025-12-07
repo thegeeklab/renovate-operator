@@ -69,7 +69,7 @@ func (r *Reconciler) handleBatchJob(ctx context.Context) (*ctrl.Result, error) {
 }
 
 func (r *Reconciler) handleCronJob(ctx context.Context) (*ctrl.Result, error) {
-	job := &batchv1.CronJob{ObjectMeta: DiscoveryMetaData(r.req)}
+	job := &batchv1.CronJob{ObjectMeta: DiscoveryMetadata(r.req)}
 
 	op, err := k8s.CreateOrPatch(ctx, r.Client, job, r.instance, func() error {
 		return r.updateCronJob(job)
@@ -140,7 +140,7 @@ func (r *Reconciler) updateCronJob(job *batchv1.CronJob) error {
 }
 
 func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) {
-	spec.Template.Spec.ServiceAccountName = metadata.GenericMetaData(r.req).Name
+	spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 
 	r.setJobVolumes(&spec.Template.Spec)
