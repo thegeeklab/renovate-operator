@@ -24,8 +24,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
+	"github.com/thegeeklab/renovate-operator/pkg/controller/discovery"
+	renovateconfig "github.com/thegeeklab/renovate-operator/pkg/controller/renovate-config"
 	"github.com/thegeeklab/renovate-operator/pkg/controller/renovator"
-	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/pkg/webhook/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
 
@@ -41,6 +43,7 @@ func init() {
 	// +kubebuilder:scaffold:scheme
 }
 
+//nolint:gocognit,maintidx
 func main() {
 	var (
 		metricsAddr                                      string
@@ -217,21 +220,36 @@ func main() {
 		os.Exit(1)
 	}
 
+	// renovator
 	if err = (&renovator.Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Unable to create controller", "controller", "Renovator")
+		setupLog.Error(err, "Unable to create controller", "controller", renovator.ControllerName)
 		os.Exit(1)
 	}
 
+	//nolint:goconst
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		if err = webhookrenovatev1beta1.SetupRenovatorWebhookWithManager(mgr); err != nil {
-			setupLog.Error(err, "Unable to create webhook", "webhook", "Renovator")
+			setupLog.Error(err, "Unable to create webhook", "webhook", renovator.ControllerName)
 			os.Exit(1)
 		}
 	}
 
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = webhookrenovatev1beta1.SetupRenovateConfigWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "RenovateConfig")
+			os.Exit(1)
+		}
+	}
+
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = webhookrenovatev1beta1.SetupDiscoveryWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Discovery")
+			os.Exit(1)
+		}
+	}
 	// +kubebuilder:scaffold:builder
 
 	if metricsCertWatcher != nil {
@@ -259,6 +277,24 @@ func main() {
 
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "Unable to set up ready check")
+		os.Exit(1)
+	}
+
+	// renovate config
+	if err = (&renovateconfig.Reconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Unable to create controller", "controller", discovery.ControllerName)
+		os.Exit(1)
+	}
+
+	// discovery
+	if err = (&discovery.Reconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Unable to create controller", "controller", discovery.ControllerName)
 		os.Exit(1)
 	}
 

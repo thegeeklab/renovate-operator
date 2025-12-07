@@ -85,16 +85,16 @@ func createOrPatch(
 
 		op = controllerutil.OperationResultCreated
 	} else {
+		if equality.Semantic.DeepEqual(old, obj) {
+			return op, nil
+		}
+
 		//nolint:forcetypeassert
 		if err := c.Patch(ctx, obj, client.MergeFrom(old.(client.Object))); err != nil {
 			return op, fmt.Errorf("failed patch: %w", err)
 		}
 
 		op = controllerutil.OperationResultUpdated
-
-		if equality.Semantic.DeepEqual(old, obj) {
-			op = controllerutil.OperationResultNone
-		}
 	}
 
 	return op, nil

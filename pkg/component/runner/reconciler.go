@@ -13,25 +13,15 @@ import (
 
 type Reconciler struct {
 	client.Client
-	scheme         *runtime.Scheme
-	req            ctrl.Request
-	instance       *renovatev1beta1.Renovator
-	renovateConfig *Renovate
-	batches        []Batch
+	scheme   *runtime.Scheme
+	req      ctrl.Request
+	instance *renovatev1beta1.Renovator
+	renovate *renovatev1beta1.RenovateConfig
+	batches  []Batch
 }
 
 type Batch struct {
 	Repositories []string `json:"repositories"`
-}
-
-type Renovate struct {
-	Onboarding    bool                         `json:"onboarding"`
-	PrHourlyLimit int                          `json:"prHourlyLimit"`
-	DryRun        renovatev1beta1.DryRun       `json:"dryRun"`
-	Platform      renovatev1beta1.PlatformType `json:"platform"`
-	Endpoint      string                       `json:"endpoint"`
-	AddLabels     []string                     `json:"addLabels,omitempty"`
-	Repositories  []string                     `json:"repositories,omitempty"`
 }
 
 func NewReconciler(
@@ -39,20 +29,14 @@ func NewReconciler(
 	c client.Client,
 	scheme *runtime.Scheme,
 	instance *renovatev1beta1.Renovator,
+	renovate *renovatev1beta1.RenovateConfig,
 ) (*Reconciler, error) {
 	r := &Reconciler{
 		Client:   c,
 		scheme:   scheme,
 		req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
 		instance: instance,
-		renovateConfig: &Renovate{
-			Onboarding:    instance.Spec.Renovate.Onboarding != nil && *instance.Spec.Renovate.Onboarding,
-			PrHourlyLimit: instance.Spec.Renovate.PrHourlyLimit,
-			DryRun:        instance.Spec.Renovate.DryRun,
-			Platform:      instance.Spec.Renovate.Platform.Type,
-			Endpoint:      instance.Spec.Renovate.Platform.Endpoint,
-			AddLabels:     instance.Spec.Renovate.AddLabels,
-		},
+		renovate: renovate,
 	}
 
 	batches, err := r.createBatches(ctx)
@@ -65,7 +49,7 @@ func NewReconciler(
 	return r, nil
 }
 
-func (r *Reconciler) Reconcile(ctx context.Context, res *renovatev1beta1.Renovator) (*ctrl.Result, error) {
+func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){

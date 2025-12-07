@@ -11,23 +11,23 @@ import (
 var _ = Describe("GitRepo", func() {
 	Context("sanitizeRepoName", func() {
 		It("should convert repository path to valid name", func() {
-			Expect(sanitizeRepoName("owner/repo")).To(Equal("repo-owner-repo"))
+			Expect(sanitizeRepoName("owner/repo")).To(Equal("owner-repo"))
 		})
 
 		It("should convert to lowercase", func() {
-			Expect(sanitizeRepoName("Owner/Repo")).To(Equal("repo-owner-repo"))
+			Expect(sanitizeRepoName("Owner/Repo")).To(Equal("owner-repo"))
 		})
 
 		It("should handle multiple slashes", func() {
-			Expect(sanitizeRepoName("org/owner/repo")).To(Equal("repo-org-owner-repo"))
+			Expect(sanitizeRepoName("org/owner/repo")).To(Equal("org-owner-repo"))
 		})
 
 		It("should handle empty string", func() {
-			Expect(sanitizeRepoName("")).To(Equal("repo-"))
+			Expect(sanitizeRepoName("")).To(BeEmpty())
 		})
 
 		It("should handle string without slashes", func() {
-			Expect(sanitizeRepoName("repository")).To(Equal("repo-repository"))
+			Expect(sanitizeRepoName("repository")).To(Equal("repository"))
 		})
 	})
 })
@@ -54,7 +54,7 @@ var _ = Describe("CreateGitRepo", func() {
 	It("should create GitRepo with correct metadata", func() {
 		gitRepo := CreateGitRepo(owner, namespace, repo)
 
-		Expect(gitRepo.Name).To(Equal("repo-owner-test-repo"))
+		Expect(gitRepo.Name).To(Equal("owner-test-repo"))
 		Expect(gitRepo.Namespace).To(Equal(namespace))
 		Expect(gitRepo.Spec.Name).To(Equal(repo))
 	})

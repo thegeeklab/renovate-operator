@@ -26,7 +26,5 @@ func CreateGitRepo(owner client.Object, namespace, repo string) *renovatev1beta1
 }
 
 func sanitizeRepoName(repo string) string {
-	sanitized := strings.ToLower(strings.ReplaceAll(repo, "/", "-"))
-
-	return "repo-" + sanitized
+	return strings.ToLower(strings.ReplaceAll(repo, "/", "-"))
 }

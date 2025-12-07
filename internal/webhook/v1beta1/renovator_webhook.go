@@ -14,10 +14,9 @@ import (
 )
 
 var (
-	// log is for logging in this package.
-	renovatorlog = logf.Log.WithName("renovator-resource")
+	renovatorLog = logf.Log.WithName("renovator-resource")
 
-	ErrRenovatorObjectType = errors.New("expected a renovator object but got other type")
+	ErrRenovatorObjectType = errors.New("expected a Renovator object but got other type")
 )
 
 // SetupRenovatorWebhookWithManager registers the webhook for Renovator in the manager.
@@ -49,7 +48,7 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, obj runtime.Object
 		return fmt.Errorf("%w: %T", ErrRenovatorObjectType, obj)
 	}
 
-	renovatorlog.Info("Defaulting for renovator", "name", renovator.GetName())
+	renovatorLog.Info("Defaulting for renovator", "name", renovator.GetName())
 
 	renovator.Default()
 

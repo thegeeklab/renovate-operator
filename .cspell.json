@@ -45,7 +45,9 @@
     "clientcmd",
     "octocat",
     "mycompany",
-    "anotherorg"
+    "anotherorg",
+    "renovateconfig",
+    "renovateconfigs"
   ],
   "ignorePaths": [
     ".woodpecker",

@@ -4,6 +4,8 @@
 resources:
   - bases/renovate.thegeeklab.de_renovators.yaml
   - bases/renovate.thegeeklab.de_gitrepos.yaml
+  - bases/renovate.thegeeklab.de_discoveries.yaml
+  - bases/renovate.thegeeklab.de_renovateconfigs.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches: []

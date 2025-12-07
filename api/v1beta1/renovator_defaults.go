@@ -1,8 +1,10 @@
 package v1beta1
 
+import corev1 "k8s.io/api/core/v1"
+
 func (r *Renovator) Default() {
 	if r.Spec.Logging.Level == "" {
-		r.Spec.Logging.Level = "info"
+		r.Spec.Logging.Level = LogLevel_INFO
 	}
 
 	if r.Spec.Runner.Strategy == "" {
@@ -18,18 +20,18 @@ func (r *Renovator) Default() {
 	}
 
 	if r.Spec.Image == "" {
-		r.Spec.Image = "docker.io/thegeeklab/renovate-operator:latest"
+		r.Spec.Image = OperatorContainerImage
 	}
 
 	if r.Spec.ImagePullPolicy == "" {
-		r.Spec.ImagePullPolicy = "IfNotPresent"
+		r.Spec.ImagePullPolicy = corev1.PullIfNotPresent
 	}
 
 	if r.Spec.Renovate.Image == "" {
-		r.Spec.Renovate.Image = "ghcr.io/renovatebot/renovate"
+		r.Spec.Renovate.Image = RenovateContainerImage
 	}
 
 	if r.Spec.Renovate.ImagePullPolicy == "" {
-		r.Spec.Renovate.ImagePullPolicy = "IfNotPresent"
+		r.Spec.Renovate.ImagePullPolicy = corev1.PullIfNotPresent
 	}
 }
