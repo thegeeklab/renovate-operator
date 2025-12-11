@@ -11,7 +11,7 @@ const (
 	RunnerGroupName = "runner"
 )
 
-func RunnerMetaData(request ctrl.Request) v1.ObjectMeta {
+func RunnerMetadata(request ctrl.Request) v1.ObjectMeta {
 	return v1.ObjectMeta{
 		Name:      RunnerName(request),
 		Namespace: request.Namespace,

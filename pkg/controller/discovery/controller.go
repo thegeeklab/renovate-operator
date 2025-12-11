@@ -1,11 +1,10 @@
-package renovator
+package discovery
 
 import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/component/renovator"
-	"github.com/thegeeklab/renovate-operator/pkg/component/runner"
+	"github.com/thegeeklab/renovate-operator/pkg/component/discovery"
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -13,12 +12,11 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-const ControllerName = "renovator"
+const ControllerName = "discovery"
 
 // Reconciler reconciles a Renovator object.
 type Reconciler struct {
@@ -37,11 +35,9 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovators,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovators/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovators/finalizers,verbs=update
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos,verbs=get;list;watch
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos/status,verbs=get
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries/finalizers,verbs=update
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos/finalizers,verbs=update
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
@@ -61,21 +57,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	renovator, err := renovator.NewReconciler(ctx, r.Client, r.Scheme, rr)
+	discovery, err := discovery.NewReconciler(ctx, r.Client, r.Scheme, rr)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if res, err := renovator.Reconcile(ctx, rr); err != nil {
-		return handleReconcileResult(res, err)
-	}
-
-	runner, err := runner.NewReconciler(ctx, r.Client, r.Scheme, rr)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if res, err := runner.Reconcile(ctx, rr); err != nil {
+	if res, err := discovery.Reconcile(ctx, rr); err != nil {
 		return handleReconcileResult(res, err)
 	}
 
@@ -85,17 +72,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&renovatev1beta1.Renovator{}, builder.WithPredicates(
+		For(&renovatev1beta1.Discovery{}, builder.WithPredicates(
 			predicate.Or(predicate.GenerationChangedPredicate{}, r.HasOperationAnnotation()),
 		)).
-		Watches(&renovatev1beta1.GitRepo{}, handler.EnqueueRequestForOwner(
-			r.Scheme,
-			mgr.GetRESTMapper(),
-			&renovatev1beta1.Renovator{},
-		), builder.WithPredicates(
-			predicate.Or(predicate.GenerationChangedPredicate{}, r.HasOperationAnnotation()),
-		)).
-		Owns(&renovatev1beta1.Discovery{}).
+		Owns(&renovatev1beta1.GitRepo{}).
 		Owns(&batchv1.Job{}).
 		Owns(&batchv1.CronJob{}).
 		Named(ControllerName).

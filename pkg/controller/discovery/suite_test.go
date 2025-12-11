@@ -1,4 +1,4 @@
-package renovator
+package discovery
 
 import (
 	"context"
@@ -34,7 +34,7 @@ var (
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecs(t, "RenovatorController Suite")
+	RunSpecs(t, "DiscoveryController Suite")
 }
 
 var _ = BeforeSuite(func() {

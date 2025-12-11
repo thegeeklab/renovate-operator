@@ -11,7 +11,7 @@ const (
 	DiscoveryGroupName = "discovery"
 )
 
-func DiscoveryMetaData(request ctrl.Request) v1.ObjectMeta {
+func DiscoveryMetadata(request ctrl.Request) v1.ObjectMeta {
 	return v1.ObjectMeta{
 		Name:      DiscoveryName(request),
 		Namespace: request.Namespace,

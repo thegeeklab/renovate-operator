@@ -16,7 +16,7 @@ import (
 )
 
 // namespace where the project is deployed in.
-const namespace = "renovate-operator-system"
+const namespace = "renovate-system"
 
 // serviceAccountName created for the project.
 const serviceAccountName = "renovate-operator-controller-manager"

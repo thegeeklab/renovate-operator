@@ -30,7 +30,9 @@ var _ = Describe("DefaultContainer", func() {
 						},
 					},
 				},
-				ImagePullPolicy: corev1.PullIfNotPresent,
+				ImageSpec: renovatev1beta1.ImageSpec{
+					ImagePullPolicy: corev1.PullIfNotPresent,
+				},
 				Logging: renovatev1beta1.LoggingSpec{
 					Level: "info",
 				},

@@ -65,7 +65,7 @@ var _ = Describe("HandleCronJob", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).ToNot(BeNil())
 
-			job := &batchv1.CronJob{ObjectMeta: DiscoveryMetaData(reconciler.req)}
+			job := &batchv1.CronJob{ObjectMeta: DiscoveryMetadata(reconciler.req)}
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(job), job)).To(Succeed())
 
 			jobExpected := job.DeepCopy()

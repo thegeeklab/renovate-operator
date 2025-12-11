@@ -40,11 +40,26 @@ spec:
             description: RenovatorSpec defines the desired state of Renovator.
             properties:
               discovery:
+                description: DiscoverySpec defines the desired state of Discovery.
                 properties:
                   filter:
                     items:
                       type: string
                     type: array
+                  image:
+                    description: |-
+                      Name of the container image, supporting both tags (`<image>:<tag>`)
+                      and digests for deterministic and repeatable deployments
+                      (`<image>:<tag>@sha256:<digestValue>`)
+                    type: string
+                  imagePullPolicy:
+                    description: |-
+                      Image pull policy.
+                      One of `Always`, `Never` or `IfNotPresent`.
+                      If not defined, it defaults to `IfNotPresent`.
+                      Cannot be updated.
+                      More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+                    type: string
                   schedule:
                     default: 0 */2 * * *
                     type: string

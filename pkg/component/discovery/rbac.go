@@ -13,7 +13,7 @@ import (
 )
 
 func (r *Reconciler) reconcileServiceAccount(ctx context.Context) (*ctrl.Result, error) {
-	sa := &corev1.ServiceAccount{ObjectMeta: metadata.GenericMetaData(r.req)}
+	sa := &corev1.ServiceAccount{ObjectMeta: metadata.GenericMetadata(r.req)}
 
 	_, err := k8s.CreateOrPatch(ctx, r.Client, sa, r.instance, func() error {
 		return r.updateServiceAccount(sa)
@@ -30,7 +30,7 @@ func (r *Reconciler) updateServiceAccount(_ *corev1.ServiceAccount) error {
 }
 
 func (r *Reconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
-	role := &rbacv1.Role{ObjectMeta: metadata.GenericMetaData(r.req)}
+	role := &rbacv1.Role{ObjectMeta: metadata.GenericMetadata(r.req)}
 
 	_, err := k8s.CreateOrPatch(ctx, r.Client, role, r.instance, func() error {
 		return r.updateRole(role)
@@ -64,7 +64,7 @@ func (r *Reconciler) updateRole(role *rbacv1.Role) error {
 }
 
 func (r *Reconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.Result, error) {
-	rb := &rbacv1.RoleBinding{ObjectMeta: metadata.GenericMetaData(r.req)}
+	rb := &rbacv1.RoleBinding{ObjectMeta: metadata.GenericMetadata(r.req)}
 
 	_, err := k8s.CreateOrPatch(ctx, r.Client, rb, r.instance, func() error {
 		return r.updateRoleBinding(rb)
@@ -80,14 +80,14 @@ func (r *Reconciler) updateRoleBinding(rb *rbacv1.RoleBinding) error {
 	rb.Subjects = []rbacv1.Subject{
 		{
 			Kind:      "ServiceAccount",
-			Name:      metadata.GenericMetaData(r.req).Name,
+			Name:      metadata.GenericMetadata(r.req).Name,
 			Namespace: r.req.Namespace,
 		},
 	}
 	rb.RoleRef = rbacv1.RoleRef{
 		APIGroup: "rbac.authorization.k8s.io",
 		Kind:     "Role",
-		Name:     metadata.GenericMetaData(r.req).Name,
+		Name:     metadata.GenericMetadata(r.req).Name,
 	}
 
 	return nil
