@@ -59,7 +59,7 @@ The main operator binary that runs in the cluster and manages all Custom Resourc
 
 The primary controller responsible for managing the complete Renovator lifecycle.
 
-**Location:** `pkg/controller/renovator_controller.go`
+**Location:** `internal/controller/renovator_controller.go`
 
 **Functions:**
 

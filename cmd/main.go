@@ -24,10 +24,10 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
+	renovateconfig "github.com/thegeeklab/renovate-operator/internal/controller/renovate-config"
+	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/controller/discovery"
-	renovateconfig "github.com/thegeeklab/renovate-operator/pkg/controller/renovate-config"
-	"github.com/thegeeklab/renovate-operator/pkg/controller/renovator"
 	// +kubebuilder:scaffold:imports
 )
 

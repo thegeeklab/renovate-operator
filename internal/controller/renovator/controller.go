@@ -4,9 +4,9 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/component/renovator"
-	"github.com/thegeeklab/renovate-operator/pkg/component/runner"
-	"github.com/thegeeklab/renovate-operator/pkg/controller"
+	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
+	"github.com/thegeeklab/renovate-operator/internal/component/runner"
+	"github.com/thegeeklab/renovate-operator/internal/controller"
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
