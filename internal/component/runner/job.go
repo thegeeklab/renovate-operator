@@ -6,10 +6,10 @@ import (
 	"fmt"
 	"math"
 
+	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovate-config"
+	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
-	renovateconfig "github.com/thegeeklab/renovate-operator/pkg/component/renovate-config"
-	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"

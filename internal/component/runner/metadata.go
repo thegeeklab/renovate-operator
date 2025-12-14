@@ -1,7 +1,7 @@
 package runner
 
 import (
-	"github.com/thegeeklab/renovate-operator/pkg/metadata"
+	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )

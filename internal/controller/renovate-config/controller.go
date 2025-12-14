@@ -4,8 +4,8 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	renovateconfig "github.com/thegeeklab/renovate-operator/pkg/component/renovate-config"
-	"github.com/thegeeklab/renovate-operator/pkg/controller"
+	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovate-config"
+	"github.com/thegeeklab/renovate-operator/internal/controller"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"

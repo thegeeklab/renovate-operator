@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/metadata"
+	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 
 	ctrl "sigs.k8s.io/controller-runtime"
