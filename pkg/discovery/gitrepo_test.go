@@ -8,30 +8,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("GitRepo", func() {
-	Context("sanitizeRepoName", func() {
-		It("should convert repository path to valid name", func() {
-			Expect(sanitizeRepoName("owner/repo")).To(Equal("owner-repo"))
-		})
-
-		It("should convert to lowercase", func() {
-			Expect(sanitizeRepoName("Owner/Repo")).To(Equal("owner-repo"))
-		})
-
-		It("should handle multiple slashes", func() {
-			Expect(sanitizeRepoName("org/owner/repo")).To(Equal("org-owner-repo"))
-		})
-
-		It("should handle empty string", func() {
-			Expect(sanitizeRepoName("")).To(BeEmpty())
-		})
-
-		It("should handle string without slashes", func() {
-			Expect(sanitizeRepoName("repository")).To(Equal("repository"))
-		})
-	})
-})
-
 var _ = Describe("CreateGitRepo", func() {
 	var (
 		owner     *renovatev1beta1.Renovator
@@ -52,7 +28,8 @@ var _ = Describe("CreateGitRepo", func() {
 	})
 
 	It("should create GitRepo with correct metadata", func() {
-		gitRepo := CreateGitRepo(owner, namespace, repo)
+		gitRepo, err := CreateGitRepo(owner, namespace, repo)
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(gitRepo.Name).To(Equal("owner-test-repo"))
 		Expect(gitRepo.Namespace).To(Equal(namespace))
@@ -60,7 +37,8 @@ var _ = Describe("CreateGitRepo", func() {
 	})
 
 	It("should set correct owner reference", func() {
-		gitRepo := CreateGitRepo(owner, namespace, repo)
+		gitRepo, err := CreateGitRepo(owner, namespace, repo)
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(gitRepo.OwnerReferences).To(HaveLen(1))
 		ownerRef := gitRepo.OwnerReferences[0]

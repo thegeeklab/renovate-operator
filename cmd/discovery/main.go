@@ -74,9 +74,14 @@ func run(ctx context.Context) error {
 	for _, repo := range discoveredRepos {
 		discoveredRepoMatcher[repo] = true
 
-		r := discovery.CreateGitRepo(renovator, d.Namespace, repo)
+		r, err := discovery.CreateGitRepo(renovator, d.Namespace, repo)
+		if err != nil {
+			log.Error(err, "Failed to create GitRepo: invalid repository name", "repo", repo)
 
-		err := d.KubeClient.Create(ctx, r)
+			continue
+		}
+
+		err = d.KubeClient.Create(ctx, r)
 		if err != nil && !api_errors.IsAlreadyExists(err) {
 			log.Error(err, "Failed to create GitRepo", "repo", repo)
 		}
