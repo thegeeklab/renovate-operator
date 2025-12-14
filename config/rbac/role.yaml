@@ -58,7 +58,9 @@ rules:
 - apiGroups:
   - renovate.thegeeklab.de
   resources:
+  - discoveries
   - gitrepos
+  - renovateconfigs
   - renovators
   verbs:
   - create
@@ -71,14 +73,18 @@ rules:
 - apiGroups:
   - renovate.thegeeklab.de
   resources:
+  - discoveries/finalizers
   - gitrepos/finalizers
+  - renovateconfigs/finalizers
   - renovators/finalizers
   verbs:
   - update
 - apiGroups:
   - renovate.thegeeklab.de
   resources:
+  - discoveries/status
   - gitrepos/status
+  - renovateconfigs/status
   - renovators/status
   verbs:
   - get

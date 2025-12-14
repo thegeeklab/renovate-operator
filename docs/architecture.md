@@ -18,7 +18,6 @@ subgraph "User Namespace"
     DCJ[Discovery CronJob]
     RCJ[Runner CronJob]
     JOBS[Parallel Jobs]
-    CM[ConfigMap]
     SEC[Secrets]
 end
 
@@ -52,7 +51,7 @@ The main operator binary that runs in the cluster and manages all Custom Resourc
 - Handles resource reconciliation
 - Provides health checks and metrics
 
-**Location:** `cmd/renovate-operator/main.go`
+**Location:** `cmd/main.go`
 
 ### 2. Controllers
 

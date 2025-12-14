@@ -1,4 +1,4 @@
-package renovate
+package cronjob
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestRenovate(t *testing.T) {
+func TestDiscovery(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Renovate Suite")
+	RunSpecs(t, "CronJob Suite")
 }

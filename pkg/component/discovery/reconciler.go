@@ -3,8 +3,10 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"slices"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/pkg/util"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -15,27 +17,27 @@ type Reconciler struct {
 	client.Client
 	scheme   *runtime.Scheme
 	req      ctrl.Request
-	instance *renovatev1beta1.Renovator
+	instance *renovatev1beta1.Discovery
+	renovate *renovatev1beta1.RenovateConfig
 }
 
 func NewReconciler(
 	_ context.Context,
 	c client.Client,
 	scheme *runtime.Scheme,
-	instance *renovatev1beta1.Renovator,
+	instance *renovatev1beta1.Discovery,
+	renovate *renovatev1beta1.RenovateConfig,
 ) (*Reconciler, error) {
 	return &Reconciler{
 		Client:   c,
 		scheme:   scheme,
 		req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
 		instance: instance,
+		renovate: renovate,
 	}, nil
 }
 
-func (r *Reconciler) Reconcile(ctx context.Context, instance *renovatev1beta1.Renovator) (*ctrl.Result, error) {
-	// Update the instance reference to ensure we're working with the latest version
-	r.instance = instance
-
+func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
 	// Define the reconciliation order
@@ -57,4 +59,19 @@ func (r *Reconciler) Reconcile(ctx context.Context, instance *renovatev1beta1.Re
 	}
 
 	return results.ToResult(), nil
+}
+
+// GetRenovatorDiscoveryOperations returns the Discovery's operations specified in the operation annotation.
+func GetRenovatorDiscoveryOperations(annotations map[string]string) []string {
+	return util.SplitAndTrimString(
+		annotations[renovatev1beta1.RenovatorOperation],
+		renovatev1beta1.RenovatorOperationSeparator,
+	)
+}
+
+// HasRenovatorOperationDiscover checks if the Discovery resource has the discover operation.
+func HasRenovatorOperationDiscover(discovery *renovatev1beta1.Discovery) bool {
+	operations := GetRenovatorDiscoveryOperations(discovery.Annotations)
+
+	return slices.Contains(operations, renovatev1beta1.OperationDiscover)
 }

@@ -7,6 +7,7 @@ import (
 	"maps"
 	"strconv"
 
+	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
 )
 
@@ -24,30 +25,23 @@ type Dispatcher struct {
 	batch              []byte
 }
 
-const (
-	EnvRenovateRawConfig  = "RENOVATE_RAW_CONFIG"
-	EnvRenovateConfig     = "RENOVATE_CONFIG"
-	EnvRenovateBatches    = "RENOVATE_BATCHES"
-	EnvJobCompletionIndex = "JOB_COMPLETION_INDEX"
-)
-
 func New() (*Dispatcher, error) {
 	d := &Dispatcher{}
 
 	var err error
-	if d.RawConfigFile, err = util.ParseEnv(EnvRenovateRawConfig); err != nil {
+	if d.RawConfigFile, err = util.ParseEnv(renovate.EnvRenovateConfigRaw); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDispatcherClient, err)
 	}
 
-	if d.ConfigFile, err = util.ParseEnv(EnvRenovateConfig); err != nil {
+	if d.ConfigFile, err = util.ParseEnv(renovate.EnvRenovateConfig); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDispatcherClient, err)
 	}
 
-	if d.BatchesFile, err = util.ParseEnv(EnvRenovateBatches); err != nil {
+	if d.BatchesFile, err = util.ParseEnv(renovate.EnvRenovateBatches); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDispatcherClient, err)
 	}
 
-	index, err := util.ParseEnv(EnvJobCompletionIndex)
+	index, err := util.ParseEnv(renovate.EnvJobCompletionIndex)
 	if err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDispatcherClient, err)
 	}

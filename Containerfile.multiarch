@@ -14,7 +14,7 @@ WORKDIR /workspace
 # was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
 # the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
 # by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
-RUN --mount=type=cache,target=/var/cache CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bin/manager cmd/renovate-operator/main.go
+RUN --mount=type=cache,target=/var/cache CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bin/manager cmd/main.go
 RUN --mount=type=cache,target=/var/cache CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bin/discovery cmd/discovery/main.go
 RUN --mount=type=cache,target=/var/cache CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bin/dispatcher cmd/dispatcher/main.go
 

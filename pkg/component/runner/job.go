@@ -6,8 +6,10 @@ import (
 	"fmt"
 	"math"
 
-	"github.com/thegeeklab/renovate-operator/pkg/dispatcher"
-	"github.com/thegeeklab/renovate-operator/pkg/renovate"
+	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
+	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
+	renovateconfig "github.com/thegeeklab/renovate-operator/pkg/component/renovate-config"
+	"github.com/thegeeklab/renovate-operator/pkg/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -18,7 +20,7 @@ import (
 var ErrMaxBatchCount = errors.New("max batch count reached")
 
 func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
-	job := &batchv1.CronJob{ObjectMeta: RunnerMetaData(r.req)}
+	job := &batchv1.CronJob{ObjectMeta: RunnerMetadata(r.req)}
 
 	_, err := k8s.CreateOrPatch(ctx, r.Client, job, r.instance, func() error {
 		return r.updateCronJob(job)
@@ -44,69 +46,75 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) error {
 		return fmt.Errorf("%w: %d", ErrMaxBatchCount, batchCount)
 	}
 
+	renovateConfigCM := metadata.GenericName(r.req, renovateconfig.ConfigMapSuffix)
+	renovateBatchesCM := metadata.GenericName(r.req, ConfigMapSuffix)
+
 	spec.CompletionMode = ptr.To(batchv1.IndexedCompletion)
 	spec.Completions = ptr.To(int32(batchCount))
 	spec.Parallelism = ptr.To(r.instance.Spec.Runner.Instances)
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 
-	spec.Template.Spec.Volumes = append(
-		renovate.DefaultVolume(corev1.VolumeSource{
-			EmptyDir: &corev1.EmptyDirVolumeSource{},
-		}),
-		corev1.Volume{
-			Name: renovate.VolumeRenovateTmp,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: r.instance.Name,
-					},
-				},
-			},
-		},
-		corev1.Volume{
-			Name: renovate.VolumeRenovateBase,
-			VolumeSource: corev1.VolumeSource{
-				EmptyDir: &corev1.EmptyDirVolumeSource{},
-			},
-		},
+	spec.Template.Spec.Volumes = containers.VolumesTemplate(
+		containers.WithEmptyDirVolume(renovate.VolumeRenovateConfig),
+		containers.WithConfigMapVolume(renovateConfigCM, renovateConfigCM),
+		containers.WithConfigMapVolume(renovateBatchesCM, renovateBatchesCM),
 	)
 
 	spec.Template.Spec.InitContainers = []corev1.Container{
-		{
-			Name:            "renovate-dispatcher",
-			Image:           r.instance.Spec.Image,
-			Command:         []string{"/dispatcher"},
-			ImagePullPolicy: r.instance.Spec.ImagePullPolicy,
-			Env: []corev1.EnvVar{
+		containers.ContainerTemplate(
+			"renovate-dispatcher",
+			r.instance.Spec.Image,
+			r.instance.Spec.ImagePullPolicy,
+			containers.WithEnvVars([]corev1.EnvVar{
 				{
-					Name:  dispatcher.EnvRenovateRawConfig,
+					Name:  renovate.EnvRenovateConfigRaw,
 					Value: renovate.FileRenovateTmp,
 				},
 				{
-					Name:  dispatcher.EnvRenovateConfig,
+					Name:  renovate.EnvRenovateConfig,
 					Value: renovate.FileRenovateConfig,
 				},
 				{
-					Name:  dispatcher.EnvRenovateBatches,
+					Name:  renovate.EnvRenovateBatches,
 					Value: renovate.FileRenovateBatches,
 				},
-			},
-			VolumeMounts: []corev1.VolumeMount{
+			}),
+			containers.WithContainerCommand([]string{"/dispatcher"}),
+			containers.WithVolumeMounts([]corev1.VolumeMount{
 				{
 					Name:      renovate.VolumeRenovateConfig,
 					MountPath: renovate.DirRenovateConfig,
 				},
 				{
-					Name:      renovate.VolumeRenovateTmp,
+					Name:      renovateConfigCM,
 					ReadOnly:  true,
-					MountPath: renovate.DirRenovateTmp,
+					MountPath: renovate.FileRenovateTmp,
+					SubPath:   renovate.FilenameRenovateConfig,
 				},
-			},
-		},
+				{
+					Name:      renovateBatchesCM,
+					ReadOnly:  true,
+					MountPath: renovate.FileRenovateBatches,
+					SubPath:   renovate.FilenameBatches,
+				},
+			}),
+		),
 	}
 	spec.Template.Spec.Containers = []corev1.Container{
-		renovate.DefaultContainer(r.instance, []corev1.EnvVar{}, []string{}),
+		containers.ContainerTemplate(
+			"renovate",
+			r.renovate.Spec.Image,
+			r.renovate.Spec.ImagePullPolicy,
+			containers.WithEnvVars(renovate.DefaultEnvVars(&r.renovate.Spec)),
+			containers.WithVolumeMounts(
+				[]corev1.VolumeMount{
+					{
+						Name:      renovate.VolumeRenovateConfig,
+						MountPath: renovate.DirRenovateConfig,
+					},
+				},
+			),
+		),
 	}
 
 	return nil

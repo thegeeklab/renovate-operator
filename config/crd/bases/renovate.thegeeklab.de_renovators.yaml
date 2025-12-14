@@ -40,11 +40,41 @@ spec:
             description: RenovatorSpec defines the desired state of Renovator.
             properties:
               discovery:
+                description: DiscoverySpec defines the desired state of Discovery.
                 properties:
                   filter:
                     items:
                       type: string
                     type: array
+                  image:
+                    description: |-
+                      Name of the container image, supporting both tags (`<image>:<tag>`)
+                      and digests for deterministic and repeatable deployments
+                      (`<image>:<tag>@sha256:<digestValue>`)
+                    type: string
+                  imagePullPolicy:
+                    description: |-
+                      Image pull policy.
+                      One of `Always`, `Never` or `IfNotPresent`.
+                      If not defined, it defaults to `IfNotPresent`.
+                      Cannot be updated.
+                      More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+                    type: string
+                  logging:
+                    properties:
+                      level:
+                        default: info
+                        enum:
+                        - trace
+                        - debug
+                        - info
+                        - warn
+                        - error
+                        - fatal
+                        type: string
+                    required:
+                    - level
+                    type: object
                   schedule:
                     default: 0 */2 * * *
                     type: string
@@ -82,6 +112,7 @@ spec:
                 - level
                 type: object
               renovate:
+                description: RenovateConfigSpec defines the desired state of RenovateConfig.
                 properties:
                   addLabels:
                     items:
@@ -237,6 +268,21 @@ spec:
                       Cannot be updated.
                       More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
                     type: string
+                  logging:
+                    properties:
+                      level:
+                        default: info
+                        enum:
+                        - trace
+                        - debug
+                        - info
+                        - warn
+                        - error
+                        - fatal
+                        type: string
+                    required:
+                    - level
+                    type: object
                   onboarding:
                     default: true
                     type: boolean
@@ -424,7 +470,6 @@ spec:
                 type: boolean
             required:
             - discovery
-            - renovate
             - schedule
             type: object
           status:
@@ -490,10 +535,6 @@ spec:
                 type: integer
               ready:
                 type: boolean
-              repositories:
-                items:
-                  type: string
-                type: array
               specHash:
                 type: string
             required:

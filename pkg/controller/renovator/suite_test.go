@@ -24,17 +24,17 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	ctx        context.Context
-	cancel     context.CancelFunc
-	testEnv    *envtest.Environment
-	cfg        *rest.Config
-	kubeClient client.Client
+	ctx       context.Context
+	cancel    context.CancelFunc
+	testEnv   *envtest.Environment
+	cfg       *rest.Config
+	k8sClient client.Client
 )
 
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecs(t, "Controller Suite")
+	RunSpecs(t, "RenovatorController Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -64,9 +64,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	kubeClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
+	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
-	Expect(kubeClient).NotTo(BeNil())
+	Expect(k8sClient).NotTo(BeNil())
 })
 
 var _ = AfterSuite(func() {

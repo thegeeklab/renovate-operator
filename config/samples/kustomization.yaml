@@ -2,4 +2,5 @@
 resources:
 - renovate_v1beta1_renovator.yaml
 - renovate_v1beta1_gitrepo.yaml
+- renovate_v1beta1_renovateconfig.yaml
 # +kubebuilder:scaffold:manifestskustomizesamples

@@ -32,11 +32,11 @@ import (
 // http://onsi.github.io/ginkgo/ to learn more about Ginkgo.
 
 var (
-	ctx        context.Context
-	cancel     context.CancelFunc
-	kubeClient client.Client
-	cfg        *rest.Config
-	testEnv    *envtest.Environment
+	ctx       context.Context
+	cancel    context.CancelFunc
+	k8sClient client.Client
+	cfg       *rest.Config
+	testEnv   *envtest.Environment
 )
 
 func TestAPIs(t *testing.T) {
@@ -80,9 +80,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	kubeClient, err = client.New(cfg, client.Options{Scheme: scheme})
+	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme})
 	Expect(err).NotTo(HaveOccurred())
-	Expect(kubeClient).NotTo(BeNil())
+	Expect(k8sClient).NotTo(BeNil())
 
 	// start webhook server using Manager.
 	webhookInstallOptions := &testEnv.WebhookInstallOptions
@@ -99,6 +99,12 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 
 	err = SetupRenovatorWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = SetupRenovateConfigWebhookWithManager(mgr)
+	Expect(err).NotTo(HaveOccurred())
+
+	err = SetupDiscoveryWebhookWithManager(mgr)
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:webhook

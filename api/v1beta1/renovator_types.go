@@ -8,23 +8,20 @@ import (
 // +kubebuilder:validation:Enum=github;gitea
 type PlatformType string
 
-// +kubebuilder:validation:Enum=discover
-type OperationType string
-
 //nolint:revive
 const (
 	PlatformType_GITHUB = "github"
 	PlatformType_GITEA  = "gitea"
 
-	// AnnotationOperation is the annotation used to trigger operations.
-	AnnotationOperation = "renovate.thegeeklab.de/operation"
-
+	// RenovatorOperation is the annotation used to trigger operations.
+	RenovatorOperation = "renovate.thegeeklab.de/operation"
+	// RenovatorOperationSeparator is the separator used to separate parallel operations in the
+	// RenovatorOperation annotation.
+	RenovatorOperationSeparator = ";"
 	// OperationDiscover is the value used to trigger immediate discovery.
-	OperationDiscover OperationType = "discover"
-
+	OperationDiscover = "discover"
 	// JobTypeLabelKey is the label key used to identify job types.
 	JobTypeLabelKey = "renovate.thegeeklab.de/job-type"
-
 	// JobTypeLabelValue is the value used for cron jobs.
 	JobTypeLabelValue = "cron"
 )
@@ -45,32 +42,6 @@ const (
 	DryRun_FULL    = "full"
 )
 
-type RenovateSpec struct {
-	// Name of the container image, supporting both tags (`<image>:<tag>`)
-	// and digests for deterministic and repeatable deployments
-	// (`<image>:<tag>@sha256:<digestValue>`)
-	Image string `json:"image,omitempty"`
-
-	// Image pull policy.
-	// One of `Always`, `Never` or `IfNotPresent`.
-	// If not defined, it defaults to `IfNotPresent`.
-	// Cannot be updated.
-	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
-	// +optional
-	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
-
-	Platform PlatformSpec `json:"platform"`
-	DryRun   DryRun       `json:"dryRun,omitempty"`
-	// +kubebuilder:default:=true
-	Onboarding *bool `json:"onboarding,omitempty"`
-	// OnBoardingConfig object `json:"onBoardingConfig,omitempty,inline"`
-	// +kubebuilder:default:=10
-	PrHourlyLimit int      `json:"prHourlyLimit,omitempty"`
-	AddLabels     []string `json:"addLabels,omitempty"`
-
-	GithubToken *corev1.EnvVarSource `json:"githubToken,omitempty"`
-}
-
 // +kubebuilder:validation:Enum=trace;debug;info;warn;error;fatal
 type LogLevel string
 
@@ -82,6 +53,9 @@ const (
 	LogLevel_WARN  = "warn"
 	LogLevel_ERROR = "error"
 	LogLevel_FATAL = "fatal"
+
+	OperatorContainerImage = "docker.io/thegeeklab/renovate-operator:latest"
+	RenovateContainerImage = "ghcr.io/renovatebot/renovate:latest"
 )
 
 type LoggingSpec struct {
@@ -99,6 +73,22 @@ const (
 	// is defined as 10, then 3 batches will be created.
 	RunnerStrategy_BATCH = "batch"
 )
+
+// ImageSpec defines the container image specification.
+type ImageSpec struct {
+	// Name of the container image, supporting both tags (`<image>:<tag>`)
+	// and digests for deterministic and repeatable deployments
+	// (`<image>:<tag>@sha256:<digestValue>`)
+	Image string `json:"image,omitempty"`
+
+	// Image pull policy.
+	// One of `Always`, `Never` or `IfNotPresent`.
+	// If not defined, it defaults to `IfNotPresent`.
+	// Cannot be updated.
+	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+	// +optional
+	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+}
 
 type RunnerSpec struct {
 	// +kubebuilder:validation:Enum=none;batch
@@ -118,34 +108,11 @@ type RunnerSpec struct {
 	BatchSize int `json:"batchSize,omitempty"`
 }
 
-type DiscoverySpec struct {
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:=false
-	Suspend *bool `json:"suspend"`
-
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:="0 */2 * * *"
-	Schedule string `json:"schedule"`
-
-	Filter []string `json:"filter,omitempty"`
-}
-
 // RenovatorSpec defines the desired state of Renovator.
 type RenovatorSpec struct {
-	// Name of the container image, supporting both tags (`<image>:<tag>`)
-	// and digests for deterministic and repeatable deployments
-	// (`<image>:<tag>@sha256:<digestValue>`)
-	Image string `json:"image,omitempty"`
+	ImageSpec `json:",inline"`
 
-	// Image pull policy.
-	// One of `Always`, `Never` or `IfNotPresent`.
-	// If not defined, it defaults to `IfNotPresent`.
-	// Cannot be updated.
-	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
-	// +optional
-	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
-
-	Renovate RenovateSpec `json:"renovate"`
+	Renovate RenovateConfigSpec `json:"renovate,omitempty"`
 
 	Discovery DiscoverySpec `json:"discovery"`
 
@@ -166,11 +133,10 @@ type RenovatorSpec struct {
 //
 //nolint:lll
 type RenovatorStatus struct {
-	Ready        bool               `json:"ready"`
-	Failed       int                `json:"failed,omitempty"`
-	Conditions   []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
-	SpecHash     string             `json:"specHash,omitempty"`
-	Repositories []string           `json:"repositories,omitempty"`
+	Ready      bool               `json:"ready"`
+	Failed     int                `json:"failed,omitempty"`
+	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	SpecHash   string             `json:"specHash,omitempty"`
 }
 
 // +kubebuilder:object:root=true

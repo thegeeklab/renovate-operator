@@ -37,7 +37,7 @@ var _ = Describe("Renovator Controller", func() {
 					"token": "dummy-token",
 				},
 			}
-			err := kubeClient.Create(ctx, secret)
+			err := k8sClient.Create(ctx, secret)
 			if err != nil {
 				Expect(api_errors.IsAlreadyExists(err)).To(BeTrue())
 			} else {
@@ -45,7 +45,7 @@ var _ = Describe("Renovator Controller", func() {
 			}
 
 			By("creating the custom resource for the Kind Renovator")
-			err = kubeClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Renovator{})
+			err = k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Renovator{})
 			if err != nil && api_errors.IsNotFound(err) {
 				resource := &renovatev1beta1.Renovator{
 					ObjectMeta: metav1.ObjectMeta{
@@ -53,7 +53,7 @@ var _ = Describe("Renovator Controller", func() {
 						Namespace: "default",
 					},
 					Spec: renovatev1beta1.RenovatorSpec{
-						Renovate: renovatev1beta1.RenovateSpec{
+						Renovate: renovatev1beta1.RenovateConfigSpec{
 							Platform: renovatev1beta1.PlatformSpec{
 								Type: "github",
 								Token: corev1.EnvVarSource{
@@ -71,25 +71,26 @@ var _ = Describe("Renovator Controller", func() {
 				}
 				resource.Default()
 				resource.Spec.Schedule = "0 0 * * *"
-				Expect(kubeClient.Create(ctx, resource)).To(Succeed())
+				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
 
 		AfterEach(func() {
 			// TODO(user): Cleanup logic after each test, like removing the resource instance.
 			resource := &renovatev1beta1.Renovator{}
-			err := kubeClient.Get(ctx, typeNamespacedName, resource)
+			resource.Default()
+			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
 			By("Cleanup the specific resource instance Renovator")
-			Expect(kubeClient.Delete(ctx, resource)).To(Succeed())
+			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
 			controllerReconciler := &Reconciler{
-				Client: kubeClient,
-				Scheme: kubeClient.Scheme(),
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
 			}
 
 			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{

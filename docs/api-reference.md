@@ -56,7 +56,7 @@ Configuration for the Renovate bot behavior.
 
 ```yaml
 renovate:
-  image: string                    # Optional: Renovate container image (default: "ghcr.io/renovatebot/renovate")
+  image: string                    # Optional: Renovate container image (default: "ghcr.io/renovatebot/renovate:latest")
   imagePullPolicy: string          # Optional: Image pull policy (default: "IfNotPresent")
 
   platform:

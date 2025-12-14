@@ -24,14 +24,29 @@ resources:
   domain: thegeeklab.de
   group: renovate
   kind: Discovery
+  path: github.com/thegeeklab/renovate-operator/api/v1beta1
   version: v1beta1
+  webhooks:
+    defaulting: true
+    webhookVersion: v1
 - api:
     crdVersion: v1
     namespaced: true
   domain: thegeeklab.de
   group: renovate
   kind: GitRepo
+  path: github.com/thegeeklab/renovate-operator/api/v1beta1
   plural: gitrepos
+  version: v1beta1
+- api:
+    crdVersion: v1
+    namespaced: true
+  domain: thegeeklab.de
+  group: renovate
+  kind: RenovateConfig
   path: github.com/thegeeklab/renovate-operator/api/v1beta1
   version: v1beta1
+  webhooks:
+    defaulting: true
+    webhookVersion: v1
 version: "3"
