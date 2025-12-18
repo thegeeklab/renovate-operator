@@ -39,6 +39,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
 		r.reconcileRenovateConfig,
 		r.reconcileDiscovery,
+		r.reconcileRunner,
 	}
 
 	// Execute each reconciliation step

@@ -15,7 +15,7 @@ type Reconciler struct {
 	client.Client
 	scheme   *runtime.Scheme
 	req      ctrl.Request
-	instance *renovatev1beta1.Renovator
+	instance *renovatev1beta1.Runner
 	renovate *renovatev1beta1.RenovateConfig
 	batches  []Batch
 }
@@ -28,7 +28,7 @@ func NewReconciler(
 	ctx context.Context,
 	c client.Client,
 	scheme *runtime.Scheme,
-	instance *renovatev1beta1.Renovator,
+	instance *renovatev1beta1.Runner,
 	renovate *renovatev1beta1.RenovateConfig,
 ) (*Reconciler, error) {
 	r := &Reconciler{
@@ -99,7 +99,7 @@ func (r *Reconciler) createBatches(ctx context.Context) ([]Batch, error) {
 		return batches, nil
 	}
 
-	switch r.instance.Spec.Runner.Strategy {
+	switch r.instance.Spec.Strategy {
 	case renovatev1beta1.RunnerStrategy_BATCH:
 		batchSize := r.calculateOptimalBatchSize(repoCount)
 
@@ -127,12 +127,12 @@ func (r *Reconciler) calculateOptimalBatchSize(repoCount int) int {
 	)
 
 	// If BatchSize is explicitly set, use it
-	if r.instance.Spec.Runner.BatchSize > 0 {
-		return r.instance.Spec.Runner.BatchSize
+	if r.instance.Spec.BatchSize > 0 {
+		return r.instance.Spec.BatchSize
 	}
 
 	// Calculate optimal batch size based on instances and repository count
-	instances := int(r.instance.Spec.Runner.Instances)
+	instances := int(r.instance.Spec.Instances)
 	if instances <= 0 {
 		instances = 1
 	}

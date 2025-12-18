@@ -21,12 +21,10 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 	Context("when explicit batch size is provided", func() {
 		BeforeEach(func() {
 			r = &Reconciler{
-				instance: &renovatev1beta1.Renovator{
-					Spec: renovatev1beta1.RenovatorSpec{
-						Runner: renovatev1beta1.RunnerSpec{
-							Instances: 2,
-							BatchSize: 15,
-						},
+				instance: &renovatev1beta1.Runner{
+					Spec: renovatev1beta1.RunnerSpec{
+						Instances: 2,
+						BatchSize: 15,
 					},
 				},
 			}
@@ -42,12 +40,11 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 		Context("with multiple instances and many repositories", func() {
 			BeforeEach(func() {
 				r = &Reconciler{
-					instance: &renovatev1beta1.Renovator{
-						Spec: renovatev1beta1.RenovatorSpec{
-							Runner: renovatev1beta1.RunnerSpec{
-								Instances: 4,
-								BatchSize: 0, // not set, should auto-calculate
-							},
+					instance: &renovatev1beta1.Runner{
+						Spec: renovatev1beta1.RunnerSpec{
+							Instances: 4,
+							BatchSize: 0, // not set, should auto-calculate
+
 						},
 					},
 				}
@@ -62,12 +59,10 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 		Context("with batch size exceeding maximum cap", func() {
 			BeforeEach(func() {
 				r = &Reconciler{
-					instance: &renovatev1beta1.Renovator{
-						Spec: renovatev1beta1.RenovatorSpec{
-							Runner: renovatev1beta1.RunnerSpec{
-								Instances: 1,
-								BatchSize: 0,
-							},
+					instance: &renovatev1beta1.Runner{
+						Spec: renovatev1beta1.RunnerSpec{
+							Instances: 1,
+							BatchSize: 0,
 						},
 					},
 				}
@@ -82,12 +77,10 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 		Context("with very few repositories", func() {
 			BeforeEach(func() {
 				r = &Reconciler{
-					instance: &renovatev1beta1.Renovator{
-						Spec: renovatev1beta1.RenovatorSpec{
-							Runner: renovatev1beta1.RunnerSpec{
-								Instances: 10,
-								BatchSize: 0,
-							},
+					instance: &renovatev1beta1.Runner{
+						Spec: renovatev1beta1.RunnerSpec{
+							Instances: 10,
+							BatchSize: 0,
 						},
 					},
 				}
@@ -102,12 +95,10 @@ var _ = Describe("calculateOptimalBatchSize", func() {
 		Context("with single instance", func() {
 			BeforeEach(func() {
 				r = &Reconciler{
-					instance: &renovatev1beta1.Renovator{
-						Spec: renovatev1beta1.RenovatorSpec{
-							Runner: renovatev1beta1.RunnerSpec{
-								Instances: 1,
-								BatchSize: 0,
-							},
+					instance: &renovatev1beta1.Runner{
+						Spec: renovatev1beta1.RunnerSpec{
+							Instances: 1,
+							BatchSize: 0,
 						},
 					},
 				}
@@ -159,17 +150,15 @@ var _ = Describe("createBatches", func() {
 					Namespace: "test-namespace",
 				},
 			},
-			instance: &renovatev1beta1.Renovator{
+			instance: &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
 					Namespace: "test-namespace",
 				},
-				Spec: renovatev1beta1.RenovatorSpec{
-					Runner: renovatev1beta1.RunnerSpec{
-						Strategy:  strategy,
-						Instances: int32(instances),
-						BatchSize: batchSize,
-					},
+				Spec: renovatev1beta1.RunnerSpec{
+					Strategy:  strategy,
+					Instances: int32(instances),
+					BatchSize: batchSize,
 				},
 			},
 		}
@@ -226,17 +215,15 @@ var _ = Describe("createBatches", func() {
 				WithObjects(gitRepos...).
 				Build()
 
-			instance := &renovatev1beta1.Renovator{
+			instance := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
 					Namespace: "test-namespace",
 				},
-				Spec: renovatev1beta1.RenovatorSpec{
-					Runner: renovatev1beta1.RunnerSpec{
-						Strategy:  renovatev1beta1.RunnerStrategy_BATCH,
-						Instances: 2,
-						BatchSize: 0, // auto-calculate
-					},
+				Spec: renovatev1beta1.RunnerSpec{
+					Strategy:  renovatev1beta1.RunnerStrategy_BATCH,
+					Instances: 2,
+					BatchSize: 0, // auto-calculate
 				},
 			}
 
@@ -269,17 +256,15 @@ var _ = Describe("createBatches", func() {
 				WithScheme(scheme).
 				Build()
 
-			instance := &renovatev1beta1.Renovator{
+			instance := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
 					Namespace: "test-namespace",
 				},
-				Spec: renovatev1beta1.RenovatorSpec{
-					Runner: renovatev1beta1.RunnerSpec{
-						Strategy:  renovatev1beta1.RunnerStrategy_BATCH,
-						Instances: 2,
-						BatchSize: 5,
-					},
+				Spec: renovatev1beta1.RunnerSpec{
+					Strategy:  renovatev1beta1.RunnerStrategy_BATCH,
+					Instances: 2,
+					BatchSize: 5,
 				},
 			}
 

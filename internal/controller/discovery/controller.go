@@ -12,6 +12,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -81,6 +82,11 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Discovery{}).
+		Watches(&renovatev1beta1.RenovateConfig{}, handler.EnqueueRequestForOwner(
+			r.Scheme,
+			mgr.GetRESTMapper(),
+			&renovatev1beta1.Discovery{},
+		)).
 		WithEventFilter(predicate.Or(
 			predicate.GenerationChangedPredicate{},
 			predicate.Funcs{

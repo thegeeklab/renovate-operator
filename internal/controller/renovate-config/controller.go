@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-const ControllerName = "renovate"
+const ControllerName = "renovate-config"
 
 // Reconciler reconciles a RenovateConfig object.
 type Reconciler struct {
@@ -46,12 +46,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	renovate, err := renovateconfig.NewReconciler(ctx, r.Client, r.Scheme, rc)
+	renovateconfig, err := renovateconfig.NewReconciler(ctx, r.Client, r.Scheme, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	if res, err := renovate.Reconcile(ctx); err != nil {
+	if res, err := renovateconfig.Reconcile(ctx); err != nil {
 		return controller.HandleReconcileResult(res, err)
 	}
 

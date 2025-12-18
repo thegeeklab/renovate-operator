@@ -27,6 +27,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
 	renovateconfig "github.com/thegeeklab/renovate-operator/internal/controller/renovate-config"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
+	"github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
@@ -250,6 +251,13 @@ func main() {
 			os.Exit(1)
 		}
 	}
+
+	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
+		if err = webhookrenovatev1beta1.SetupRunnerWebhookWithManager(mgr); err != nil {
+			setupLog.Error(err, "unable to create webhook", "webhook", "Runner")
+			os.Exit(1)
+		}
+	}
 	// +kubebuilder:scaffold:builder
 
 	if metricsCertWatcher != nil {
@@ -295,6 +303,15 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", discovery.ControllerName)
+		os.Exit(1)
+	}
+
+	// runner
+	if err = (&runner.Reconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "unable to create controller", "controller", "Runner")
 		os.Exit(1)
 	}
 
