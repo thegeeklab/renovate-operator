@@ -54,7 +54,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	err = os.WriteFile(d.ConfigFile, mergedConfig, 0o644) //nolint:gosec,mnd
+	err = os.WriteFile(d.ConfigFile, mergedConfig, 0o644) //nolint:gosec
 	if err != nil {
 		return fmt.Errorf("%w: %s, %w", ErrWriteFile, d.ConfigFile, err)
 	}

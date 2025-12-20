@@ -54,7 +54,7 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, obj runtime.Object
 	}
 
 	if renovator.Spec.Runner.Strategy == "" {
-		renovator.Spec.Runner.Strategy = "none"
+		renovator.Spec.Runner.Strategy = renovatev1beta1.RunnerStrategy_NONE
 	}
 
 	if renovator.Spec.Runner.Instances == 0 {
