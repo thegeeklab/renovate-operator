@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -12,9 +13,11 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
 
-// nolint:unused
-// log is for logging in this package.
-var runnerlog = logf.Log.WithName("runner-resource")
+var (
+	runnerLog = logf.Log.WithName("runner-resource")
+
+	ErrRunnerObjectType = errors.New("expected a Runner object but got other type")
+)
 
 // SetupRunnerWebhookWithManager registers the webhook for Runner in the manager.
 func SetupRunnerWebhookWithManager(mgr ctrl.Manager) error {
@@ -23,8 +26,7 @@ func SetupRunnerWebhookWithManager(mgr ctrl.Manager) error {
 		Complete()
 }
 
-// TODO(user): EDIT THIS FILE!  THIS IS SCAFFOLDING FOR YOU TO OWN!
-
+//nolint:lll
 // +kubebuilder:webhook:path=/mutate-renovate-thegeeklab-de-v1beta1-runner,mutating=true,failurePolicy=fail,sideEffects=None,groups=renovate.thegeeklab.de,resources=runners,verbs=create;update,versions=v1beta1,name=mrunner-v1beta1.kb.io,admissionReviewVersions=v1
 
 // RunnerCustomDefaulter struct is responsible for setting default values on the custom resource of the
@@ -43,11 +45,12 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, obj runtime.Object)
 	runner, ok := obj.(*renovatev1beta1.Runner)
 
 	if !ok {
-		return fmt.Errorf("expected an Runner object but got %T", obj)
+		return fmt.Errorf("%w: %T", ErrRunnerObjectType, obj)
 	}
-	runnerlog.Info("Defaulting for Runner", "name", runner.GetName())
 
-	// TODO(user): fill in your defaulting logic.
+	runnerLog.Info("Defaulting for Runner", "name", runner.GetName())
+
+	runner.Default()
 
 	return nil
 }
