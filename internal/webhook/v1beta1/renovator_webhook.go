@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -34,9 +35,7 @@ func SetupRenovatorWebhookWithManager(mgr ctrl.Manager) error {
 //
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as it is used only for temporary operations and does not need to be deeply copied.
-type RenovatorCustomDefaulter struct {
-	// TODO(user): Add more fields as needed for defaulting
-}
+type RenovatorCustomDefaulter struct{}
 
 var _ webhook.CustomDefaulter = &RenovatorCustomDefaulter{}
 
@@ -50,7 +49,37 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, obj runtime.Object
 
 	renovatorLog.Info("Defaulting for renovator", "name", renovator.GetName())
 
-	renovator.Default()
+	if renovator.Spec.Logging.Level == "" {
+		renovator.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
+	}
+
+	if renovator.Spec.Runner.Strategy == "" {
+		renovator.Spec.Runner.Strategy = "none"
+	}
+
+	if renovator.Spec.Runner.Instances == 0 {
+		renovator.Spec.Runner.Instances = 1
+	}
+
+	if renovator.Spec.Discovery.Schedule == "" {
+		renovator.Spec.Discovery.Schedule = "0 */2 * * *"
+	}
+
+	if renovator.Spec.Image == "" {
+		renovator.Spec.Image = renovatev1beta1.OperatorContainerImage
+	}
+
+	if renovator.Spec.ImagePullPolicy == "" {
+		renovator.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	}
+
+	if renovator.Spec.Renovate.Image == "" {
+		renovator.Spec.Renovate.Image = renovatev1beta1.RenovateContainerImage
+	}
+
+	if renovator.Spec.Renovate.ImagePullPolicy == "" {
+		renovator.Spec.Renovate.ImagePullPolicy = corev1.PullIfNotPresent
+	}
 
 	return nil
 }

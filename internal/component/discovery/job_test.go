@@ -9,6 +9,7 @@ import (
 	"k8s.io/apimachinery/pkg/api/equality"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -50,7 +51,8 @@ var _ = Describe("ReconcileCronJob", func() {
 				Filter: []string{"*"},
 			},
 		}
-		instance.Default()
+		dd := &v1beta1.DiscoveryCustomDefaulter{}
+		Expect(dd.Default(ctx, instance)).To(Succeed())
 
 		renovate = &renovatev1beta1.RenovateConfig{
 			ObjectMeta: metav1.ObjectMeta{
@@ -58,7 +60,8 @@ var _ = Describe("ReconcileCronJob", func() {
 				Namespace: "test-namespace",
 			},
 		}
-		renovate.Default()
+		rd := &v1beta1.RenovateConfigCustomDefaulter{}
+		Expect(rd.Default(ctx, renovate)).To(Succeed())
 		Expect(fakeClient.Create(ctx, renovate)).To(Succeed())
 
 		reconciler = &Reconciler{

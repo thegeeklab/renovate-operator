@@ -1,3 +1,4 @@
+//nolint:dupl
 package v1beta1
 
 import (
@@ -5,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -34,9 +36,7 @@ func SetupRunnerWebhookWithManager(mgr ctrl.Manager) error {
 //
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as it is used only for temporary operations and does not need to be deeply copied.
-type RunnerCustomDefaulter struct {
-	// TODO(user): Add more fields as needed for defaulting
-}
+type RunnerCustomDefaulter struct{}
 
 var _ webhook.CustomDefaulter = &RunnerCustomDefaulter{}
 
@@ -50,7 +50,21 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, obj runtime.Object)
 
 	runnerLog.Info("Defaulting for Runner", "name", runner.GetName())
 
-	runner.Default()
+	if runner.Spec.Logging == nil {
+		runner.Spec.Logging = &renovatev1beta1.LoggingSpec{}
+	}
+
+	if runner.Spec.Logging.Level == "" {
+		runner.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
+	}
+
+	if runner.Spec.Image == "" {
+		runner.Spec.Image = renovatev1beta1.OperatorContainerImage
+	}
+
+	if runner.Spec.ImagePullPolicy == "" {
+		runner.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	}
 
 	return nil
 }

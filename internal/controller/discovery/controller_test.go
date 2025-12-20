@@ -10,6 +10,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -40,7 +41,8 @@ var _ = Describe("Discovery Controller", func() {
 						Filter: []string{"org/repo1", "org/repo2"},
 					},
 				}
-				resource.Default()
+				dd := &v1beta1.DiscoveryCustomDefaulter{}
+				Expect(dd.Default(ctx, resource)).To(Succeed())
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
 		})
