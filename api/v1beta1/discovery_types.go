@@ -9,13 +9,7 @@ type DiscoverySpec struct {
 	// +kubebuilder:validation:Optional
 	Logging *LoggingSpec `json:"logging,omitempty"`
 
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:=false
-	Suspend *bool `json:"suspend"`
-
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:="0 */2 * * *"
-	Schedule string `json:"schedule"`
+	JobSpec `json:",inline"`
 
 	Filter []string `json:"filter,omitempty"`
 }

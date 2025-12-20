@@ -44,8 +44,10 @@ var _ = Describe("ReconcileCronJob", func() {
 				Namespace: "test-namespace",
 			},
 			Spec: renovatev1beta1.DiscoverySpec{
-				Schedule: "* * * * *",
-				Filter:   []string{"*"},
+				JobSpec: renovatev1beta1.JobSpec{
+					Schedule: "* * * * *",
+				},
+				Filter: []string{"*"},
 			},
 		}
 		instance.Default()

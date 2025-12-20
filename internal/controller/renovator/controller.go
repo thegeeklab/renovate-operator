@@ -5,15 +5,11 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
-	"github.com/thegeeklab/renovate-operator/internal/component/runner"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
-	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -27,22 +23,15 @@ type Reconciler struct {
 }
 
 //nolint:lll
-// +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete;deletecollection
-// +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
-
-//nolint:lll
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovators,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovators/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovators/finalizers,verbs=update
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos,verbs=get;list;watch
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos/status,verbs=get
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries/finalizers,verbs=update
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners/finalizers,verbs=update
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs/finalizers,verbs=update
@@ -74,45 +63,19 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return controller.HandleReconcileResult(res, err)
 	}
 
-	rc := &renovatev1beta1.RenovateConfig{}
-
-	if err := r.Get(ctx, req.NamespacedName, rc); err != nil {
-		if !api_errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
-		}
-
-		return ctrl.Result{}, err
-	}
-
-	runner, err := runner.NewReconciler(ctx, r.Client, r.Scheme, rr, rc)
-	if err != nil {
-		return ctrl.Result{}, err
-	}
-
-	if res, err := runner.Reconcile(ctx); err != nil {
-		return controller.HandleReconcileResult(res, err)
-	}
-
 	return ctrl.Result{}, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&renovatev1beta1.Renovator{}, builder.WithPredicates(
-			predicate.Or(predicate.GenerationChangedPredicate{}),
+		For(&renovatev1beta1.Renovator{}).
+		WithEventFilter(predicate.Or(
+			predicate.GenerationChangedPredicate{},
 		)).
-		Watches(&renovatev1beta1.GitRepo{}, handler.EnqueueRequestForOwner(
-			r.Scheme,
-			mgr.GetRESTMapper(),
-			&renovatev1beta1.Renovator{},
-		), builder.WithPredicates(
-			predicate.Or(predicate.GenerationChangedPredicate{}),
-		)).
-		Owns(&renovatev1beta1.Discovery{}).
 		Owns(&renovatev1beta1.RenovateConfig{}).
-		Owns(&batchv1.Job{}).
-		Owns(&batchv1.CronJob{}).
+		Owns(&renovatev1beta1.Discovery{}).
+		Owns(&renovatev1beta1.Runner{}).
 		Named(ControllerName).
 		Complete(r)
 }

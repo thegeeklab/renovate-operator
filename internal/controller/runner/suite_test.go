@@ -1,28 +1,20 @@
-package v1beta1
+package runner
 
 import (
 	"context"
-	"crypto/tls"
-	"fmt"
-	"net"
 	"os"
 	"path/filepath"
 	"testing"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	admissionv1 "k8s.io/api/admission/v1"
-	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/kubernetes/scheme"
 	"k8s.io/client-go/rest"
-	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	// +kubebuilder:scaffold:imports
@@ -34,15 +26,15 @@ import (
 var (
 	ctx       context.Context
 	cancel    context.CancelFunc
-	k8sClient client.Client
-	cfg       *rest.Config
 	testEnv   *envtest.Environment
+	cfg       *rest.Config
+	k8sClient client.Client
 )
 
-func TestAPIs(t *testing.T) {
+func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecs(t, "Webhook Suite")
+	RunSpecs(t, "RunnerController Suite")
 }
 
 var _ = BeforeSuite(func() {
@@ -51,11 +43,7 @@ var _ = BeforeSuite(func() {
 	ctx, cancel = context.WithCancel(context.TODO())
 
 	var err error
-	scheme := apimachineryruntime.NewScheme()
-	err = renovatev1beta1.AddToScheme(scheme)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = admissionv1.AddToScheme(scheme)
+	err = renovatev1beta1.AddToScheme(scheme.Scheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	// +kubebuilder:scaffold:scheme
@@ -63,11 +51,7 @@ var _ = BeforeSuite(func() {
 	By("bootstrapping test environment")
 	testEnv = &envtest.Environment{
 		CRDDirectoryPaths:     []string{filepath.Join("..", "..", "..", "config", "crd", "bases")},
-		ErrorIfCRDPathMissing: false,
-
-		WebhookInstallOptions: envtest.WebhookInstallOptions{
-			Paths: []string{filepath.Join("..", "..", "..", "config", "webhook")},
-		},
+		ErrorIfCRDPathMissing: true,
 	}
 
 	// Retrieve the first found binary directory to allow running tests from IDEs
@@ -80,55 +64,9 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme})
+	k8sClient, err = client.New(cfg, client.Options{Scheme: scheme.Scheme})
 	Expect(err).NotTo(HaveOccurred())
 	Expect(k8sClient).NotTo(BeNil())
-
-	// start webhook server using Manager.
-	webhookInstallOptions := &testEnv.WebhookInstallOptions
-	mgr, err := ctrl.NewManager(cfg, ctrl.Options{
-		Scheme: scheme,
-		WebhookServer: webhook.NewServer(webhook.Options{
-			Host:    webhookInstallOptions.LocalServingHost,
-			Port:    webhookInstallOptions.LocalServingPort,
-			CertDir: webhookInstallOptions.LocalServingCertDir,
-		}),
-		LeaderElection: false,
-		Metrics:        metricsserver.Options{BindAddress: "0"},
-	})
-	Expect(err).NotTo(HaveOccurred())
-
-	err = SetupRenovatorWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = SetupRenovateConfigWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = SetupDiscoveryWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	err = SetupRunnerWebhookWithManager(mgr)
-	Expect(err).NotTo(HaveOccurred())
-
-	// +kubebuilder:scaffold:webhook
-
-	go func() {
-		defer GinkgoRecover()
-		err = mgr.Start(ctx)
-		Expect(err).NotTo(HaveOccurred())
-	}()
-
-	// wait for the webhook server to get ready.
-	dialer := &net.Dialer{Timeout: time.Second}
-	addrPort := fmt.Sprintf("%s:%d", webhookInstallOptions.LocalServingHost, webhookInstallOptions.LocalServingPort)
-	Eventually(func() error {
-		conn, err := tls.DialWithDialer(dialer, "tcp", addrPort, &tls.Config{InsecureSkipVerify: true})
-		if err != nil {
-			return err
-		}
-
-		return conn.Close()
-	}).Should(Succeed())
 })
 
 var _ = AfterSuite(func() {
@@ -147,7 +85,7 @@ var _ = AfterSuite(func() {
 // setting the 'KUBEBUILDER_ASSETS' environment variable. To ensure the binaries are
 // properly set up, run 'make setup-envtest' beforehand.
 func getFirstFoundEnvTestBinaryDir() string {
-	basePath := filepath.Join("..", "..", "..", "bin", "k8s")
+	basePath := filepath.Join("..", "..", "bin", "k8s")
 
 	entries, err := os.ReadDir(basePath)
 	if err != nil {

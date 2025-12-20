@@ -21,22 +21,10 @@ rules:
   - batch
   resources:
   - cronjobs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - batch
-  resources:
   - jobs
   verbs:
   - create
   - delete
-  - deletecollection
   - get
   - list
   - patch
@@ -62,6 +50,7 @@ rules:
   - gitrepos
   - renovateconfigs
   - renovators
+  - runners
   verbs:
   - create
   - delete
@@ -77,6 +66,7 @@ rules:
   - gitrepos/finalizers
   - renovateconfigs/finalizers
   - renovators/finalizers
+  - runners/finalizers
   verbs:
   - update
 - apiGroups:
@@ -86,6 +76,7 @@ rules:
   - gitrepos/status
   - renovateconfigs/status
   - renovators/status
+  - runners/status
   verbs:
   - get
   - patch

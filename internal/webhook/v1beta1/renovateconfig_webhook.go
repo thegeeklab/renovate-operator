@@ -45,7 +45,7 @@ func (d *RenovateConfigCustomDefaulter) Default(ctx context.Context, obj runtime
 	renovateconfig, ok := obj.(*renovatev1beta1.RenovateConfig)
 
 	if !ok {
-		return fmt.Errorf("%w: %T", ErrRenovatorObjectType, obj)
+		return fmt.Errorf("%w: %T", ErrRenovateConfigObjectType, obj)
 	}
 
 	renovateconfigLog.Info("Defaulting for RenovateConfig", "name", renovateconfig.GetName())

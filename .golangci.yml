@@ -103,6 +103,8 @@ linters:
           - prealloc
           - revive
           - staticcheck
+          - dupl
+          - goconst
         path: (_test\.go|test/.+\.go)
     paths:
       - third_party$

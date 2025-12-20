@@ -438,6 +438,7 @@ spec:
                 - platform
                 type: object
               runner:
+                description: RunnerSpec defines the desired state of Runner.
                 properties:
                   batchSize:
                     description: |-
@@ -446,6 +447,20 @@ spec:
                     maximum: 1000
                     minimum: 1
                     type: integer
+                  image:
+                    description: |-
+                      Name of the container image, supporting both tags (`<image>:<tag>`)
+                      and digests for deterministic and repeatable deployments
+                      (`<image>:<tag>@sha256:<digestValue>`)
+                    type: string
+                  imagePullPolicy:
+                    description: |-
+                      Image pull policy.
+                      One of `Always`, `Never` or `IfNotPresent`.
+                      If not defined, it defaults to `IfNotPresent`.
+                      Cannot be updated.
+                      More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
+                    type: string
                   instances:
                     default: 1
                     description: MaxRunners Maximum number of parallel runners to
@@ -454,23 +469,44 @@ spec:
                     maximum: 100
                     minimum: 1
                     type: integer
+                  logging:
+                    properties:
+                      level:
+                        default: info
+                        enum:
+                        - trace
+                        - debug
+                        - info
+                        - warn
+                        - error
+                        - fatal
+                        type: string
+                    required:
+                    - level
+                    type: object
+                  schedule:
+                    default: 0 */2 * * *
+                    type: string
                   strategy:
                     default: none
                     enum:
                     - none
                     - batch
                     type: string
+                  suspend:
+                    default: false
+                    type: boolean
                 required:
                 - instances
                 type: object
               schedule:
+                default: 0 */2 * * *
                 type: string
               suspend:
                 default: false
                 type: boolean
             required:
             - discovery
-            - schedule
             type: object
           status:
             description: RenovatorStatus defines the observed state of Renovator.

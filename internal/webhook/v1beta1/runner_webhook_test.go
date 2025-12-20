@@ -10,18 +10,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var _ = Describe("RenovateConfig Webhook", func() {
+var _ = Describe("Runner Webhook", func() {
 	var (
-		obj       *renovatev1beta1.RenovateConfig
-		oldObj    *renovatev1beta1.RenovateConfig
-		defaulter RenovateConfigCustomDefaulter
+		obj       *renovatev1beta1.Runner
+		oldObj    *renovatev1beta1.Runner
+		defaulter RunnerCustomDefaulter
 		ctx       context.Context
 	)
 
 	BeforeEach(func() {
-		obj = &renovatev1beta1.RenovateConfig{}
-		oldObj = &renovatev1beta1.RenovateConfig{}
-		defaulter = RenovateConfigCustomDefaulter{}
+		obj = &renovatev1beta1.Runner{}
+		oldObj = &renovatev1beta1.Runner{}
+		defaulter = RunnerCustomDefaulter{}
 		ctx = context.Background()
 		Expect(defaulter).NotTo(BeNil(), "Expected defaulter to be initialized")
 		Expect(oldObj).NotTo(BeNil(), "Expected oldObj to be initialized")
@@ -32,14 +32,14 @@ var _ = Describe("RenovateConfig Webhook", func() {
 		// Clean up resources if needed
 	})
 
-	Context("When creating RenovateConfig under Defaulting Webhook", func() {
+	Context("When creating Runner under Defaulting Webhook", func() {
 		It("Should apply defaults when required fields are empty", func() {
 			By("calling the Default method to apply defaults")
 			err := defaulter.Default(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging).NotTo(BeNil())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_INFO))
-			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.RenovateContainerImage))
+			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.OperatorContainerImage))
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
 		})
 
@@ -58,13 +58,13 @@ var _ = Describe("RenovateConfig Webhook", func() {
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullAlways))
 		})
 
-		It("Should return error when object is not a RenovateConfig", func() {
-			By("creating a non-RenovateConfig object")
-			nonRenovateConfigObj := &renovatev1beta1.Runner{}
+		It("Should return error when object is not a Runner", func() {
+			By("creating a non-Runner object")
+			nonRunnerObj := &renovatev1beta1.Discovery{}
 			By("calling the Default method with wrong object type")
-			err := defaulter.Default(ctx, nonRenovateConfigObj)
+			err := defaulter.Default(ctx, nonRunnerObj)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a RenovateConfig object but got other type"))
+			Expect(err.Error()).To(ContainSubstring("expected a Runner object but got other type"))
 		})
 	})
 })

@@ -1,4 +1,4 @@
-package discovery
+package runner
 
 import (
 	"context"
@@ -13,9 +13,9 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-var _ = Describe("Discovery Controller", func() {
+var _ = Describe("Runner Controller", func() {
 	Context("When reconciling a resource", func() {
-		const resourceName = "test-discovery"
+		const resourceName = "test-runner"
 
 		ctx := context.Background()
 
@@ -25,19 +25,20 @@ var _ = Describe("Discovery Controller", func() {
 		}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Discovery")
-			err := k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Discovery{})
+			By("creating the custom resource for the Kind Runner")
+			err := k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Runner{})
 			if err != nil && api_errors.IsNotFound(err) {
-				resource := &renovatev1beta1.Discovery{
+				resource := &renovatev1beta1.Runner{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					Spec: renovatev1beta1.DiscoverySpec{
+					Spec: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 */2 * * *",
 						},
-						Filter: []string{"org/repo1", "org/repo2"},
+						Strategy:  renovatev1beta1.RunnerStrategy_NONE,
+						Instances: 1,
 					},
 				}
 				resource.Default()
@@ -46,11 +47,11 @@ var _ = Describe("Discovery Controller", func() {
 		})
 
 		AfterEach(func() {
-			resource := &renovatev1beta1.Discovery{}
+			resource := &renovatev1beta1.Runner{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance Discovery")
+			By("Cleanup the specific resource instance Runner")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 

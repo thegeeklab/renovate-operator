@@ -51,7 +51,7 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) error {
 
 	spec.CompletionMode = ptr.To(batchv1.IndexedCompletion)
 	spec.Completions = ptr.To(int32(batchCount))
-	spec.Parallelism = ptr.To(r.instance.Spec.Runner.Instances)
+	spec.Parallelism = ptr.To(r.instance.Spec.Instances)
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 
 	spec.Template.Spec.Volumes = containers.VolumesTemplate(

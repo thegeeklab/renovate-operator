@@ -90,22 +90,14 @@ type ImageSpec struct {
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 }
 
-type RunnerSpec struct {
-	// +kubebuilder:validation:Enum=none;batch
-	// +kubebuilder:default:="none"
-	Strategy RunnerStrategy `json:"strategy,omitempty"`
+type JobSpec struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:=false
+	Suspend *bool `json:"suspend"`
 
-	// MaxRunners Maximum number of parallel runners to start. A single runner will only process a single batch.
-	// +kubebuilder:default:=1
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=100
-	Instances int32 `json:"instances"`
-
-	// BatchSize Number of repositories per batch. Only used when strategy is 'batch'.
-	// If not specified, defaults to a reasonable size based on the number of repositories and instances.
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=1000
-	BatchSize int `json:"batchSize,omitempty"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default:="0 */2 * * *"
+	Schedule string `json:"schedule"`
 }
 
 // RenovatorSpec defines the desired state of Renovator.
@@ -116,11 +108,7 @@ type RenovatorSpec struct {
 
 	Discovery DiscoverySpec `json:"discovery"`
 
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:=false
-	Suspend *bool `json:"suspend"`
-
-	Schedule string `json:"schedule"`
+	JobSpec `json:",inline"`
 
 	// +kubebuilder:validation:Optional
 	Logging LoggingSpec `json:"logging"`
