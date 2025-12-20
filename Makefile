@@ -26,6 +26,10 @@ endif
 SHELL = /usr/bin/env bash -o pipefail
 .SHELLFLAGS = -ec
 
+TEST_FORMAT ?= pkgname
+GOTEST_FLAGS = --format=$(TEST_FORMAT) -- -count=1 -cover -coverprofile=cover.out
+GINKGO_FLAGS = -ginkgo.focus="$(FOCUS)" -ginkgo.skip="$(SKIP)" -ginkgo.v
+
 # Check if kind is installed
 define check-kind-installed
 @command -v kind >/dev/null 2>&1 || { \
@@ -75,8 +79,11 @@ vet: ## Run go vet against code.
 	$(GO) vet ./...
 
 .PHONY: test
-test: manifests generate fmt vet setup-envtest ## Run tests.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(shell go env GOPATH)/bin/gotestsum $$($(GO) list ./... | grep -v /e2e) -coverprofile cover.out
+test: setup-envtest ## Run tests without setup.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(shell go env GOPATH)/bin/gotestsum $(GOTEST_FLAGS) $$($(GO) list ./... | grep -v /e2e) $(GINKGO_FLAGS)
+
+.PHONY: test-full
+test-full: manifests generate fmt vet setup-envtest test ## Run tests with full setup.
 
 .PHONY: kind-create
 kind-create: ## Create a Kind cluster from hack/kind.yaml and optionally deploy cert-manager.
