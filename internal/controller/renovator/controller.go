@@ -10,6 +10,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
@@ -72,6 +73,25 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		For(&renovatev1beta1.Renovator{}).
 		WithEventFilter(predicate.Or(
 			predicate.GenerationChangedPredicate{},
+			predicate.Funcs{
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					r, ok := e.ObjectNew.(*renovatev1beta1.Renovator)
+					if !ok {
+						return false
+					}
+
+					or, ok := e.ObjectOld.(*renovatev1beta1.Renovator)
+					if !ok {
+						return false
+					}
+
+					return (renovator.HasRenovatorOperationDiscover(r.Annotations) &&
+						!renovator.HasRenovatorOperationDiscover(or.Annotations))
+				},
+				CreateFunc:  func(_ event.CreateEvent) bool { return true },
+				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
+				GenericFunc: func(_ event.GenericEvent) bool { return false },
+			},
 		)).
 		Owns(&renovatev1beta1.RenovateConfig{}).
 		Owns(&renovatev1beta1.Discovery{}).

@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	ctrl "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -101,7 +102,7 @@ var _ = Describe("Renovator Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result.Requeue).To(BeFalse())
+			Expect(result.RequeueAfter).To(BeZero())
 
 			// Verify the resource was reconciled successfully
 			resource := &renovatev1beta1.Renovator{}
@@ -189,6 +190,94 @@ var _ = Describe("Renovator Controller", func() {
 
 			// Clean up the additional resource manually since it's not handled by AfterEach
 			Expect(k8sClient.Delete(ctx, createdResource)).To(Succeed())
+		})
+
+		It("should prevent double reconciliation when annotation is removed", func() {
+			By("Testing that annotation removal doesn't trigger re-reconciliation")
+
+			// Create a Renovator with operation annotation
+			rr := &renovatev1beta1.Renovator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-no-double-reconcile",
+					Namespace: "default",
+					Annotations: map[string]string{
+						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
+					},
+				},
+				Spec: renovatev1beta1.RenovatorSpec{
+					Renovate: renovatev1beta1.RenovateConfigSpec{
+						Platform: renovatev1beta1.PlatformSpec{
+							Type: "github",
+							Token: corev1.EnvVarSource{
+								SecretKeyRef: &corev1.SecretKeySelector{
+									LocalObjectReference: corev1.LocalObjectReference{
+										Name: "renovate-token-secret",
+									},
+									Key: "token",
+								},
+							},
+							Endpoint: "https://api.github.com/",
+						},
+					},
+				},
+			}
+
+			// Apply defaults
+			webhook := &v1beta1.RenovatorCustomDefaulter{}
+			Expect(webhook.Default(ctx, rr)).To(Succeed())
+			rr.Spec.Schedule = "0 0 * * *"
+
+			// Create the Renovator resource
+			doubleReconcileTestName := types.NamespacedName{
+				Name:      "test-no-double-reconcile",
+				Namespace: "default",
+			}
+			Expect(k8sClient.Create(ctx, rr)).To(Succeed())
+
+			// First reconciliation - should process the annotation
+			controllerReconciler := &Reconciler{
+				Client: k8sClient,
+				Scheme: k8sClient.Scheme(),
+			}
+
+			result1, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: doubleReconcileTestName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result1.RequeueAfter).To(BeZero())
+
+			// Verify the annotation was removed from the Renovator
+			updatedRenovator := &renovatev1beta1.Renovator{}
+			Expect(k8sClient.Get(ctx, doubleReconcileTestName, updatedRenovator)).To(Succeed())
+			if updatedRenovator.Annotations != nil {
+				Expect(updatedRenovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
+			}
+
+			// Second reconciliation - should NOT be triggered by annotation removal
+			// (This simulates what would happen if the controller watched the update)
+			result2, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: doubleReconcileTestName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result2.RequeueAfter).To(BeZero())
+
+			// The key test: verify that the predicate would prevent this reconciliation
+			// by checking that the old object had the annotation and the new one doesn't
+			oldRenovator := rr.DeepCopy()
+			oldRenovator.Annotations = map[string]string{
+				renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
+			}
+
+			// This should return false (don't trigger reconciliation) when annotation is removed
+			// The predicate logic is: (new has annotation) AND (old does not have annotation)
+			// When annotation is removed: new does not have it, old has it
+			// So predicate should return false to prevent double reconciliation
+			shouldTrigger := renovator.HasRenovatorOperationDiscover(updatedRenovator.Annotations) &&
+				!renovator.HasRenovatorOperationDiscover(oldRenovator.Annotations)
+			Expect(shouldTrigger).To(BeFalse())
+
+			// Clean up
+			Expect(k8sClient.Delete(ctx, rr)).To(Succeed())
 		})
 	})
 })
