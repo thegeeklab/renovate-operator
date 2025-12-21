@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"fmt"
 	"math"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
@@ -13,11 +14,12 @@ import (
 
 type Reconciler struct {
 	client.Client
-	scheme   *runtime.Scheme
-	req      ctrl.Request
-	instance *renovatev1beta1.Runner
-	renovate *renovatev1beta1.RenovateConfig
-	batches  []Batch
+	scheme       *runtime.Scheme
+	req          ctrl.Request
+	instance     *renovatev1beta1.Runner
+	renovate     *renovatev1beta1.RenovateConfig
+	batches      []Batch
+	batchesCount int32
 }
 
 type Batch struct {
@@ -44,7 +46,13 @@ func NewReconciler(
 		return nil, err
 	}
 
+	batchesCount := len(r.batches)
+	if batchesCount > math.MaxInt32 {
+		return nil, fmt.Errorf("%w: %d", ErrMaxBatchCount, batchesCount)
+	}
+
 	r.batches = batches
+	r.batchesCount = int32(batchesCount)
 
 	return r, nil
 }

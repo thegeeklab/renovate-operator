@@ -61,9 +61,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.RenovateConfig{}).
-		WithEventFilter(predicate.Or(
-			predicate.GenerationChangedPredicate{},
-		)).
+		WithEventFilter(predicate.GenerationChangedPredicate{}).
 		Named(ControllerName).
 		Complete(r)
 }
