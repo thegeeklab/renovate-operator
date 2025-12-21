@@ -179,6 +179,172 @@ var _ = Describe("DeleteOwnedJobs", func() {
 	})
 })
 
+var _ = Describe("CheckActiveJobs", func() {
+	var (
+		fakeClient client.Client
+		scheme     *runtime.Scheme
+		ctx        context.Context
+		namespace  string
+	)
+
+	BeforeEach(func() {
+		scheme = runtime.NewScheme()
+		Expect(clientgoscheme.AddToScheme(scheme)).To(Succeed())
+		Expect(batchv1.AddToScheme(scheme)).To(Succeed())
+
+		fakeClient = fake.NewClientBuilder().
+			WithScheme(scheme).
+			Build()
+
+		ctx = context.Background()
+		namespace = "test-namespace"
+	})
+
+	Context("when there are no matching jobs", func() {
+		It("should return false when no jobs match the pattern", func() {
+			// Create a job with a different name
+			otherJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "different-job",
+					Namespace: namespace,
+				},
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "test-container",
+									Image: "nginx:latest",
+								},
+							},
+							RestartPolicy: corev1.RestartPolicyOnFailure,
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, otherJob)).To(Succeed())
+
+			// Execute
+			active, err := cronjob.CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(active).To(BeFalse())
+		})
+	})
+
+	Context("when there are matching jobs", func() {
+		It("should return true when job has active pods", func() {
+			// Create a job with active pods
+			activeJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job-12345",
+					Namespace: namespace,
+				},
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "test-container",
+									Image: "nginx:latest",
+								},
+							},
+							RestartPolicy: corev1.RestartPolicyOnFailure,
+						},
+					},
+				},
+				Status: batchv1.JobStatus{
+					Active: 1,
+				},
+			}
+			Expect(fakeClient.Create(ctx, activeJob)).To(Succeed())
+
+			// Execute
+			active, err := cronjob.CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(active).To(BeTrue())
+		})
+
+		It("should return true when job is pending (not started yet)", func() {
+			// Create a pending job (no succeeded or failed pods)
+			pendingJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: namespace,
+				},
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "test-container",
+									Image: "nginx:latest",
+								},
+							},
+							RestartPolicy: corev1.RestartPolicyOnFailure,
+						},
+					},
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 0,
+					Failed:    0,
+				},
+			}
+			Expect(fakeClient.Create(ctx, pendingJob)).To(Succeed())
+
+			// Execute
+			active, err := cronjob.CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(active).To(BeTrue())
+		})
+
+		It("should return false when job has completed", func() {
+			// Create a completed job
+			completedJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job-67890",
+					Namespace: namespace,
+				},
+				Spec: batchv1.JobSpec{
+					Template: corev1.PodTemplateSpec{
+						Spec: corev1.PodSpec{
+							Containers: []corev1.Container{
+								{
+									Name:  "test-container",
+									Image: "nginx:latest",
+								},
+							},
+							RestartPolicy: corev1.RestartPolicyOnFailure,
+						},
+					},
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Failed:    0,
+				},
+			}
+			Expect(fakeClient.Create(ctx, completedJob)).To(Succeed())
+
+			// Execute
+			active, err := cronjob.CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(active).To(BeFalse())
+		})
+	})
+
+	Context("when listing jobs fails", func() {
+		It("should return error when job listing fails", func() {
+			// Create a mock client that fails on listing
+			failingListClient := &failingListClient{Client: fakeClient}
+
+			// Execute
+			active, err := cronjob.CheckActiveJobs(ctx, failingListClient, namespace, "test-job")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to list jobs"))
+			Expect(active).To(BeFalse())
+		})
+	})
+})
+
 // failingClient is a mock client that fails on Delete operations.
 type failingClient struct {
 	client.Client

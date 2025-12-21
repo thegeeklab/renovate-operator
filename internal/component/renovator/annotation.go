@@ -8,7 +8,6 @@ import (
 )
 
 // GetRenovatorOperations returns the operations specified in the operation annotation.
-// This function can be used for both Discovery and Renovator resources.
 func GetRenovatorOperations(annotations map[string]string) []string {
 	return util.SplitAndTrimString(
 		annotations[renovatev1beta1.RenovatorOperation],
@@ -17,7 +16,6 @@ func GetRenovatorOperations(annotations map[string]string) []string {
 }
 
 // HasRenovatorOperationDiscover checks if a resource has the discover operation.
-// This function can be used for both Discovery and Renovator resources.
 func HasRenovatorOperationDiscover(annotations map[string]string) bool {
 	operations := GetRenovatorOperations(annotations)
 
@@ -25,7 +23,6 @@ func HasRenovatorOperationDiscover(annotations map[string]string) bool {
 }
 
 // HasRenovatorOperationRenovate checks if a resource has the renovate operation.
-// This function can be used for both Discovery and Renovator resources.
 func HasRenovatorOperationRenovate(annotations map[string]string) bool {
 	operations := GetRenovatorOperations(annotations)
 
@@ -33,13 +30,13 @@ func HasRenovatorOperationRenovate(annotations map[string]string) bool {
 }
 
 // HasRenovatorOperation checks if a resource has any renovator operation annotation.
-// This function can be used for both Discovery and Renovator resources.
 func HasRenovatorOperation(annotations map[string]string) bool {
 	operations := GetRenovatorOperations(annotations)
 
 	return len(operations) > 0
 }
 
+// RemoveRenovatorOperation removes the renovator operation annotation from the given annotations map.
 func RemoveRenovatorOperation(annotations map[string]string) map[string]string {
 	if annotations == nil {
 		annotations = make(map[string]string)

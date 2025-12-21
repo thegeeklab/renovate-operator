@@ -2,11 +2,17 @@ package cronjob
 
 import (
 	"context"
+	"strings"
+	"time"
 
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	"sigs.k8s.io/controller-runtime/pkg/client"
+)
+
+const (
+	// RequeueDelay is the default delay when requeuing operations.
+	RequeueDelay = time.Minute
 )
 
 // DeleteOwnedJobs deletes all Jobs owned by the specified CronJob.
@@ -34,4 +40,22 @@ func DeleteOwnedJobs(ctx context.Context, c client.Client, cronJob *batchv1.Cron
 	}
 
 	return nil
+}
+
+// CheckActiveJobs checks if there are any active jobs with the given name pattern.
+func CheckActiveJobs(ctx context.Context, c client.Client, namespace, jobName string) (bool, error) {
+	existingJobs := &batchv1.JobList{}
+	if err := c.List(ctx, existingJobs, client.InNamespace(namespace)); err != nil {
+		return false, err
+	}
+
+	for _, job := range existingJobs.Items {
+		if job.Name == jobName || strings.HasPrefix(job.Name, jobName+"-") {
+			if job.Status.Active > 0 || (job.Status.Succeeded == 0 && job.Status.Failed == 0) {
+				return true, nil
+			}
+		}
+	}
+
+	return false, nil
 }

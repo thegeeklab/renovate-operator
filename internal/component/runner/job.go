@@ -3,14 +3,12 @@ package runner
 import (
 	"context"
 	"errors"
-	"strings"
-	"time"
 
 	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovate-config"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
-	"github.com/thegeeklab/renovate-operator/internal/resource/cronjob"
+	cronjob "github.com/thegeeklab/renovate-operator/internal/resource/cronjob"
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
@@ -18,16 +16,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var ErrMaxBatchCount = errors.New("max batch count reached")
-
-const (
-	// RequeueDelay is the default delay when requeuing operations.
-	RequeueDelay = time.Minute
-)
 
 func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
 	// Check if immediate renovate is requested via annotation
@@ -55,20 +47,13 @@ func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error)
 
 func (r *Reconciler) handleImmediateRenovate(ctx context.Context) (*ctrl.Result, error) {
 	// Check for active renovate jobs with our specific labels
-	existingJobs := &batchv1.JobList{}
-	if err := r.List(ctx, existingJobs, client.InNamespace(r.instance.Namespace)); err != nil {
+	active, err := cronjob.CheckActiveJobs(ctx, r.Client, r.instance.Namespace, RunnerName(r.req))
+	if err != nil {
 		return &ctrl.Result{}, err
 	}
 
-	runnerName := RunnerName(r.req)
-	for _, job := range existingJobs.Items {
-		// Check both manually created renovate jobs and jobs created by CronJob
-		if job.Name == runnerName || strings.HasPrefix(job.Name, runnerName+"-") {
-			// Consider job as running if it's active or hasn't completed yet
-			if job.Status.Active > 0 || (job.Status.Succeeded == 0 && job.Status.Failed == 0) {
-				return &ctrl.Result{RequeueAfter: RequeueDelay}, nil
-			}
-		}
+	if active {
+		return &ctrl.Result{RequeueAfter: cronjob.RequeueDelay}, nil
 	}
 
 	job := &batchv1.Job{
@@ -81,7 +66,7 @@ func (r *Reconciler) handleImmediateRenovate(ctx context.Context) (*ctrl.Result,
 
 	r.updateJobSpec(&job.Spec)
 
-	_, err := k8s.CreateOrPatch(ctx, r.Client, job, r.instance, nil)
+	_, err = k8s.CreateOrPatch(ctx, r.Client, job, r.instance, nil)
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
