@@ -2,7 +2,6 @@ package runner
 
 import (
 	"context"
-	"errors"
 
 	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovate-config"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
@@ -18,8 +17,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
-
-var ErrMaxBatchCount = errors.New("max batch count reached")
 
 func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
 	// Check if immediate renovate is requested via annotation

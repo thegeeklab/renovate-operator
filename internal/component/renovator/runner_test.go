@@ -13,7 +13,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var _ = Describe("Renovator Discovery", func() {
+var _ = Describe("Renovator Runner", func() {
 	var (
 		ctx        context.Context
 		scheme     *runtime.Scheme
@@ -28,18 +28,18 @@ var _ = Describe("Renovator Discovery", func() {
 	})
 
 	Describe("Annotation Forwarding", func() {
-		It("should forward operation annotation from Renovator to Discovery", func() {
+		It("should forward operation annotation from Renovator to Runner", func() {
 			// Create a Renovator instance with operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
 					Namespace: "default",
 					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
+						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
 					},
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
-					Discovery: renovatev1beta1.DiscoverySpec{
+					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 0 * * *",
 						},
@@ -51,22 +51,22 @@ var _ = Describe("Renovator Discovery", func() {
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Discovery instance
-			discovery := &renovatev1beta1.Discovery{
+			// Create a Runner instance
+			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
+					Name:      "test-runner",
 					Namespace: "default",
 				},
 			}
 
-			// Call updateDiscovery
-			err = reconciler.updateDiscovery(discovery)
+			// Call updateRunner
+			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify the annotation was forwarded
-			Expect(discovery.Annotations).NotTo(BeNil())
-			Expect(discovery.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
-			Expect(discovery.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationDiscover))
+			Expect(runner.Annotations).NotTo(BeNil())
+			Expect(runner.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
+			Expect(runner.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
 		})
 
 		It("should not forward annotation when Renovator has no annotations", func() {
@@ -77,7 +77,7 @@ var _ = Describe("Renovator Discovery", func() {
 					Namespace: "default",
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
-					Discovery: renovatev1beta1.DiscoverySpec{
+					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 0 * * *",
 						},
@@ -89,34 +89,34 @@ var _ = Describe("Renovator Discovery", func() {
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Discovery instance
-			discovery := &renovatev1beta1.Discovery{
+			// Create a Runner instance
+			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
+					Name:      "test-runner",
 					Namespace: "default",
 				},
 			}
 
-			// Call updateDiscovery
-			err = reconciler.updateDiscovery(discovery)
+			// Call updateRunner
+			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify no annotation was added
-			Expect(discovery.Annotations).To(BeNil())
+			Expect(runner.Annotations).To(BeNil())
 		})
 
-		It("should preserve existing annotations on Discovery", func() {
+		It("should preserve existing annotations on Runner", func() {
 			// Create a Renovator instance with operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
 					Namespace: "default",
 					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
+						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
 					},
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
-					Discovery: renovatev1beta1.DiscoverySpec{
+					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 0 * * *",
 						},
@@ -128,10 +128,10 @@ var _ = Describe("Renovator Discovery", func() {
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Discovery instance with existing annotations
-			discovery := &renovatev1beta1.Discovery{
+			// Create a Runner instance with existing annotations
+			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
+					Name:      "test-runner",
 					Namespace: "default",
 					Annotations: map[string]string{
 						"existing-annotation": "existing-value",
@@ -139,16 +139,16 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Call updateDiscovery
-			err = reconciler.updateDiscovery(discovery)
+			// Call updateRunner
+			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify both annotations exist
-			Expect(discovery.Annotations).NotTo(BeNil())
-			Expect(discovery.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
-			Expect(discovery.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationDiscover))
-			Expect(discovery.Annotations).To(HaveKey("existing-annotation"))
-			Expect(discovery.Annotations["existing-annotation"]).To(Equal("existing-value"))
+			Expect(runner.Annotations).NotTo(BeNil())
+			Expect(runner.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
+			Expect(runner.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
+			Expect(runner.Annotations).To(HaveKey("existing-annotation"))
+			Expect(runner.Annotations["existing-annotation"]).To(Equal("existing-value"))
 		})
 
 		It("should test annotation cleanup in component reconciler", func() {
@@ -158,11 +158,11 @@ var _ = Describe("Renovator Discovery", func() {
 					Name:      "test-renovator-cleanup",
 					Namespace: "default",
 					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
+						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
 					},
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
-					Discovery: renovatev1beta1.DiscoverySpec{
+					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 0 * * *",
 						},

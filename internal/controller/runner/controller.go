@@ -108,34 +108,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 				&renovatev1beta1.Runner{},
 			),
 			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
-		Watches(&renovatev1beta1.GitRepo{},
-			handler.EnqueueRequestForOwner(
-				r.Scheme,
-				mgr.GetRESTMapper(),
-				&renovatev1beta1.Runner{},
-			),
-			builder.WithPredicates(predicate.Or(
-				predicate.GenerationChangedPredicate{},
-				predicate.Funcs{
-					UpdateFunc: func(e event.UpdateEvent) bool {
-						r, ok := e.ObjectNew.(*renovatev1beta1.GitRepo)
-						if !ok {
-							return false
-						}
-
-						or, ok := e.ObjectOld.(*renovatev1beta1.GitRepo)
-						if !ok {
-							return false
-						}
-
-						return (renovator.HasRenovatorOperationRenovate(r.Annotations) &&
-							!renovator.HasRenovatorOperationRenovate(or.Annotations))
-					},
-					CreateFunc:  func(_ event.CreateEvent) bool { return true },
-					DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
-					GenericFunc: func(_ event.GenericEvent) bool { return false },
-				},
-			))).
 		Owns(&batchv1.Job{}).
 		Owns(&batchv1.CronJob{}).
 		Named(ControllerName).

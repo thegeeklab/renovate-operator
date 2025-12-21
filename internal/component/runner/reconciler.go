@@ -2,6 +2,7 @@ package runner
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"math"
 
@@ -11,6 +12,8 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var ErrMaxBatchCount = errors.New("max batch count reached")
 
 type Reconciler struct {
 	client.Client
@@ -46,12 +49,13 @@ func NewReconciler(
 		return nil, err
 	}
 
+	r.batches = batches
+
 	batchesCount := len(r.batches)
 	if batchesCount > math.MaxInt32 {
 		return nil, fmt.Errorf("%w: %d", ErrMaxBatchCount, batchesCount)
 	}
 
-	r.batches = batches
 	r.batchesCount = int32(batchesCount)
 
 	return r, nil

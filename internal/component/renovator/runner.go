@@ -1,3 +1,4 @@
+//nolint:dupl
 package renovator
 
 import (
@@ -38,6 +39,15 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 
 	if runner.Spec.ImagePullPolicy == "" {
 		runner.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
+	}
+
+	// Forward operation annotations from Renovator to Discovery
+	if HasRenovatorOperationRenovate(r.instance.Annotations) {
+		if runner.Annotations == nil {
+			runner.Annotations = make(map[string]string)
+		}
+
+		runner.Annotations[renovatev1beta1.RenovatorOperation] = renovatev1beta1.OperationRenovate
 	}
 
 	return nil

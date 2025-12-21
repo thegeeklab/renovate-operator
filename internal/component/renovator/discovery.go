@@ -1,3 +1,4 @@
+//nolint:dupl
 package renovator
 
 import (
@@ -41,15 +42,12 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 	}
 
 	// Forward operation annotations from Renovator to Discovery
-	if r.instance.Annotations != nil {
+	if HasRenovatorOperationDiscover(r.instance.Annotations) {
 		if discovery.Annotations == nil {
 			discovery.Annotations = make(map[string]string)
 		}
 
-		// Forward the operation annotation if it exists on the Renovator
-		if operation, exists := r.instance.Annotations[renovatev1beta1.RenovatorOperation]; exists {
-			discovery.Annotations[renovatev1beta1.RenovatorOperation] = operation
-		}
+		discovery.Annotations[renovatev1beta1.RenovatorOperation] = renovatev1beta1.OperationDiscover
 	}
 
 	return nil
