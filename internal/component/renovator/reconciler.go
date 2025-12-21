@@ -52,5 +52,11 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		results.Collect(res)
 	}
 
+	// Remove discovery annotation
+	r.instance.Annotations = RemoveRenovatorOperation(r.instance.Annotations)
+	if err := r.Update(ctx, r.instance); err != nil {
+		return &ctrl.Result{}, err
+	}
+
 	return results.ToResult(), nil
 }

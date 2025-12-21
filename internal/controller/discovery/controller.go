@@ -5,6 +5,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/discovery"
+	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -101,7 +102,8 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 						return false
 					}
 
-					return (discovery.HasRenovatorOperationDiscover(d) && !discovery.HasRenovatorOperationDiscover(od))
+					return (renovator.HasRenovatorOperationDiscover(d.Annotations) &&
+						!renovator.HasRenovatorOperationDiscover(od.Annotations))
 				},
 				CreateFunc:  func(_ event.CreateEvent) bool { return true },
 				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },

@@ -1,4 +1,3 @@
-//nolint:dupl
 package renovator
 
 import (
@@ -39,6 +38,18 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 
 	if discovery.Spec.ImagePullPolicy == "" {
 		discovery.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
+	}
+
+	// Forward operation annotations from Renovator to Discovery
+	if r.instance.Annotations != nil {
+		if discovery.Annotations == nil {
+			discovery.Annotations = make(map[string]string)
+		}
+
+		// Forward the operation annotation if it exists on the Renovator
+		if operation, exists := r.instance.Annotations[renovatev1beta1.RenovatorOperation]; exists {
+			discovery.Annotations[renovatev1beta1.RenovatorOperation] = operation
+		}
 	}
 
 	return nil

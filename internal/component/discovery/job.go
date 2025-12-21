@@ -5,8 +5,8 @@ import (
 	"strings"
 	"time"
 
-	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovate-config"
+	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	"github.com/thegeeklab/renovate-operator/internal/resource/cronjob"
@@ -28,7 +28,7 @@ const (
 
 func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
 	// Check if immediate discovery is requested via annotation
-	if HasRenovatorOperationDiscover(r.instance) {
+	if renovator.HasRenovatorOperationDiscover(r.instance.Annotations) {
 		return r.handleImmediateDiscovery(ctx)
 	}
 
@@ -84,12 +84,7 @@ func (r *Reconciler) handleImmediateDiscovery(ctx context.Context) (*ctrl.Result
 	}
 
 	// Remove discovery annotation
-	if r.instance.Annotations == nil {
-		r.instance.Annotations = make(map[string]string)
-	}
-
-	delete(r.instance.Annotations, renovatev1beta1.RenovatorOperation)
-
+	r.instance.Annotations = renovator.RemoveRenovatorOperation(r.instance.Annotations)
 	if err := r.Update(ctx, r.instance); err != nil {
 		return &ctrl.Result{}, err
 	}
