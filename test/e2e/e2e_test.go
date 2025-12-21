@@ -379,7 +379,7 @@ func serviceAccountToken() (string, error) {
 	secretName := fmt.Sprintf("%s-token-request", serviceAccountName)
 	tokenRequestFile := filepath.Join("/tmp", secretName)
 
-	err := os.WriteFile(tokenRequestFile, []byte(tokenRequestRawString), os.FileMode(0o644))
+	err := os.WriteFile(tokenRequestFile, []byte(tokenRequestRawString), 0o644)
 	if err != nil {
 		return "", err
 	}

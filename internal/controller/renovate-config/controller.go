@@ -38,7 +38,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	rc := &renovatev1beta1.RenovateConfig{}
 
 	if err := r.Get(ctx, req.NamespacedName, rc); err != nil {
-		if !api_errors.IsNotFound(err) {
+		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
 

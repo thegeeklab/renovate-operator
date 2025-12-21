@@ -87,6 +87,9 @@ linters:
       case:
         rules:
           yaml: kebab
+    mnd:
+      ignored-numbers:
+        - "0o644"
   exclusions:
     generated: lax
     presets:

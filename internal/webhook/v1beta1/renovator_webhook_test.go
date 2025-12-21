@@ -38,7 +38,7 @@ var _ = Describe("Renovator Webhook", func() {
 			err := defaulter.Default(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_INFO))
-			Expect(obj.Spec.Runner.Strategy).To(BeEquivalentTo("none"))
+			Expect(obj.Spec.Runner.Strategy).To(BeEquivalentTo(renovatev1beta1.RunnerStrategy_NONE))
 			Expect(obj.Spec.Runner.Instances).To(BeEquivalentTo(1))
 			Expect(obj.Spec.Discovery.Schedule).To(Equal("0 */2 * * *"))
 			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.OperatorContainerImage))

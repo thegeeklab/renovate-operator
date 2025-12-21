@@ -248,6 +248,5 @@ func UncommentCode(filename, target, prefix string) error {
 		return err
 	}
 
-	//nolint:mnd
 	return os.WriteFile(filename, out.Bytes(), 0o644)
 }

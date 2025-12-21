@@ -1,3 +1,4 @@
+//nolint:dupl
 package v1beta1
 
 import (
@@ -5,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -34,9 +36,7 @@ func SetupRenovateConfigWebhookWithManager(mgr ctrl.Manager) error {
 //
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as it is used only for temporary operations and does not need to be deeply copied.
-type RenovateConfigCustomDefaulter struct {
-	// TODO(user): Add more fields as needed for defaulting
-}
+type RenovateConfigCustomDefaulter struct{}
 
 var _ webhook.CustomDefaulter = &RenovateConfigCustomDefaulter{}
 
@@ -50,7 +50,21 @@ func (d *RenovateConfigCustomDefaulter) Default(ctx context.Context, obj runtime
 
 	renovateconfigLog.Info("Defaulting for RenovateConfig", "name", renovateconfig.GetName())
 
-	renovateconfig.Default()
+	if renovateconfig.Spec.Logging == nil {
+		renovateconfig.Spec.Logging = &renovatev1beta1.LoggingSpec{}
+	}
+
+	if renovateconfig.Spec.Logging.Level == "" {
+		renovateconfig.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
+	}
+
+	if renovateconfig.Spec.Image == "" {
+		renovateconfig.Spec.Image = renovatev1beta1.RenovateContainerImage
+	}
+
+	if renovateconfig.Spec.ImagePullPolicy == "" {
+		renovateconfig.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	}
 
 	return nil
 }

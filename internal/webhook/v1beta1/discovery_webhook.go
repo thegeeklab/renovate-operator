@@ -1,3 +1,4 @@
+//nolint:dupl
 package v1beta1
 
 import (
@@ -5,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -34,9 +36,7 @@ func SetupDiscoveryWebhookWithManager(mgr ctrl.Manager) error {
 //
 // NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
 // as it is used only for temporary operations and does not need to be deeply copied.
-type DiscoveryCustomDefaulter struct {
-	// TODO(user): Add more fields as needed for defaulting
-}
+type DiscoveryCustomDefaulter struct{}
 
 var _ webhook.CustomDefaulter = &DiscoveryCustomDefaulter{}
 
@@ -50,7 +50,21 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, obj runtime.Obje
 
 	discoveryLog.Info("Defaulting for Discovery", "name", discovery.GetName())
 
-	discovery.Default()
+	if discovery.Spec.Logging == nil {
+		discovery.Spec.Logging = &renovatev1beta1.LoggingSpec{}
+	}
+
+	if discovery.Spec.Logging.Level == "" {
+		discovery.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
+	}
+
+	if discovery.Spec.Image == "" {
+		discovery.Spec.Image = renovatev1beta1.OperatorContainerImage
+	}
+
+	if discovery.Spec.ImagePullPolicy == "" {
+		discovery.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	}
 
 	return nil
 }
