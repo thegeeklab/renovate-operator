@@ -11,6 +11,8 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
+
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -28,7 +30,38 @@ var _ = Describe("Runner Controller", func() {
 
 		BeforeEach(func() {
 			By("creating the custom resource for the Kind Runner")
-			err := k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Runner{})
+
+			// Create RenovateConfig resource first
+			config := &renovatev1beta1.RenovateConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-config",
+					Namespace: "default",
+				},
+				Spec: renovatev1beta1.RenovateConfigSpec{
+					Platform: renovatev1beta1.PlatformSpec{
+						Type: "github",
+						Token: corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{
+									Name: "renovate-token-secret",
+								},
+								Key: "token",
+							},
+						},
+						Endpoint: "https://api.github.com/",
+					},
+				},
+			}
+			err := k8sClient.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "default"}, config)
+			if err != nil && api_errors.IsNotFound(err) {
+				// Apply webhook defaulter
+				rcd := &v1beta1.RenovateConfigCustomDefaulter{}
+				Expect(rcd.Default(ctx, config)).To(Succeed())
+				Expect(k8sClient.Create(ctx, config)).To(Succeed())
+			}
+
+			// Create Runner resource
+			err = k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Runner{})
 			if err != nil && api_errors.IsNotFound(err) {
 				resource := &renovatev1beta1.Runner{
 					ObjectMeta: metav1.ObjectMeta{
@@ -36,6 +69,7 @@ var _ = Describe("Runner Controller", func() {
 						Namespace: "default",
 					},
 					Spec: renovatev1beta1.RunnerSpec{
+						ConfigRef: "test-config",
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 */2 * * *",
 						},
@@ -50,6 +84,14 @@ var _ = Describe("Runner Controller", func() {
 		})
 
 		AfterEach(func() {
+			// Cleanup RenovateConfig resource
+			config := &renovatev1beta1.RenovateConfig{}
+			configErr := k8sClient.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "default"}, config)
+			if configErr == nil {
+				Expect(k8sClient.Delete(ctx, config)).To(Succeed())
+			}
+
+			// Cleanup Runner resource
 			resource := &renovatev1beta1.Runner{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
