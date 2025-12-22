@@ -28,6 +28,7 @@ func (r *Reconciler) reconcileRunner(ctx context.Context) (*ctrl.Result, error) 
 func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 	// Copy the runner configuration from the Renovator spec
 	runner.Spec = r.instance.Spec.Runner
+	runner.Spec.ConfigRef = r.instance.Name
 
 	if runner.Spec.Logging == nil {
 		runner.Spec.Logging = &r.instance.Spec.Logging

@@ -93,5 +93,12 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) {
 	renovateConfigCM := metadata.GenericName(r.req, renovateconfig.ConfigMapSuffix)
 	renovateBatchesCM := metadata.GenericName(r.req, ConfigMapSuffix)
 
-	renovate.DefaultJobSpec(spec, r.batchesCount, renovateConfigCM, renovateBatchesCM, r.instance, r.renovate)
+	// Apply the Spec with the "Batch Mode" option
+	renovate.DefaultJobSpec(
+		spec,
+		r.instance,
+		r.renovate,
+		renovateConfigCM,
+		renovate.WithBatchMode(renovateBatchesCM, r.batchesCount),
+	)
 }
