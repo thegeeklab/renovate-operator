@@ -85,8 +85,8 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 						return false
 					}
 
-					return (renovator.HasRenovatorOperationDiscover(r.Annotations) &&
-						!renovator.HasRenovatorOperationDiscover(or.Annotations))
+					return (renovator.HasRenovatorOperation(r.Annotations) &&
+						!renovator.HasRenovatorOperation(or.Annotations))
 				},
 				CreateFunc:  func(_ event.CreateEvent) bool { return true },
 				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },

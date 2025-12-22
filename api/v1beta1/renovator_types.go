@@ -20,6 +20,8 @@ const (
 	RenovatorOperationSeparator = ";"
 	// OperationDiscover is the value used to trigger immediate discovery.
 	OperationDiscover = "discover"
+	// OperationRenovate is the value used to trigger immediate renovate run.
+	OperationRenovate = "renovate"
 	// JobTypeLabelKey is the label key used to identify job types.
 	JobTypeLabelKey = "renovate.thegeeklab.de/job-type"
 	// JobTypeLabelValue is the value used for cron jobs.

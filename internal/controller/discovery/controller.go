@@ -11,6 +11,7 @@ import (
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
@@ -83,11 +84,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Discovery{}).
-		Watches(&renovatev1beta1.RenovateConfig{}, handler.EnqueueRequestForOwner(
-			r.Scheme,
-			mgr.GetRESTMapper(),
-			&renovatev1beta1.Discovery{},
-		)).
 		WithEventFilter(predicate.Or(
 			predicate.GenerationChangedPredicate{},
 			predicate.Funcs{
@@ -110,6 +106,13 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 				GenericFunc: func(_ event.GenericEvent) bool { return false },
 			},
 		)).
+		Watches(&renovatev1beta1.RenovateConfig{},
+			handler.EnqueueRequestForOwner(
+				r.Scheme,
+				mgr.GetRESTMapper(),
+				&renovatev1beta1.Discovery{},
+			),
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&renovatev1beta1.GitRepo{}).
 		Owns(&batchv1.Job{}).
 		Owns(&batchv1.CronJob{}).

@@ -4,13 +4,16 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/component/runner"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/event"
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
@@ -76,14 +79,35 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Runner{}).
-		Watches(&renovatev1beta1.RenovateConfig{}, handler.EnqueueRequestForOwner(
-			r.Scheme,
-			mgr.GetRESTMapper(),
-			&renovatev1beta1.Runner{},
-		)).
 		WithEventFilter(predicate.Or(
 			predicate.GenerationChangedPredicate{},
+			predicate.Funcs{
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					r, ok := e.ObjectNew.(*renovatev1beta1.Runner)
+					if !ok {
+						return false
+					}
+
+					or, ok := e.ObjectOld.(*renovatev1beta1.Runner)
+					if !ok {
+						return false
+					}
+
+					return (renovator.HasRenovatorOperationRenovate(r.Annotations) &&
+						!renovator.HasRenovatorOperationRenovate(or.Annotations))
+				},
+				CreateFunc:  func(_ event.CreateEvent) bool { return true },
+				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
+				GenericFunc: func(_ event.GenericEvent) bool { return false },
+			},
 		)).
+		Watches(&renovatev1beta1.RenovateConfig{},
+			handler.EnqueueRequestForOwner(
+				r.Scheme,
+				mgr.GetRESTMapper(),
+				&renovatev1beta1.Runner{},
+			),
+			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
 		Owns(&batchv1.Job{}).
 		Owns(&batchv1.CronJob{}).
 		Named(ControllerName).
