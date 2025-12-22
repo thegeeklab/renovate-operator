@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/thegeeklab/renovate-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -51,7 +52,13 @@ func CheckActiveJobs(ctx context.Context, c client.Client, namespace, jobName st
 
 	for _, job := range existingJobs.Items {
 		if job.Name == jobName || strings.HasPrefix(job.Name, jobName+"-") {
-			if job.Status.Active > 0 || (job.Status.Succeeded == 0 && job.Status.Failed == 0) {
+			// Check if the job has active pods
+			if job.Status.Active > 0 {
+				return true, nil
+			}
+
+			// Check if the job is not yet completed and expects completions
+			if util.PtrIsNonZero(job.Spec.Completions) && job.Status.Succeeded == 0 && job.Status.Failed == 0 {
 				return true, nil
 			}
 		}

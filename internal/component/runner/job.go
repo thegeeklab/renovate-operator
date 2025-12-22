@@ -16,6 +16,7 @@ import (
 	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error) {
@@ -43,6 +44,8 @@ func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error)
 }
 
 func (r *Reconciler) handleImmediateRenovate(ctx context.Context) (*ctrl.Result, error) {
+	log := logf.FromContext(ctx)
+
 	// Check for active renovate jobs with our specific labels
 	active, err := cronjob.CheckActiveJobs(ctx, r.Client, r.instance.Namespace, RunnerName(r.req))
 	if err != nil {
@@ -50,6 +53,8 @@ func (r *Reconciler) handleImmediateRenovate(ctx context.Context) (*ctrl.Result,
 	}
 
 	if active {
+		log.V(1).Info("Active renovate jobs found, requeuing", "delay", cronjob.RequeueDelay)
+
 		return &ctrl.Result{RequeueAfter: cronjob.RequeueDelay}, nil
 	}
 
