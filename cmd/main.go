@@ -25,7 +25,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
-	renovateconfig "github.com/thegeeklab/renovate-operator/internal/controller/renovate-config"
+	renovateconfig "github.com/thegeeklab/renovate-operator/internal/controller/renovateconfig"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"

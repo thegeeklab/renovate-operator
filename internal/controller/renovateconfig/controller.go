@@ -4,7 +4,7 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovate-config"
+	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovateconfig"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"

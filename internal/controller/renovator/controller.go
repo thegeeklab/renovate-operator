@@ -75,18 +75,11 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 			predicate.GenerationChangedPredicate{},
 			predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
-					r, ok := e.ObjectNew.(*renovatev1beta1.Renovator)
-					if !ok {
-						return false
-					}
+					oldAnn := e.ObjectOld.GetAnnotations()
+					newAnn := e.ObjectNew.GetAnnotations()
 
-					or, ok := e.ObjectOld.(*renovatev1beta1.Renovator)
-					if !ok {
-						return false
-					}
-
-					return (renovator.HasRenovatorOperation(r.Annotations) &&
-						!renovator.HasRenovatorOperation(or.Annotations))
+					return renovator.HasRenovatorOperation(newAnn) &&
+						!renovator.HasRenovatorOperation(oldAnn)
 				},
 				CreateFunc:  func(_ event.CreateEvent) bool { return true },
 				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },

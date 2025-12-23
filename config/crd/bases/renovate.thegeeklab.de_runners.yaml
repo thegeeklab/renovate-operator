@@ -46,6 +46,8 @@ spec:
                 maximum: 1000
                 minimum: 1
                 type: integer
+              configRef:
+                type: string
               image:
                 description: |-
                   Name of the container image, supporting both tags (`<image>:<tag>`)
@@ -96,6 +98,7 @@ spec:
                 default: false
                 type: boolean
             required:
+            - configRef
             - instances
             type: object
           status:

@@ -54,8 +54,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
+	rcNamespacedName := client.ObjectKey{Namespace: req.Namespace, Name: rr.Spec.ConfigRef}
 
-	if err := r.Get(ctx, req.NamespacedName, rc); err != nil {
+	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -77,39 +78,126 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	const configRefIndexKey = ".spec.configRef"
+
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&renovatev1beta1.Runner{},
+		configRefIndexKey,
+		runnerConfigRefIndexFunc,
+	); err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Runner{}).
 		WithEventFilter(predicate.Or(
 			predicate.GenerationChangedPredicate{},
 			predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
-					r, ok := e.ObjectNew.(*renovatev1beta1.Runner)
-					if !ok {
-						return false
-					}
+					oldAnn := e.ObjectOld.GetAnnotations()
+					newAnn := e.ObjectNew.GetAnnotations()
 
-					or, ok := e.ObjectOld.(*renovatev1beta1.Runner)
-					if !ok {
-						return false
-					}
-
-					return (renovator.HasRenovatorOperationRenovate(r.Annotations) &&
-						!renovator.HasRenovatorOperationRenovate(or.Annotations))
+					return renovator.HasRenovatorOperationRenovate(newAnn) &&
+						!renovator.HasRenovatorOperationRenovate(oldAnn)
 				},
 				CreateFunc:  func(_ event.CreateEvent) bool { return true },
 				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
 				GenericFunc: func(_ event.GenericEvent) bool { return false },
 			},
 		)).
-		Watches(&renovatev1beta1.RenovateConfig{},
-			handler.EnqueueRequestForOwner(
-				r.Scheme,
-				mgr.GetRESTMapper(),
-				&renovatev1beta1.Runner{},
+		Watches(&renovatev1beta1.GitRepo{},
+			handler.EnqueueRequestsFromMapFunc(r.mapGitRepoToRunner),
+			builder.WithPredicates(predicate.Or(
+				predicate.GenerationChangedPredicate{},
+				predicate.Funcs{
+					UpdateFunc: func(e event.UpdateEvent) bool {
+						oldAnn := e.ObjectOld.GetAnnotations()
+						newAnn := e.ObjectNew.GetAnnotations()
+
+						return renovator.HasRenovatorOperationRenovate(newAnn) &&
+							!renovator.HasRenovatorOperationRenovate(oldAnn)
+					},
+					CreateFunc:  func(_ event.CreateEvent) bool { return false },
+					DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
+					GenericFunc: func(_ event.GenericEvent) bool { return false },
+				}),
 			),
-			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+		).
+		Watches(&renovatev1beta1.RenovateConfig{},
+			handler.EnqueueRequestsFromMapFunc(r.mapConfigToRunner),
+			builder.WithPredicates(predicate.Funcs{
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return predicate.GenerationChangedPredicate{}.Update(e)
+				},
+				CreateFunc:  func(_ event.CreateEvent) bool { return true },
+				DeleteFunc:  func(_ event.DeleteEvent) bool { return true },
+				GenericFunc: func(_ event.GenericEvent) bool { return false },
+			}),
+		).
 		Owns(&batchv1.Job{}).
 		Owns(&batchv1.CronJob{}).
 		Named(ControllerName).
 		Complete(r)
+}
+
+// mapGitRepoToRunner maps a GitRepo event to a Request for the Runner.
+func (r *Reconciler) mapGitRepoToRunner(ctx context.Context, obj client.Object) []ctrl.Request {
+	runnerList := &renovatev1beta1.RunnerList{}
+	if err := r.List(ctx, runnerList, client.InNamespace(obj.GetNamespace())); err != nil {
+		return nil
+	}
+
+	reqs := make([]ctrl.Request, len(runnerList.Items))
+	for i, runner := range runnerList.Items {
+		reqs[i] = ctrl.Request{
+			NamespacedName: client.ObjectKey{
+				Name:      runner.Name,
+				Namespace: runner.Namespace,
+			},
+		}
+	}
+
+	return reqs
+}
+
+// mapConfigToRunner maps a RenovateConfig event to a Request for the Runner.
+func (r *Reconciler) mapConfigToRunner(ctx context.Context, obj client.Object) []ctrl.Request {
+	const configRefIndexKey = ".spec.configRef"
+
+	runnerList := &renovatev1beta1.RunnerList{}
+	if err := r.List(
+		ctx,
+		runnerList,
+		client.InNamespace(obj.GetNamespace()),
+		client.MatchingFields{configRefIndexKey: obj.GetName()},
+	); err != nil {
+		return nil
+	}
+
+	reqs := make([]ctrl.Request, len(runnerList.Items))
+	for i := range runnerList.Items {
+		reqs[i] = ctrl.Request{
+			NamespacedName: client.ObjectKey{
+				Name:      runnerList.Items[i].Name,
+				Namespace: runnerList.Items[i].Namespace,
+			},
+		}
+	}
+
+	return reqs
+}
+
+// runnerConfigRefIndexFunc returns the config reference for indexing.
+func runnerConfigRefIndexFunc(rawObj client.Object) []string {
+	runner, ok := rawObj.(*renovatev1beta1.Runner)
+	if !ok {
+		return nil
+	}
+
+	if runner.Spec.ConfigRef == "" {
+		return nil
+	}
+
+	return []string{runner.Spec.ConfigRef}
 }

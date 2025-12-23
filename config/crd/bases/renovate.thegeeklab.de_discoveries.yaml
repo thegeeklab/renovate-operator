@@ -39,6 +39,8 @@ spec:
           spec:
             description: DiscoverySpec defines the desired state of Discovery.
             properties:
+              configRef:
+                type: string
               filter:
                 items:
                   type: string
@@ -78,6 +80,8 @@ spec:
               suspend:
                 default: false
                 type: boolean
+            required:
+            - configRef
             type: object
           status:
             description: DiscoveryStatus defines the observed state of Discovery.

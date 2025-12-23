@@ -59,8 +59,9 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
+	rcNamespacedName := client.ObjectKey{Namespace: req.Namespace, Name: rd.Spec.ConfigRef}
 
-	if err := r.Get(ctx, req.NamespacedName, rc); err != nil {
+	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -82,24 +83,28 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	const configRefIndexKey = ".spec.configRef"
+
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(),
+		&renovatev1beta1.Discovery{},
+		configRefIndexKey,
+		discoveryConfigRefIndexFunc,
+	); err != nil {
+		return err
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Discovery{}).
 		WithEventFilter(predicate.Or(
 			predicate.GenerationChangedPredicate{},
 			predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
-					d, ok := e.ObjectNew.(*renovatev1beta1.Discovery)
-					if !ok {
-						return false
-					}
+					oldAnn := e.ObjectOld.GetAnnotations()
+					newAnn := e.ObjectNew.GetAnnotations()
 
-					od, ok := e.ObjectOld.(*renovatev1beta1.Discovery)
-					if !ok {
-						return false
-					}
-
-					return (renovator.HasRenovatorOperationDiscover(d.Annotations) &&
-						!renovator.HasRenovatorOperationDiscover(od.Annotations))
+					return renovator.HasRenovatorOperationDiscover(newAnn) &&
+						!renovator.HasRenovatorOperationDiscover(oldAnn)
 				},
 				CreateFunc:  func(_ event.CreateEvent) bool { return true },
 				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
@@ -107,15 +112,60 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 		)).
 		Watches(&renovatev1beta1.RenovateConfig{},
-			handler.EnqueueRequestForOwner(
-				r.Scheme,
-				mgr.GetRESTMapper(),
-				&renovatev1beta1.Discovery{},
-			),
-			builder.WithPredicates(predicate.GenerationChangedPredicate{})).
+			handler.EnqueueRequestsFromMapFunc(r.mapConfigToDiscovery),
+			builder.WithPredicates(predicate.Funcs{
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return predicate.GenerationChangedPredicate{}.Update(e)
+				},
+				CreateFunc:  func(_ event.CreateEvent) bool { return true },
+				DeleteFunc:  func(_ event.DeleteEvent) bool { return true },
+				GenericFunc: func(_ event.GenericEvent) bool { return false },
+			}),
+		).
 		Owns(&renovatev1beta1.GitRepo{}).
 		Owns(&batchv1.Job{}).
 		Owns(&batchv1.CronJob{}).
 		Named(ControllerName).
 		Complete(r)
+}
+
+// mapConfigToDiscovery maps a RenovateConfig event to a Request for the Discovery.
+func (r *Reconciler) mapConfigToDiscovery(ctx context.Context, obj client.Object) []ctrl.Request {
+	const configRefIndexKey = ".spec.configRef"
+
+	discoveryList := &renovatev1beta1.DiscoveryList{}
+	if err := r.List(
+		ctx,
+		discoveryList,
+		client.InNamespace(obj.GetNamespace()),
+		client.MatchingFields{configRefIndexKey: obj.GetName()},
+	); err != nil {
+		return nil
+	}
+
+	reqs := make([]ctrl.Request, len(discoveryList.Items))
+	for i := range discoveryList.Items {
+		reqs[i] = ctrl.Request{
+			NamespacedName: client.ObjectKey{
+				Name:      discoveryList.Items[i].Name,
+				Namespace: discoveryList.Items[i].Namespace,
+			},
+		}
+	}
+
+	return reqs
+}
+
+// discoveryConfigRefIndexFunc returns the config reference for indexing.
+func discoveryConfigRefIndexFunc(rawObj client.Object) []string {
+	discovery, ok := rawObj.(*renovatev1beta1.Discovery)
+	if !ok {
+		return nil
+	}
+
+	if discovery.Spec.ConfigRef == "" {
+		return nil
+	}
+
+	return []string{discovery.Spec.ConfigRef}
 }
