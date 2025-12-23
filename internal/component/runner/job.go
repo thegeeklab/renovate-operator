@@ -3,7 +3,7 @@ package runner
 import (
 	"context"
 
-	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovate-config"
+	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovateconfig"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	cronjob "github.com/thegeeklab/renovate-operator/internal/resource/cronjob"
