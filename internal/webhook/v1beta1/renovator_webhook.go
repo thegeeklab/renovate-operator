@@ -6,10 +6,8 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
@@ -22,7 +20,7 @@ var (
 
 // SetupRenovatorWebhookWithManager registers the webhook for Renovator in the manager.
 func SetupRenovatorWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&renovatev1beta1.Renovator{}).
+	return ctrl.NewWebhookManagedBy(mgr, &renovatev1beta1.Renovator{}).
 		WithDefaulter(&RenovatorCustomDefaulter{}).
 		Complete()
 }
@@ -37,13 +35,13 @@ func SetupRenovatorWebhookWithManager(mgr ctrl.Manager) error {
 // as it is used only for temporary operations and does not need to be deeply copied.
 type RenovatorCustomDefaulter struct{}
 
-var _ webhook.CustomDefaulter = &RenovatorCustomDefaulter{}
+// var _ webhook.CustomDefaulter = &RenovatorCustomDefaulter{}
 
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind Renovator.
-func (d *RenovatorCustomDefaulter) Default(_ context.Context, obj runtime.Object) error {
-	renovator, ok := obj.(*renovatev1beta1.Renovator)
+func (d *RenovatorCustomDefaulter) Default(_ context.Context, obj *renovatev1beta1.Renovator) error {
+	renovator := obj
 
-	if !ok {
+	if renovator == nil {
 		return fmt.Errorf("%w: %T", ErrRenovatorObjectType, obj)
 	}
 

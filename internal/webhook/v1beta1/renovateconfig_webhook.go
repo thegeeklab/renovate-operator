@@ -7,10 +7,8 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
@@ -23,7 +21,7 @@ var (
 
 // SetupRenovateConfigWebhookWithManager registers the webhook for RenovateConfig in the manager.
 func SetupRenovateConfigWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&renovatev1beta1.RenovateConfig{}).
+	return ctrl.NewWebhookManagedBy(mgr, &renovatev1beta1.RenovateConfig{}).
 		WithDefaulter(&RenovateConfigCustomDefaulter{}).
 		Complete()
 }
@@ -38,13 +36,13 @@ func SetupRenovateConfigWebhookWithManager(mgr ctrl.Manager) error {
 // as it is used only for temporary operations and does not need to be deeply copied.
 type RenovateConfigCustomDefaulter struct{}
 
-var _ webhook.CustomDefaulter = &RenovateConfigCustomDefaulter{}
+// var _ webhook.CustomDefaulter = &RenovateConfigCustomDefaulter{}
 
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind RenovateConfig.
-func (d *RenovateConfigCustomDefaulter) Default(ctx context.Context, obj runtime.Object) error {
-	renovateconfig, ok := obj.(*renovatev1beta1.RenovateConfig)
+func (d *RenovateConfigCustomDefaulter) Default(ctx context.Context, obj *renovatev1beta1.RenovateConfig) error {
+	renovateconfig := obj
 
-	if !ok {
+	if renovateconfig == nil {
 		return fmt.Errorf("%w: %T", ErrRenovateConfigObjectType, obj)
 	}
 

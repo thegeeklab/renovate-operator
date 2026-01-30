@@ -59,10 +59,8 @@ var _ = Describe("Runner Webhook", func() {
 		})
 
 		It("Should return error when object is not a Runner", func() {
-			By("creating a non-Runner object")
-			nonRunnerObj := &renovatev1beta1.Discovery{}
 			By("calling the Default method with wrong object type")
-			err := defaulter.Default(ctx, nonRunnerObj)
+			err := defaulter.Default(ctx, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("expected a Runner object but got other type"))
 		})

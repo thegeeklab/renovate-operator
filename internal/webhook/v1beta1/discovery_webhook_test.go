@@ -59,10 +59,8 @@ var _ = Describe("Discovery Webhook", func() {
 		})
 
 		It("Should return error when object is not a Discovery", func() {
-			By("creating a non-Discovery object")
-			nonDiscoveryObj := &renovatev1beta1.Runner{}
 			By("calling the Default method with wrong object type")
-			err := defaulter.Default(ctx, nonDiscoveryObj)
+			err := defaulter.Default(ctx, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("expected a Discovery object but got other type"))
 		})
