@@ -36,14 +36,10 @@ func SetupDiscoveryWebhookWithManager(mgr ctrl.Manager) error {
 // as it is used only for temporary operations and does not need to be deeply copied.
 type DiscoveryCustomDefaulter struct{}
 
-// var _ webhook.CustomDefaulter = &DiscoveryCustomDefaulter{}
-
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind Discovery.
-func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, obj *renovatev1beta1.Discovery) error {
-	discovery := obj
-
+func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renovatev1beta1.Discovery) error {
 	if discovery == nil {
-		return fmt.Errorf("%w: %T", ErrDiscoveryObjectType, obj)
+		return fmt.Errorf("%w: %T", ErrDiscoveryObjectType, discovery)
 	}
 
 	discoveryLog.Info("Defaulting for Discovery", "name", discovery.GetName())

@@ -36,14 +36,10 @@ func SetupRunnerWebhookWithManager(mgr ctrl.Manager) error {
 // as it is used only for temporary operations and does not need to be deeply copied.
 type RunnerCustomDefaulter struct{}
 
-// var _ webhook.CustomDefaulter = &RunnerCustomDefaulter{}
-
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind Runner.
-func (d *RunnerCustomDefaulter) Default(ctx context.Context, obj *renovatev1beta1.Runner) error {
-	runner := obj
-
+func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1beta1.Runner) error {
 	if runner == nil {
-		return fmt.Errorf("%w: %T", ErrRunnerObjectType, obj)
+		return fmt.Errorf("%w: %T", ErrRunnerObjectType, runner)
 	}
 
 	runnerLog.Info("Defaulting for Runner", "name", runner.GetName())

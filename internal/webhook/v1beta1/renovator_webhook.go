@@ -35,14 +35,10 @@ func SetupRenovatorWebhookWithManager(mgr ctrl.Manager) error {
 // as it is used only for temporary operations and does not need to be deeply copied.
 type RenovatorCustomDefaulter struct{}
 
-// var _ webhook.CustomDefaulter = &RenovatorCustomDefaulter{}
-
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind Renovator.
-func (d *RenovatorCustomDefaulter) Default(_ context.Context, obj *renovatev1beta1.Renovator) error {
-	renovator := obj
-
+func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovatev1beta1.Renovator) error {
 	if renovator == nil {
-		return fmt.Errorf("%w: %T", ErrRenovatorObjectType, obj)
+		return fmt.Errorf("%w: %T", ErrRenovatorObjectType, renovator)
 	}
 
 	renovatorLog.Info("Defaulting for renovator", "name", renovator.GetName())

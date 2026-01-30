@@ -36,32 +36,28 @@ func SetupRenovateConfigWebhookWithManager(mgr ctrl.Manager) error {
 // as it is used only for temporary operations and does not need to be deeply copied.
 type RenovateConfigCustomDefaulter struct{}
 
-// var _ webhook.CustomDefaulter = &RenovateConfigCustomDefaulter{}
-
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind RenovateConfig.
-func (d *RenovateConfigCustomDefaulter) Default(ctx context.Context, obj *renovatev1beta1.RenovateConfig) error {
-	renovateconfig := obj
-
-	if renovateconfig == nil {
-		return fmt.Errorf("%w: %T", ErrRenovateConfigObjectType, obj)
+func (d *RenovateConfigCustomDefaulter) Default(ctx context.Context, renovate *renovatev1beta1.RenovateConfig) error {
+	if renovate == nil {
+		return fmt.Errorf("%w: %T", ErrRenovateConfigObjectType, renovate)
 	}
 
-	renovateconfigLog.Info("Defaulting for RenovateConfig", "name", renovateconfig.GetName())
+	renovateconfigLog.Info("Defaulting for RenovateConfig", "name", renovate.GetName())
 
-	if renovateconfig.Spec.Logging == nil {
-		renovateconfig.Spec.Logging = &renovatev1beta1.LoggingSpec{}
+	if renovate.Spec.Logging == nil {
+		renovate.Spec.Logging = &renovatev1beta1.LoggingSpec{}
 	}
 
-	if renovateconfig.Spec.Logging.Level == "" {
-		renovateconfig.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
+	if renovate.Spec.Logging.Level == "" {
+		renovate.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
 	}
 
-	if renovateconfig.Spec.Image == "" {
-		renovateconfig.Spec.Image = renovatev1beta1.RenovateContainerImage
+	if renovate.Spec.Image == "" {
+		renovate.Spec.Image = renovatev1beta1.RenovateContainerImage
 	}
 
-	if renovateconfig.Spec.ImagePullPolicy == "" {
-		renovateconfig.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	if renovate.Spec.ImagePullPolicy == "" {
+		renovate.Spec.ImagePullPolicy = corev1.PullIfNotPresent
 	}
 
 	return nil
