@@ -59,10 +59,8 @@ var _ = Describe("RenovateConfig Webhook", func() {
 		})
 
 		It("Should return error when object is not a RenovateConfig", func() {
-			By("creating a non-RenovateConfig object")
-			nonRenovateConfigObj := &renovatev1beta1.Runner{}
 			By("calling the Default method with wrong object type")
-			err := defaulter.Default(ctx, nonRenovateConfigObj)
+			err := defaulter.Default(ctx, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("expected a RenovateConfig object but got other type"))
 		})

@@ -71,10 +71,8 @@ var _ = Describe("Renovator Webhook", func() {
 		})
 
 		It("Should return error when object is not a Renovator", func() {
-			By("creating a non-Renovator object")
-			nonRenovatorObj := &renovatev1beta1.Discovery{}
 			By("calling the Default method with wrong object type")
-			err := defaulter.Default(ctx, nonRenovatorObj)
+			err := defaulter.Default(ctx, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("expected a Renovator object but got other type"))
 		})

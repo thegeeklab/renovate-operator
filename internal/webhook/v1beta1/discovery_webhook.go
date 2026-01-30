@@ -7,10 +7,8 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-	"sigs.k8s.io/controller-runtime/pkg/webhook"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
@@ -23,7 +21,7 @@ var (
 
 // SetupDiscoveryWebhookWithManager registers the webhook for Discovery in the manager.
 func SetupDiscoveryWebhookWithManager(mgr ctrl.Manager) error {
-	return ctrl.NewWebhookManagedBy(mgr).For(&renovatev1beta1.Discovery{}).
+	return ctrl.NewWebhookManagedBy(mgr, &renovatev1beta1.Discovery{}).
 		WithDefaulter(&DiscoveryCustomDefaulter{}).
 		Complete()
 }
@@ -38,14 +36,10 @@ func SetupDiscoveryWebhookWithManager(mgr ctrl.Manager) error {
 // as it is used only for temporary operations and does not need to be deeply copied.
 type DiscoveryCustomDefaulter struct{}
 
-var _ webhook.CustomDefaulter = &DiscoveryCustomDefaulter{}
-
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind Discovery.
-func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, obj runtime.Object) error {
-	discovery, ok := obj.(*renovatev1beta1.Discovery)
-
-	if !ok {
-		return fmt.Errorf("%w: %T", ErrDiscoveryObjectType, obj)
+func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renovatev1beta1.Discovery) error {
+	if discovery == nil {
+		return fmt.Errorf("%w: %T", ErrDiscoveryObjectType, discovery)
 	}
 
 	discoveryLog.Info("Defaulting for Discovery", "name", discovery.GetName())
