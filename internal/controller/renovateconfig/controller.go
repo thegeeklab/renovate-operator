@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-const ControllerName = "renovate-config"
+const ControllerName = "renovateconfig"
 
 // Reconciler reconciles a RenovateConfig object.
 type Reconciler struct {

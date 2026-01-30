@@ -47,7 +47,9 @@
     "mycompany",
     "anotherorg",
     "renovateconfig",
-    "renovateconfigs"
+    "renovateconfigs",
+    "gitrepo",
+    "gitrepos"
   ],
   "ignorePaths": [
     ".woodpecker",

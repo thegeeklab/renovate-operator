@@ -57,7 +57,6 @@ linters:
     - nolintlint
     - nonamedreturns
     - nosprintfhostport
-    - prealloc
     - predeclared
     - promlinter
     - reassign
@@ -103,7 +102,6 @@ linters:
           - errorlint
           - gochecknoglobals
           - gosec
-          - prealloc
           - revive
           - staticcheck
           - dupl

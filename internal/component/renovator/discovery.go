@@ -28,7 +28,7 @@ func (r *Reconciler) reconcileDiscovery(ctx context.Context) (*ctrl.Result, erro
 func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error {
 	// Copy the discovery configuration from the Renovator spec
 	discovery.Spec = r.instance.Spec.Discovery
-	discovery.Spec.ConfigRef = r.instance.Name
+	discovery.Spec.ConfigRef = metadata.GenericName(r.req)
 
 	if discovery.Spec.Logging == nil {
 		discovery.Spec.Logging = &r.instance.Spec.Logging
