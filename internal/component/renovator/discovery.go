@@ -3,7 +3,6 @@ package renovator
 
 import (
 	"context"
-	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
@@ -15,14 +14,11 @@ import (
 func (r *Reconciler) reconcileDiscovery(ctx context.Context) (*ctrl.Result, error) {
 	discovery := &renovatev1beta1.Discovery{ObjectMeta: metadata.GenericMetadata(r.req)}
 
-	_, err := k8s.CreateOrPatch(ctx, r.Client, discovery, r.instance, func() error {
+	_, err := k8s.CreateOrUpdate(ctx, r.Client, discovery, r.instance, func() error {
 		return r.updateDiscovery(discovery)
 	})
-	if err != nil {
-		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to create or update discovery: %w", err)
-	}
 
-	return &ctrl.Result{}, nil
+	return &ctrl.Result{}, err
 }
 
 func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error {

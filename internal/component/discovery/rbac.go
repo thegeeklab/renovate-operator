@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"context"
-	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
@@ -15,14 +14,11 @@ import (
 func (r *Reconciler) reconcileServiceAccount(ctx context.Context) (*ctrl.Result, error) {
 	sa := &corev1.ServiceAccount{ObjectMeta: metadata.GenericMetadata(r.req)}
 
-	_, err := k8s.CreateOrPatch(ctx, r.Client, sa, r.instance, func() error {
+	_, err := k8s.CreateOrUpdate(ctx, r.Client, sa, r.instance, func() error {
 		return r.updateServiceAccount(sa)
 	})
-	if err != nil {
-		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to create or update service account: %w", err)
-	}
 
-	return &ctrl.Result{}, nil
+	return &ctrl.Result{}, err
 }
 
 func (r *Reconciler) updateServiceAccount(_ *corev1.ServiceAccount) error {
@@ -32,14 +28,11 @@ func (r *Reconciler) updateServiceAccount(_ *corev1.ServiceAccount) error {
 func (r *Reconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
 	role := &rbacv1.Role{ObjectMeta: metadata.GenericMetadata(r.req)}
 
-	_, err := k8s.CreateOrPatch(ctx, r.Client, role, r.instance, func() error {
+	_, err := k8s.CreateOrUpdate(ctx, r.Client, role, r.instance, func() error {
 		return r.updateRole(role)
 	})
-	if err != nil {
-		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to create or update role: %w", err)
-	}
 
-	return &ctrl.Result{}, nil
+	return &ctrl.Result{}, err
 }
 
 func (r *Reconciler) updateRole(role *rbacv1.Role) error {
@@ -66,14 +59,11 @@ func (r *Reconciler) updateRole(role *rbacv1.Role) error {
 func (r *Reconciler) reconcileRoleBinding(ctx context.Context) (*ctrl.Result, error) {
 	rb := &rbacv1.RoleBinding{ObjectMeta: metadata.GenericMetadata(r.req)}
 
-	_, err := k8s.CreateOrPatch(ctx, r.Client, rb, r.instance, func() error {
+	_, err := k8s.CreateOrUpdate(ctx, r.Client, rb, r.instance, func() error {
 		return r.updateRoleBinding(rb)
 	})
-	if err != nil {
-		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to create or update role binding: %w", err)
-	}
 
-	return &ctrl.Result{}, nil
+	return &ctrl.Result{}, err
 }
 
 func (r *Reconciler) updateRoleBinding(rb *rbacv1.RoleBinding) error {

@@ -17,14 +17,11 @@ const ConfigMapSuffix = "renovate-batch"
 func (r *Reconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, error) {
 	cm := &corev1.ConfigMap{ObjectMeta: metadata.GenericMetadata(r.req, ConfigMapSuffix)}
 
-	_, err := k8s.CreateOrPatch(ctx, r.Client, cm, r.instance, func() error {
+	_, err := k8s.CreateOrUpdate(ctx, r.Client, cm, r.instance, func() error {
 		return r.updateConfigMap(cm)
 	})
-	if err != nil {
-		return &ctrl.Result{Requeue: true}, fmt.Errorf("failed to create or update config map: %w", err)
-	}
 
-	return &ctrl.Result{}, nil
+	return &ctrl.Result{}, err
 }
 
 func (r *Reconciler) updateConfigMap(cm *corev1.ConfigMap) error {

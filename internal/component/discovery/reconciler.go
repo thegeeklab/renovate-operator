@@ -50,7 +50,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	for _, reconcileFunc := range reconcileFuncs {
 		res, err := reconcileFunc(ctx)
 		if err != nil {
-			return &ctrl.Result{Requeue: true}, fmt.Errorf("reconciliation failed: %w", err)
+			return &ctrl.Result{}, fmt.Errorf("reconciliation failed: %w", err)
 		}
 
 		results.Collect(res)
