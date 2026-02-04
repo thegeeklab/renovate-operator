@@ -24,7 +24,7 @@ func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error)
 
 	job := &batchv1.CronJob{ObjectMeta: RunnerMetadata(r.req)}
 
-	op, err := k8s.CreateOrPatch(ctx, r.Client, job, r.instance, func() error {
+	op, err := k8s.CreateOrUpdate(ctx, r.Client, job, r.instance, func() error {
 		return r.updateCronJob(job)
 	})
 	if err != nil {
@@ -65,8 +65,7 @@ func (r *Reconciler) handleImmediateRenovate(ctx context.Context) (*ctrl.Result,
 
 	r.updateJobSpec(&job.Spec)
 
-	_, err = k8s.CreateOrPatch(ctx, r.Client, job, r.instance, nil)
-	if err != nil {
+	if _, err := k8s.CreateOrUpdate(ctx, r.Client, job, r.instance, nil); err != nil {
 		return &ctrl.Result{}, err
 	}
 
