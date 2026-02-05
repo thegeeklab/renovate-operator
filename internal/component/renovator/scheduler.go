@@ -38,6 +38,12 @@ func (r *Reconciler) updateScheduler(scheduler *renovatev1beta1.Scheduler) error
 		scheduler.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
 	}
 
+	if scheduler.Labels == nil {
+		scheduler.Labels = make(map[string]string)
+	}
+
+	scheduler.Labels[renovatev1beta1.RenovatorLabel] = r.instance.Name
+
 	// Forward operation annotations from Renovator to Discovery
 	if HasRenovatorOperationRenovate(r.instance.Annotations) {
 		if scheduler.Annotations == nil {

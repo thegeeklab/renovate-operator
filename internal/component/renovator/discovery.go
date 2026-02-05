@@ -38,6 +38,12 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
 	}
 
+	if discovery.Labels == nil {
+		discovery.Labels = make(map[string]string)
+	}
+
+	discovery.Labels[renovatev1beta1.RenovatorLabel] = r.instance.Name
+
 	// Forward operation annotations from Renovator to Discovery
 	if HasRenovatorOperationDiscover(r.instance.Annotations) {
 		if discovery.Annotations == nil {

@@ -143,18 +143,36 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 // mapGitRepoToScheduler maps a GitRepo event to a Request for the Scheduler.
 func (r *Reconciler) mapGitRepoToScheduler(ctx context.Context, obj client.Object) []ctrl.Request {
+	gitRepo, ok := obj.(*renovatev1beta1.GitRepo)
+	if !ok {
+		return nil
+	}
+
+	// Only enqueue requests for schedulers that match the renovate.thegeeklab.de/renovator label
+	if gitRepo.Labels == nil {
+		return nil
+	}
+
+	renovatorName, ok := gitRepo.Labels[renovatev1beta1.RenovatorLabel]
+	if !ok {
+		return nil
+	}
+
 	schedulerList := &renovatev1beta1.SchedulerList{}
 	if err := r.List(ctx, schedulerList, client.InNamespace(obj.GetNamespace())); err != nil {
 		return nil
 	}
 
-	reqs := make([]ctrl.Request, len(schedulerList.Items))
-	for i, scheduler := range schedulerList.Items {
-		reqs[i] = ctrl.Request{
-			NamespacedName: client.ObjectKey{
-				Name:      scheduler.Name,
-				Namespace: scheduler.Namespace,
-			},
+	var reqs []ctrl.Request
+	for _, scheduler := range schedulerList.Items {
+		// Check if the scheduler's renovate.thegeeklab.de/renovator label matches the renovatorName
+		if scheduler.Labels != nil && scheduler.Labels[renovatev1beta1.RenovatorLabel] == renovatorName {
+			reqs = append(reqs, ctrl.Request{
+				NamespacedName: client.ObjectKey{
+					Name:      scheduler.Name,
+					Namespace: scheduler.Namespace,
+				},
+			})
 		}
 	}
 

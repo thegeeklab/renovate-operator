@@ -47,17 +47,27 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	for _, reconcileFunc := range reconcileFuncs {
 		res, err := reconcileFunc(ctx)
 		if err != nil {
+			// If reconciliation fails, remove the operation annotation to prevent retry loops
+			r.instance.Annotations = RemoveRenovatorOperation(r.instance.Annotations)
+			if updateErr := r.Update(ctx, r.instance); updateErr != nil {
+				return &ctrl.Result{}, fmt.Errorf("reconciliation failed: %w: failed to remove operation annotation: %w",
+					err, updateErr)
+			}
+
 			return &ctrl.Result{}, fmt.Errorf("reconciliation failed: %w", err)
 		}
 
 		results.Collect(res)
 	}
 
-	// Remove discovery annotation
-	r.instance.Annotations = RemoveRenovatorOperation(r.instance.Annotations)
-	if err := r.Update(ctx, r.instance); err != nil {
-		return &ctrl.Result{}, err
+	// Remove operation annotation only if reconciliation was successful (no requeue needed)
+	result := results.ToResult()
+	if result.RequeueAfter == 0 {
+		r.instance.Annotations = RemoveRenovatorOperation(r.instance.Annotations)
+		if err := r.Update(ctx, r.instance); err != nil {
+			return &ctrl.Result{}, fmt.Errorf("failed to remove operation annotation: %w", err)
+		}
 	}
 
-	return results.ToResult(), nil
+	return result, nil
 }

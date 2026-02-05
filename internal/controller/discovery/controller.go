@@ -8,8 +8,10 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,6 +33,7 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 
@@ -122,11 +125,39 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 				GenericFunc: func(_ event.GenericEvent) bool { return false },
 			}),
 		).
+		Watches(&corev1.ConfigMap{},
+			handler.EnqueueRequestsFromMapFunc(r.mapConfigMapToDiscovery),
+			builder.WithPredicates(predicate.Funcs{
+				CreateFunc: func(e event.CreateEvent) bool {
+					return e.Object.GetLabels()[renovatev1beta1.DiscoveryInstance] != ""
+				},
+				UpdateFunc: func(e event.UpdateEvent) bool {
+					return e.ObjectNew.GetLabels()[renovatev1beta1.DiscoveryInstance] != ""
+				},
+				DeleteFunc: func(_ event.DeleteEvent) bool { return false },
+			}),
+		).
 		Owns(&renovatev1beta1.GitRepo{}).
 		Owns(&batchv1.Job{}).
 		Owns(&batchv1.CronJob{}).
 		Named(ControllerName).
 		Complete(r)
+}
+
+func (r *Reconciler) mapConfigMapToDiscovery(ctx context.Context, obj client.Object) []ctrl.Request {
+	discoveryName := obj.GetLabels()[renovatev1beta1.DiscoveryInstance]
+	if discoveryName == "" {
+		return nil
+	}
+
+	return []ctrl.Request{
+		{
+			NamespacedName: types.NamespacedName{
+				Name:      discoveryName,
+				Namespace: obj.GetNamespace(),
+			},
+		},
+	}
 }
 
 // mapConfigToDiscovery maps a RenovateConfig event to a Request for the Discovery.

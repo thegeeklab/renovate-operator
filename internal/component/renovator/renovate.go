@@ -41,6 +41,12 @@ func (r *Reconciler) updateRenovateConfig(renovate *renovatev1beta1.RenovateConf
 		renovate.Spec.Logging = &r.instance.Spec.Logging
 	}
 
+	if renovate.Labels == nil {
+		renovate.Labels = make(map[string]string)
+	}
+
+	renovate.Labels[renovatev1beta1.RenovatorLabel] = r.instance.Name
+
 	return nil
 }
 

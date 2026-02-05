@@ -22,10 +22,15 @@ const (
 	OperationDiscover = "discover"
 	// OperationRenovate is the value used to trigger immediate renovate run.
 	OperationRenovate = "renovate"
+	// RenovatorLabel is the label used to associate resources with a Renovator instance.
+	RenovatorLabel = "renovate.thegeeklab.de/renovator"
+
 	// JobTypeLabelKey is the label key used to identify job types.
 	JobTypeLabelKey = "renovate.thegeeklab.de/job-type"
 	// JobTypeLabelValue is the value used for cron jobs.
 	JobTypeLabelValue = "cron"
+
+	DiscoveryInstance = "renovate.thegeeklab.de/discovery"
 )
 
 type PlatformSpec struct {

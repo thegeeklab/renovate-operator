@@ -24,8 +24,8 @@ type Discovery struct {
 }
 
 const (
-	EnvRenovatorInstanceName      = "RENOVATOR_INSTANCE_NAME"
-	EnvRenovatorInstanceNamespace = "RENOVATOR_INSTANCE_NAMESPACE"
+	EnvDiscoveryInstanceName      = "DISCOVERY_INSTANCE_NAME"
+	EnvDiscoveryInstanceNamespace = "DISCOVERY_INSTANCE_NAMESPACE"
 	EnvRenovateOutputFile         = "RENOVATE_OUTPUT_FILE"
 	EnvKubeconfig                 = "KUBECONFIG"
 )
@@ -38,11 +38,11 @@ func New(scheme *runtime.Scheme) (*Discovery, error) {
 	}
 
 	var err error
-	if d.Name, err = util.ParseEnv(EnvRenovatorInstanceName); err != nil {
+	if d.Name, err = util.ParseEnv(EnvDiscoveryInstanceName); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDiscoveryClient, err)
 	}
 
-	if d.Namespace, err = util.ParseEnv(EnvRenovatorInstanceNamespace); err != nil {
+	if d.Namespace, err = util.ParseEnv(EnvDiscoveryInstanceNamespace); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDiscoveryClient, err)
 	}
 

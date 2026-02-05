@@ -148,11 +148,11 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) {
 			containers.WithEnvVars(
 				[]corev1.EnvVar{
 					{
-						Name:  discovery.EnvRenovatorInstanceName,
+						Name:  discovery.EnvDiscoveryInstanceName,
 						Value: r.instance.Name,
 					},
 					{
-						Name:  discovery.EnvRenovatorInstanceNamespace,
+						Name:  discovery.EnvDiscoveryInstanceNamespace,
 						Value: r.instance.Namespace,
 					},
 					{
