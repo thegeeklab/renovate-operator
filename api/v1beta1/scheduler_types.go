@@ -4,8 +4,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// RunnerSpec defines the desired state of Runner.
-type RunnerSpec struct {
+// SchedulerSpec defines the desired state of Scheduler.
+type SchedulerSpec struct {
 	//+kubebuilder:validation:Required
 	ConfigRef string `json:"configRef"`
 
@@ -18,25 +18,25 @@ type RunnerSpec struct {
 
 	// +kubebuilder:validation:Enum=none;batch
 	// +kubebuilder:default:="none"
-	Strategy RunnerStrategy `json:"strategy,omitempty"`
+	Strategy SchedulerStrategy `json:"strategy,omitempty"`
 
-	// MaxRunners Maximum number of parallel runners to start. A single runner will only process a single batch.
+	// Maximum number of parallel pods to start. One instance will only process a single batch.
 	// +kubebuilder:default:=1
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	Instances int32 `json:"instances"`
 
-	// BatchSize Number of repositories per batch. Only used when strategy is 'batch'.
+	// Number of repositories per batch. Only used when strategy is 'batch'.
 	// If not specified, defaults to a reasonable size based on the number of repositories and instances.
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=1000
 	BatchSize int `json:"batchSize,omitempty"`
 }
 
-// RunnerStatus defines the observed state of Runner.
+// SchedulerStatus defines the observed state of Scheduler.
 //
 //nolint:lll
-type RunnerStatus struct {
+type SchedulerStatus struct {
 	Ready      bool               `json:"ready"`
 	Failed     int                `json:"failed,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
@@ -45,24 +45,24 @@ type RunnerStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// Runner is the Schema for the runners API.
-type Runner struct {
+// Scheduler is the Schema for the schedulers API.
+type Scheduler struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   RunnerSpec   `json:"spec,omitempty"`
-	Status RunnerStatus `json:"status,omitempty"`
+	Spec   SchedulerSpec   `json:"spec,omitempty"`
+	Status SchedulerStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// RunnerList contains a list of Runner.
-type RunnerList struct {
+// SchedulerList contains a list of Scheduler.
+type SchedulerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Runner `json:"items"`
+	Items           []Scheduler `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Runner{}, &RunnerList{})
+	SchemeBuilder.Register(&Scheduler{}, &SchedulerList{})
 }

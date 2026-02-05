@@ -38,8 +38,9 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	// Define the reconciliation order
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
 		r.reconcileRenovateConfig,
+		r.reconcileRenovateConfigMap,
 		r.reconcileDiscovery,
-		r.reconcileRunner,
+		r.reconcileScheduler,
 	}
 
 	// Execute each reconciliation step

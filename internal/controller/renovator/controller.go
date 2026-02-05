@@ -30,9 +30,9 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries/finalizers,verbs=update
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners/status,verbs=get;update;patch
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners/finalizers,verbs=update
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=schedulers,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=schedulers/status,verbs=get;update;patch
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=schedulers/finalizers,verbs=update
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs/finalizers,verbs=update
@@ -88,7 +88,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		)).
 		Owns(&renovatev1beta1.RenovateConfig{}).
 		Owns(&renovatev1beta1.Discovery{}).
-		Owns(&renovatev1beta1.Runner{}).
+		Owns(&renovatev1beta1.Scheduler{}).
 		Named(ControllerName).
 		Complete(r)
 }

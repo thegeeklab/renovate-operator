@@ -1,4 +1,4 @@
-package renovateconfig
+package scheduler
 
 import (
 	"context"
@@ -34,7 +34,7 @@ var (
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecs(t, "RenovateConfigController Suite")
+	RunSpecs(t, "SchedulerController Suite")
 }
 
 var _ = BeforeSuite(func() {

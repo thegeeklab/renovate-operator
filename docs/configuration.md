@@ -7,7 +7,7 @@ This guide provides comprehensive information about configuring the renovate-ope
 - [Renovator Configuration](#renovator-configuration)
 - [Renovate Settings](#renovate-settings)
 - [Discovery Configuration](#discovery-configuration)
-- [Runner Configuration](#runner-configuration)
+- [Scheduler Configuration](#scheduler-configuration)
 - [Complete Example](#complete-example)
 
 ## Renovator Configuration
@@ -45,8 +45,8 @@ spec:
     schedule: "0 */2 * * *"
     filter: []
 
-  # Runner configuration
-  runner:
+  # Scheduler configuration
+  scheduler:
     strategy: none
     instances: 1
 
@@ -221,7 +221,7 @@ spec:
       - "!*/test-*"
 ```
 
-## Runner Configuration
+## Scheduler Configuration
 
 Configure parallel processing and job execution. The Renovate Operator supports efficient parallel processing of repositories through its built-in batching strategy, allowing you to significantly reduce total runtime for large repository sets.
 
@@ -231,13 +231,13 @@ Configure parallel processing and job execution. The Renovate Operator supports 
 | `instances` | integer | `1`     | Number of parallel workers (1-100)     |
 | `batchSize` | integer | auto    | Repositories per batch (1-1000)        |
 
-### Runner Strategies
+### Scheduler Strategies
 
 #### None Strategy (Sequential)
 
 ```yaml
 spec:
-  runner:
+  scheduler:
     strategy: none
     instances: 1
 ```
@@ -248,7 +248,7 @@ Basic parallel processing:
 
 ```yaml
 spec:
-  runner:
+  scheduler:
     strategy: batch
     instances: 4 # 4 parallel workers
     batchSize: 20 # 20 repositories per batch
@@ -258,7 +258,7 @@ Auto-calculated batch sizes (recommended for dynamic environments):
 
 ```yaml
 spec:
-  runner:
+  scheduler:
     strategy: batch
     instances: 5
     # batchSize omitted - automatically calculated based on repo count and instances
@@ -361,8 +361,8 @@ spec:
       - "!mycompany/*-backup"
       - "!*/test-*"
 
-  # Runner configuration
-  runner:
+  # Scheduler configuration
+  scheduler:
     strategy: batch
     instances: 6
     batchSize: 25

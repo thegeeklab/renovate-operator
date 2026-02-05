@@ -70,9 +70,9 @@ webhooks:
     service:
       name: webhook-service
       namespace: system
-      path: /mutate-renovate-thegeeklab-de-v1beta1-runner
+      path: /mutate-renovate-thegeeklab-de-v1beta1-scheduler
   failurePolicy: Fail
-  name: mrunner-v1beta1.kb.io
+  name: mscheduler-v1beta1.kb.io
   rules:
   - apiGroups:
     - renovate.thegeeklab.de
@@ -82,5 +82,5 @@ webhooks:
     - CREATE
     - UPDATE
     resources:
-    - runners
+    - schedulers
   sideEffects: None

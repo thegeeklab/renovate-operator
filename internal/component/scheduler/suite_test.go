@@ -1,4 +1,4 @@
-package runner_test
+package scheduler_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestRunner(t *testing.T) {
+func TestScheduler(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Runner Suite")
+	RunSpecs(t, "Scheduler Suite")
 }

@@ -11,12 +11,12 @@ metadata:
   labels:
     app.kubernetes.io/name: renovate-operator
     app.kubernetes.io/managed-by: kustomize
-  name: runner-editor-role
+  name: scheduler-editor-role
 rules:
 - apiGroups:
   - renovate.thegeeklab.de
   resources:
-  - runners
+  - schedulers
   verbs:
   - create
   - delete
@@ -28,6 +28,6 @@ rules:
 - apiGroups:
   - renovate.thegeeklab.de
   resources:
-  - runners/status
+  - schedulers/status
   verbs:
   - get

@@ -50,7 +50,7 @@ rules:
   - gitrepos
   - renovateconfigs
   - renovators
-  - runners
+  - schedulers
   verbs:
   - create
   - delete
@@ -66,7 +66,7 @@ rules:
   - gitrepos/finalizers
   - renovateconfigs/finalizers
   - renovators/finalizers
-  - runners/finalizers
+  - schedulers/finalizers
   verbs:
   - update
 - apiGroups:
@@ -76,7 +76,7 @@ rules:
   - gitrepos/status
   - renovateconfigs/status
   - renovators/status
-  - runners/status
+  - schedulers/status
   verbs:
   - get
   - patch

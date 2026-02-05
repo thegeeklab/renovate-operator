@@ -19,7 +19,7 @@ spec:
   logging:
     level: debug
 
-  runner:
+  scheduler:
     # Use 'batch' strategy for parallel processing of repositories
     strategy: batch
     # Number of parallel job instances (workers) to run simultaneously
@@ -37,7 +37,7 @@ spec:
           name: "my-secret"
           key: "platform_token"
 
-    dryRun: true
+    dryRun: "extract"
     onboarding: true
 
     githubToken:

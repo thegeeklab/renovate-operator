@@ -7,6 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -24,6 +25,7 @@ var _ = Describe("Renovator Discovery", func() {
 		ctx = context.Background()
 		scheme = runtime.NewScheme()
 		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
+		Expect(corev1.SchemeBuilder.AddToScheme(scheme)).To(Succeed())
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).Build()
 	})
 

@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.1
-  name: runners.renovate.thegeeklab.de
+  name: schedulers.renovate.thegeeklab.de
 spec:
   group: renovate.thegeeklab.de
   names:
-    kind: Runner
-    listKind: RunnerList
-    plural: runners
-    singular: runner
+    kind: Scheduler
+    listKind: SchedulerList
+    plural: schedulers
+    singular: scheduler
   scope: Namespaced
   versions:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Runner is the Schema for the runners API.
+        description: Scheduler is the Schema for the schedulers API.
         properties:
           apiVersion:
             description: |-
@@ -37,11 +37,11 @@ spec:
           metadata:
             type: object
           spec:
-            description: RunnerSpec defines the desired state of Runner.
+            description: SchedulerSpec defines the desired state of Scheduler.
             properties:
               batchSize:
                 description: |-
-                  BatchSize Number of repositories per batch. Only used when strategy is 'batch'.
+                  Number of repositories per batch. Only used when strategy is 'batch'.
                   If not specified, defaults to a reasonable size based on the number of repositories and instances.
                 maximum: 1000
                 minimum: 1
@@ -64,8 +64,8 @@ spec:
                 type: string
               instances:
                 default: 1
-                description: MaxRunners Maximum number of parallel runners to start.
-                  A single runner will only process a single batch.
+                description: Maximum number of parallel pods to start. One instance
+                  will only process a single batch.
                 format: int32
                 maximum: 100
                 minimum: 1
@@ -102,7 +102,7 @@ spec:
             - instances
             type: object
           status:
-            description: RunnerStatus defines the observed state of Runner.
+            description: SchedulerStatus defines the observed state of Scheduler.
             properties:
               conditions:
                 items:

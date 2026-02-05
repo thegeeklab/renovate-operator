@@ -1,4 +1,4 @@
-package runner
+package scheduler
 
 import (
 	"context"
@@ -19,7 +19,7 @@ type Reconciler struct {
 	client.Client
 	scheme       *runtime.Scheme
 	req          ctrl.Request
-	instance     *renovatev1beta1.Runner
+	instance     *renovatev1beta1.Scheduler
 	renovate     *renovatev1beta1.RenovateConfig
 	batches      []Batch
 	batchesCount int32
@@ -33,7 +33,7 @@ func NewReconciler(
 	ctx context.Context,
 	c client.Client,
 	scheme *runtime.Scheme,
-	instance *renovatev1beta1.Runner,
+	instance *renovatev1beta1.Scheduler,
 	renovate *renovatev1beta1.RenovateConfig,
 ) (*Reconciler, error) {
 	r := &Reconciler{
@@ -112,7 +112,7 @@ func (r *Reconciler) createBatches(ctx context.Context) ([]Batch, error) {
 	}
 
 	switch r.instance.Spec.Strategy {
-	case renovatev1beta1.RunnerStrategy_BATCH:
+	case renovatev1beta1.SchedulerStrategy_BATCH:
 		batchSize := r.calculateOptimalBatchSize(repoCount)
 
 		for i := 0; i < repoCount; i += batchSize {
@@ -123,7 +123,7 @@ func (r *Reconciler) createBatches(ctx context.Context) ([]Batch, error) {
 
 		return batches, nil
 
-	case renovatev1beta1.RunnerStrategy_NONE:
+	case renovatev1beta1.SchedulerStrategy_NONE:
 		fallthrough
 	default:
 		// NONE strategy and unknown strategies: process all repositories in a single batch

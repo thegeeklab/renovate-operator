@@ -22,9 +22,9 @@ resources:
 # default, aiding admins in cluster management. Those roles are
 # not used by the {{ .ProjectName }} itself. You can comment the following lines
 # if you do not want those helpers be installed with your Project.
-- runner_admin_role.yaml
-- runner_editor_role.yaml
-- runner_viewer_role.yaml
+- scheduler_admin_role.yaml
+- scheduler_editor_role.yaml
+- scheduler_viewer_role.yaml
 - renovateconfig_admin_role.yaml
 - renovateconfig_editor_role.yaml
 - renovateconfig_viewer_role.yaml

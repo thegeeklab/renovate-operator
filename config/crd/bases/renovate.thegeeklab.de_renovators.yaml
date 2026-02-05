@@ -441,12 +441,15 @@ spec:
                 required:
                 - platform
                 type: object
-              runner:
-                description: RunnerSpec defines the desired state of Runner.
+              schedule:
+                default: 0 */2 * * *
+                type: string
+              scheduler:
+                description: SchedulerSpec defines the desired state of Scheduler.
                 properties:
                   batchSize:
                     description: |-
-                      BatchSize Number of repositories per batch. Only used when strategy is 'batch'.
+                      Number of repositories per batch. Only used when strategy is 'batch'.
                       If not specified, defaults to a reasonable size based on the number of repositories and instances.
                     maximum: 1000
                     minimum: 1
@@ -469,8 +472,8 @@ spec:
                     type: string
                   instances:
                     default: 1
-                    description: MaxRunners Maximum number of parallel runners to
-                      start. A single runner will only process a single batch.
+                    description: Maximum number of parallel pods to start. One instance
+                      will only process a single batch.
                     format: int32
                     maximum: 100
                     minimum: 1
@@ -506,9 +509,6 @@ spec:
                 - configRef
                 - instances
                 type: object
-              schedule:
-                default: 0 */2 * * *
-                type: string
               suspend:
                 default: false
                 type: boolean

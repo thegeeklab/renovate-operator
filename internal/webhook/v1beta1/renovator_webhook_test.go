@@ -38,8 +38,8 @@ var _ = Describe("Renovator Webhook", func() {
 			err := defaulter.Default(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_INFO))
-			Expect(obj.Spec.Runner.Strategy).To(BeEquivalentTo(renovatev1beta1.RunnerStrategy_NONE))
-			Expect(obj.Spec.Runner.Instances).To(BeEquivalentTo(1))
+			Expect(obj.Spec.Scheduler.Strategy).To(BeEquivalentTo(renovatev1beta1.SchedulerStrategy_NONE))
+			Expect(obj.Spec.Scheduler.Instances).To(BeEquivalentTo(1))
 			Expect(obj.Spec.Discovery.Schedule).To(Equal("0 */2 * * *"))
 			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.OperatorContainerImage))
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
@@ -52,8 +52,8 @@ var _ = Describe("Renovator Webhook", func() {
 			obj.Spec.Image = "custom-image:latest"
 			obj.Spec.ImagePullPolicy = corev1.PullAlways
 			obj.Spec.Logging.Level = renovatev1beta1.LogLevel_DEBUG
-			obj.Spec.Runner.Strategy = "rolling"
-			obj.Spec.Runner.Instances = 3
+			obj.Spec.Scheduler.Strategy = "rolling"
+			obj.Spec.Scheduler.Instances = 3
 			obj.Spec.Discovery.Schedule = "0 */1 * * *"
 			obj.Spec.Renovate.Image = "custom-renovate:latest"
 			obj.Spec.Renovate.ImagePullPolicy = corev1.PullAlways
@@ -63,8 +63,8 @@ var _ = Describe("Renovator Webhook", func() {
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_DEBUG))
 			Expect(obj.Spec.Image).To(Equal("custom-image:latest"))
 			Expect(obj.Spec.ImagePullPolicy).To(BeEquivalentTo(corev1.PullAlways))
-			Expect(obj.Spec.Runner.Strategy).To(BeEquivalentTo("rolling"))
-			Expect(obj.Spec.Runner.Instances).To(BeEquivalentTo(3))
+			Expect(obj.Spec.Scheduler.Strategy).To(BeEquivalentTo("rolling"))
+			Expect(obj.Spec.Scheduler.Instances).To(BeEquivalentTo(3))
 			Expect(obj.Spec.Discovery.Schedule).To(Equal("0 */1 * * *"))
 			Expect(obj.Spec.Renovate.Image).To(Equal("custom-renovate:latest"))
 			Expect(obj.Spec.Renovate.ImagePullPolicy).To(Equal(corev1.PullAlways))

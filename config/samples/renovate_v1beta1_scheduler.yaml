@@ -1,9 +1,9 @@
 apiVersion: renovate.thegeeklab.de/v1beta1
-kind: Runner
+kind: Scheduler
 metadata:
   labels:
     app.kubernetes.io/name: renovate-operator
     app.kubernetes.io/managed-by: kustomize
-  name: runner-sample
+  name: scheduler-sample
 spec:
   # TODO(user): Add fields here
