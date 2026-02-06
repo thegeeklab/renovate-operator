@@ -184,7 +184,7 @@ var _ = Describe("Renovator Scheduler", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify the annotation was removed from the Renovator
-			Expect(renovator.Annotations).NotTo(BeNil())
+			Expect(renovator.Annotations).To(BeEmpty())
 			Expect(renovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
 		})
 	})

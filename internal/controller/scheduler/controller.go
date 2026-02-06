@@ -69,11 +69,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	if res, err := scheduler.Reconcile(ctx); err != nil {
+	res, err := scheduler.Reconcile(ctx)
+	if err != nil {
 		return controller.HandleReconcileResult(res, err)
 	}
 
-	return ctrl.Result{}, nil
+	return *res, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -164,6 +165,7 @@ func (r *Reconciler) mapGitRepoToScheduler(ctx context.Context, obj client.Objec
 	}
 
 	var reqs []ctrl.Request
+
 	for _, scheduler := range schedulerList.Items {
 		// Check if the scheduler's renovate.thegeeklab.de/renovator label matches the renovatorName
 		if scheduler.Labels != nil && scheduler.Labels[renovatev1beta1.RenovatorLabel] == renovatorName {

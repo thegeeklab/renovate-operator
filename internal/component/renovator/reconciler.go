@@ -43,31 +43,31 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		r.reconcileScheduler,
 	}
 
-	// Execute each reconciliation step
-	for _, reconcileFunc := range reconcileFuncs {
-		res, err := reconcileFunc(ctx)
-		if err != nil {
-			// If reconciliation fails, remove the operation annotation to prevent retry loops
-			r.instance.Annotations = RemoveRenovatorOperation(r.instance.Annotations)
-			if updateErr := r.Update(ctx, r.instance); updateErr != nil {
-				return &ctrl.Result{}, fmt.Errorf("reconciliation failed: %w: failed to remove operation annotation: %w",
-					err, updateErr)
-			}
+	var reconcileErr error
 
-			return &ctrl.Result{}, fmt.Errorf("reconciliation failed: %w", err)
+	for _, f := range reconcileFuncs {
+		res, err := f(ctx)
+		if err != nil {
+			reconcileErr = err
+
+			break
 		}
 
 		results.Collect(res)
 	}
 
-	// Remove operation annotation only if reconciliation was successful (no requeue needed)
 	result := results.ToResult()
-	if result.RequeueAfter == 0 {
+
+	// Cleanup annotation if reconciliation failed or finished successfully
+	// Only remove the annotation if it exists to avoid nil map issues
+	if (reconcileErr != nil || result.RequeueAfter == 0) && HasRenovatorOperation(r.instance.Annotations) {
+		patch := client.MergeFrom(r.instance.DeepCopy())
 		r.instance.Annotations = RemoveRenovatorOperation(r.instance.Annotations)
-		if err := r.Update(ctx, r.instance); err != nil {
+
+		if err := r.Patch(ctx, r.instance, patch); err != nil {
 			return &ctrl.Result{}, fmt.Errorf("failed to remove operation annotation: %w", err)
 		}
 	}
 
-	return result, nil
+	return result, reconcileErr
 }
