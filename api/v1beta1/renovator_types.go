@@ -13,6 +13,8 @@ const (
 	PlatformType_GITHUB = "github"
 	PlatformType_GITEA  = "gitea"
 
+	// RenovatorLabel is the label used to associate resources with a Renovator instance.
+	RenovatorLabel = "renovate.thegeeklab.de/renovator"
 	// RenovatorOperation is the annotation used to trigger operations.
 	RenovatorOperation = "renovate.thegeeklab.de/operation"
 	// RenovatorOperationSeparator is the separator used to separate parallel operations in the
@@ -22,15 +24,6 @@ const (
 	OperationDiscover = "discover"
 	// OperationRenovate is the value used to trigger immediate renovate run.
 	OperationRenovate = "renovate"
-	// RenovatorLabel is the label used to associate resources with a Renovator instance.
-	RenovatorLabel = "renovate.thegeeklab.de/renovator"
-
-	// JobTypeLabelKey is the label key used to identify job types.
-	JobTypeLabelKey = "renovate.thegeeklab.de/job-type"
-	// JobTypeLabelValue is the value used for cron jobs.
-	JobTypeLabelValue = "cron"
-
-	DiscoveryInstance = "renovate.thegeeklab.de/discovery"
 )
 
 type PlatformSpec struct {

@@ -58,12 +58,6 @@ func run(ctx context.Context) error {
 	}
 
 	op, err := controllerutil.CreateOrUpdate(ctx, d.KubeClient, cm, func() error {
-		if cm.Labels == nil {
-			cm.Labels = make(map[string]string)
-		}
-
-		cm.Labels[renovatev1beta1.DiscoveryInstance] = d.Name
-
 		if cm.Data == nil {
 			cm.Data = make(map[string]string)
 		}

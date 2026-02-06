@@ -12,19 +12,18 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 // reconcileGitRepos synchronizes GitRepo resources based on the discovery result ConfigMap.
 func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error) {
-	log := logf.FromContext(ctx)
-	discoveredRepoMatcher := make(map[string]bool)
-
 	var (
 		allErrors []error
 		targetCM  *corev1.ConfigMap
 	)
+
+	log := logf.FromContext(ctx)
+	discoveredRepoMatcher := make(map[string]bool)
 
 	// 1. Find the ConfigMap using the owner reference
 	cms := &corev1.ConfigMapList{}
@@ -33,20 +32,14 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 	}
 
 	for _, cm := range cms.Items {
-		owned, err := controllerutil.HasOwnerReference(cm.GetOwnerReferences(), r.instance, r.scheme)
-		if err != nil {
-			log.Error(err, "Failed to check owner reference")
-			allErrors = append(allErrors, fmt.Errorf("failed to check owner reference: %w", err))
-
-			continue
-		}
-
-		if owned {
+		if metav1.IsControlledBy(&cm, r.instance) {
 			targetCM = &cm
+
+			break
 		}
 	}
 
-	// 2. If no ConfigMap found with that label, skip sync
+	// 2. If no ConfigMap found, skip sync
 	if targetCM == nil {
 		log.V(1).Info("No discovery result ConfigMap found, skipping GitRepo sync")
 
@@ -118,9 +111,6 @@ func (r *Reconciler) updateGitRepo(gr *renovatev1beta1.GitRepo, repoName string)
 		gr.Labels = make(map[string]string)
 	}
 
-	gr.Labels[renovatev1beta1.DiscoveryInstance] = r.instance.Name
-	gr.Labels[renovatev1beta1.JobTypeLabelKey] = renovatev1beta1.JobTypeLabelValue
-
 	if r.instance.Labels != nil {
 		if renovatorName, ok := r.instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
 			gr.Labels[renovatev1beta1.RenovatorLabel] = renovatorName
@@ -134,17 +124,12 @@ func (r *Reconciler) updateGitRepo(gr *renovatev1beta1.GitRepo, repoName string)
 
 // pruneOrphanedRepos deletes GitRepos that are no longer present in the discovery result.
 func (r *Reconciler) pruneOrphanedRepos(ctx context.Context, discovered map[string]bool) error {
-	log := logf.FromContext(ctx)
-
 	var pruneErrors []error
 
-	existingRepos := &renovatev1beta1.GitRepoList{}
-	listOpts := []client.ListOption{
-		client.InNamespace(r.instance.Namespace),
-		client.MatchingLabels{renovatev1beta1.DiscoveryInstance: r.instance.Name},
-	}
+	log := logf.FromContext(ctx)
 
-	if err := r.List(ctx, existingRepos, listOpts...); err != nil {
+	existingRepos := &renovatev1beta1.GitRepoList{}
+	if err := r.List(ctx, existingRepos, client.InNamespace(r.instance.Namespace)); err != nil {
 		return fmt.Errorf("failed to list existing GitRepos: %w", err)
 	}
 

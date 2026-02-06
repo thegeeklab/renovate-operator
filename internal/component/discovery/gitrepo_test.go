@@ -27,15 +27,16 @@ var _ = Describe("GitRepo Reconciliation", func() {
 
 	createDiscoveryCM := func(name string, repos []string) *corev1.ConfigMap {
 		repoData, _ := json.Marshal(repos)
-
-		return &corev1.ConfigMap{
+		cm := &corev1.ConfigMap{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      name,
 				Namespace: "default",
-				Labels:    map[string]string{renovatev1beta1.DiscoveryInstance: "test-discovery"},
 			},
 			Data: map[string]string{"repositories": string(repoData)},
 		}
+		Expect(controllerutil.SetControllerReference(instance, cm, scheme)).To(Succeed())
+
+		return cm
 	}
 
 	newGitRepo := func(name, specName string) *renovatev1beta1.GitRepo {
@@ -58,6 +59,9 @@ var _ = Describe("GitRepo Reconciliation", func() {
 				Name:      "test-discovery",
 				Namespace: "default",
 				UID:       "test-uid",
+				Labels: map[string]string{
+					renovatev1beta1.RenovatorLabel: "test-renovator",
+				},
 			},
 		}
 
@@ -67,8 +71,8 @@ var _ = Describe("GitRepo Reconciliation", func() {
 	})
 
 	Describe("reconcileGitRepos", func() {
-		It("should successfully create GitRepos from discovery results", func() {
-			cm := createDiscoveryCM("test-config", []string{"repo1", "repo2"})
+		It("should successfully create GitRepos with inherited labels", func() {
+			cm := createDiscoveryCM("test-config", []string{"repo1"})
 			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
 
 			_, err := reconciler.reconcileGitRepos(ctx)
@@ -76,70 +80,56 @@ var _ = Describe("GitRepo Reconciliation", func() {
 
 			gitRepos := &renovatev1beta1.GitRepoList{}
 			Expect(fakeClient.List(ctx, gitRepos)).To(Succeed())
-			Expect(gitRepos.Items).To(HaveLen(2))
+			Expect(gitRepos.Items).To(HaveLen(1))
+
+			repo := gitRepos.Items[0]
+			Expect(repo.Spec.Name).To(Equal("repo1"))
+			Expect(repo.Labels).To(HaveKeyWithValue(renovatev1beta1.RenovatorLabel, "test-renovator"))
+			Expect(metav1.IsControlledBy(&repo, instance)).To(BeTrue())
 		})
 
-		It("should update existing GitRepos when Discovery labels change", func() {
-			existingRepo := newGitRepo("test-discovery-repo1", "repo1")
-			existingRepo.Labels = map[string]string{renovatev1beta1.DiscoveryInstance: instance.Name}
-			Expect(controllerutil.SetControllerReference(instance, existingRepo, scheme)).To(Succeed())
-			Expect(fakeClient.Create(ctx, existingRepo)).To(Succeed())
-
-			instance.Labels = map[string]string{renovatev1beta1.RenovatorLabel: "new-manager"}
-
-			cm := createDiscoveryCM("test-config", []string{"repo1"})
+		It("should skip ConfigMaps not controlled by the instance", func() {
+			cm := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{Name: "stranger-danger", Namespace: "default"},
+				Data:       map[string]string{"repositories": `["repo1"]`},
+			}
 			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
 
 			_, err := reconciler.reconcileGitRepos(ctx)
 			Expect(err).ToNot(HaveOccurred())
 
-			updated := &renovatev1beta1.GitRepo{}
-			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(existingRepo), updated)).To(Succeed())
-			Expect(updated.Labels).To(HaveKeyWithValue(renovatev1beta1.RenovatorLabel, "new-manager"))
-		})
-
-		It("should handle invalid JSON data gracefully", func() {
-			cm := createDiscoveryCM("bad-config", nil)
-			cm.Data["repositories"] = "{not-json}"
-			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
-
-			_, err := reconciler.reconcileGitRepos(ctx)
-			Expect(err).ToNot(HaveOccurred())
+			gitRepos := &renovatev1beta1.GitRepoList{}
+			Expect(fakeClient.List(ctx, gitRepos)).To(Succeed())
+			Expect(gitRepos.Items).To(BeEmpty())
 		})
 	})
 
-	DescribeTable("updateGitRepo Logic",
-		func(setupInstance func(), expectedLabels map[string]string) {
-			if setupInstance != nil {
-				setupInstance()
-			}
+	Describe("updateGitRepo", func() {
+		It("should propagate specific labels from discovery instance to GitRepo", func() {
 			repo := &renovatev1beta1.GitRepo{}
-			Expect(reconciler.updateGitRepo(repo, "test-repo")).To(Succeed())
+			err := reconciler.updateGitRepo(repo, "my-repo")
+			Expect(err).ToNot(HaveOccurred())
 
-			for k, v := range expectedLabels {
-				Expect(repo.Labels).To(HaveKeyWithValue(k, v))
-			}
-			Expect(repo.Spec.Name).To(Equal("test-repo"))
-		},
-		Entry("Standard labels", nil, map[string]string{
-			renovatev1beta1.DiscoveryInstance: "test-discovery",
-			renovatev1beta1.JobTypeLabelKey:   renovatev1beta1.JobTypeLabelValue,
-		}),
-		Entry("Renovator label propagation", func() {
-			instance.Labels = map[string]string{renovatev1beta1.RenovatorLabel: "custom-app"}
-		}, map[string]string{
-			renovatev1beta1.RenovatorLabel: "custom-app",
-		}),
-	)
+			Expect(repo.Spec.Name).To(Equal("my-repo"))
+			Expect(repo.Labels).To(HaveKeyWithValue(renovatev1beta1.RenovatorLabel, "test-renovator"))
+		})
+
+		It("should handle missing labels on discovery instance gracefully", func() {
+			reconciler.instance.Labels = nil
+			repo := &renovatev1beta1.GitRepo{}
+
+			err := reconciler.updateGitRepo(repo, "my-repo")
+			Expect(err).ToNot(HaveOccurred())
+			Expect(repo.Labels).To(Not(HaveKey(renovatev1beta1.RenovatorLabel)))
+		})
+	})
 
 	Describe("pruneOrphanedRepos", func() {
 		It("should delete orphaned GitRepos but keep discovered ones", func() {
 			keep := newGitRepo("test-discovery-keep", "keep-me")
-			keep.Labels = map[string]string{renovatev1beta1.DiscoveryInstance: instance.Name}
 			Expect(controllerutil.SetControllerReference(instance, keep, scheme)).To(Succeed())
 
 			orphan := newGitRepo("test-discovery-orphan", "delete-me")
-			orphan.Labels = map[string]string{renovatev1beta1.DiscoveryInstance: instance.Name}
 			Expect(controllerutil.SetControllerReference(instance, orphan, scheme)).To(Succeed())
 
 			Expect(fakeClient.Create(ctx, keep)).To(Succeed())
@@ -156,7 +146,6 @@ var _ = Describe("GitRepo Reconciliation", func() {
 
 		It("should ignore GitRepos not owned by the Discovery instance", func() {
 			externalRepo := newGitRepo("other-controller-repo", "some-repo")
-			externalRepo.Labels = map[string]string{renovatev1beta1.DiscoveryInstance: instance.Name}
 			Expect(fakeClient.Create(ctx, externalRepo)).To(Succeed())
 
 			Expect(reconciler.pruneOrphanedRepos(ctx, map[string]bool{})).To(Succeed())
