@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -20,29 +21,37 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 	log := logf.FromContext(ctx)
 	discoveredRepoMatcher := make(map[string]bool)
 
-	var allErrors []error
+	var (
+		allErrors []error
+		targetCM  *corev1.ConfigMap
+	)
 
-	// 1. Find the ConfigMap using the DiscoveryInstance label
+	// 1. Find the ConfigMap using the owner reference
 	cms := &corev1.ConfigMapList{}
-	if err := r.List(
-		ctx,
-		cms,
-		client.InNamespace(r.instance.Namespace),
-		client.MatchingLabels{
-			renovatev1beta1.DiscoveryInstance: r.instance.Name,
-		},
-	); err != nil {
+	if err := r.List(ctx, cms, client.InNamespace(r.instance.Namespace)); err != nil {
 		return &ctrl.Result{}, err
 	}
 
-	// 2. Safety: If no ConfigMap found with that label, skip sync
-	if len(cms.Items) == 0 {
+	for _, cm := range cms.Items {
+		owned, err := controllerutil.HasOwnerReference(cm.GetOwnerReferences(), r.instance, r.scheme)
+		if err != nil {
+			log.Error(err, "Failed to check owner reference")
+			allErrors = append(allErrors, fmt.Errorf("failed to check owner reference: %w", err))
+
+			continue
+		}
+
+		if owned {
+			targetCM = &cm
+		}
+	}
+
+	// 2. If no ConfigMap found with that label, skip sync
+	if targetCM == nil {
 		log.V(1).Info("No discovery result ConfigMap found, skipping GitRepo sync")
 
 		return &ctrl.Result{}, nil
 	}
-
-	targetCM := &cms.Items[0]
 
 	// 3. Validate ConfigMap data
 	repoData, exists := targetCM.Data["repositories"]

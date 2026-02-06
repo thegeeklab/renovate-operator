@@ -45,27 +45,38 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-discovery-result", d.Name),
-			Namespace: d.Namespace,
-			Labels: map[string]string{
-				renovatev1beta1.DiscoveryInstance: d.Name,
-			},
-		},
-		Data: map[string]string{
-			"repositories": string(repos),
-		},
-	}
-
-	// Set OwnerRef to the Discovery resource
-	// This triggers the Discovery Controller when the CM is created/updated
 	discovery := &renovatev1beta1.Discovery{}
 	if err := d.KubeClient.Get(ctx, types.NamespacedName{Name: d.Name, Namespace: d.Namespace}, discovery); err != nil {
 		return err
 	}
 
-	utilruntime.Must(controllerutil.SetControllerReference(discovery, cm, scheme))
+	cm := &corev1.ConfigMap{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      fmt.Sprintf("%s-discovery", d.Name),
+			Namespace: d.Namespace,
+		},
+	}
 
-	return d.KubeClient.Create(ctx, cm) // Or Patch if it exists
+	op, err := controllerutil.CreateOrUpdate(ctx, d.KubeClient, cm, func() error {
+		if cm.Labels == nil {
+			cm.Labels = make(map[string]string)
+		}
+
+		cm.Labels[renovatev1beta1.DiscoveryInstance] = d.Name
+
+		if cm.Data == nil {
+			cm.Data = make(map[string]string)
+		}
+
+		cm.Data["repositories"] = string(repos)
+
+		return controllerutil.SetControllerReference(discovery, cm, scheme)
+	})
+	if err != nil {
+		return fmt.Errorf("failed to reconcile configmap: %w", err)
+	}
+
+	logf.Log.Info("ConfigMap reconciled", "operation", op, "name", cm.Name)
+
+	return nil
 }

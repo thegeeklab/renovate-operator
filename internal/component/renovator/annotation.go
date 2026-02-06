@@ -36,11 +36,11 @@ func HasRenovatorOperation(annotations map[string]string) bool {
 
 // RemoveRenovatorOperation removes the renovator operation annotation from the given annotations map.
 func RemoveRenovatorOperation(annotations map[string]string) map[string]string {
-    if annotations == nil {
-        return make(map[string]string)
-    }
+	if annotations == nil {
+		return make(map[string]string)
+	}
 
-    delete(annotations, renovatev1beta1.RenovatorOperation)
+	delete(annotations, renovatev1beta1.RenovatorOperation)
 
-    return annotations
+	return annotations
 }

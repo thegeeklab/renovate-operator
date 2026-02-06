@@ -161,7 +161,7 @@ var _ = Describe("Container Template", func() {
 	})
 
 	Describe("WithConfigVolume", func() {
-		It("should create config map volume", func() {
+		It("should create configmap volume", func() {
 			volumes := containers.VolumesTemplate(
 				containers.WithConfigMapVolume("test-volume", "test-configmap"),
 			)
