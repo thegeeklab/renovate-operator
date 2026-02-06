@@ -5,8 +5,6 @@ metadata:
     app.kubernetes.io/name: renovate-operator
     app.kubernetes.io/managed-by: kustomize
   name: renovator-sample
-  annotations:
-    renovate.thegeeklab.de/operation: "discover"
 spec:
   suspend: false
   schedule: "*/30 * * * *"
