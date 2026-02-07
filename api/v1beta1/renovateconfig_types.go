@@ -12,12 +12,10 @@ type RenovateConfigSpec struct {
 	// +kubebuilder:validation:Optional
 	Logging *LoggingSpec `json:"logging,omitempty"`
 
-	Platform PlatformSpec `json:"platform"`
-	DryRun   DryRun       `json:"dryRun,omitempty"`
-	// +kubebuilder:default:=true
-	Onboarding *bool `json:"onboarding,omitempty"`
+	Platform   PlatformSpec `json:"platform"`
+	DryRun     DryRun       `json:"dryRun,omitempty"`
+	Onboarding *bool        `json:"onboarding,omitempty"`
 	// OnBoardingConfig object `json:"onBoardingConfig,omitempty,inline"`
-	// +kubebuilder:default:=10
 	PrHourlyLimit int      `json:"prHourlyLimit,omitempty"`
 	AddLabels     []string `json:"addLabels,omitempty"`
 

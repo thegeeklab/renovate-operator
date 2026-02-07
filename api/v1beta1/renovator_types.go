@@ -59,7 +59,6 @@ const (
 )
 
 type LoggingSpec struct {
-	// +kubebuilder:default=info
 	Level LogLevel `json:"level"`
 }
 
@@ -92,11 +91,9 @@ type ImageSpec struct {
 
 type JobSpec struct {
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:=false
 	Suspend *bool `json:"suspend"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:="0 */2 * * *"
 	Schedule string `json:"schedule"`
 }
 

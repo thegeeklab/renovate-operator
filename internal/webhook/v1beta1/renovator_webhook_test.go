@@ -38,6 +38,9 @@ var _ = Describe("Renovator Webhook", func() {
 			err := defaulter.Default(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_INFO))
+			Expect(obj.Spec.Suspend).NotTo(BeNil())
+			Expect(*obj.Spec.Suspend).To(BeFalse())
+			Expect(obj.Spec.Schedule).To(Equal("0 */2 * * *"))
 			Expect(obj.Spec.Runner.Strategy).To(BeEquivalentTo(renovatev1beta1.RunnerStrategy_NONE))
 			Expect(obj.Spec.Runner.Instances).To(BeEquivalentTo(1))
 			Expect(obj.Spec.Discovery.Schedule).To(Equal("0 */2 * * *"))
@@ -52,6 +55,9 @@ var _ = Describe("Renovator Webhook", func() {
 			obj.Spec.Image = "custom-image:latest"
 			obj.Spec.ImagePullPolicy = corev1.PullAlways
 			obj.Spec.Logging.Level = renovatev1beta1.LogLevel_DEBUG
+			defaultSuspend := true
+			obj.Spec.Suspend = &defaultSuspend
+			obj.Spec.Schedule = "0 */1 * * *"
 			obj.Spec.Runner.Strategy = "rolling"
 			obj.Spec.Runner.Instances = 3
 			obj.Spec.Discovery.Schedule = "0 */1 * * *"
@@ -61,6 +67,9 @@ var _ = Describe("Renovator Webhook", func() {
 			err := defaulter.Default(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_DEBUG))
+			Expect(obj.Spec.Suspend).NotTo(BeNil())
+			Expect(*obj.Spec.Suspend).To(BeTrue())
+			Expect(obj.Spec.Schedule).To(Equal("0 */1 * * *"))
 			Expect(obj.Spec.Image).To(Equal("custom-image:latest"))
 			Expect(obj.Spec.ImagePullPolicy).To(BeEquivalentTo(corev1.PullAlways))
 			Expect(obj.Spec.Runner.Strategy).To(BeEquivalentTo("rolling"))
