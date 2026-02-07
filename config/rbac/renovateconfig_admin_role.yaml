@@ -1,3 +1,4 @@
+---
 # This rule is not used by the project renovate-operator itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
@@ -13,15 +14,15 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: renovateconfig-admin-role
 rules:
-- apiGroups:
-  - renovate.thegeeklab.de
-  resources:
-  - renovateconfigs
-  verbs:
-  - '*'
-- apiGroups:
-  - renovate.thegeeklab.de
-  resources:
-  - renovateconfigs/status
-  verbs:
-  - get
+  - apiGroups:
+      - renovate.thegeeklab.de
+    resources:
+      - renovateconfigs
+    verbs:
+      - '*'
+  - apiGroups:
+      - renovate.thegeeklab.de
+    resources:
+      - renovateconfigs/status
+    verbs:
+      - get

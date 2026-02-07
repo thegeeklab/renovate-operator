@@ -4,83 +4,83 @@ kind: MutatingWebhookConfiguration
 metadata:
   name: mutating-webhook-configuration
 webhooks:
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /mutate-renovate-thegeeklab-de-v1beta1-discovery
-  failurePolicy: Fail
-  name: mdiscovery-v1beta1.kb.io
-  rules:
-  - apiGroups:
-    - renovate.thegeeklab.de
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - discoveries
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /mutate-renovate-thegeeklab-de-v1beta1-renovateconfig
-  failurePolicy: Fail
-  name: mrenovateconfig-v1beta1.kb.io
-  rules:
-  - apiGroups:
-    - renovate.thegeeklab.de
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - renovateconfigs
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /mutate-renovate-thegeeklab-de-v1beta1-renovator
-  failurePolicy: Fail
-  name: mrenovator-v1beta1.kb.io
-  rules:
-  - apiGroups:
-    - renovate.thegeeklab.de
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - renovators
-  sideEffects: None
-- admissionReviewVersions:
-  - v1
-  clientConfig:
-    service:
-      name: webhook-service
-      namespace: system
-      path: /mutate-renovate-thegeeklab-de-v1beta1-runner
-  failurePolicy: Fail
-  name: mrunner-v1beta1.kb.io
-  rules:
-  - apiGroups:
-    - renovate.thegeeklab.de
-    apiVersions:
-    - v1beta1
-    operations:
-    - CREATE
-    - UPDATE
-    resources:
-    - runners
-  sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: system
+        path: /mutate-renovate-thegeeklab-de-v1beta1-discovery
+    failurePolicy: Fail
+    name: mdiscovery-v1beta1.kb.io
+    rules:
+      - apiGroups:
+          - renovate.thegeeklab.de
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - discoveries
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: system
+        path: /mutate-renovate-thegeeklab-de-v1beta1-renovateconfig
+    failurePolicy: Fail
+    name: mrenovateconfig-v1beta1.kb.io
+    rules:
+      - apiGroups:
+          - renovate.thegeeklab.de
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - renovateconfigs
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: system
+        path: /mutate-renovate-thegeeklab-de-v1beta1-renovator
+    failurePolicy: Fail
+    name: mrenovator-v1beta1.kb.io
+    rules:
+      - apiGroups:
+          - renovate.thegeeklab.de
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - renovators
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: webhook-service
+        namespace: system
+        path: /mutate-renovate-thegeeklab-de-v1beta1-runner
+    failurePolicy: Fail
+    name: mrunner-v1beta1.kb.io
+    rules:
+      - apiGroups:
+          - renovate.thegeeklab.de
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - runners
+    sideEffects: None

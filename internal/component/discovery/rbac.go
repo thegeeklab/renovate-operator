@@ -41,14 +41,20 @@ func (r *Reconciler) updateRole(role *rbacv1.Role) error {
 		{
 			// Allow reading the renovator instance
 			APIGroups:     []string{renovatev1beta1.GroupVersion.Group},
-			Resources:     []string{"renovators"},
+			Resources:     []string{renovatev1beta1.ResourceRenovators.String()},
 			ResourceNames: []string{r.instance.Name},
 			Verbs:         []string{"get"},
 		},
 		{
-			// Allow managing gitrepos for this instance
+			// Allow reading discoveries
 			APIGroups: []string{renovatev1beta1.GroupVersion.Group},
-			Resources: []string{"gitrepos"},
+			Resources: []string{renovatev1beta1.ResourceDiscoveries.String()},
+			Verbs:     []string{"get", "list"},
+		},
+		{
+			// Allow managing configmaps
+			APIGroups: []string{corev1.SchemeGroupVersion.Group},
+			Resources: []string{corev1.ResourceConfigMaps.String()},
 			Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
 		},
 	}

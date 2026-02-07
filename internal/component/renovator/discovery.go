@@ -24,7 +24,6 @@ func (r *Reconciler) reconcileDiscovery(ctx context.Context) (*ctrl.Result, erro
 func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error {
 	// Copy the discovery configuration from the Renovator spec
 	discovery.Spec = r.instance.Spec.Discovery
-	discovery.Spec.ConfigRef = metadata.GenericName(r.req)
 
 	if discovery.Spec.Logging == nil {
 		discovery.Spec.Logging = &r.instance.Spec.Logging
@@ -37,6 +36,12 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 	if discovery.Spec.ImagePullPolicy == "" {
 		discovery.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
 	}
+
+	if discovery.Labels == nil {
+		discovery.Labels = make(map[string]string)
+	}
+
+	discovery.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
 
 	// Forward operation annotations from Renovator to Discovery
 	if HasRenovatorOperationDiscover(r.instance.Annotations) {

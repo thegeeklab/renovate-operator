@@ -12,7 +12,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	admissionv1 "k8s.io/api/admission/v1"
 	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
@@ -23,8 +23,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
 

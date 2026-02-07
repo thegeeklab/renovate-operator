@@ -24,7 +24,6 @@ func (r *Reconciler) reconcileRunner(ctx context.Context) (*ctrl.Result, error) 
 func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 	// Copy the runner configuration from the Renovator spec
 	runner.Spec = r.instance.Spec.Runner
-	runner.Spec.ConfigRef = metadata.GenericName(r.req)
 
 	if runner.Spec.Logging == nil {
 		runner.Spec.Logging = &r.instance.Spec.Logging
@@ -37,6 +36,12 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 	if runner.Spec.ImagePullPolicy == "" {
 		runner.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
 	}
+
+	if runner.Labels == nil {
+		runner.Labels = make(map[string]string)
+	}
+
+	runner.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
 
 	// Forward operation annotations from Renovator to Discovery
 	if HasRenovatorOperationRenovate(r.instance.Annotations) {

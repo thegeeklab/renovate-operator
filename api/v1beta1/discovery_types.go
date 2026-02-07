@@ -4,7 +4,7 @@ import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 
 // DiscoverySpec defines the desired state of Discovery.
 type DiscoverySpec struct {
-	//+kubebuilder:validation:Required
+	//+kubebuilder:validation:Optional
 	ConfigRef string `json:"configRef"`
 
 	ImageSpec `json:",inline"`

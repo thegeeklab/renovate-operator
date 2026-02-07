@@ -8,6 +8,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -31,6 +32,7 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=serviceaccounts,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=roles,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 
@@ -49,7 +51,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
 	rd := &renovatev1beta1.Discovery{}
-
 	if err := r.Get(ctx, req.NamespacedName, rd); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -58,9 +59,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	rc := &renovatev1beta1.RenovateConfig{}
-	rcNamespacedName := client.ObjectKey{Namespace: req.Namespace, Name: rd.Spec.ConfigRef}
+	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, rd)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
+	rc := &renovatev1beta1.RenovateConfig{}
 	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -74,11 +78,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	if res, err := discovery.Reconcile(ctx); err != nil {
+	res, err := discovery.Reconcile(ctx)
+	if err != nil {
 		return controller.HandleReconcileResult(res, err)
 	}
 
-	return ctrl.Result{}, nil
+	return *res, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
@@ -89,7 +94,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		context.Background(),
 		&renovatev1beta1.Discovery{},
 		configRefIndexKey,
-		discoveryConfigRefIndexFunc,
+		discoveryConfigRefIndexFn,
 	); err != nil {
 		return err
 	}
@@ -123,6 +128,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 			}),
 		).
 		Owns(&renovatev1beta1.GitRepo{}).
+		Owns(&corev1.ConfigMap{}).
 		Owns(&batchv1.Job{}).
 		Owns(&batchv1.CronJob{}).
 		Named(ControllerName).
@@ -156,8 +162,37 @@ func (r *Reconciler) mapConfigToDiscovery(ctx context.Context, obj client.Object
 	return reqs
 }
 
-// discoveryConfigRefIndexFunc returns the config reference for indexing.
-func discoveryConfigRefIndexFunc(rawObj client.Object) []string {
+// resolveRenovateConfig resolves the RenovateConfig name from either .spec.configRef or renovatev1beta1.RenovatorLabel.
+func (r *Reconciler) resolveRenovateConfig(
+	ctx context.Context,
+	namespace string,
+	rd *renovatev1beta1.Discovery,
+) (client.ObjectKey, error) {
+	if rd.Spec.ConfigRef != "" {
+		return client.ObjectKey{Namespace: namespace, Name: rd.Spec.ConfigRef}, nil
+	}
+
+	renovator, ok := rd.Labels[renovatev1beta1.RenovatorLabel]
+	if !ok {
+		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+	}
+
+	configList := &renovatev1beta1.RenovateConfigList{}
+	if err := r.List(ctx, configList, client.InNamespace(namespace)); err != nil {
+		return client.ObjectKey{}, err
+	}
+
+	for _, config := range configList.Items {
+		if config.Labels != nil && config.Labels[renovatev1beta1.RenovatorLabel] == renovator {
+			return client.ObjectKey{Namespace: namespace, Name: config.Name}, nil
+		}
+	}
+
+	return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+}
+
+// discoveryConfigRefIndexFn returns the config reference for indexing.
+func discoveryConfigRefIndexFn(rawObj client.Object) []string {
 	discovery, ok := rawObj.(*renovatev1beta1.Discovery)
 	if !ok {
 		return nil

@@ -1,3 +1,4 @@
+---
 repository:
   name: renovate-operator
   description: Kubernetes operator to automate dependency updates across repositories using Renovate Bot

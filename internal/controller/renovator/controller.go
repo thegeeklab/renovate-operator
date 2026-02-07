@@ -60,11 +60,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	if res, err := renovator.Reconcile(ctx); err != nil {
+	res, err := renovator.Reconcile(ctx)
+	if err != nil {
 		return controller.HandleReconcileResult(res, err)
 	}
 
-	return ctrl.Result{}, nil
+	return *res, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.

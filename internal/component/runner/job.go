@@ -3,7 +3,6 @@ package runner
 import (
 	"context"
 
-	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovateconfig"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	cronjob "github.com/thegeeklab/renovate-operator/internal/resource/cronjob"
@@ -89,15 +88,19 @@ func (r *Reconciler) updateCronJob(job *batchv1.CronJob) error {
 }
 
 func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) {
-	renovateConfigCM := metadata.GenericName(r.req, renovateconfig.ConfigMapSuffix)
+	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 	renovateBatchesCM := metadata.GenericName(r.req, ConfigMapSuffix)
+
+	// Ensure spec is initialized
+	if spec == nil {
+		spec = &batchv1.JobSpec{}
+	}
 
 	// Apply the Spec with the "Batch Mode" option
 	renovate.DefaultJobSpec(
 		spec,
-		r.instance,
 		r.renovate,
 		renovateConfigCM,
-		renovate.WithBatchMode(renovateBatchesCM, r.batchesCount),
+		renovate.WithBatchMode(r.instance, renovateBatchesCM, r.batchesCount),
 	)
 }

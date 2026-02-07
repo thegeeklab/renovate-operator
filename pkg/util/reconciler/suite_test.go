@@ -1,4 +1,4 @@
-package discovery
+package reconciler
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDiscovery(t *testing.T) {
+func TestReconciler(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Discovery Suite")
+	RunSpecs(t, "Reconciler Suite")
 }

@@ -8,8 +8,11 @@ import (
 	. "github.com/onsi/gomega"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/metadata"
+	cronjob "github.com/thegeeklab/renovate-operator/internal/resource/cronjob"
 	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -126,6 +129,91 @@ var _ = Describe("ReconcileCronJob", func() {
 				}
 			}
 			Expect(foundMatchingJob).To(BeTrue(), "No job found with expected name pattern")
+		})
+	})
+
+	Context("when active discovery jobs exist", func() {
+		It("should requeue when active discovery jobs are found", func() {
+			// Create an active discovery job
+			activeJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      DiscoveryName(reconciler.req) + "-active",
+					Namespace: instance.Namespace,
+					Labels: map[string]string{
+						"app.kubernetes.io/instance": instance.Name,
+						"app.kubernetes.io/name":     "discovery",
+					},
+				},
+				Spec: batchv1.JobSpec{},
+				Status: batchv1.JobStatus{
+					Active: 1,
+				},
+			}
+			Expect(fakeClient.Create(ctx, activeJob)).To(Succeed())
+
+			// Set the annotation to trigger immediate discovery
+			instance.Annotations = map[string]string{
+				renovatev1beta1.RenovatorOperation: string(renovatev1beta1.OperationDiscover),
+			}
+			Expect(fakeClient.Create(ctx, instance)).To(Succeed())
+
+			// Execute
+			result, err := reconciler.reconcileCronJob(ctx)
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).ToNot(BeNil())
+			Expect(result.RequeueAfter).To(Equal(cronjob.RequeueDelay))
+		})
+	})
+
+	Context("when updateCronJob is called", func() {
+		It("should update the cron job spec correctly", func() {
+			job := &batchv1.CronJob{
+				ObjectMeta: DiscoveryMetadata(reconciler.req),
+				Spec:       batchv1.CronJobSpec{},
+			}
+
+			// Execute
+			err := reconciler.updateCronJob(job)
+			Expect(err).ToNot(HaveOccurred())
+
+			// Verify the cron job spec
+			Expect(job.Spec.Schedule).To(Equal(instance.Spec.Schedule))
+			Expect(job.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
+			Expect(job.Spec.Suspend).To(Equal(instance.Spec.Suspend))
+
+			// Verify the job template spec
+			jobSpec := &job.Spec.JobTemplate.Spec
+			Expect(jobSpec.Template.Spec.ServiceAccountName).To(Equal(metadata.GenericMetadata(reconciler.req).Name))
+			Expect(jobSpec.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
+
+			// Verify volumes
+			Expect(jobSpec.Template.Spec.Volumes).To(HaveLen(2))
+			Expect(jobSpec.Template.Spec.Volumes[0].Name).To(Equal("renovate-tmp"))
+			Expect(jobSpec.Template.Spec.Volumes[1].Name).To(Equal("renovate-config"))
+
+			// Verify init containers
+			Expect(jobSpec.Template.Spec.InitContainers).To(HaveLen(1))
+			initContainer := jobSpec.Template.Spec.InitContainers[0]
+			Expect(initContainer.Name).To(Equal("renovate-init"))
+			Expect(initContainer.Image).To(Equal(renovate.Spec.Image))
+			Expect(initContainer.Env).To(ContainElement(
+				corev1.EnvVar{Name: "RENOVATE_AUTODISCOVER", Value: "true"},
+			))
+			Expect(initContainer.Env).To(ContainElement(
+				corev1.EnvVar{Name: "RENOVATE_AUTODISCOVER_FILTER", Value: strings.Join(instance.Spec.Filter, ",")},
+			))
+
+			// Verify main container
+			Expect(jobSpec.Template.Spec.Containers).To(HaveLen(1))
+			mainContainer := jobSpec.Template.Spec.Containers[0]
+			Expect(mainContainer.Name).To(Equal("renovate-discovery"))
+			Expect(mainContainer.Command).To(Equal([]string{"/discovery"}))
+			Expect(mainContainer.Env).To(ContainElement(
+				corev1.EnvVar{Name: "DISCOVERY_INSTANCE_NAME", Value: instance.Name},
+			))
+			Expect(mainContainer.Env).To(ContainElement(
+				corev1.EnvVar{Name: "DISCOVERY_INSTANCE_NAMESPACE", Value: instance.Namespace},
+			))
 		})
 	})
 })

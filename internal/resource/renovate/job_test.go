@@ -62,7 +62,7 @@ var _ = Describe("JobSpec", func() {
 		It("should create a basic job spec with default configuration", func() {
 			// Create a new JobSpec
 			jobSpec := &batchv1.JobSpec{}
-			renovate.DefaultJobSpec(jobSpec, runner, renovateCR, renovateCM)
+			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
 
 			// Verify basic job spec configuration
 			Expect(jobSpec.CompletionMode).To(BeNil())
@@ -108,7 +108,6 @@ var _ = Describe("JobSpec", func() {
 			// Apply custom options
 			renovate.DefaultJobSpec(
 				jobSpec,
-				runner,
 				renovateCR,
 				renovateCM,
 				renovate.WithSingleRepoMode("test-org/test-repo"),
@@ -137,10 +136,9 @@ var _ = Describe("JobSpec", func() {
 			// Apply batch mode
 			renovate.DefaultJobSpec(
 				jobSpec,
-				runner,
 				renovateCR,
 				renovateCM,
-				renovate.WithBatchMode("test-batches", 5),
+				renovate.WithBatchMode(runner, "test-batches", 5),
 			)
 
 			// Verify batch mode configuration
@@ -190,7 +188,6 @@ var _ = Describe("JobSpec", func() {
 			// Apply single repo mode
 			renovate.DefaultJobSpec(
 				jobSpec,
-				runner,
 				renovateCR,
 				renovateCM,
 				renovate.WithSingleRepoMode("test-org/test-repo"),
@@ -224,7 +221,6 @@ var _ = Describe("JobSpec", func() {
 			// but this test verifies the option application mechanism works
 			renovate.DefaultJobSpec(
 				jobSpec,
-				runner,
 				renovateCR,
 				renovateCM,
 				renovate.WithSingleRepoMode("test-org/test-repo"),

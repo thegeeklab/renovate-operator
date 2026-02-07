@@ -25,9 +25,8 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
-	renovateconfig "github.com/thegeeklab/renovate-operator/internal/controller/renovateconfig"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
-	"github.com/thegeeklab/renovate-operator/internal/controller/runner"
+	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	// +kubebuilder:scaffold:imports
 )
@@ -285,15 +284,6 @@ func main() {
 
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
 		setupLog.Error(err, "Unable to set up ready check")
-		os.Exit(1)
-	}
-
-	// renovate config
-	if err = (&renovateconfig.Reconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-	}).SetupWithManager(mgr); err != nil {
-		setupLog.Error(err, "Unable to create controller", "controller", discovery.ControllerName)
 		os.Exit(1)
 	}
 

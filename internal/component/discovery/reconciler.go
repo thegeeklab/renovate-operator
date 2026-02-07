@@ -43,6 +43,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		r.reconcileRole,
 		r.reconcileRoleBinding,
 		r.reconcileServiceAccount,
+		r.reconcileGitRepos,
 		r.reconcileCronJob,
 	}
 

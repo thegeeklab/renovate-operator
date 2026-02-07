@@ -1,3 +1,4 @@
+---
 # This rule is not used by the project renovate-operator itself.
 # It is provided to allow the cluster admin to help manage permissions for users.
 #
@@ -13,21 +14,21 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: runner-editor-role
 rules:
-- apiGroups:
-  - renovate.thegeeklab.de
-  resources:
-  - runners
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - renovate.thegeeklab.de
-  resources:
-  - runners/status
-  verbs:
-  - get
+  - apiGroups:
+      - renovate.thegeeklab.de
+    resources:
+      - runners
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - renovate.thegeeklab.de
+    resources:
+      - runners/status
+    verbs:
+      - get

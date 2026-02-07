@@ -1,3 +1,4 @@
+---
 apiVersion: renovate.thegeeklab.de/v1beta1
 kind: Renovator
 metadata:
@@ -5,8 +6,6 @@ metadata:
     app.kubernetes.io/name: renovate-operator
     app.kubernetes.io/managed-by: kustomize
   name: renovator-sample
-  annotations:
-    renovate.thegeeklab.de/operation: "discover"
 spec:
   suspend: false
   schedule: "*/30 * * * *"
@@ -37,7 +36,7 @@ spec:
           name: "my-secret"
           key: "platform_token"
 
-    dryRun: true
+    dryRun: "extract"
     onboarding: true
 
     githubToken:

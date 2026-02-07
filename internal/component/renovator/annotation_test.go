@@ -108,6 +108,91 @@ var _ = Describe("Renovator Annotation Functions", func() {
 		})
 	})
 
+	Describe("HasRenovatorOperationRenovate", func() {
+		It("should return false when no operation annotation exists", func() {
+			annotations := map[string]string{
+				"other-annotation": "some-value",
+			}
+
+			hasRenovate := HasRenovatorOperationRenovate(annotations)
+			Expect(hasRenovate).To(BeFalse())
+		})
+
+		It("should return true when renovate operation is present", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
+			}
+
+			hasRenovate := HasRenovatorOperationRenovate(annotations)
+			Expect(hasRenovate).To(BeTrue())
+		})
+
+		It("should return true when renovate operation is among multiple operations", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: "other-operation;" + renovatev1beta1.OperationRenovate + ";third-operation",
+			}
+
+			hasRenovate := HasRenovatorOperationRenovate(annotations)
+			Expect(hasRenovate).To(BeTrue())
+		})
+
+		It("should return false when renovate operation is not present among multiple operations", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: "other-operation;third-operation",
+			}
+
+			hasRenovate := HasRenovatorOperationRenovate(annotations)
+			Expect(hasRenovate).To(BeFalse())
+		})
+
+		It("should return false when annotation value is empty", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: "",
+			}
+
+			hasRenovate := HasRenovatorOperationRenovate(annotations)
+			Expect(hasRenovate).To(BeFalse())
+		})
+	})
+
+	Describe("HasRenovatorOperation", func() {
+		It("should return false when no operation annotation exists", func() {
+			annotations := map[string]string{
+				"other-annotation": "some-value",
+			}
+
+			hasOperation := HasRenovatorOperation(annotations)
+			Expect(hasOperation).To(BeFalse())
+		})
+
+		It("should return true when operation annotation exists", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
+			}
+
+			hasOperation := HasRenovatorOperation(annotations)
+			Expect(hasOperation).To(BeTrue())
+		})
+
+		It("should return true when multiple operations are present", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover + ";" + renovatev1beta1.OperationRenovate,
+			}
+
+			hasOperation := HasRenovatorOperation(annotations)
+			Expect(hasOperation).To(BeTrue())
+		})
+
+		It("should return false when annotation value is empty", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: "",
+			}
+
+			hasOperation := HasRenovatorOperation(annotations)
+			Expect(hasOperation).To(BeFalse())
+		})
+	})
+
 	Describe("RemoveRenovatorOperation", func() {
 		It("should remove operation annotation when it exists", func() {
 			annotations := map[string]string{

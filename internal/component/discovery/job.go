@@ -4,7 +4,6 @@ import (
 	"context"
 	"strings"
 
-	renovateconfig "github.com/thegeeklab/renovate-operator/internal/component/renovateconfig"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
@@ -96,7 +95,7 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) {
 	spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 
-	renovateConfigCM := metadata.GenericName(r.req, renovateconfig.ConfigMapSuffix)
+	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 
 	spec.Template.Spec.Volumes = containers.VolumesTemplate(
 		containers.WithEmptyDirVolume(renovate.VolumeRenovateTmp),
@@ -149,11 +148,11 @@ func (r *Reconciler) updateJobSpec(spec *batchv1.JobSpec) {
 			containers.WithEnvVars(
 				[]corev1.EnvVar{
 					{
-						Name:  discovery.EnvRenovatorInstanceName,
+						Name:  discovery.EnvDiscoveryInstanceName,
 						Value: r.instance.Name,
 					},
 					{
-						Name:  discovery.EnvRenovatorInstanceNamespace,
+						Name:  discovery.EnvDiscoveryInstanceNamespace,
 						Value: r.instance.Namespace,
 					},
 					{

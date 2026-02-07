@@ -11,7 +11,6 @@ import (
 // jobConfig holds the state required to build the JobSpec.
 type jobConfig struct {
 	// Context (Required)
-	Runner     *v1beta1.Runner
 	Renovate   *v1beta1.RenovateConfig
 	RenovateCM string
 
@@ -33,17 +32,14 @@ type JobOption func(*jobConfig)
 // It requires the base context arguments, followed by any number of JobOptions.
 func DefaultJobSpec(
 	spec *batchv1.JobSpec,
-	runner *v1beta1.Runner,
 	renovate *v1beta1.RenovateConfig,
 	renovateCM string,
 	opts ...JobOption,
 ) {
 	// 1. Initialize Configuration with Safe Defaults
 	cfg := &jobConfig{
-		Runner:      runner,
-		Renovate:    renovate,
-		RenovateCM:  renovateCM,
-		Parallelism: ptr.To(runner.Spec.Instances),
+		Renovate:   renovate,
+		RenovateCM: renovateCM,
 
 		// Base Volumes (Always present)
 		VolMutators: []containers.VolumeMutator{
@@ -88,8 +84,9 @@ func DefaultJobSpec(
 }
 
 // WithBatchMode configures the job for a full scheduled run (Indexed Job + Dispatcher).
-func WithBatchMode(batchesCM string, count int32) JobOption {
+func WithBatchMode(runner *v1beta1.Runner, batchesCM string, count int32) JobOption {
 	return func(c *jobConfig) {
+		c.Parallelism = ptr.To(runner.Spec.Instances)
 		c.CompletionMode = ptr.To(batchv1.IndexedCompletion)
 		c.Completions = ptr.To(count)
 
@@ -100,8 +97,8 @@ func WithBatchMode(batchesCM string, count int32) JobOption {
 		c.InitContainers = []corev1.Container{
 			containers.ContainerTemplate(
 				"renovate-dispatcher",
-				c.Runner.Spec.Image,
-				c.Runner.Spec.ImagePullPolicy,
+				runner.Spec.Image,
+				runner.Spec.ImagePullPolicy,
 				containers.WithEnvVars([]corev1.EnvVar{
 					{Name: EnvRenovateConfigRaw, Value: FileRenovateTmp},
 					{Name: EnvRenovateConfig, Value: FileRenovateConfig},
