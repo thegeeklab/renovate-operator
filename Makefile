@@ -69,15 +69,28 @@ deps:
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	@$(MAKE) --no-print-directory yamlfmt
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object paths="./..."
+	@$(MAKE) --no-print-directory yamlfmt
+
+.PHONY: yamlfmt
+yamlfmt: ## Run yamlfmt.
+	$(shell go env GOPATH)/bin/yamlfmt .
+
+.PHONY: yamlfmt-dry
+yamlfmt-dry:
+	$(shell go env GOPATH)/bin/yamlfmt -dry .
+
+.PHONY: yamlfmt-lint
+yamlfmt-lint:
+	$(shell go env GOPATH)/bin/yamlfmt -lint .
 
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	$(shell go env GOPATH)/bin/gofumpt -extra -w $(SOURCES)
-	$(shell go env GOPATH)/bin/yamlfmt .
 
 .PHONY: vet
 vet: ## Run go vet against code.
@@ -144,14 +157,6 @@ test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated 
 .PHONY: golangci-lint
 golangci-lint:
 	$(shell go env GOPATH)/bin/golangci-lint run
-
-.PHONY: yamlfmt-dry
-yamlfmt-dry:
-	$(shell go env GOPATH)/bin/yamlfmt -dry .
-
-.PHONY: yamlfmt-lint
-yamlfmt-lint:
-	$(shell go env GOPATH)/bin/yamlfmt -lint .
 
 .PHONY: lint
 lint: yamlfmt-dry golangci-lint
