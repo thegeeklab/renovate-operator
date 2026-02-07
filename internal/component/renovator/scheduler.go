@@ -24,7 +24,6 @@ func (r *Reconciler) reconcileScheduler(ctx context.Context) (*ctrl.Result, erro
 func (r *Reconciler) updateScheduler(scheduler *renovatev1beta1.Scheduler) error {
 	// Copy the scheduler configuration from the Renovator spec
 	scheduler.Spec = r.instance.Spec.Scheduler
-	scheduler.Spec.ConfigRef = metadata.GenericName(r.req)
 
 	if scheduler.Spec.Logging == nil {
 		scheduler.Spec.Logging = &r.instance.Spec.Logging

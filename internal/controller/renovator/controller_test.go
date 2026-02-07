@@ -5,17 +5,15 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	"k8s.io/apimachinery/pkg/types"
-	"sigs.k8s.io/controller-runtime/pkg/reconcile"
-
-	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
-
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
-	ctrl "sigs.k8s.io/controller-runtime/pkg/client"
+	corev1 "k8s.io/api/core/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/types"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
 var _ = Describe("Renovator Controller", func() {
@@ -284,10 +282,15 @@ var _ = Describe("Renovator Controller", func() {
 
 // mockErrorClient is a mock client that returns errors for testing.
 type mockErrorClient struct {
-	ctrl.Client
+	client.Client
 }
 
-func (m *mockErrorClient) Get(ctx context.Context, key ctrl.ObjectKey, obj ctrl.Object, opts ...ctrl.GetOption) error {
+func (m *mockErrorClient) Get(
+	ctx context.Context,
+	key client.ObjectKey,
+	obj client.Object,
+	opts ...client.GetOption,
+) error {
 	// Return error for dependent resources to simulate missing resources
 	if _, ok := obj.(*renovatev1beta1.Renovator); ok {
 		return api_errors.NewNotFound(renovatev1beta1.GroupVersion.WithResource("renovators").GroupResource(), key.Name)

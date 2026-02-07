@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"encoding/json"
+	"errors"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -102,6 +103,77 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			Expect(fakeClient.List(ctx, gitRepos)).To(Succeed())
 			Expect(gitRepos.Items).To(BeEmpty())
 		})
+
+		It("should handle errors when listing ConfigMaps", func() {
+			// Create a new fake client that simulates an error
+			mockClient := &mockErrorClient{}
+			reconciler := &Reconciler{Client: mockClient, scheme: scheme, instance: instance}
+
+			_, err := reconciler.reconcileGitRepos(ctx)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should handle errors when creating or updating GitRepos", func() {
+			cm := createDiscoveryCM("test-config", []string{"repo1"})
+			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
+
+			// Simulate an error by using a mock client that will fail during creation
+			mockClient := &mockErrorClient{}
+			reconciler := &Reconciler{Client: mockClient, scheme: scheme, instance: instance}
+
+			_, err := reconciler.reconcileGitRepos(ctx)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should handle errors when pruning orphaned repos", func() {
+			cm := createDiscoveryCM("test-config", []string{"repo1"})
+			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
+
+			// Simulate an error by using a mock client that will fail during pruning
+			mockClient := &mockErrorClient{}
+			reconciler := &Reconciler{Client: mockClient, scheme: scheme, instance: instance}
+
+			_, err := reconciler.reconcileGitRepos(ctx)
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should handle invalid JSON in ConfigMap", func() {
+			cm := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-config",
+					Namespace: "default",
+				},
+				Data: map[string]string{"repositories": `invalid-json`},
+			}
+			Expect(controllerutil.SetControllerReference(instance, cm, scheme)).To(Succeed())
+			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
+
+			_, err := reconciler.reconcileGitRepos(ctx)
+			Expect(err).ToNot(HaveOccurred())
+
+			gitRepos := &renovatev1beta1.GitRepoList{}
+			Expect(fakeClient.List(ctx, gitRepos)).To(Succeed())
+			Expect(gitRepos.Items).To(BeEmpty())
+		})
+
+		It("should handle missing 'repositories' key in ConfigMap", func() {
+			cm := &corev1.ConfigMap{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-config",
+					Namespace: "default",
+				},
+				Data: map[string]string{"other-key": `value`},
+			}
+			Expect(controllerutil.SetControllerReference(instance, cm, scheme)).To(Succeed())
+			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
+
+			_, err := reconciler.reconcileGitRepos(ctx)
+			Expect(err).ToNot(HaveOccurred())
+
+			gitRepos := &renovatev1beta1.GitRepoList{}
+			Expect(fakeClient.List(ctx, gitRepos)).To(Succeed())
+			Expect(gitRepos.Items).To(BeEmpty())
+		})
 	})
 
 	Describe("updateGitRepo", func() {
@@ -154,5 +226,57 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			Expect(fakeClient.List(ctx, list)).To(Succeed())
 			Expect(list.Items).To(HaveLen(1))
 		})
+
+		It("should handle errors when listing existing GitRepos", func() {
+			// Create a mock client that simulates an error
+			mockClient := &mockErrorClient{}
+			reconciler := &Reconciler{Client: mockClient, scheme: scheme, instance: instance}
+
+			err := reconciler.pruneOrphanedRepos(ctx, map[string]bool{})
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should handle errors when deleting orphaned GitRepos", func() {
+			orphan := newGitRepo("test-discovery-orphan", "delete-me")
+			Expect(controllerutil.SetControllerReference(instance, orphan, scheme)).To(Succeed())
+			Expect(fakeClient.Create(ctx, orphan)).To(Succeed())
+
+			// Simulate an error by using a mock client that will fail during deletion
+			mockClient := &mockErrorClient{}
+			reconciler := &Reconciler{Client: mockClient, scheme: scheme, instance: instance}
+
+			err := reconciler.pruneOrphanedRepos(ctx, map[string]bool{})
+			Expect(err).To(HaveOccurred())
+
+			list := &renovatev1beta1.GitRepoList{}
+			Expect(fakeClient.List(ctx, list)).To(Succeed())
+			Expect(list.Items).To(HaveLen(1))
+		})
 	})
 })
+
+// mockErrorClient simulates a client that returns errors for testing purposes.
+type mockErrorClient struct {
+	client.Client
+}
+
+func (m *mockErrorClient) List(ctx context.Context, list client.ObjectList, opts ...client.ListOption) error {
+	return errors.New("simulated error")
+}
+
+func (m *mockErrorClient) Create(ctx context.Context, obj client.Object, opts ...client.CreateOption) error {
+	return errors.New("simulated error")
+}
+
+func (m *mockErrorClient) Delete(ctx context.Context, obj client.Object, opts ...client.DeleteOption) error {
+	return errors.New("simulated error")
+}
+
+func (m *mockErrorClient) Get(
+	ctx context.Context,
+	key client.ObjectKey,
+	obj client.Object,
+	opts ...client.GetOption,
+) error {
+	return errors.New("simulated error")
+}

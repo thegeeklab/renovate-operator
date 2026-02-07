@@ -6,7 +6,7 @@ import (
 
 // SchedulerSpec defines the desired state of Scheduler.
 type SchedulerSpec struct {
-	//+kubebuilder:validation:Required
+	//+kubebuilder:validation:Optional
 	ConfigRef string `json:"configRef"`
 
 	ImageSpec `json:",inline"`
