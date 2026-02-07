@@ -1,11 +1,14 @@
 # renovate: datasource=github-releases depName=mvdan/gofumpt
 GOFUMPT_PACKAGE_VERSION := v0.9.2
+# renovate: datasource=github-releases depName=google/yamlfmt
+YAMLFMT_PACKAGE_VERSION := v0.21.0
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_PACKAGE_VERSION := v2.8.0
 # renovate: datasource=github-releases depName=cert-manager/cert-manager
 CERT_MANAGER_VERSION := v1.19.3
 
 GOFUMPT_PACKAGE ?= mvdan.cc/gofumpt@$(GOFUMPT_PACKAGE_VERSION)
+YAMLFMT_PACKAGE ?= github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_PACKAGE_VERSION)
 GOTESTSUM_PACKAGE ?= gotest.tools/gotestsum@latest
 
 # Image URL to use all building image targets
@@ -60,6 +63,7 @@ deps:
 	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(shell go env GOPATH)/bin $(GOLANGCI_LINT_PACKAGE_VERSION)
 	$(GO) mod download
 	$(GO) install $(GOFUMPT_PACKAGE)
+	$(GO) install $(YAMLFMT_PACKAGE)
 	$(GO) install $(GOTESTSUM_PACKAGE)
 
 .PHONY: manifests
@@ -73,6 +77,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	$(shell go env GOPATH)/bin/gofumpt -extra -w $(SOURCES)
+	$(shell go env GOPATH)/bin/yamlfmt .
 
 .PHONY: vet
 vet: ## Run go vet against code.
@@ -140,8 +145,16 @@ test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated 
 golangci-lint:
 	$(shell go env GOPATH)/bin/golangci-lint run
 
+.PHONY: yamlfmt-dry
+yamlfmt-dry:
+	$(shell go env GOPATH)/bin/yamlfmt -dry .
+
+.PHONY: yamlfmt-lint
+yamlfmt-lint:
+	$(shell go env GOPATH)/bin/yamlfmt -lint .
+
 .PHONY: lint
-lint: golangci-lint
+lint: yamlfmt-dry golangci-lint
 
 ##@ Build
 

@@ -1,3 +1,4 @@
+---
 apiVersion: renovate.thegeeklab.de/v1beta1
 kind: Renovator
 metadata:

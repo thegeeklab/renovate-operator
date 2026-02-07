@@ -4,80 +4,80 @@ kind: ClusterRole
 metadata:
   name: manager-role
 rules:
-- apiGroups:
-  - ""
-  resources:
-  - configmaps
-  - serviceaccounts
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - batch
-  resources:
-  - cronjobs
-  - jobs
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - rbac.authorization.k8s.io
-  resources:
-  - rolebindings
-  - roles
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - renovate.thegeeklab.de
-  resources:
-  - discoveries
-  - gitrepos
-  - renovateconfigs
-  - renovators
-  - runners
-  verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
-- apiGroups:
-  - renovate.thegeeklab.de
-  resources:
-  - discoveries/finalizers
-  - gitrepos/finalizers
-  - renovateconfigs/finalizers
-  - renovators/finalizers
-  - runners/finalizers
-  verbs:
-  - update
-- apiGroups:
-  - renovate.thegeeklab.de
-  resources:
-  - discoveries/status
-  - gitrepos/status
-  - renovateconfigs/status
-  - renovators/status
-  - runners/status
-  verbs:
-  - get
-  - patch
-  - update
+  - apiGroups:
+      - ""
+    resources:
+      - configmaps
+      - serviceaccounts
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - batch
+    resources:
+      - cronjobs
+      - jobs
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - rbac.authorization.k8s.io
+    resources:
+      - rolebindings
+      - roles
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - renovate.thegeeklab.de
+    resources:
+      - discoveries
+      - gitrepos
+      - renovateconfigs
+      - renovators
+      - runners
+    verbs:
+      - create
+      - delete
+      - get
+      - list
+      - patch
+      - update
+      - watch
+  - apiGroups:
+      - renovate.thegeeklab.de
+    resources:
+      - discoveries/finalizers
+      - gitrepos/finalizers
+      - renovateconfigs/finalizers
+      - renovators/finalizers
+      - runners/finalizers
+    verbs:
+      - update
+  - apiGroups:
+      - renovate.thegeeklab.de
+    resources:
+      - discoveries/status
+      - gitrepos/status
+      - renovateconfigs/status
+      - renovators/status
+      - runners/status
+    verbs:
+      - get
+      - patch
+      - update
