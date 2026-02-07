@@ -42,7 +42,7 @@ func (r *Reconciler) updateScheduler(scheduler *renovatev1beta1.Scheduler) error
 		scheduler.Labels = make(map[string]string)
 	}
 
-	scheduler.Labels[renovatev1beta1.RenovatorLabel] = r.instance.Name
+	scheduler.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
 
 	// Forward operation annotations from Renovator to Discovery
 	if HasRenovatorOperationRenovate(r.instance.Annotations) {

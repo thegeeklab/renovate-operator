@@ -44,7 +44,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
 	rr := &renovatev1beta1.Scheduler{}
-
 	if err := r.Get(ctx, req.NamespacedName, rr); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -53,9 +52,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	rc := &renovatev1beta1.RenovateConfig{}
-	rcNamespacedName := client.ObjectKey{Namespace: req.Namespace, Name: rr.Spec.ConfigRef}
+	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, rr)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
+	rc := &renovatev1beta1.RenovateConfig{}
 	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -154,7 +156,7 @@ func (r *Reconciler) mapGitRepoToScheduler(ctx context.Context, obj client.Objec
 		return nil
 	}
 
-	renovatorName, ok := gitRepo.Labels[renovatev1beta1.RenovatorLabel]
+	renovator, ok := gitRepo.Labels[renovatev1beta1.RenovatorLabel]
 	if !ok {
 		return nil
 	}
@@ -167,8 +169,8 @@ func (r *Reconciler) mapGitRepoToScheduler(ctx context.Context, obj client.Objec
 	var reqs []ctrl.Request
 
 	for _, scheduler := range schedulerList.Items {
-		// Check if the scheduler's renovate.thegeeklab.de/renovator label matches the renovatorName
-		if scheduler.Labels != nil && scheduler.Labels[renovatev1beta1.RenovatorLabel] == renovatorName {
+		// Check if the scheduler's renovate.thegeeklab.de/renovator label matches the renovator UID
+		if scheduler.Labels != nil && scheduler.Labels[renovatev1beta1.RenovatorLabel] == renovator {
 			reqs = append(reqs, ctrl.Request{
 				NamespacedName: client.ObjectKey{
 					Name:      scheduler.Name,
@@ -206,6 +208,35 @@ func (r *Reconciler) mapConfigToScheduler(ctx context.Context, obj client.Object
 	}
 
 	return reqs
+}
+
+// resolveRenovateConfig resolves the RenovateConfig name from either .spec.configRef or renovatev1beta1.RenovatorLabel.
+func (r *Reconciler) resolveRenovateConfig(
+	ctx context.Context,
+	namespace string,
+	rr *renovatev1beta1.Scheduler,
+) (client.ObjectKey, error) {
+	if rr.Spec.ConfigRef != "" {
+		return client.ObjectKey{Namespace: namespace, Name: rr.Spec.ConfigRef}, nil
+	}
+
+	renovator, ok := rr.Labels[renovatev1beta1.RenovatorLabel]
+	if !ok {
+		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+	}
+
+	configList := &renovatev1beta1.RenovateConfigList{}
+	if err := r.List(ctx, configList, client.InNamespace(namespace)); err != nil {
+		return client.ObjectKey{}, err
+	}
+
+	for _, config := range configList.Items {
+		if config.Labels != nil && config.Labels[renovatev1beta1.RenovatorLabel] == renovator {
+			return client.ObjectKey{Namespace: namespace, Name: config.Name}, nil
+		}
+	}
+
+	return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
 }
 
 // schedulerConfigRefIndexFunc returns the config reference for indexing.

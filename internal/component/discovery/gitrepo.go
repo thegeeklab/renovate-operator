@@ -112,8 +112,8 @@ func (r *Reconciler) updateGitRepo(gr *renovatev1beta1.GitRepo, repoName string)
 	}
 
 	if r.instance.Labels != nil {
-		if renovatorName, ok := r.instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
-			gr.Labels[renovatev1beta1.RenovatorLabel] = renovatorName
+		if renovator, ok := r.instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
+			gr.Labels[renovatev1beta1.RenovatorLabel] = renovator
 		}
 	}
 

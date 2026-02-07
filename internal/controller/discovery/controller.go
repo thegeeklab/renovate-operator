@@ -51,7 +51,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
 	rd := &renovatev1beta1.Discovery{}
-
 	if err := r.Get(ctx, req.NamespacedName, rd); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -60,9 +59,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	rc := &renovatev1beta1.RenovateConfig{}
-	rcNamespacedName := client.ObjectKey{Namespace: req.Namespace, Name: rd.Spec.ConfigRef}
+	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, rd)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
 
+	rc := &renovatev1beta1.RenovateConfig{}
 	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -158,6 +160,35 @@ func (r *Reconciler) mapConfigToDiscovery(ctx context.Context, obj client.Object
 	}
 
 	return reqs
+}
+
+// resolveRenovateConfig resolves the RenovateConfig name from either .spec.configRef or renovatev1beta1.RenovatorLabel.
+func (r *Reconciler) resolveRenovateConfig(
+	ctx context.Context,
+	namespace string,
+	rd *renovatev1beta1.Discovery,
+) (client.ObjectKey, error) {
+	if rd.Spec.ConfigRef != "" {
+		return client.ObjectKey{Namespace: namespace, Name: rd.Spec.ConfigRef}, nil
+	}
+
+	renovator, ok := rd.Labels[renovatev1beta1.RenovatorLabel]
+	if !ok {
+		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+	}
+
+	configList := &renovatev1beta1.RenovateConfigList{}
+	if err := r.List(ctx, configList, client.InNamespace(namespace)); err != nil {
+		return client.ObjectKey{}, err
+	}
+
+	for _, config := range configList.Items {
+		if config.Labels != nil && config.Labels[renovatev1beta1.RenovatorLabel] == renovator {
+			return client.ObjectKey{Namespace: namespace, Name: config.Name}, nil
+		}
+	}
+
+	return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
 }
 
 // discoveryConfigRefIndexFn returns the config reference for indexing.

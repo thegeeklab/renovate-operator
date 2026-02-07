@@ -45,7 +45,7 @@ func (r *Reconciler) updateRenovateConfig(renovate *renovatev1beta1.RenovateConf
 		renovate.Labels = make(map[string]string)
 	}
 
-	renovate.Labels[renovatev1beta1.RenovatorLabel] = r.instance.Name
+	renovate.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
 
 	return nil
 }

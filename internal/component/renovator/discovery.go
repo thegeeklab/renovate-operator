@@ -42,7 +42,7 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Labels = make(map[string]string)
 	}
 
-	discovery.Labels[renovatev1beta1.RenovatorLabel] = r.instance.Name
+	discovery.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
 
 	// Forward operation annotations from Renovator to Discovery
 	if HasRenovatorOperationDiscover(r.instance.Annotations) {
