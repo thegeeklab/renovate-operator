@@ -13,17 +13,17 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: runner-viewer-role
 rules:
-  - apiGroups:
-      - renovate.thegeeklab.de
-    resources:
-      - runners
-    verbs:
-      - get
-      - list
-      - watch
-  - apiGroups:
-      - renovate.thegeeklab.de
-    resources:
-      - runners/status
-    verbs:
-      - get
+- apiGroups:
+  - renovate.thegeeklab.de
+  resources:
+  - runners
+  verbs:
+  - get
+  - list
+  - watch
+- apiGroups:
+  - renovate.thegeeklab.de
+  resources:
+  - runners/status
+  verbs:
+  - get

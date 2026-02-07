@@ -13,15 +13,15 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: runner-admin-role
 rules:
-  - apiGroups:
-      - renovate.thegeeklab.de
-    resources:
-      - runners
-    verbs:
-      - "*"
-  - apiGroups:
-      - renovate.thegeeklab.de
-    resources:
-      - runners/status
-    verbs:
-      - get
+- apiGroups:
+  - renovate.thegeeklab.de
+  resources:
+  - runners
+  verbs:
+  - "*"
+- apiGroups:
+  - renovate.thegeeklab.de
+  resources:
+  - runners/status
+  verbs:
+  - get
