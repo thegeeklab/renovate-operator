@@ -17,11 +17,9 @@ type RunnerSpec struct {
 	JobSpec `json:",inline"`
 
 	// +kubebuilder:validation:Enum=none;batch
-	// +kubebuilder:default:="none"
 	Strategy RunnerStrategy `json:"strategy,omitempty"`
 
 	// Maximum number of parallel pods to start. One instance will only process a single batch.
-	// +kubebuilder:default:=1
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	Instances int32 `json:"instances"`

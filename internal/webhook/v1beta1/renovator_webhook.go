@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -45,6 +46,14 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 
 	if renovator.Spec.Logging.Level == "" {
 		renovator.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
+	}
+
+	if renovator.Spec.Suspend == nil {
+		renovator.Spec.Suspend = ptr.To(false)
+	}
+
+	if renovator.Spec.Schedule == "" {
+		renovator.Spec.Schedule = "0 */2 * * *"
 	}
 
 	if renovator.Spec.Runner.Strategy == "" {

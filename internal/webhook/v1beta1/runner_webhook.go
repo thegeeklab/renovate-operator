@@ -1,4 +1,3 @@
-//nolint:dupl
 package v1beta1
 
 import (
@@ -50,6 +49,14 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 
 	if runner.Spec.Logging.Level == "" {
 		runner.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
+	}
+
+	if runner.Spec.Strategy == "" {
+		runner.Spec.Strategy = renovatev1beta1.RunnerStrategy_NONE
+	}
+
+	if runner.Spec.Instances == 0 {
+		runner.Spec.Instances = 1
 	}
 
 	if runner.Spec.Image == "" {
