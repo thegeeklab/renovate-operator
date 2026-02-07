@@ -14,7 +14,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var _ = Describe("Renovator Scheduler", func() {
+var _ = Describe("Renovator Runner", func() {
 	var (
 		ctx        context.Context
 		scheme     *runtime.Scheme
@@ -30,7 +30,7 @@ var _ = Describe("Renovator Scheduler", func() {
 	})
 
 	Describe("Annotation Forwarding", func() {
-		It("should forward operation annotation from Renovator to Scheduler", func() {
+		It("should forward operation annotation from Renovator to Runner", func() {
 			// Create a Renovator instance with operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
@@ -41,7 +41,7 @@ var _ = Describe("Renovator Scheduler", func() {
 					},
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
-					Scheduler: renovatev1beta1.SchedulerSpec{
+					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 0 * * *",
 						},
@@ -53,22 +53,22 @@ var _ = Describe("Renovator Scheduler", func() {
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Scheduler instance
-			scheduler := &renovatev1beta1.Scheduler{
+			// Create a Runner instance
+			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-scheduler",
+					Name:      "test-runner",
 					Namespace: "default",
 				},
 			}
 
-			// Call updateScheduler
-			err = reconciler.updateScheduler(scheduler)
+			// Call updateRunner
+			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify the annotation was forwarded
-			Expect(scheduler.Annotations).NotTo(BeNil())
-			Expect(scheduler.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
-			Expect(scheduler.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
+			Expect(runner.Annotations).NotTo(BeNil())
+			Expect(runner.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
+			Expect(runner.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
 		})
 
 		It("should not forward annotation when Renovator has no annotations", func() {
@@ -79,7 +79,7 @@ var _ = Describe("Renovator Scheduler", func() {
 					Namespace: "default",
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
-					Scheduler: renovatev1beta1.SchedulerSpec{
+					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 0 * * *",
 						},
@@ -91,23 +91,23 @@ var _ = Describe("Renovator Scheduler", func() {
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Scheduler instance
-			scheduler := &renovatev1beta1.Scheduler{
+			// Create a Runner instance
+			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-scheduler",
+					Name:      "test-runner",
 					Namespace: "default",
 				},
 			}
 
-			// Call updateScheduler
-			err = reconciler.updateScheduler(scheduler)
+			// Call updateRunner
+			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify no annotation was added
-			Expect(scheduler.Annotations).To(BeNil())
+			Expect(runner.Annotations).To(BeNil())
 		})
 
-		It("should preserve existing annotations on Scheduler", func() {
+		It("should preserve existing annotations on Runner", func() {
 			// Create a Renovator instance with operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
@@ -118,7 +118,7 @@ var _ = Describe("Renovator Scheduler", func() {
 					},
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
-					Scheduler: renovatev1beta1.SchedulerSpec{
+					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 0 * * *",
 						},
@@ -130,10 +130,10 @@ var _ = Describe("Renovator Scheduler", func() {
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Scheduler instance with existing annotations
-			scheduler := &renovatev1beta1.Scheduler{
+			// Create a Runner instance with existing annotations
+			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-scheduler",
+					Name:      "test-runner",
 					Namespace: "default",
 					Annotations: map[string]string{
 						"existing-annotation": "existing-value",
@@ -141,16 +141,16 @@ var _ = Describe("Renovator Scheduler", func() {
 				},
 			}
 
-			// Call updateScheduler
-			err = reconciler.updateScheduler(scheduler)
+			// Call updateRunner
+			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify both annotations exist
-			Expect(scheduler.Annotations).NotTo(BeNil())
-			Expect(scheduler.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
-			Expect(scheduler.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
-			Expect(scheduler.Annotations).To(HaveKey("existing-annotation"))
-			Expect(scheduler.Annotations["existing-annotation"]).To(Equal("existing-value"))
+			Expect(runner.Annotations).NotTo(BeNil())
+			Expect(runner.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
+			Expect(runner.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
+			Expect(runner.Annotations).To(HaveKey("existing-annotation"))
+			Expect(runner.Annotations["existing-annotation"]).To(Equal("existing-value"))
 		})
 
 		It("should test annotation cleanup in component reconciler", func() {
@@ -164,7 +164,7 @@ var _ = Describe("Renovator Scheduler", func() {
 					},
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
-					Scheduler: renovatev1beta1.SchedulerSpec{
+					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 0 * * *",
 						},
@@ -199,7 +199,7 @@ var _ = Describe("Renovator Scheduler", func() {
 					},
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
-					Scheduler: renovatev1beta1.SchedulerSpec{
+					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 0 * * *",
 						},
@@ -211,20 +211,20 @@ var _ = Describe("Renovator Scheduler", func() {
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Scheduler instance
-			scheduler := &renovatev1beta1.Scheduler{
+			// Create a Runner instance
+			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-scheduler",
+					Name:      "test-runner",
 					Namespace: "default",
 				},
 			}
 
-			// Call updateScheduler
-			err = reconciler.updateScheduler(scheduler)
+			// Call updateRunner
+			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify no annotation was added
-			Expect(scheduler.Annotations).To(BeNil())
+			Expect(runner.Annotations).To(BeNil())
 		})
 
 		It("should forward renovate operation annotation when Renovator has multiple operations", func() {
@@ -238,7 +238,7 @@ var _ = Describe("Renovator Scheduler", func() {
 					},
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
-					Scheduler: renovatev1beta1.SchedulerSpec{
+					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 0 * * *",
 						},
@@ -250,22 +250,22 @@ var _ = Describe("Renovator Scheduler", func() {
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Scheduler instance
-			scheduler := &renovatev1beta1.Scheduler{
+			// Create a Runner instance
+			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-scheduler",
+					Name:      "test-runner",
 					Namespace: "default",
 				},
 			}
 
-			// Call updateScheduler
-			err = reconciler.updateScheduler(scheduler)
+			// Call updateRunner
+			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify the renovate annotation was forwarded
-			Expect(scheduler.Annotations).NotTo(BeNil())
-			Expect(scheduler.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
-			Expect(scheduler.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
+			Expect(runner.Annotations).NotTo(BeNil())
+			Expect(runner.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
+			Expect(runner.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
 		})
 	})
 })

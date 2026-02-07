@@ -84,9 +84,9 @@ func DefaultJobSpec(
 }
 
 // WithBatchMode configures the job for a full scheduled run (Indexed Job + Dispatcher).
-func WithBatchMode(scheduler *v1beta1.Scheduler, batchesCM string, count int32) JobOption {
+func WithBatchMode(runner *v1beta1.Runner, batchesCM string, count int32) JobOption {
 	return func(c *jobConfig) {
-		c.Parallelism = ptr.To(scheduler.Spec.Instances)
+		c.Parallelism = ptr.To(runner.Spec.Instances)
 		c.CompletionMode = ptr.To(batchv1.IndexedCompletion)
 		c.Completions = ptr.To(count)
 
@@ -97,8 +97,8 @@ func WithBatchMode(scheduler *v1beta1.Scheduler, batchesCM string, count int32) 
 		c.InitContainers = []corev1.Container{
 			containers.ContainerTemplate(
 				"renovate-dispatcher",
-				scheduler.Spec.Image,
-				scheduler.Spec.ImagePullPolicy,
+				runner.Spec.Image,
+				runner.Spec.ImagePullPolicy,
 				containers.WithEnvVars([]corev1.EnvVar{
 					{Name: EnvRenovateConfigRaw, Value: FileRenovateTmp},
 					{Name: EnvRenovateConfig, Value: FileRenovateConfig},

@@ -4,20 +4,20 @@ kind: CustomResourceDefinition
 metadata:
   annotations:
     controller-gen.kubebuilder.io/version: v0.17.1
-  name: schedulers.renovate.thegeeklab.de
+  name: runners.renovate.thegeeklab.de
 spec:
   group: renovate.thegeeklab.de
   names:
-    kind: Scheduler
-    listKind: SchedulerList
-    plural: schedulers
-    singular: scheduler
+    kind: Runner
+    listKind: RunnerList
+    plural: runners
+    singular: runner
   scope: Namespaced
   versions:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Scheduler is the Schema for the schedulers API.
+        description: Runner is the Schema for the runners API.
         properties:
           apiVersion:
             description: |-
@@ -37,7 +37,7 @@ spec:
           metadata:
             type: object
           spec:
-            description: SchedulerSpec defines the desired state of Scheduler.
+            description: RunnerSpec defines the desired state of Runner.
             properties:
               batchSize:
                 description: |-
@@ -98,11 +98,10 @@ spec:
                 default: false
                 type: boolean
             required:
-            - configRef
             - instances
             type: object
           status:
-            description: SchedulerStatus defines the observed state of Scheduler.
+            description: RunnerStatus defines the observed state of Runner.
             properties:
               conditions:
                 items:

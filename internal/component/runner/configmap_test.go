@@ -1,4 +1,4 @@
-package scheduler
+package runner
 
 import (
 	"context"
@@ -37,9 +37,9 @@ var _ = Describe("ConfigMap Reconciliation", func() {
 			WithScheme(scheme).
 			Build()
 
-		instance := &renovatev1beta1.Scheduler{
+		instance := &renovatev1beta1.Runner{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-scheduler",
+				Name:      "test-runner",
 				Namespace: "test-namespace",
 			},
 		}
@@ -49,7 +49,7 @@ var _ = Describe("ConfigMap Reconciliation", func() {
 			Client: fakeClient,
 			req: ctrl.Request{
 				NamespacedName: types.NamespacedName{
-					Name:      "test-scheduler",
+					Name:      "test-runner",
 					Namespace: "test-namespace",
 				},
 			},
@@ -92,7 +92,7 @@ var _ = Describe("ConfigMap Reconciliation", func() {
 		It("should correctly serialize batches data", func() {
 			cm := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-scheduler-renovate-batch",
+					Name:      "test-runner-renovate-batch",
 					Namespace: "test-namespace",
 				},
 				Data: make(map[string]string),
@@ -119,7 +119,7 @@ var _ = Describe("ConfigMap Reconciliation", func() {
 			reconciler.batches = []Batch{}
 			cm := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-scheduler-renovate-batch",
+					Name:      "test-runner-renovate-batch",
 					Namespace: "test-namespace",
 				},
 				Data: make(map[string]string),

@@ -14,18 +14,18 @@ import (
 
 var _ = Describe("JobSpec", func() {
 	var (
-		scheduler  *renovatev1beta1.Scheduler
+		runner     *renovatev1beta1.Runner
 		renovateCR *renovatev1beta1.RenovateConfig
 		renovateCM string
 	)
 
 	BeforeEach(func() {
-		scheduler = &renovatev1beta1.Scheduler{
+		runner = &renovatev1beta1.Runner{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-scheduler",
+				Name:      "test-runner",
 				Namespace: "test-namespace",
 			},
-			Spec: renovatev1beta1.SchedulerSpec{
+			Spec: renovatev1beta1.RunnerSpec{
 				Instances: 3,
 				ImageSpec: renovatev1beta1.ImageSpec{
 					Image: "renovate/renovate:latest",
@@ -138,7 +138,7 @@ var _ = Describe("JobSpec", func() {
 				jobSpec,
 				renovateCR,
 				renovateCM,
-				renovate.WithBatchMode(scheduler, "test-batches", 5),
+				renovate.WithBatchMode(runner, "test-batches", 5),
 			)
 
 			// Verify batch mode configuration

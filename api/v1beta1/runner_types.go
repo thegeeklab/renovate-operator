@@ -4,8 +4,8 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
-// SchedulerSpec defines the desired state of Scheduler.
-type SchedulerSpec struct {
+// RunnerSpec defines the desired state of Runner.
+type RunnerSpec struct {
 	//+kubebuilder:validation:Optional
 	ConfigRef string `json:"configRef"`
 
@@ -18,7 +18,7 @@ type SchedulerSpec struct {
 
 	// +kubebuilder:validation:Enum=none;batch
 	// +kubebuilder:default:="none"
-	Strategy SchedulerStrategy `json:"strategy,omitempty"`
+	Strategy RunnerStrategy `json:"strategy,omitempty"`
 
 	// Maximum number of parallel pods to start. One instance will only process a single batch.
 	// +kubebuilder:default:=1
@@ -33,10 +33,10 @@ type SchedulerSpec struct {
 	BatchSize int `json:"batchSize,omitempty"`
 }
 
-// SchedulerStatus defines the observed state of Scheduler.
+// RunnerStatus defines the observed state of Runner.
 //
 //nolint:lll
-type SchedulerStatus struct {
+type RunnerStatus struct {
 	Ready      bool               `json:"ready"`
 	Failed     int                `json:"failed,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
@@ -45,24 +45,24 @@ type SchedulerStatus struct {
 // +kubebuilder:object:root=true
 // +kubebuilder:subresource:status
 
-// Scheduler is the Schema for the schedulers API.
-type Scheduler struct {
+// Runner is the Schema for the runners API.
+type Runner struct {
 	metav1.TypeMeta   `json:",inline"`
 	metav1.ObjectMeta `json:"metadata,omitempty"`
 
-	Spec   SchedulerSpec   `json:"spec,omitempty"`
-	Status SchedulerStatus `json:"status,omitempty"`
+	Spec   RunnerSpec   `json:"spec,omitempty"`
+	Status RunnerStatus `json:"status,omitempty"`
 }
 
 // +kubebuilder:object:root=true
 
-// SchedulerList contains a list of Scheduler.
-type SchedulerList struct {
+// RunnerList contains a list of Runner.
+type RunnerList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
-	Items           []Scheduler `json:"items"`
+	Items           []Runner `json:"items"`
 }
 
 func init() {
-	SchemeBuilder.Register(&Scheduler{}, &SchedulerList{})
+	SchemeBuilder.Register(&Runner{}, &RunnerList{})
 }

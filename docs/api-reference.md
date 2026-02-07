@@ -47,7 +47,7 @@ The `RenovatorSpec` defines the desired state of a Renovator.
 | `imagePullPolicy` | string        | No       | `"IfNotPresent"`                                  | Image pull policy                |
 | `renovate`        | RenovateSpec  | Yes      | -                                                 | Renovate configuration           |
 | `discovery`       | DiscoverySpec | Yes      | -                                                 | Repository discovery settings    |
-| `scheduler`       | SchedulerSpec | No       | -                                                 | Parallel execution configuration |
+| `runner`          | RunnerSpec    | No       | -                                                 | Parallel execution configuration |
 | `logging`         | LoggingSpec   | No       | -                                                 | Logging configuration            |
 
 #### RenovateSpec
@@ -128,13 +128,13 @@ filter:
   - "team-*/backend-*" # Include specific patterns
 ```
 
-#### SchedulerSpec
+#### RunnerSpec
 
 Configuration for parallel job execution.
 
 ```yaml
-scheduler:
-  strategy: SchedulerStrategy # Optional: Execution strategy
+runner:
+  strategy: RunnerStrategy # Optional: Execution strategy
   instances: int32 # Optional: Parallel instances
   batchSize: int # Optional: Repositories per batch
 ```
@@ -145,7 +145,7 @@ scheduler:
 | `instances` | int32 | `1`      | 1-100           | Number of parallel workers |
 | `batchSize` | int   | auto     | 1-1000          | Repositories per batch     |
 
-##### SchedulerStrategy
+##### RunnerStrategy
 
 | Value   | Description                          |
 | ------- | ------------------------------------ |

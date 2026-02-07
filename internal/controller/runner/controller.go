@@ -1,11 +1,11 @@
-package scheduler
+package runner
 
 import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
-	"github.com/thegeeklab/renovate-operator/internal/component/scheduler"
+	"github.com/thegeeklab/renovate-operator/internal/component/runner"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,9 +19,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 )
 
-const ControllerName = "scheduler"
+const ControllerName = "runner"
 
-// Reconciler reconciles a Scheduler object.
+// Reconciler reconciles a Runner object.
 type Reconciler struct {
 	client.Client
 	Scheme *runtime.Scheme
@@ -31,8 +31,8 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
 
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=schedulers,verbs=get;list;watch
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=schedulers/status,verbs=get
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners,verbs=get;list;watch
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners/status,verbs=get
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos,verbs=get;list;watch
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
@@ -43,7 +43,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
-	rr := &renovatev1beta1.Scheduler{}
+	rr := &renovatev1beta1.Runner{}
 	if err := r.Get(ctx, req.NamespacedName, rr); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -66,12 +66,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	scheduler, err := scheduler.NewReconciler(ctx, r.Client, r.Scheme, rr, rc)
+	runner, err := runner.NewReconciler(ctx, r.Client, r.Scheme, rr, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	res, err := scheduler.Reconcile(ctx)
+	res, err := runner.Reconcile(ctx)
 	if err != nil {
 		return controller.HandleReconcileResult(res, err)
 	}
@@ -85,15 +85,15 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(),
-		&renovatev1beta1.Scheduler{},
+		&renovatev1beta1.Runner{},
 		configRefIndexKey,
-		schedulerConfigRefIndexFunc,
+		runnerConfigRefIndexFunc,
 	); err != nil {
 		return err
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&renovatev1beta1.Scheduler{}).
+		For(&renovatev1beta1.Runner{}).
 		WithEventFilter(predicate.Or(
 			predicate.GenerationChangedPredicate{},
 			predicate.Funcs{
@@ -110,7 +110,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 			},
 		)).
 		Watches(&renovatev1beta1.GitRepo{},
-			handler.EnqueueRequestsFromMapFunc(r.mapGitRepoToScheduler),
+			handler.EnqueueRequestsFromMapFunc(r.mapGitRepoToRunner),
 			builder.WithPredicates(predicate.Or(
 				predicate.GenerationChangedPredicate{},
 				predicate.Funcs{
@@ -128,7 +128,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 			),
 		).
 		Watches(&renovatev1beta1.RenovateConfig{},
-			handler.EnqueueRequestsFromMapFunc(r.mapConfigToScheduler),
+			handler.EnqueueRequestsFromMapFunc(r.mapConfigToRunner),
 			builder.WithPredicates(predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
 					return predicate.GenerationChangedPredicate{}.Update(e)
@@ -144,14 +144,14 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Complete(r)
 }
 
-// mapGitRepoToScheduler maps a GitRepo event to a Request for the Scheduler.
-func (r *Reconciler) mapGitRepoToScheduler(ctx context.Context, obj client.Object) []ctrl.Request {
+// mapGitRepoToRunner maps a GitRepo event to a Request for the Runner.
+func (r *Reconciler) mapGitRepoToRunner(ctx context.Context, obj client.Object) []ctrl.Request {
 	gitRepo, ok := obj.(*renovatev1beta1.GitRepo)
 	if !ok {
 		return nil
 	}
 
-	// Only enqueue requests for schedulers that match the renovate.thegeeklab.de/renovator label
+	// Only enqueue requests for runners that match the renovate.thegeeklab.de/renovator label
 	if gitRepo.Labels == nil {
 		return nil
 	}
@@ -161,20 +161,20 @@ func (r *Reconciler) mapGitRepoToScheduler(ctx context.Context, obj client.Objec
 		return nil
 	}
 
-	schedulerList := &renovatev1beta1.SchedulerList{}
-	if err := r.List(ctx, schedulerList, client.InNamespace(obj.GetNamespace())); err != nil {
+	runnerList := &renovatev1beta1.RunnerList{}
+	if err := r.List(ctx, runnerList, client.InNamespace(obj.GetNamespace())); err != nil {
 		return nil
 	}
 
 	var reqs []ctrl.Request
 
-	for _, scheduler := range schedulerList.Items {
-		// Check if the scheduler's renovate.thegeeklab.de/renovator label matches the renovator UID
-		if scheduler.Labels != nil && scheduler.Labels[renovatev1beta1.RenovatorLabel] == renovator {
+	for _, runner := range runnerList.Items {
+		// Check if the runner's renovate.thegeeklab.de/renovator label matches the renovator UID
+		if runner.Labels != nil && runner.Labels[renovatev1beta1.RenovatorLabel] == renovator {
 			reqs = append(reqs, ctrl.Request{
 				NamespacedName: client.ObjectKey{
-					Name:      scheduler.Name,
-					Namespace: scheduler.Namespace,
+					Name:      runner.Name,
+					Namespace: runner.Namespace,
 				},
 			})
 		}
@@ -183,26 +183,26 @@ func (r *Reconciler) mapGitRepoToScheduler(ctx context.Context, obj client.Objec
 	return reqs
 }
 
-// mapConfigToScheduler maps a RenovateConfig event to a Request for the Scheduler.
-func (r *Reconciler) mapConfigToScheduler(ctx context.Context, obj client.Object) []ctrl.Request {
+// mapConfigToRunner maps a RenovateConfig event to a Request for the Runner.
+func (r *Reconciler) mapConfigToRunner(ctx context.Context, obj client.Object) []ctrl.Request {
 	const configRefIndexKey = ".spec.configRef"
 
-	schedulerList := &renovatev1beta1.SchedulerList{}
+	runnerList := &renovatev1beta1.RunnerList{}
 	if err := r.List(
 		ctx,
-		schedulerList,
+		runnerList,
 		client.InNamespace(obj.GetNamespace()),
 		client.MatchingFields{configRefIndexKey: obj.GetName()},
 	); err != nil {
 		return nil
 	}
 
-	reqs := make([]ctrl.Request, len(schedulerList.Items))
-	for i := range schedulerList.Items {
+	reqs := make([]ctrl.Request, len(runnerList.Items))
+	for i := range runnerList.Items {
 		reqs[i] = ctrl.Request{
 			NamespacedName: client.ObjectKey{
-				Name:      schedulerList.Items[i].Name,
-				Namespace: schedulerList.Items[i].Namespace,
+				Name:      runnerList.Items[i].Name,
+				Namespace: runnerList.Items[i].Namespace,
 			},
 		}
 	}
@@ -214,7 +214,7 @@ func (r *Reconciler) mapConfigToScheduler(ctx context.Context, obj client.Object
 func (r *Reconciler) resolveRenovateConfig(
 	ctx context.Context,
 	namespace string,
-	rr *renovatev1beta1.Scheduler,
+	rr *renovatev1beta1.Runner,
 ) (client.ObjectKey, error) {
 	if rr.Spec.ConfigRef != "" {
 		return client.ObjectKey{Namespace: namespace, Name: rr.Spec.ConfigRef}, nil
@@ -239,16 +239,16 @@ func (r *Reconciler) resolveRenovateConfig(
 	return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
 }
 
-// schedulerConfigRefIndexFunc returns the config reference for indexing.
-func schedulerConfigRefIndexFunc(rawObj client.Object) []string {
-	scheduler, ok := rawObj.(*renovatev1beta1.Scheduler)
+// runnerConfigRefIndexFunc returns the config reference for indexing.
+func runnerConfigRefIndexFunc(rawObj client.Object) []string {
+	runner, ok := rawObj.(*renovatev1beta1.Runner)
 	if !ok {
 		return nil
 	}
 
-	if scheduler.Spec.ConfigRef == "" {
+	if runner.Spec.ConfigRef == "" {
 		return nil
 	}
 
-	return []string{scheduler.Spec.ConfigRef}
+	return []string{runner.Spec.ConfigRef}
 }

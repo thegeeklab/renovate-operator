@@ -10,18 +10,18 @@ import (
 	corev1 "k8s.io/api/core/v1"
 )
 
-var _ = Describe("Scheduler Webhook", func() {
+var _ = Describe("Runner Webhook", func() {
 	var (
-		obj       *renovatev1beta1.Scheduler
-		oldObj    *renovatev1beta1.Scheduler
-		defaulter SchedulerCustomDefaulter
+		obj       *renovatev1beta1.Runner
+		oldObj    *renovatev1beta1.Runner
+		defaulter RunnerCustomDefaulter
 		ctx       context.Context
 	)
 
 	BeforeEach(func() {
-		obj = &renovatev1beta1.Scheduler{}
-		oldObj = &renovatev1beta1.Scheduler{}
-		defaulter = SchedulerCustomDefaulter{}
+		obj = &renovatev1beta1.Runner{}
+		oldObj = &renovatev1beta1.Runner{}
+		defaulter = RunnerCustomDefaulter{}
 		ctx = context.Background()
 		Expect(defaulter).NotTo(BeNil(), "Expected defaulter to be initialized")
 		Expect(oldObj).NotTo(BeNil(), "Expected oldObj to be initialized")
@@ -32,7 +32,7 @@ var _ = Describe("Scheduler Webhook", func() {
 		// Clean up resources if needed
 	})
 
-	Context("When creating Scheduler under Defaulting Webhook", func() {
+	Context("When creating Runner under Defaulting Webhook", func() {
 		It("Should apply defaults when required fields are empty", func() {
 			By("calling the Default method to apply defaults")
 			err := defaulter.Default(ctx, obj)
@@ -58,11 +58,11 @@ var _ = Describe("Scheduler Webhook", func() {
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullAlways))
 		})
 
-		It("Should return error when object is not a Scheduler", func() {
+		It("Should return error when object is not a Runner", func() {
 			By("calling the Default method with wrong object type")
 			err := defaulter.Default(ctx, nil)
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("expected a Scheduler object but got other type"))
+			Expect(err.Error()).To(ContainSubstring("expected a Runner object but got other type"))
 		})
 	})
 })

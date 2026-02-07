@@ -1,4 +1,4 @@
-package scheduler
+package runner
 
 import (
 	. "github.com/onsi/ginkgo/v2"
@@ -7,7 +7,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var _ = Describe("SchedulerMetadata", func() {
+var _ = Describe("RunnerMetadata", func() {
 	var request reconcile.Request
 
 	BeforeEach(func() {
@@ -19,21 +19,21 @@ var _ = Describe("SchedulerMetadata", func() {
 		}
 	})
 
-	It("should create scheduler metadata with correct name and namespace", func() {
-		metadata := SchedulerMetadata(request)
-		Expect(metadata.Name).To(Equal("test-name-scheduler"))
+	It("should create runner metadata with correct name and namespace", func() {
+		metadata := RunnerMetadata(request)
+		Expect(metadata.Name).To(Equal("test-name-runner"))
 		Expect(metadata.Namespace).To(Equal("test-namespace"))
 	})
 
 	It("should handle empty namespace in request", func() {
 		request.Namespace = ""
-		metadata := SchedulerMetadata(request)
-		Expect(metadata.Name).To(Equal("test-name-scheduler"))
+		metadata := RunnerMetadata(request)
+		Expect(metadata.Name).To(Equal("test-name-runner"))
 		Expect(metadata.Namespace).To(BeEmpty())
 	})
 })
 
-var _ = Describe("SchedulerName", func() {
+var _ = Describe("RunnerName", func() {
 	var request reconcile.Request
 
 	BeforeEach(func() {
@@ -44,27 +44,27 @@ var _ = Describe("SchedulerName", func() {
 		}
 	})
 
-	It("should create scheduler name with correct suffix", func() {
-		name := SchedulerName(request)
-		Expect(name).To(Equal("test-name-scheduler"))
+	It("should create runner name with correct suffix", func() {
+		name := RunnerName(request)
+		Expect(name).To(Equal("test-name-runner"))
 	})
 
 	It("should handle empty name in request", func() {
 		request.Name = ""
-		name := SchedulerName(request)
-		Expect(name).To(Equal("-scheduler"))
+		name := RunnerName(request)
+		Expect(name).To(Equal("-runner"))
 	})
 
 	It("should handle special characters in name", func() {
 		request.Name = "test-name-with-special-chars"
-		name := SchedulerName(request)
-		Expect(name).To(Equal("test-name-with-special-chars-scheduler"))
+		name := RunnerName(request)
+		Expect(name).To(Equal("test-name-with-special-chars-runner"))
 	})
 
 	It("should handle very long names", func() {
 		longName := "test-name-with-very-long-name-that-exceeds-normal-length"
 		request.Name = longName
-		name := SchedulerName(request)
-		Expect(name).To(Equal(longName + "-scheduler"))
+		name := RunnerName(request)
+		Expect(name).To(Equal(longName + "-runner"))
 	})
 })

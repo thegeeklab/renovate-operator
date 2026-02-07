@@ -40,7 +40,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		r.reconcileRenovateConfig,
 		r.reconcileRenovateConfigMap,
 		r.reconcileDiscovery,
-		r.reconcileScheduler,
+		r.reconcileRunner,
 	}
 
 	var reconcileErr error

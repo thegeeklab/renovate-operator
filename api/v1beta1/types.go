@@ -16,8 +16,8 @@ const (
 	// ResourceRenovators is the name of the Renovator resource.
 	ResourceRenovators ResourceName = "renovators"
 
-	// ResourceSchedulers is the name of the Scheduler resource.
-	ResourceSchedulers ResourceName = "schedulers"
+	// ResourceRunners is the name of the Runner resource.
+	ResourceRunners ResourceName = "runners"
 )
 
 // Returns string version of ResourceName.

@@ -16,7 +16,7 @@ subgraph "User Namespace"
     REN[Renovator CR]
     REPO[GitRepo CRs]
     DCJ[Discovery CronJob]
-    RCJ[Scheduler CronJob]
+    RCJ[Runner CronJob]
     JOBS[Parallel Jobs]
     SEC[Secrets]
 end
@@ -65,7 +65,7 @@ The primary controller responsible for managing the complete Renovator lifecycle
 
 - Creates and manages CronJobs for scheduled execution
 - Orchestrates discovery reconciler
-- Orchestrates scheduler reconciler
+- Orchestrates runner reconciler
 - Updates status and conditions
 
 #### Discovery Reconciler
@@ -81,11 +81,11 @@ Manages repository discovery from Git platforms.
 - Executes discovery container that reads repository list file and creates GitRepo CRs
 - Applies filtering rules and handles cleanup of removed repositories
 
-#### Scheduler Reconciler
+#### Runner Reconciler
 
 Manages the execution of Renovate jobs with intelligent batching.
 
-**Location:** `pkg/reconciler/scheduler/`
+**Location:** `pkg/reconciler/runner/`
 
 **Functions:**
 
@@ -106,7 +106,7 @@ The main configuration resource that defines a Renovate instance.
 
 - **Platform Configuration**: Git platform connection details
 - **Discovery Settings**: Repository discovery and filtering
-- **Scheduler Configuration**: Batch strategy and parallelization
+- **Runner Configuration**: Batch strategy and parallelization
 - **Renovate Settings**: Renovate-specific configuration
 - **Scheduling**: CronJob schedule configuration
 
@@ -164,7 +164,7 @@ A standalone service for repository discovery that can run independently or as p
 ### 2. Execution Phase
 
 1. **CronJob triggers** based on schedule
-2. **Scheduler Reconciler** reads GitRepo CRs
+2. **Runner Reconciler** reads GitRepo CRs
 3. **Repository batching** occurs based on strategy
 4. **Parallel Kubernetes Jobs** are created
 5. **Dispatcher init containers** prepare each batch

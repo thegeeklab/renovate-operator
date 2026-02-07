@@ -1,4 +1,4 @@
-package scheduler
+package runner
 
 import (
 	"context"
@@ -15,9 +15,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
-var _ = Describe("Scheduler Controller", func() {
+var _ = Describe("Runner Controller", func() {
 	Context("When reconciling a resource", func() {
-		const resourceName = "test-scheduler"
+		const resourceName = "test-runner"
 
 		ctx := context.Background()
 
@@ -27,7 +27,7 @@ var _ = Describe("Scheduler Controller", func() {
 		}
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Scheduler")
+			By("creating the custom resource for the Kind Runner")
 
 			// Create RenovateConfig resource first
 			config := &renovatev1beta1.RenovateConfig{
@@ -58,24 +58,24 @@ var _ = Describe("Scheduler Controller", func() {
 				Expect(k8sClient.Create(ctx, config)).To(Succeed())
 			}
 
-			// Create Scheduler resource
-			err = k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Scheduler{})
+			// Create Runner resource
+			err = k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Runner{})
 			if err != nil && api_errors.IsNotFound(err) {
-				resource := &renovatev1beta1.Scheduler{
+				resource := &renovatev1beta1.Runner{
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      resourceName,
 						Namespace: "default",
 					},
-					Spec: renovatev1beta1.SchedulerSpec{
+					Spec: renovatev1beta1.RunnerSpec{
 						ConfigRef: "test-config",
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: "0 */2 * * *",
 						},
-						Strategy:  renovatev1beta1.SchedulerStrategy_NONE,
+						Strategy:  renovatev1beta1.RunnerStrategy_NONE,
 						Instances: 1,
 					},
 				}
-				rd := &v1beta1.SchedulerCustomDefaulter{}
+				rd := &v1beta1.RunnerCustomDefaulter{}
 				Expect(rd.Default(ctx, resource)).To(Succeed())
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 			}
@@ -89,12 +89,12 @@ var _ = Describe("Scheduler Controller", func() {
 				Expect(k8sClient.Delete(ctx, config)).To(Succeed())
 			}
 
-			// Cleanup Scheduler resource
-			resource := &renovatev1beta1.Scheduler{}
+			// Cleanup Runner resource
+			resource := &renovatev1beta1.Runner{}
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
 
-			By("Cleanup the specific resource instance Scheduler")
+			By("Cleanup the specific resource instance Runner")
 			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
 		})
 
@@ -111,13 +111,13 @@ var _ = Describe("Scheduler Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result).To(Equal(reconcile.Result{}))
 
-			// Verify that the Scheduler resource still exists after reconciliation
-			reconciledScheduler := &renovatev1beta1.Scheduler{}
-			Expect(k8sClient.Get(ctx, typeNamespacedName, reconciledScheduler)).To(Succeed())
+			// Verify that the Runner resource still exists after reconciliation
+			reconciledRunner := &renovatev1beta1.Runner{}
+			Expect(k8sClient.Get(ctx, typeNamespacedName, reconciledRunner)).To(Succeed())
 		})
 
-		It("should handle non-existent Scheduler resource gracefully", func() {
-			By("Testing reconciliation with non-existent Scheduler")
+		It("should handle non-existent Runner resource gracefully", func() {
+			By("Testing reconciliation with non-existent Runner")
 			controllerReconciler := &Reconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
@@ -125,7 +125,7 @@ var _ = Describe("Scheduler Controller", func() {
 
 			// Use a non-existent resource name
 			nonExistentName := types.NamespacedName{
-				Name:      "non-existent-scheduler",
+				Name:      "non-existent-runner",
 				Namespace: "default",
 			}
 

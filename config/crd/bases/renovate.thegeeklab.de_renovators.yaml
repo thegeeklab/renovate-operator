@@ -83,8 +83,6 @@ spec:
                   suspend:
                     default: false
                     type: boolean
-                required:
-                - configRef
                 type: object
               image:
                 description: |-
@@ -441,11 +439,8 @@ spec:
                 required:
                 - platform
                 type: object
-              schedule:
-                default: 0 */2 * * *
-                type: string
-              scheduler:
-                description: SchedulerSpec defines the desired state of Scheduler.
+              runner:
+                description: RunnerSpec defines the desired state of Runner.
                 properties:
                   batchSize:
                     description: |-
@@ -506,9 +501,11 @@ spec:
                     default: false
                     type: boolean
                 required:
-                - configRef
                 - instances
                 type: object
+              schedule:
+                default: 0 */2 * * *
+                type: string
               suspend:
                 default: false
                 type: boolean

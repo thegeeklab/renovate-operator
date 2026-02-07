@@ -63,15 +63,15 @@ type LoggingSpec struct {
 	Level LogLevel `json:"level"`
 }
 
-type SchedulerStrategy string
+type RunnerStrategy string
 
 //nolint:revive
 const (
-	// SchedulerStrategy_NONE A single batch be created and no parallelization will take place.
-	SchedulerStrategy_NONE = "none"
-	// SchedulerStrategy_BATCH Create batches based on number of repositories. If 30 repositories have been found and size
+	// RunnerStrategy_NONE A single batch be created and no parallelization will take place.
+	RunnerStrategy_NONE = "none"
+	// RunnerStrategy_BATCH Create batches based on number of repositories. If 30 repositories have been found and size
 	// is defined as 10, then 3 batches will be created.
-	SchedulerStrategy_BATCH = "batch"
+	RunnerStrategy_BATCH = "batch"
 )
 
 // ImageSpec defines the container image specification.
@@ -114,7 +114,7 @@ type RenovatorSpec struct {
 	Logging LoggingSpec `json:"logging"`
 
 	// +kubebuilder:validation:Optional
-	Scheduler SchedulerSpec `json:"scheduler"`
+	Runner RunnerSpec `json:"runner"`
 }
 
 // RenovatorStatus defines the observed state of Renovator.

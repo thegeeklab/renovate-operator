@@ -11,19 +11,19 @@ metadata:
   labels:
     app.kubernetes.io/name: renovate-operator
     app.kubernetes.io/managed-by: kustomize
-  name: scheduler-viewer-role
+  name: runner-viewer-role
 rules:
-- apiGroups:
-  - renovate.thegeeklab.de
-  resources:
-  - schedulers
-  verbs:
-  - get
-  - list
-  - watch
-- apiGroups:
-  - renovate.thegeeklab.de
-  resources:
-  - schedulers/status
-  verbs:
-  - get
+  - apiGroups:
+      - renovate.thegeeklab.de
+    resources:
+      - runners
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
+      - renovate.thegeeklab.de
+    resources:
+      - runners/status
+    verbs:
+      - get

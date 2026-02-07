@@ -47,12 +47,12 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 		renovator.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
 	}
 
-	if renovator.Spec.Scheduler.Strategy == "" {
-		renovator.Spec.Scheduler.Strategy = renovatev1beta1.SchedulerStrategy_NONE
+	if renovator.Spec.Runner.Strategy == "" {
+		renovator.Spec.Runner.Strategy = renovatev1beta1.RunnerStrategy_NONE
 	}
 
-	if renovator.Spec.Scheduler.Instances == 0 {
-		renovator.Spec.Scheduler.Instances = 1
+	if renovator.Spec.Runner.Instances == 0 {
+		renovator.Spec.Runner.Instances = 1
 	}
 
 	if renovator.Spec.Discovery.Schedule == "" {

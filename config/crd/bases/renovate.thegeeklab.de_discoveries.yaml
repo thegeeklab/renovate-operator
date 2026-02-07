@@ -80,8 +80,6 @@ spec:
               suspend:
                 default: false
                 type: boolean
-            required:
-            - configRef
             type: object
           status:
             description: DiscoveryStatus defines the observed state of Discovery.

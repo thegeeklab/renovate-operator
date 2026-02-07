@@ -1,4 +1,4 @@
-package scheduler
+package runner
 
 import (
 	"context"
@@ -25,7 +25,7 @@ var _ = Describe("Job Reconciliation", func() {
 	var (
 		fakeClient client.Client
 		reconciler *Reconciler
-		instance   *renovatev1beta1.Scheduler
+		instance   *renovatev1beta1.Runner
 		ctx        context.Context
 		scheme     *runtime.Scheme
 	)
@@ -39,18 +39,18 @@ var _ = Describe("Job Reconciliation", func() {
 			WithScheme(scheme).
 			Build()
 
-		instance = &renovatev1beta1.Scheduler{
+		instance = &renovatev1beta1.Runner{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-scheduler",
+				Name:      "test-runner",
 				Namespace: "test-namespace",
 			},
-			Spec: renovatev1beta1.SchedulerSpec{
+			Spec: renovatev1beta1.RunnerSpec{
 				JobSpec: renovatev1beta1.JobSpec{
 					Schedule: "* * * * *",
 				},
 			},
 		}
-		sd := &SchedulerCustomDefaulter{}
+		sd := &RunnerCustomDefaulter{}
 		Expect(sd.Default(ctx, instance)).To(Succeed())
 		Expect(fakeClient.Create(ctx, instance)).To(Succeed())
 
@@ -65,14 +65,14 @@ var _ = Describe("Job Reconciliation", func() {
 		Expect(rd.Default(ctx, renovate)).To(Succeed())
 		Expect(fakeClient.Create(ctx, renovate)).To(Succeed())
 
-		// Create scheduler custom defaulter
-		schedulerDefaulter := &v1beta1.SchedulerCustomDefaulter{}
-		Expect(schedulerDefaulter.Default(ctx, instance)).To(Succeed())
+		// Create runner custom defaulter
+		runnerDefaulter := &v1beta1.RunnerCustomDefaulter{}
+		Expect(runnerDefaulter.Default(ctx, instance)).To(Succeed())
 
 		reconciler = &Reconciler{
 			Client:   fakeClient,
 			scheme:   scheme,
-			req:      ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "test-namespace", Name: "test-scheduler"}},
+			req:      ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "test-namespace", Name: "test-runner"}},
 			instance: instance,
 			renovate: renovate,
 		}
@@ -80,7 +80,7 @@ var _ = Describe("Job Reconciliation", func() {
 		reconciler = &Reconciler{
 			Client:   fakeClient,
 			scheme:   scheme,
-			req:      ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "test-namespace", Name: "test-scheduler"}},
+			req:      ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "test-namespace", Name: "test-runner"}},
 			instance: instance,
 			renovate: renovate,
 		}
@@ -96,9 +96,9 @@ var _ = Describe("Job Reconciliation", func() {
 			Expect(result).ToNot(BeNil())
 
 			// Verify cron job was created
-			job := &batchv1.CronJob{ObjectMeta: SchedulerMetadata(reconciler.req)}
+			job := &batchv1.CronJob{ObjectMeta: RunnerMetadata(reconciler.req)}
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(job), job)).To(Succeed())
-			Expect(job.Name).To(Equal(SchedulerMetadata(reconciler.req).Name))
+			Expect(job.Name).To(Equal(RunnerMetadata(reconciler.req).Name))
 			Expect(job.Namespace).To(Equal(reconciler.req.Namespace))
 		})
 	})
@@ -117,7 +117,7 @@ var _ = Describe("Job Reconciliation", func() {
 			Expect(result).ToNot(BeNil())
 
 			// Verify that the annotation was removed after handling
-			updatedInstance := &renovatev1beta1.Scheduler{}
+			updatedInstance := &renovatev1beta1.Runner{}
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updatedInstance)).To(Succeed())
 			Expect(updatedInstance.Annotations).ToNot(HaveKey(renovatev1beta1.RenovatorOperation))
 
@@ -127,10 +127,10 @@ var _ = Describe("Job Reconciliation", func() {
 			Expect(jobList.Items).ToNot(BeEmpty())
 
 			// Additional verification: check that the job has the correct name pattern
-			schedulerName := SchedulerName(reconciler.req)
+			runnerName := RunnerName(reconciler.req)
 			foundMatchingJob := false
 			for _, job := range jobList.Items {
-				if job.Name == schedulerName || strings.HasPrefix(job.Name, schedulerName+"-") {
+				if job.Name == runnerName || strings.HasPrefix(job.Name, runnerName+"-") {
 					foundMatchingJob = true
 
 					break
@@ -145,11 +145,11 @@ var _ = Describe("Job Reconciliation", func() {
 			// Create an active renovate job
 			activeJob := &batchv1.Job{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      SchedulerName(reconciler.req) + "-active",
+					Name:      RunnerName(reconciler.req) + "-active",
 					Namespace: instance.Namespace,
 					Labels: map[string]string{
 						"app.kubernetes.io/instance": instance.Name,
-						"app.kubernetes.io/name":     "scheduler",
+						"app.kubernetes.io/name":     "runner",
 					},
 				},
 				Spec: batchv1.JobSpec{},

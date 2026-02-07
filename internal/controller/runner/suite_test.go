@@ -1,4 +1,4 @@
-package scheduler
+package runner
 
 import (
 	"context"
@@ -32,7 +32,7 @@ var (
 func TestControllers(t *testing.T) {
 	RegisterFailHandler(Fail)
 
-	RunSpecs(t, "SchedulerController Suite")
+	RunSpecs(t, "RunnerController Suite")
 }
 
 var _ = BeforeSuite(func() {

@@ -1,4 +1,4 @@
-package scheduler
+package runner
 
 import (
 	"context"
@@ -21,7 +21,7 @@ func (r *Reconciler) reconcileCronJob(ctx context.Context) (*ctrl.Result, error)
 		return r.handleImmediateRenovate(ctx)
 	}
 
-	job := &batchv1.CronJob{ObjectMeta: SchedulerMetadata(r.req)}
+	job := &batchv1.CronJob{ObjectMeta: RunnerMetadata(r.req)}
 
 	op, err := k8s.CreateOrUpdate(ctx, r.Client, job, r.instance, func() error {
 		return r.updateCronJob(job)
@@ -43,7 +43,7 @@ func (r *Reconciler) handleImmediateRenovate(ctx context.Context) (*ctrl.Result,
 	log := logf.FromContext(ctx)
 
 	// Check for active renovate jobs with our specific labels
-	active, err := cronjob.CheckActiveJobs(ctx, r.Client, r.instance.Namespace, SchedulerName(r.req))
+	active, err := cronjob.CheckActiveJobs(ctx, r.Client, r.instance.Namespace, RunnerName(r.req))
 	if err != nil {
 		return &ctrl.Result{}, err
 	}
@@ -56,7 +56,7 @@ func (r *Reconciler) handleImmediateRenovate(ctx context.Context) (*ctrl.Result,
 
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: SchedulerName(r.req) + "-",
+			GenerateName: RunnerName(r.req) + "-",
 			Namespace:    r.instance.Namespace,
 		},
 		Spec: batchv1.JobSpec{},
