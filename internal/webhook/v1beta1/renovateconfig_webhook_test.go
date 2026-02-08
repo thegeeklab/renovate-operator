@@ -42,7 +42,7 @@ var _ = Describe("RenovateConfig Webhook", func() {
 			Expect(obj.Spec.Onboarding).NotTo(BeNil())
 			Expect(*obj.Spec.Onboarding).To(BeTrue())
 			Expect(obj.Spec.PrHourlyLimit).To(BeEquivalentTo(10))
-			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.RenovateContainerImage))
+			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.DefaultRenovateContainerImage))
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
 		})
 

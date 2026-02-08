@@ -187,7 +187,6 @@ spec:
                 logging:
                   properties:
                     level:
-                      default: info
                       enum:
                         - trace
                         - debug
@@ -200,7 +199,6 @@ spec:
                     - level
                   type: object
                 onboarding:
-                  default: true
                   type: boolean
                 platform:
                   properties:
@@ -338,7 +336,6 @@ spec:
                     - type
                   type: object
                 prHourlyLimit:
-                  default: 10
                   description: OnBoardingConfig object `json:"onBoardingConfig,omitempty,inline"`
                   type: integer
               required:

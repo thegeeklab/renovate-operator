@@ -61,7 +61,7 @@ func (d *RenovateConfigCustomDefaulter) Default(ctx context.Context, renovate *r
 	}
 
 	if renovate.Spec.Image == "" {
-		renovate.Spec.Image = renovatev1beta1.RenovateContainerImage
+		renovate.Spec.Image = renovatev1beta1.DefaultRenovateContainerImage
 	}
 
 	if renovate.Spec.ImagePullPolicy == "" {
