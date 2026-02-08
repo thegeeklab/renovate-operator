@@ -12,10 +12,11 @@ type RunnerSpec struct {
 	Logging *LoggingSpec `json:"logging,omitempty"`
 
 	//+kubebuilder:validation:Optional
-	ConfigRef string `json:"configRef"`
+	ConfigRef string `json:"configRef,omitempty"`
 
 	JobSpec `json:",inline"`
 
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=none;batch
 	Strategy RunnerStrategy `json:"strategy,omitempty"`
 
@@ -26,6 +27,7 @@ type RunnerSpec struct {
 
 	// Number of repositories per batch. Only used when strategy is 'batch'.
 	// If not specified, defaults to a reasonable size based on the number of repositories and instances.
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=1000
 	BatchSize int `json:"batchSize,omitempty"`

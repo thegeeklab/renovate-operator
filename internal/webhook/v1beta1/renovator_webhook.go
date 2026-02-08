@@ -64,50 +64,6 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 		renovator.Spec.Schedule = renovatev1beta1.DefaultSchedule
 	}
 
-	// Discovery spec
-
-	if renovator.Spec.Discovery.Logging == nil {
-		renovator.Spec.Discovery.Logging = &renovator.Spec.Logging
-	}
-
-	if renovator.Spec.Discovery.Image == "" {
-		renovator.Spec.Discovery.Image = renovator.Spec.Image
-	}
-
-	if renovator.Spec.Discovery.ImagePullPolicy == "" {
-		renovator.Spec.Discovery.ImagePullPolicy = renovator.Spec.ImagePullPolicy
-	}
-
-	if renovator.Spec.Discovery.Suspend == nil {
-		renovator.Spec.Discovery.Suspend = renovator.Spec.Suspend
-	}
-
-	if renovator.Spec.Discovery.Schedule == "" {
-		renovator.Spec.Discovery.Schedule = renovator.Spec.Schedule
-	}
-
-	// Runner spec
-
-	if renovator.Spec.Runner.Logging == nil {
-		renovator.Spec.Runner.Logging = &renovator.Spec.Logging
-	}
-
-	if renovator.Spec.Runner.Image == "" {
-		renovator.Spec.Runner.Image = renovator.Spec.Image
-	}
-
-	if renovator.Spec.Runner.ImagePullPolicy == "" {
-		renovator.Spec.Runner.ImagePullPolicy = renovator.Spec.ImagePullPolicy
-	}
-
-	if renovator.Spec.Runner.Suspend == nil {
-		renovator.Spec.Runner.Suspend = renovator.Spec.Suspend
-	}
-
-	if renovator.Spec.Runner.Schedule == "" {
-		renovator.Spec.Runner.Schedule = renovator.Spec.Schedule
-	}
-
 	// RenovateConfig spec
 
 	if renovator.Spec.Renovate.Image == "" {

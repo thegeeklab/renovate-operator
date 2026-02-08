@@ -170,7 +170,7 @@ var _ = Describe("createBatches", func() {
 		})
 
 		It("should create single batch with all repositories", func() {
-			batches, err := r.createBatches(context.TODO())
+			batches, err := r.createBatches(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(batches).To(HaveLen(1))
 			Expect(batches[0].Repositories).To(HaveLen(5))
@@ -183,7 +183,7 @@ var _ = Describe("createBatches", func() {
 		})
 
 		It("should create multiple batches with specified size", func() {
-			batches, err := r.createBatches(context.TODO())
+			batches, err := r.createBatches(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(batches).To(HaveLen(3))
 			Expect(batches[0].Repositories).To(HaveLen(2))
@@ -240,7 +240,7 @@ var _ = Describe("createBatches", func() {
 		})
 
 		It("should create batches with auto-calculated size", func() {
-			batches, err := r.createBatches(context.TODO())
+			batches, err := r.createBatches(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(batches).To(HaveLen(6)) // 6 repos / 1 per batch (6 / (2*3) = 1)
 
@@ -281,7 +281,7 @@ var _ = Describe("createBatches", func() {
 		})
 
 		It("should return empty batch list", func() {
-			batches, err := r.createBatches(context.TODO())
+			batches, err := r.createBatches(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(batches).To(BeEmpty())
 		})

@@ -79,6 +79,7 @@ type ImageSpec struct {
 	// Name of the container image, supporting both tags (`<image>:<tag>`)
 	// and digests for deterministic and repeatable deployments
 	// (`<image>:<tag>@sha256:<digestValue>`)
+	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
 
 	// Image pull policy.
@@ -86,16 +87,16 @@ type ImageSpec struct {
 	// If not defined, it defaults to `IfNotPresent`.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
-	// +optional
+	// +kubebuilder:validation:Optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 }
 
 type JobSpec struct {
 	// +kubebuilder:validation:Optional
-	Suspend *bool `json:"suspend"`
+	Suspend *bool `json:"suspend,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	Schedule string `json:"schedule"`
+	Schedule string `json:"schedule,omitempty"`
 }
 
 // RenovatorSpec defines the desired state of Renovator.
@@ -103,7 +104,7 @@ type RenovatorSpec struct {
 	ImageSpec `json:",inline"`
 
 	// +kubebuilder:validation:Optional
-	Logging LoggingSpec `json:"logging"`
+	Logging LoggingSpec `json:"logging,omitempty"`
 
 	JobSpec `json:",inline"`
 

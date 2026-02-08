@@ -37,6 +37,14 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
 	}
 
+	if discovery.Spec.Suspend == nil {
+		discovery.Spec.Suspend = r.instance.Spec.Suspend
+	}
+
+	if discovery.Spec.Schedule == "" {
+		discovery.Spec.Schedule = r.instance.Spec.Schedule
+	}
+
 	if discovery.Labels == nil {
 		discovery.Labels = make(map[string]string)
 	}

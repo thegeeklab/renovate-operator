@@ -52,6 +52,10 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 		discovery.Spec.ImagePullPolicy = corev1.PullIfNotPresent
 	}
 
+	if discovery.Spec.Logging == nil {
+		discovery.Spec.Logging = &renovatev1beta1.LoggingSpec{}
+	}
+
 	if discovery.Spec.Logging.Level == "" {
 		discovery.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
 	}

@@ -10,10 +10,11 @@ type DiscoverySpec struct {
 	Logging *LoggingSpec `json:"logging,omitempty"`
 
 	//+kubebuilder:validation:Optional
-	ConfigRef string `json:"configRef"`
+	ConfigRef string `json:"configRef,omitempty"`
 
 	JobSpec `json:",inline"`
 
+	// +kubebuilder:validation:Optional
 	Filter []string `json:"filter,omitempty"`
 }
 
