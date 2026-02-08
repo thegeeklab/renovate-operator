@@ -52,6 +52,10 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 		runner.Spec.ImagePullPolicy = corev1.PullIfNotPresent
 	}
 
+	if runner.Spec.Logging == nil {
+		runner.Spec.Logging = &renovatev1beta1.LoggingSpec{}
+	}
+
 	if runner.Spec.Logging.Level == "" {
 		runner.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
 	}

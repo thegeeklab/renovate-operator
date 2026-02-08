@@ -7,4 +7,23 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: renovateconfig-sample
 spec:
-# TODO(user): Add fields here
+  image: "ghcr.io/renovatebot/renovate:latest"
+  imagePullPolicy: "IfNotPresent"
+
+  logging:
+    level: "info"
+
+  platform:
+    type: "github"
+    endpoint: "https://api.github.com"
+    token:
+      secretKeyRef:
+        name: "github-token"
+        key: "token"
+
+  dryRun: "full"
+  onboarding: true
+  prHourlyLimit: 10
+  addLabels:
+    - "renovate"
+    - "dependencies"
