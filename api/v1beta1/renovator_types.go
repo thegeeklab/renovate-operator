@@ -54,8 +54,9 @@ const (
 	LogLevel_ERROR = "error"
 	LogLevel_FATAL = "fatal"
 
-	OperatorContainerImage = "docker.io/thegeeklab/renovate-operator:latest"
-	RenovateContainerImage = "ghcr.io/renovatebot/renovate:latest"
+	DefaultOperatorContainerImage = "docker.io/thegeeklab/renovate-operator:latest"
+	DefaultRenovateContainerImage = "ghcr.io/renovatebot/renovate:latest"
+	DefaultSchedule               = "0 */2 * * *"
 )
 
 type LoggingSpec struct {
@@ -101,17 +102,17 @@ type JobSpec struct {
 type RenovatorSpec struct {
 	ImageSpec `json:",inline"`
 
-	Renovate RenovateConfigSpec `json:"renovate,omitempty"`
-
-	Discovery DiscoverySpec `json:"discovery"`
-
-	JobSpec `json:",inline"`
-
 	// +kubebuilder:validation:Optional
 	Logging LoggingSpec `json:"logging"`
 
+	JobSpec `json:",inline"`
+
+	Discovery DiscoverySpec `json:"discovery"`
+
 	// +kubebuilder:validation:Optional
 	Runner RunnerSpec `json:"runner"`
+
+	Renovate RenovateConfigSpec `json:"renovate,omitempty"`
 }
 
 // RenovatorStatus defines the observed state of Renovator.

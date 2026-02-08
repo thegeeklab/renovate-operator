@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -43,20 +44,24 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 
 	discoveryLog.Info("Defaulting for Discovery", "name", discovery.GetName())
 
-	if discovery.Spec.Logging == nil {
-		discovery.Spec.Logging = &renovatev1beta1.LoggingSpec{}
+	if discovery.Spec.Image == "" {
+		discovery.Spec.Image = renovatev1beta1.DefaultOperatorContainerImage
+	}
+
+	if discovery.Spec.ImagePullPolicy == "" {
+		discovery.Spec.ImagePullPolicy = corev1.PullIfNotPresent
 	}
 
 	if discovery.Spec.Logging.Level == "" {
 		discovery.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
 	}
 
-	if discovery.Spec.Image == "" {
-		discovery.Spec.Image = renovatev1beta1.OperatorContainerImage
+	if discovery.Spec.Suspend == nil {
+		discovery.Spec.Suspend = ptr.To(false)
 	}
 
-	if discovery.Spec.ImagePullPolicy == "" {
-		discovery.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	if discovery.Spec.Schedule == "" {
+		discovery.Spec.Schedule = renovatev1beta1.DefaultSchedule
 	}
 
 	return nil

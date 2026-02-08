@@ -6,13 +6,13 @@ import (
 
 // RunnerSpec defines the desired state of Runner.
 type RunnerSpec struct {
-	//+kubebuilder:validation:Optional
-	ConfigRef string `json:"configRef"`
-
 	ImageSpec `json:",inline"`
 
 	// +kubebuilder:validation:Optional
 	Logging *LoggingSpec `json:"logging,omitempty"`
+
+	//+kubebuilder:validation:Optional
+	ConfigRef string `json:"configRef"`
 
 	JobSpec `json:",inline"`
 

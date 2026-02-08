@@ -39,7 +39,7 @@ var _ = Describe("Discovery Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging).NotTo(BeNil())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_INFO))
-			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.OperatorContainerImage))
+			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.DefaultOperatorContainerImage))
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
 		})
 

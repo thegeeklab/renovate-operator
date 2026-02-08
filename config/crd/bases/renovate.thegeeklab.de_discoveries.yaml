@@ -62,7 +62,6 @@ spec:
                 logging:
                   properties:
                     level:
-                      default: info
                       enum:
                         - trace
                         - debug
@@ -75,10 +74,8 @@ spec:
                     - level
                   type: object
                 schedule:
-                  default: 0 */2 * * *
                   type: string
                 suspend:
-                  default: false
                   type: boolean
               type: object
             status:

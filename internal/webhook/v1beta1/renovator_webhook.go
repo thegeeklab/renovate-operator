@@ -44,6 +44,14 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 
 	renovatorLog.Info("Defaulting for renovator", "name", renovator.GetName())
 
+	if renovator.Spec.Image == "" {
+		renovator.Spec.Image = renovatev1beta1.DefaultOperatorContainerImage
+	}
+
+	if renovator.Spec.ImagePullPolicy == "" {
+		renovator.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	}
+
 	if renovator.Spec.Logging.Level == "" {
 		renovator.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
 	}
@@ -53,31 +61,57 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 	}
 
 	if renovator.Spec.Schedule == "" {
-		renovator.Spec.Schedule = "0 */2 * * *"
+		renovator.Spec.Schedule = renovatev1beta1.DefaultSchedule
 	}
 
-	if renovator.Spec.Runner.Strategy == "" {
-		renovator.Spec.Runner.Strategy = renovatev1beta1.RunnerStrategy_NONE
+	// Discovery spec
+
+	if renovator.Spec.Discovery.Logging == nil {
+		renovator.Spec.Discovery.Logging = &renovator.Spec.Logging
 	}
 
-	if renovator.Spec.Runner.Instances == 0 {
-		renovator.Spec.Runner.Instances = 1
+	if renovator.Spec.Discovery.Image == "" {
+		renovator.Spec.Discovery.Image = renovator.Spec.Image
+	}
+
+	if renovator.Spec.Discovery.ImagePullPolicy == "" {
+		renovator.Spec.Discovery.ImagePullPolicy = renovator.Spec.ImagePullPolicy
+	}
+
+	if renovator.Spec.Discovery.Suspend == nil {
+		renovator.Spec.Discovery.Suspend = renovator.Spec.Suspend
 	}
 
 	if renovator.Spec.Discovery.Schedule == "" {
-		renovator.Spec.Discovery.Schedule = "0 */2 * * *"
+		renovator.Spec.Discovery.Schedule = renovator.Spec.Schedule
 	}
 
-	if renovator.Spec.Image == "" {
-		renovator.Spec.Image = renovatev1beta1.OperatorContainerImage
+	// Runner spec
+
+	if renovator.Spec.Runner.Logging == nil {
+		renovator.Spec.Runner.Logging = &renovator.Spec.Logging
 	}
 
-	if renovator.Spec.ImagePullPolicy == "" {
-		renovator.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	if renovator.Spec.Runner.Image == "" {
+		renovator.Spec.Runner.Image = renovator.Spec.Image
 	}
+
+	if renovator.Spec.Runner.ImagePullPolicy == "" {
+		renovator.Spec.Runner.ImagePullPolicy = renovator.Spec.ImagePullPolicy
+	}
+
+	if renovator.Spec.Runner.Suspend == nil {
+		renovator.Spec.Runner.Suspend = renovator.Spec.Suspend
+	}
+
+	if renovator.Spec.Runner.Schedule == "" {
+		renovator.Spec.Runner.Schedule = renovator.Spec.Schedule
+	}
+
+	// RenovateConfig spec
 
 	if renovator.Spec.Renovate.Image == "" {
-		renovator.Spec.Renovate.Image = renovatev1beta1.RenovateContainerImage
+		renovator.Spec.Renovate.Image = renovatev1beta1.DefaultRenovateContainerImage
 	}
 
 	if renovator.Spec.Renovate.ImagePullPolicy == "" {
