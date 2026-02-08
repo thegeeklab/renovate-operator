@@ -69,7 +69,7 @@ var _ = Describe("Runner Controller", func() {
 					Spec: renovatev1beta1.RunnerSpec{
 						ConfigRef: "test-config",
 						JobSpec: renovatev1beta1.JobSpec{
-							Schedule: "0 */2 * * *",
+							Schedule: renovatev1beta1.DefaultSchedule,
 						},
 						Strategy:  renovatev1beta1.RunnerStrategy_NONE,
 						Instances: 1,

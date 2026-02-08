@@ -37,6 +37,14 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
 	}
 
+	if runner.Spec.Suspend == nil {
+		runner.Spec.Suspend = r.instance.Spec.Suspend
+	}
+
+	if runner.Spec.Schedule == "" {
+		runner.Spec.Schedule = r.instance.Spec.Schedule
+	}
+
 	if runner.Labels == nil {
 		runner.Labels = make(map[string]string)
 	}

@@ -7,18 +7,23 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: renovator-sample
 spec:
+  image: docker.io/thegeeklab/renovate-operator:latest
+
+  logging:
+    level: info
+
   suspend: false
-  schedule: "*/30 * * * *"
+  schedule: "0 */2 * * *"
 
   discovery:
     suspend: false
+    schedule: "0 */2 * * *"
     filter:
       - "octocat/*"
 
-  logging:
-    level: debug
-
   runner:
+    suspend: false
+    schedule: "0 */2 * * *"
     # Use 'batch' strategy for parallel processing of repositories
     strategy: batch
     # Number of parallel job instances (workers) to run simultaneously

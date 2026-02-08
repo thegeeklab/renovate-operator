@@ -7,4 +7,17 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: discovery-sample
 spec:
-# TODO(user): Add fields here
+  image: "ghcr.io/thegeeklab/renovate-operator:latest"
+  imagePullPolicy: "IfNotPresent"
+
+  logging:
+    level: "info"
+
+  configRef: "renovate-config"
+
+  suspend: false
+  schedule: "0 */2 * * *"
+
+  filter:
+    - "my-org/*"
+    - "another-org/important-repo"

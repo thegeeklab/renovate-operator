@@ -54,12 +54,12 @@ const (
 	LogLevel_ERROR = "error"
 	LogLevel_FATAL = "fatal"
 
-	OperatorContainerImage = "docker.io/thegeeklab/renovate-operator:latest"
-	RenovateContainerImage = "ghcr.io/renovatebot/renovate:latest"
+	DefaultOperatorContainerImage = "docker.io/thegeeklab/renovate-operator:latest"
+	DefaultRenovateContainerImage = "ghcr.io/renovatebot/renovate:latest"
+	DefaultSchedule               = "0 */2 * * *"
 )
 
 type LoggingSpec struct {
-	// +kubebuilder:default=info
 	Level LogLevel `json:"level"`
 }
 
@@ -79,6 +79,7 @@ type ImageSpec struct {
 	// Name of the container image, supporting both tags (`<image>:<tag>`)
 	// and digests for deterministic and repeatable deployments
 	// (`<image>:<tag>@sha256:<digestValue>`)
+	// +kubebuilder:validation:Optional
 	Image string `json:"image,omitempty"`
 
 	// Image pull policy.
@@ -86,35 +87,33 @@ type ImageSpec struct {
 	// If not defined, it defaults to `IfNotPresent`.
 	// Cannot be updated.
 	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
-	// +optional
+	// +kubebuilder:validation:Optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
 }
 
 type JobSpec struct {
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:=false
-	Suspend *bool `json:"suspend"`
+	Suspend *bool `json:"suspend,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	// +kubebuilder:default:="0 */2 * * *"
-	Schedule string `json:"schedule"`
+	Schedule string `json:"schedule,omitempty"`
 }
 
 // RenovatorSpec defines the desired state of Renovator.
 type RenovatorSpec struct {
 	ImageSpec `json:",inline"`
 
-	Renovate RenovateConfigSpec `json:"renovate,omitempty"`
-
-	Discovery DiscoverySpec `json:"discovery"`
+	// +kubebuilder:validation:Optional
+	Logging LoggingSpec `json:"logging,omitempty"`
 
 	JobSpec `json:",inline"`
 
-	// +kubebuilder:validation:Optional
-	Logging LoggingSpec `json:"logging"`
+	Discovery DiscoverySpec `json:"discovery"`
 
 	// +kubebuilder:validation:Optional
 	Runner RunnerSpec `json:"runner"`
+
+	Renovate RenovateConfigSpec `json:"renovate,omitempty"`
 }
 
 // RenovatorStatus defines the observed state of Renovator.

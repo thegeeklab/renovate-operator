@@ -1,4 +1,3 @@
-//nolint:dupl
 package v1beta1
 
 import (
@@ -7,6 +6,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -52,8 +52,16 @@ func (d *RenovateConfigCustomDefaulter) Default(ctx context.Context, renovate *r
 		renovate.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
 	}
 
+	if renovate.Spec.Onboarding == nil {
+		renovate.Spec.Onboarding = ptr.To(true)
+	}
+
+	if renovate.Spec.PrHourlyLimit == 0 {
+		renovate.Spec.PrHourlyLimit = 10
+	}
+
 	if renovate.Spec.Image == "" {
-		renovate.Spec.Image = renovatev1beta1.RenovateContainerImage
+		renovate.Spec.Image = renovatev1beta1.DefaultRenovateContainerImage
 	}
 
 	if renovate.Spec.ImagePullPolicy == "" {
