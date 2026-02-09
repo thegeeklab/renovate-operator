@@ -68,6 +68,9 @@ var _ = Describe("Renovator Controller", func() {
 								Endpoint: "https://api.github.com/",
 							},
 						},
+						Runner: renovatev1beta1.RunnerSpec{
+							Instances: 1,
+						},
 					},
 				}
 				rd := &v1beta1.RenovatorCustomDefaulter{}
@@ -173,6 +176,9 @@ var _ = Describe("Renovator Controller", func() {
 							Endpoint: "https://api.github.com/",
 						},
 					},
+					Runner: renovatev1beta1.RunnerSpec{
+						Instances: 1,
+					},
 				},
 			}
 
@@ -216,6 +222,9 @@ var _ = Describe("Renovator Controller", func() {
 							},
 							Endpoint: "https://api.github.com/",
 						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						Instances: 1,
 					},
 				},
 			}
