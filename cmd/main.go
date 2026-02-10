@@ -95,7 +95,8 @@ func main() {
 	flag.BoolVar(&secureMetrics, "metrics-secure", true,
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
 	flag.BoolVar(&webhookCertRotation, "webhook-cert-rotation", true, "Enable webhook certificate rotation if set true.")
-	flag.StringVar(&webhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs", "The directory where webhook certificates are stored.") //nolint:lll
+	flag.StringVar(&webhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
+		"The directory where webhook certificates are stored.")
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&watchNamespace, "watch-namespace", "", "The namespace the controller will watch.")
@@ -276,7 +277,9 @@ func main() {
 				setupLog.Info("Skipping cert rotation, setting up webhook")
 
 				if _, err := os.Stat(fmt.Sprintf("%s/tls.crt", webhookCertPath)); os.IsNotExist(err) {
-					setupLog.Error(err, "Certificate file does not exist while cert rotation is disabled")
+					setupLog.Error(err,
+						"Certificate file does not exist while certificate rotation is disabled",
+						"path", fmt.Sprintf("%s/tls.crt", webhookCertPath))
 					os.Exit(1)
 				}
 			}
