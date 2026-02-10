@@ -6,6 +6,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -43,32 +44,30 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 
 	renovatorLog.Info("Defaulting for renovator", "name", renovator.GetName())
 
-	if renovator.Spec.Logging.Level == "" {
-		renovator.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
-	}
-
-	if renovator.Spec.Runner.Strategy == "" {
-		renovator.Spec.Runner.Strategy = renovatev1beta1.RunnerStrategy_NONE
-	}
-
-	if renovator.Spec.Runner.Instances == 0 {
-		renovator.Spec.Runner.Instances = 1
-	}
-
-	if renovator.Spec.Discovery.Schedule == "" {
-		renovator.Spec.Discovery.Schedule = "0 */2 * * *"
-	}
-
 	if renovator.Spec.Image == "" {
-		renovator.Spec.Image = renovatev1beta1.OperatorContainerImage
+		renovator.Spec.Image = renovatev1beta1.DefaultOperatorContainerImage
 	}
 
 	if renovator.Spec.ImagePullPolicy == "" {
 		renovator.Spec.ImagePullPolicy = corev1.PullIfNotPresent
 	}
 
+	if renovator.Spec.Logging.Level == "" {
+		renovator.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
+	}
+
+	if renovator.Spec.Suspend == nil {
+		renovator.Spec.Suspend = ptr.To(false)
+	}
+
+	if renovator.Spec.Schedule == "" {
+		renovator.Spec.Schedule = renovatev1beta1.DefaultSchedule
+	}
+
+	// RenovateConfig spec
+
 	if renovator.Spec.Renovate.Image == "" {
-		renovator.Spec.Renovate.Image = renovatev1beta1.RenovateContainerImage
+		renovator.Spec.Renovate.Image = renovatev1beta1.DefaultRenovateContainerImage
 	}
 
 	if renovator.Spec.Renovate.ImagePullPolicy == "" {

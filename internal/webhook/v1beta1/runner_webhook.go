@@ -1,4 +1,3 @@
-//nolint:dupl
 package v1beta1
 
 import (
@@ -7,6 +6,7 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -44,6 +44,14 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 
 	runnerLog.Info("Defaulting for Runner", "name", runner.GetName())
 
+	if runner.Spec.Image == "" {
+		runner.Spec.Image = renovatev1beta1.DefaultOperatorContainerImage
+	}
+
+	if runner.Spec.ImagePullPolicy == "" {
+		runner.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	}
+
 	if runner.Spec.Logging == nil {
 		runner.Spec.Logging = &renovatev1beta1.LoggingSpec{}
 	}
@@ -52,12 +60,20 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 		runner.Spec.Logging.Level = renovatev1beta1.LogLevel_INFO
 	}
 
-	if runner.Spec.Image == "" {
-		runner.Spec.Image = renovatev1beta1.OperatorContainerImage
+	if runner.Spec.Suspend == nil {
+		runner.Spec.Suspend = ptr.To(false)
 	}
 
-	if runner.Spec.ImagePullPolicy == "" {
-		runner.Spec.ImagePullPolicy = corev1.PullIfNotPresent
+	if runner.Spec.Schedule == "" {
+		runner.Spec.Schedule = renovatev1beta1.DefaultSchedule
+	}
+
+	if runner.Spec.Strategy == "" {
+		runner.Spec.Strategy = renovatev1beta1.RunnerStrategy_NONE
+	}
+
+	if runner.Spec.Instances == 0 {
+		runner.Spec.Instances = 1
 	}
 
 	return nil

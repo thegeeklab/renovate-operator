@@ -15,7 +15,6 @@
     "Poxhofer",
     "kubeconfig",
     "gitrepos",
-    "certmanager",
     "controllerutil",
     "autodiscover",
     "prometheuses",
@@ -50,7 +49,8 @@
     "renovateconfigs",
     "gitrepo",
     "gitrepos",
-    "configmap"
+    "configmap",
+    "clientset"
   ],
   "ignorePaths": [
     ".woodpecker",

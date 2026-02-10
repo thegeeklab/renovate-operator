@@ -39,7 +39,10 @@ var _ = Describe("RenovateConfig Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging).NotTo(BeNil())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_INFO))
-			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.RenovateContainerImage))
+			Expect(obj.Spec.Onboarding).NotTo(BeNil())
+			Expect(*obj.Spec.Onboarding).To(BeTrue())
+			Expect(obj.Spec.PrHourlyLimit).To(BeEquivalentTo(10))
+			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.DefaultRenovateContainerImage))
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
 		})
 
@@ -47,6 +50,9 @@ var _ = Describe("RenovateConfig Webhook", func() {
 			By("setting some existing values")
 			obj.Spec.Image = "custom-image:latest"
 			obj.Spec.ImagePullPolicy = corev1.PullAlways
+			defaultOnboarding := false
+			obj.Spec.Onboarding = &defaultOnboarding
+			obj.Spec.PrHourlyLimit = 20
 			obj.Spec.Logging = &renovatev1beta1.LoggingSpec{
 				Level: renovatev1beta1.LogLevel_DEBUG,
 			}
@@ -54,6 +60,9 @@ var _ = Describe("RenovateConfig Webhook", func() {
 			err := defaulter.Default(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_DEBUG))
+			Expect(obj.Spec.Onboarding).NotTo(BeNil())
+			Expect(*obj.Spec.Onboarding).To(BeFalse())
+			Expect(obj.Spec.PrHourlyLimit).To(BeEquivalentTo(20))
 			Expect(obj.Spec.Image).To(Equal("custom-image:latest"))
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullAlways))
 		})

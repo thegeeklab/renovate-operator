@@ -63,7 +63,6 @@ spec:
                     More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
                   type: string
                 instances:
-                  default: 1
                   description: Maximum number of parallel pods to start. One instance will only process a single batch.
                   format: int32
                   maximum: 100
@@ -72,7 +71,6 @@ spec:
                 logging:
                   properties:
                     level:
-                      default: info
                       enum:
                         - trace
                         - debug
@@ -85,16 +83,13 @@ spec:
                     - level
                   type: object
                 schedule:
-                  default: 0 */2 * * *
                   type: string
                 strategy:
-                  default: none
                   enum:
                     - none
                     - batch
                   type: string
                 suspend:
-                  default: false
                   type: boolean
               required:
                 - instances

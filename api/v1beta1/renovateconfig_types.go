@@ -13,14 +13,17 @@ type RenovateConfigSpec struct {
 	Logging *LoggingSpec `json:"logging,omitempty"`
 
 	Platform PlatformSpec `json:"platform"`
-	DryRun   DryRun       `json:"dryRun,omitempty"`
-	// +kubebuilder:default:=true
+	// +kubebuilder:validation:Optional
+	DryRun DryRun `json:"dryRun,omitempty"`
+	// +kubebuilder:validation:Optional
 	Onboarding *bool `json:"onboarding,omitempty"`
 	// OnBoardingConfig object `json:"onBoardingConfig,omitempty,inline"`
-	// +kubebuilder:default:=10
-	PrHourlyLimit int      `json:"prHourlyLimit,omitempty"`
-	AddLabels     []string `json:"addLabels,omitempty"`
+	// +kubebuilder:validation:Optional
+	PrHourlyLimit int `json:"prHourlyLimit,omitempty"`
+	// +kubebuilder:validation:Optional
+	AddLabels []string `json:"addLabels,omitempty"`
 
+	// +kubebuilder:validation:Optional
 	GithubToken *corev1.EnvVarSource `json:"githubToken,omitempty"`
 }
 

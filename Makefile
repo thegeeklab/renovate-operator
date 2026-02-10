@@ -4,8 +4,6 @@ GOFUMPT_PACKAGE_VERSION := v0.9.2
 YAMLFMT_PACKAGE_VERSION := v0.21.0
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_PACKAGE_VERSION := v2.8.0
-# renovate: datasource=github-releases depName=cert-manager/cert-manager
-CERT_MANAGER_VERSION := v1.19.3
 
 GOFUMPT_PACKAGE ?= mvdan.cc/gofumpt@$(GOFUMPT_PACKAGE_VERSION)
 YAMLFMT_PACKAGE ?= github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_PACKAGE_VERSION)
@@ -69,6 +67,9 @@ deps:
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
+	sed -i -e 's/validating-webhook-configuration/webhook-configuration/g' config/webhook/manifests.yaml
+	sed -i -e 's/mutating-webhook-configuration/webhook-configuration/g' config/webhook/manifests.yaml
+	sed -i -e 's/webhook-service/renovate-operator-webhook-service/g' config/webhook/manifests.yaml
 	@$(MAKE) --no-print-directory yamlfmt
 
 .PHONY: generate
@@ -104,7 +105,7 @@ test: setup-envtest ## Run tests without setup.
 test-full: manifests generate fmt vet setup-envtest test ## Run tests with full setup.
 
 .PHONY: kind-create
-kind-create: ## Create a Kind cluster from hack/kind.yaml and optionally deploy cert-manager.
+kind-create: ## Create a Kind cluster from hack/kind.yaml.
 	$(call check-kind-installed)
 	@kind get clusters | grep -q renovate-operator || { \
 		echo "Creating Kind cluster..."; \
@@ -113,19 +114,6 @@ kind-create: ## Create a Kind cluster from hack/kind.yaml and optionally deploy 
 			exit 1; \
 		}; \
 	}
-	@if [ "$(CERT_MANAGER_INSTALL_SKIP)" != "true" ]; then \
-		echo "Installing cert-manager..."; \
-		$(KUBECTL) apply -f https://github.com/cert-manager/cert-manager/releases/download/$(CERT_MANAGER_VERSION)/cert-manager.yaml || { \
-			echo "Failed to install cert-manager."; \
-			exit 1; \
-		}; \
-		$(KUBECTL) wait --for=condition=Available --timeout=300s deployment/cert-manager -n cert-manager || { \
-			echo "cert-manager deployment not available after 300 seconds."; \
-			exit 1; \
-		}; \
-	else \
-		echo "Skipping cert-manager installation as requested."; \
-	fi
 
 .PHONY: kind-load
 kind-load: ## Load the manager image into the Kind cluster.
@@ -145,9 +133,8 @@ kind-delete: ## Delete the Kind cluster.
 	} || echo "No Kind cluster named $(KIND_CLUSTER) exists."
 
 # The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
-# Prometheus and CertManager are installed by default; skip with:
+# Prometheus is installed by default; skip with:
 # - PROMETHEUS_INSTALL_SKIP=true
-# - CERT_MANAGER_INSTALL_SKIP=true
 .PHONY: test-e2e
 test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
 	$(call check-kind-installed)
@@ -203,6 +190,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
+	@$(MAKE) --no-print-directory yamlfmt
 	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
 
 .PHONY: undeploy

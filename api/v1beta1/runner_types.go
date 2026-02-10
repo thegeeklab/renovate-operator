@@ -6,28 +6,28 @@ import (
 
 // RunnerSpec defines the desired state of Runner.
 type RunnerSpec struct {
-	//+kubebuilder:validation:Optional
-	ConfigRef string `json:"configRef"`
-
 	ImageSpec `json:",inline"`
 
 	// +kubebuilder:validation:Optional
 	Logging *LoggingSpec `json:"logging,omitempty"`
 
+	//+kubebuilder:validation:Optional
+	ConfigRef string `json:"configRef,omitempty"`
+
 	JobSpec `json:",inline"`
 
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Enum=none;batch
-	// +kubebuilder:default:="none"
 	Strategy RunnerStrategy `json:"strategy,omitempty"`
 
 	// Maximum number of parallel pods to start. One instance will only process a single batch.
-	// +kubebuilder:default:=1
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=100
 	Instances int32 `json:"instances"`
 
 	// Number of repositories per batch. Only used when strategy is 'batch'.
 	// If not specified, defaults to a reasonable size based on the number of repositories and instances.
+	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Minimum=1
 	// +kubebuilder:validation:Maximum=1000
 	BatchSize int `json:"batchSize,omitempty"`

@@ -1,6 +1,7 @@
 package k8s
 
 import (
+	"os"
 	"strings"
 
 	"k8s.io/apimachinery/pkg/runtime"
@@ -23,4 +24,13 @@ func GVK(scheme *runtime.Scheme, obj runtime.Object) schema.GroupVersionKind {
 	gvk, _ = api_util.GVKForObject(obj, scheme)
 
 	return trimList(gvk)
+}
+
+func GetNamespace() string {
+	ns, found := os.LookupEnv("POD_NAMESPACE")
+	if !found {
+		return "kube-system"
+	}
+
+	return ns
 }

@@ -69,7 +69,7 @@ var _ = Describe("Discovery Controller", func() {
 					Spec: renovatev1beta1.DiscoverySpec{
 						ConfigRef: "test-config",
 						JobSpec: renovatev1beta1.JobSpec{
-							Schedule: "0 */2 * * *",
+							Schedule: renovatev1beta1.DefaultSchedule,
 						},
 						Filter: []string{"org/repo1", "org/repo2"},
 					},

@@ -7,4 +7,17 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: runner-sample
 spec:
-# TODO(user): Add fields here
+  image: "ghcr.io/thegeeklab/renovate-operator:latest"
+  imagePullPolicy: "IfNotPresent"
+
+  logging:
+    level: "info"
+
+  configRef: "renovate-config"
+
+  suspend: false
+  schedule: "0 0 * * *"
+
+  strategy: "batch"
+  instances: 2
+  batchSize: 10
