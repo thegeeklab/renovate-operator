@@ -15,7 +15,6 @@
     "Poxhofer",
     "kubeconfig",
     "gitrepos",
-    "certmanager",
     "controllerutil",
     "autodiscover",
     "prometheuses",

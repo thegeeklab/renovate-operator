@@ -249,23 +249,12 @@ var _ = Describe("Manager", Ordered, func() {
 			))
 		})
 
-		It("should provisioned cert-manager", func() {
-			By("validating that cert-manager has the certificate Secret")
-			verifyCertManager := func(g Gomega) {
-				cmd := exec.CommandContext(context.Background(),
-					"kubectl", "get", "secrets", "webhook-server-cert", "-n", namespace)
-				_, err := utils.Run(cmd)
-				g.Expect(err).NotTo(HaveOccurred())
-			}
-			Eventually(verifyCertManager).Should(Succeed())
-		})
-
 		It("should have CA injection for mutating webhooks", func() {
 			By("checking CA injection for mutating webhooks")
 			verifyCAInjection := func(g Gomega) {
 				cmd := exec.CommandContext(context.Background(), "kubectl", "get",
 					"mutatingwebhookconfigurations.admissionregistration.k8s.io",
-					"renovate-operator-mutating-webhook-configuration",
+					"renovate-operator-webhook-configuration",
 					"-o", "go-template={{ range .webhooks }}{{ .clientConfig.caBundle }}{{ end }}")
 				mwhOutput, err := utils.Run(cmd)
 				g.Expect(err).NotTo(HaveOccurred())
@@ -274,22 +263,12 @@ var _ = Describe("Manager", Ordered, func() {
 			Eventually(verifyCAInjection).Should(Succeed())
 		})
 
-		It("should provisioned cert-manager", func() {
-			By("validating that cert-manager has the certificate Secret")
-			verifyCertManager := func(g Gomega) {
-				cmd := exec.Command("kubectl", "get", "secrets", "webhook-server-cert", "-n", namespace)
-				_, err := utils.Run(cmd)
-				g.Expect(err).NotTo(HaveOccurred())
-			}
-			Eventually(verifyCertManager).Should(Succeed())
-		})
-
 		It("should have CA injection for mutating webhooks", func() {
 			By("checking CA injection for mutating webhooks")
 			verifyCAInjection := func(g Gomega) {
 				cmd := exec.Command("kubectl", "get",
 					"mutatingwebhookconfigurations.admissionregistration.k8s.io",
-					"renovate-operator-mutating-webhook-configuration",
+					"renovate-operator-webhook-configuration",
 					"-o", "go-template={{ range .webhooks }}{{ .clientConfig.caBundle }}{{ end }}")
 				mwhOutput, err := utils.Run(cmd)
 				g.Expect(err).NotTo(HaveOccurred())

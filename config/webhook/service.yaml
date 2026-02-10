@@ -5,7 +5,7 @@ metadata:
   labels:
     app.kubernetes.io/name: renovate-operator
     app.kubernetes.io/managed-by: kustomize
-  name: webhook-service
+  name: renovate-operator-webhook-service
   namespace: system
 spec:
   ports:
