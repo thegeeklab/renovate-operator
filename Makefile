@@ -67,8 +67,8 @@ deps:
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
-	sed -i -e 's/validating-webhook-configuration/renovate-operator-webhook-configuration/g' config/webhook/manifests.yaml
-	sed -i -e 's/mutating-webhook-configuration/renovate-operator-webhook-configuration/g' config/webhook/manifests.yaml
+	sed -i -e 's/validating-webhook-configuration/webhook-configuration/g' config/webhook/manifests.yaml
+	sed -i -e 's/mutating-webhook-configuration/webhook-configuration/g' config/webhook/manifests.yaml
 	sed -i -e 's/webhook-service/renovate-operator-webhook-service/g' config/webhook/manifests.yaml
 	@$(MAKE) --no-print-directory yamlfmt
 

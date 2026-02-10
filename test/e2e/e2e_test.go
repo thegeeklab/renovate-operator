@@ -22,7 +22,7 @@ const namespace = "renovate-system"
 const serviceAccountName = "renovate-operator-controller-manager"
 
 // metricsServiceName is the name of the metrics service of the project.
-const metricsServiceName = "renovate-operator-controller-manager-metrics-service"
+const metricsServiceName = "renovate-operator-metrics-service"
 
 // metricsRoleBindingName is the name of the RBAC that will be created to allow get the metrics data.
 const metricsRoleBindingName = "renovate-operator-metrics-binding"

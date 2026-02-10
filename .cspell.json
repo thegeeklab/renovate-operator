@@ -49,7 +49,8 @@
     "renovateconfigs",
     "gitrepo",
     "gitrepos",
-    "configmap"
+    "configmap",
+    "clientset"
   ],
   "ignorePaths": [
     ".woodpecker",

@@ -2,7 +2,7 @@
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration
 metadata:
-  name: renovate-operator-webhook-configuration
+  name: webhook-configuration
 webhooks:
   - admissionReviewVersions:
       - v1

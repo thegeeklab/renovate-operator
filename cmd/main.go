@@ -3,15 +3,26 @@ package main
 import (
 	"context"
 	"crypto/tls"
+	"errors"
 	"flag"
 	"fmt"
 	"os"
 	"strings"
+	"time"
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
+	"k8s.io/client-go/kubernetes"
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/open-policy-agent/cert-controller/pkg/rotator"
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
+	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
+	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
+	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -24,20 +35,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
-
-	"github.com/open-policy-agent/cert-controller/pkg/rotator"
-	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
-	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
-	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
-	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	// +kubebuilder:scaffold:imports
 )
 
 var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
+
+	errWebhookTimeout = errors.New("timeout waiting for webhook")
 )
 
 const (
@@ -168,7 +173,19 @@ func main() {
 		setupLog.Info("Listening for changes on all namespaces")
 	}
 
-	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
+	kubeConfig, err := ctrl.GetConfig()
+	if err != nil {
+		setupLog.Error(err, "Unable to get client config")
+		os.Exit(1)
+	}
+
+	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
+	if err != nil {
+		setupLog.Error(err, "Unable to create Kubernetes client")
+		os.Exit(1)
+	}
+
+	mgr, err := ctrl.NewManager(kubeConfig, managerOptions)
 	if err != nil {
 		setupLog.Error(err, "Unable to start manager")
 		os.Exit(1)
@@ -184,6 +201,11 @@ func main() {
 				Name: webhookName,
 				Type: rotator.Mutating,
 			},
+		}
+
+		if err := waitForWebhooks(kubeClient, webhooks); err != nil {
+			setupLog.Error(err, "Unable to find required WebhookConfiguration", "webhookName", webhookName)
+			os.Exit(1)
 		}
 
 		if err := rotator.AddRotator(mgr, &rotator.CertRotator{
@@ -309,4 +331,50 @@ func watchedNamespaces(namespaces string) []string {
 	}
 
 	return result
+}
+
+// waitForWebhooks waits for all configured WebhookConfigurations to exist in the cluster.
+func waitForWebhooks(clientset *kubernetes.Clientset, webhooks []rotator.WebhookInfo) error {
+	const (
+		timeout = 10 * time.Second
+		sleep   = 2 * time.Second
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), timeout)
+	defer cancel()
+
+	for _, wh := range webhooks {
+		setupLog.Info("Waiting for WebhookConfiguration to become available", "name", wh.Name)
+
+	RetryLoop:
+		for {
+			select {
+			case <-ctx.Done():
+				return fmt.Errorf("%w: %s", errWebhookTimeout, wh.Name)
+			default:
+				var err error
+
+				switch wh.Type {
+				case rotator.Mutating:
+					_, err = clientset.
+						AdmissionregistrationV1().
+						MutatingWebhookConfigurations().
+						Get(ctx, wh.Name, metav1.GetOptions{})
+				case rotator.Validating:
+					_, err = clientset.
+						AdmissionregistrationV1().
+						ValidatingWebhookConfigurations().
+						Get(ctx, wh.Name, metav1.GetOptions{})
+				}
+
+				if err == nil {
+					break RetryLoop
+				}
+
+				time.Sleep(sleep)
+			}
+		}
+	}
+
+	return nil
 }
