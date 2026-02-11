@@ -12,7 +12,7 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
-	"k8s.io/client-go/kubernetes"
+
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
@@ -21,14 +21,16 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
 	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/webui"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
@@ -84,6 +86,7 @@ func main() {
 		enableHTTP2          bool
 		tlsOpts              []func(*tls.Config)
 		watchNamespace       string
+		webUIAddr            string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
@@ -100,6 +103,7 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&watchNamespace, "watch-namespace", "", "The namespace the controller will watch.")
+	flag.StringVar(&webUIAddr, "webui-bind-address", ":8082", "The address the WebUI endpoint binds to.")
 
 	opts := zap.Options{
 		Development: false,
@@ -174,19 +178,7 @@ func main() {
 		setupLog.Info("Listening for changes on all namespaces")
 	}
 
-	kubeConfig, err := ctrl.GetConfig()
-	if err != nil {
-		setupLog.Error(err, "Unable to get client config")
-		os.Exit(1)
-	}
-
-	kubeClient, err := kubernetes.NewForConfig(kubeConfig)
-	if err != nil {
-		setupLog.Error(err, "Unable to create Kubernetes client")
-		os.Exit(1)
-	}
-
-	mgr, err := ctrl.NewManager(kubeConfig, managerOptions)
+	mgr, err := ctrl.NewManager(ctrl.GetConfigOrDie(), managerOptions)
 	if err != nil {
 		setupLog.Error(err, "Unable to start manager")
 		os.Exit(1)
@@ -194,7 +186,7 @@ func main() {
 
 	setupFinished := make(chan struct{})
 
-	if webhookCertRotation {
+	if webhookCertRotation && os.Getenv("ENABLE_WEBHOOKS") != "false" {
 		setupLog.Info("Setting up webhook cert rotation")
 
 		webhooks := []rotator.WebhookInfo{
@@ -204,7 +196,7 @@ func main() {
 			},
 		}
 
-		if err := waitForWebhooks(kubeClient, webhooks); err != nil {
+		if err := waitForWebhooks(mgr.GetAPIReader(), webhooks); err != nil {
 			setupLog.Error(err, "Unable to find required WebhookConfiguration", "webhookName", webhookName)
 			os.Exit(1)
 		}
@@ -311,6 +303,28 @@ func main() {
 		}
 	}
 
+	// Setup WebUI server if enabled
+	if webUIAddr != "0" {
+		webuiServer := webui.NewServer(webui.ServerConfig{
+			Addr: webUIAddr,
+		}, mgr.GetClient())
+
+		if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
+			setupLog.Info("Starting WebUI server", "addr", webUIAddr)
+
+			if err := webuiServer.Start(); err != nil {
+				return fmt.Errorf("failed to start WebUI server: %w", err)
+			}
+
+			<-ctx.Done()
+
+			return webuiServer.Stop(ctx)
+		})); err != nil {
+			setupLog.Error(err, "Unable to add WebUI server to manager")
+			os.Exit(1)
+		}
+	}
+
 	setupLog.Info("Starting manager")
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
@@ -337,7 +351,7 @@ func watchedNamespaces(namespaces string) []string {
 }
 
 // waitForWebhooks waits for all configured WebhookConfigurations to exist in the cluster.
-func waitForWebhooks(clientset *kubernetes.Clientset, webhooks []rotator.WebhookInfo) error {
+func waitForWebhooks(c client.Reader, webhooks []rotator.WebhookInfo) error {
 	const (
 		timeout = 10 * time.Second
 		sleep   = 2 * time.Second
@@ -355,22 +369,16 @@ func waitForWebhooks(clientset *kubernetes.Clientset, webhooks []rotator.Webhook
 			case <-ctx.Done():
 				return fmt.Errorf("%w: %s", errWebhookTimeout, wh.Name)
 			default:
-				var err error
+				var webhookObj client.Object
 
 				switch wh.Type {
 				case rotator.Mutating:
-					_, err = clientset.
-						AdmissionregistrationV1().
-						MutatingWebhookConfigurations().
-						Get(ctx, wh.Name, metav1.GetOptions{})
+					webhookObj = &admissionregistrationv1.MutatingWebhookConfiguration{}
 				case rotator.Validating:
-					_, err = clientset.
-						AdmissionregistrationV1().
-						ValidatingWebhookConfigurations().
-						Get(ctx, wh.Name, metav1.GetOptions{})
+					webhookObj = &admissionregistrationv1.ValidatingWebhookConfiguration{}
 				}
 
-				if err == nil {
+				if err := c.Get(ctx, types.NamespacedName{Name: wh.Name}, webhookObj); err == nil {
 					break RetryLoop
 				}
 

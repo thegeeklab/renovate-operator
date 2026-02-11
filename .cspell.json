@@ -50,7 +50,9 @@
     "gitrepo",
     "gitrepos",
     "configmap",
-    "clientset"
+    "admissionregistrationv1",
+    "webui",
+    "subrouter"
   ],
   "ignorePaths": [
     ".woodpecker",

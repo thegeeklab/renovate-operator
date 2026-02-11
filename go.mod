@@ -3,6 +3,7 @@ module github.com/thegeeklab/renovate-operator
 go 1.25.7
 
 require (
+	github.com/gorilla/mux v1.8.1
 	github.com/onsi/ginkgo/v2 v2.28.1
 	github.com/onsi/gomega v1.39.1
 	github.com/open-policy-agent/cert-controller v0.15.0
