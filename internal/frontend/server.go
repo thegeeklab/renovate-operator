@@ -1,4 +1,4 @@
-package webui
+package frontend
 
 import (
 	"context"
@@ -38,27 +38,30 @@ func DefaultServerConfig() ServerConfig {
 
 // Server manages the HTTP server.
 type Server struct {
-	config     ServerConfig
-	router     *mux.Router
-	server     *http.Server
-	apiHandler *APIHandler
+	config           ServerConfig
+	router           *mux.Router
+	server           *http.Server
+	apiHandler       *APIHandler
+	dashboardHandler *WebHandler
 }
 
 // NewServer creates a new HTTP server instance.
 func NewServer(config ServerConfig, client client.Client) *Server {
 	apiHandler := NewAPIHandler(client)
+	dashboardHandler := NewWebHandler(client)
+
 	router := mux.NewRouter()
 
 	s := &Server{
-		config:     config,
-		router:     router,
-		apiHandler: apiHandler,
+		config:           config,
+		router:           router,
+		apiHandler:       apiHandler,
+		dashboardHandler: dashboardHandler,
 	}
 
-	// Register API routes
 	apiHandler.RegisterRoutes(router)
+	dashboardHandler.RegisterRoutes(router)
 
-	// Create HTTP server
 	s.server = &http.Server{
 		Addr:         config.Addr,
 		Handler:      s.router,

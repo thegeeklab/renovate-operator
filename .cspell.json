@@ -51,7 +51,7 @@
     "gitrepos",
     "configmap",
     "admissionregistrationv1",
-    "webui",
+    "frontend",
     "subrouter"
   ],
   "ignorePaths": [

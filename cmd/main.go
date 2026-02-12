@@ -20,8 +20,8 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
 	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
+	"github.com/thegeeklab/renovate-operator/internal/frontend"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/webui"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -86,7 +86,7 @@ func main() {
 		enableHTTP2          bool
 		tlsOpts              []func(*tls.Config)
 		watchNamespace       string
-		webUIAddr            string
+		frontendAddr         string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
@@ -103,7 +103,7 @@ func main() {
 	flag.BoolVar(&enableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&watchNamespace, "watch-namespace", "", "The namespace the controller will watch.")
-	flag.StringVar(&webUIAddr, "webui-bind-address", ":8082", "The address the WebUI endpoint binds to.")
+	flag.StringVar(&frontendAddr, "frontend-bind-address", ":8082", "The address the web frontend endpoint binds to.")
 
 	opts := zap.Options{
 		Development: false,
@@ -303,24 +303,24 @@ func main() {
 		}
 	}
 
-	// Setup WebUI server if enabled
-	if webUIAddr != "0" {
-		webuiServer := webui.NewServer(webui.ServerConfig{
-			Addr: webUIAddr,
+	// Setup web frontend server if enabled
+	if frontendAddr != "0" {
+		frontendServer := frontend.NewServer(frontend.ServerConfig{
+			Addr: frontendAddr,
 		}, mgr.GetClient())
 
 		if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-			setupLog.Info("Starting WebUI server", "addr", webUIAddr)
+			setupLog.Info("Starting web frontend server", "addr", frontendAddr)
 
-			if err := webuiServer.Start(); err != nil {
-				return fmt.Errorf("failed to start WebUI server: %w", err)
+			if err := frontendServer.Start(); err != nil {
+				return fmt.Errorf("failed to start web frontend server: %w", err)
 			}
 
 			<-ctx.Done()
 
-			return webuiServer.Stop(ctx)
+			return frontendServer.Stop(ctx)
 		})); err != nil {
-			setupLog.Error(err, "Unable to add WebUI server to manager")
+			setupLog.Error(err, "Unable to add web frontend server to manager")
 			os.Exit(1)
 		}
 	}
