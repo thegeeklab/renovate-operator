@@ -50,7 +50,10 @@
     "gitrepo",
     "gitrepos",
     "configmap",
-    "clientset"
+    "admissionregistrationv1",
+    "frontend",
+    "subrouter",
+    "HTMX"
   ],
   "ignorePaths": [
     ".woodpecker",

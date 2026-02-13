@@ -1,0 +1,95 @@
+<div class="space-y-4">
+  {{ range . }}
+  <details
+    class="group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200"
+    id="renovator-{{ .Name }}"
+  >
+    <summary
+      class="cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out"
+    >
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-4">
+          <svg
+            class="h-5 w-5 text-gray-400 group-open:rotate-90 transition-transform duration-200"
+            viewBox="0 0 20 20"
+            fill="currentColor"
+          >
+            <path
+              fill-rule="evenodd"
+              d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z"
+              clip-rule="evenodd"
+            />
+          </svg>
+
+          <div>
+            <h3 class="text-base font-semibold leading-6 text-gray-900">
+              {{ .Name }}
+            </h3>
+            <p class="mt-1 max-w-2xl text-sm text-gray-500">
+              Namespace:
+              <span class="font-medium text-gray-900">{{ .Namespace }}</span>
+            </p>
+          </div>
+        </div>
+
+        <div class="flex items-center gap-2 sm:gap-6">
+          <div class="flex flex-col items-end sm:items-center justify-center gap-1">
+            <span class="text-xs text-gray-500">Repos</span>
+            <span
+              class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10"
+            >
+              {{ .GitRepoCount }}
+            </span>
+          </div>
+
+          <div class="hidden sm:flex flex-col items-end justify-center gap-1">
+            <span class="text-xs text-gray-500">Runner</span>
+            <span class="text-sm font-medium text-gray-900"
+              >{{ .RunnerName }}</span
+            >
+          </div>
+
+          <div class="hidden sm:flex flex-col items-end justify-center gap-1">
+            <span class="text-xs text-gray-500">Discovery</span>
+            <span class="text-sm font-medium text-gray-900"
+              >{{ .DiscoveryName }}</span
+            >
+          </div>
+        </div>
+      </div>
+    </summary>
+
+    <div
+      class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6"
+      hx-get="/partials/gitrepos?namespace={{ .Namespace }}"
+      hx-trigger="load, toggle once from:details"
+      hx-target="this"
+      hx-swap="innerHTML"
+    >
+      <div class="flex justify-center py-4">
+        <svg
+          class="animate-spin h-5 w-5 text-indigo-600"
+          xmlns="http://www.w3.org/2000/svg"
+          fill="none"
+          viewBox="0 0 24 24"
+        >
+          <circle
+            class="opacity-25"
+            cx="12"
+            cy="12"
+            r="10"
+            stroke="currentColor"
+            stroke-width="4"
+          ></circle>
+          <path
+            class="opacity-75"
+            fill="currentColor"
+            d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"
+          ></path>
+        </svg>
+        <span class="ml-2 text-sm text-gray-500">Loading Repositories...</span>
+      </div>
+    </div>
+  </details>
+  {{ end }}
+</div>
