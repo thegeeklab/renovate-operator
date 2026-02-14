@@ -14,7 +14,7 @@ import (
 	. "github.com/onsi/gomega"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	admissionv1 "k8s.io/api/admission/v1"
-	apimachineryruntime "k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/rest"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -49,7 +49,7 @@ var _ = BeforeSuite(func() {
 	ctx, cancel = context.WithCancel(context.Background())
 
 	var err error
-	scheme := apimachineryruntime.NewScheme()
+	scheme := runtime.NewScheme()
 	err = renovatev1beta1.AddToScheme(scheme)
 	Expect(err).NotTo(HaveOccurred())
 

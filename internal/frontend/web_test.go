@@ -7,12 +7,11 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	"github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
 
 var _ = Describe("WebHandler", func() {
@@ -25,53 +24,53 @@ var _ = Describe("WebHandler", func() {
 
 	BeforeEach(func() {
 		scheme = runtime.NewScheme()
-		err := v1beta1.AddToScheme(scheme)
+		err := renovatev1beta1.AddToScheme(scheme)
 		Expect(err).NotTo(HaveOccurred())
 
 		testObjects = []runtime.Object{
-			&v1beta1.Renovator{
+			&renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "test-renovator",
 					Namespace:         "test-namespace",
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
-				Status: v1beta1.RenovatorStatus{
+				Status: renovatev1beta1.RenovatorStatus{
 					Ready: true,
 				},
 			},
-			&v1beta1.GitRepo{
+			&renovatev1beta1.GitRepo{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "test-repo",
 					Namespace:         "test-namespace",
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
-				Spec: v1beta1.GitRepoSpec{
+				Spec: renovatev1beta1.GitRepoSpec{
 					WebhookID: "12345",
 				},
-				Status: v1beta1.GitRepoStatus{
+				Status: renovatev1beta1.GitRepoStatus{
 					Ready: true,
 				},
 			},
-			&v1beta1.Runner{
+			&renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "test-runner",
 					Namespace:         "test-namespace",
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
-				Spec: v1beta1.RunnerSpec{
+				Spec: renovatev1beta1.RunnerSpec{
 					Instances: 1,
 				},
-				Status: v1beta1.RunnerStatus{
+				Status: renovatev1beta1.RunnerStatus{
 					Ready: true,
 				},
 			},
-			&v1beta1.Discovery{
+			&renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "test-discovery",
 					Namespace:         "test-namespace",
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
-				Status: v1beta1.DiscoveryStatus{
+				Status: renovatev1beta1.DiscoveryStatus{
 					Ready: true,
 				},
 			},
