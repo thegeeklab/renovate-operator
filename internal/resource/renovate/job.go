@@ -83,17 +83,15 @@ func DefaultJobSpec(
 	}
 }
 
-// WithBatchMode configures the job for a full scheduled run (Indexed Job + Dispatcher).
-func WithBatchMode(runner *v1beta1.Runner, batchesCM string, count int32) JobOption {
+// WithIndexMode configures the job for a scheduled run.
+func WithIndexMode(runner *v1beta1.Runner, indexCM string, count int32) JobOption {
 	return func(c *jobConfig) {
 		c.Parallelism = ptr.To(runner.Spec.Instances)
 		c.CompletionMode = ptr.To(batchv1.IndexedCompletion)
 		c.Completions = ptr.To(count)
 
-		// 1. Add Batches Volume
-		c.VolMutators = append(c.VolMutators, containers.WithConfigMapVolume(batchesCM, batchesCM))
+		c.VolMutators = append(c.VolMutators, containers.WithConfigMapVolume(indexCM, indexCM))
 
-		// 2. Add Dispatcher InitContainer
 		c.InitContainers = []corev1.Container{
 			containers.ContainerTemplate(
 				"renovate-dispatcher",
@@ -102,20 +100,20 @@ func WithBatchMode(runner *v1beta1.Runner, batchesCM string, count int32) JobOpt
 				containers.WithEnvVars([]corev1.EnvVar{
 					{Name: EnvRenovateConfigRaw, Value: FileRenovateTmp},
 					{Name: EnvRenovateConfig, Value: FileRenovateConfig},
-					{Name: EnvRenovateBatches, Value: FileRenovateBatches},
+					{Name: EnvRenovateIndex, Value: FileRenovateIndex},
 				}),
 				containers.WithContainerCommand([]string{"/dispatcher"}),
 				containers.WithVolumeMounts([]corev1.VolumeMount{
 					{Name: VolumeRenovateConfig, MountPath: DirRenovateConfig},
 					{Name: c.RenovateCM, ReadOnly: true, MountPath: FileRenovateTmp, SubPath: FilenameRenovateConfig},
-					{Name: batchesCM, ReadOnly: true, MountPath: FileRenovateBatches, SubPath: FilenameBatches},
+					{Name: indexCM, ReadOnly: true, MountPath: FileRenovateIndex, SubPath: FilenameIndex},
 				}),
 			),
 		}
 	}
 }
 
-// WithSingleRepoMode configures the job for a single repository run (Manual Trigger).
+// WithSingleRepoMode configures the job for a single repository run.
 func WithSingleRepoMode(targetRepo string) JobOption {
 	return func(c *jobConfig) {
 		// Single run requires no indexing and no parallelism

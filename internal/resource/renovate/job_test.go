@@ -128,29 +128,29 @@ var _ = Describe("JobSpec", func() {
 		})
 	})
 
-	Describe("WithBatchMode", func() {
-		It("should configure job for batch mode with dispatcher", func() {
+	Describe("WithIndexMode", func() {
+		It("should configure job for index mode with dispatcher", func() {
 			// Create a new JobSpec
 			jobSpec := &batchv1.JobSpec{}
 
-			// Apply batch mode
+			// Apply index mode
 			renovate.DefaultJobSpec(
 				jobSpec,
 				renovateCR,
 				renovateCM,
-				renovate.WithBatchMode(runner, "test-batches", 5),
+				renovate.WithIndexMode(runner, "test-index", 5),
 			)
 
-			// Verify batch mode configuration
+			// Verify index mode configuration
 			Expect(*jobSpec.CompletionMode).To(Equal(batchv1.IndexedCompletion))
 			Expect(*jobSpec.Completions).To(Equal(int32(5)))
 			Expect(*jobSpec.Parallelism).To(Equal(int32(3)))
 
 			// Verify additional volumes
 			Expect(jobSpec.Template.Spec.Volumes).To(HaveLen(3))
-			Expect(jobSpec.Template.Spec.Volumes[2].Name).To(Equal("test-batches"))
+			Expect(jobSpec.Template.Spec.Volumes[2].Name).To(Equal("test-index"))
 			Expect(jobSpec.Template.Spec.Volumes[2].ConfigMap).NotTo(BeNil())
-			Expect(jobSpec.Template.Spec.Volumes[2].ConfigMap.Name).To(Equal("test-batches"))
+			Expect(jobSpec.Template.Spec.Volumes[2].ConfigMap.Name).To(Equal("test-index"))
 
 			// Verify init containers
 			Expect(jobSpec.Template.Spec.InitContainers).To(HaveLen(1))
@@ -167,7 +167,7 @@ var _ = Describe("JobSpec", func() {
 			}
 			Expect(dispatcherMountMap["renovate-config"]).To(Equal("/etc/config/renovate"))
 			Expect(dispatcherMountMap[renovateCM]).To(Equal("/tmp/renovate/renovate.json"))
-			Expect(dispatcherMountMap["test-batches"]).To(Equal("/tmp/renovate/batches.json"))
+			Expect(dispatcherMountMap["test-index"]).To(Equal("/tmp/renovate/index.json"))
 
 			// Verify dispatcher environment variables
 			dispatcherEnvMap := make(map[string]string)
@@ -176,7 +176,7 @@ var _ = Describe("JobSpec", func() {
 			}
 			Expect(dispatcherEnvMap["RENOVATE_CONFIG_FILE_RAW"]).To(Equal("/tmp/renovate/renovate.json"))
 			Expect(dispatcherEnvMap["RENOVATE_CONFIG_FILE"]).To(Equal("/etc/config/renovate/renovate.json"))
-			Expect(dispatcherEnvMap["RENOVATE_BATCHES"]).To(Equal("/tmp/renovate/batches.json"))
+			Expect(dispatcherEnvMap["RENOVATE_INDEX"]).To(Equal("/tmp/renovate/index.json"))
 		})
 	})
 
@@ -216,9 +216,6 @@ var _ = Describe("JobSpec", func() {
 			// Create a new JobSpec
 			jobSpec := &batchv1.JobSpec{}
 
-			// Apply multiple options (this should demonstrate that options can be combined)
-			// Note: In practice, WithBatchMode and WithSingleRepoMode are mutually exclusive,
-			// but this test verifies the option application mechanism works
 			renovate.DefaultJobSpec(
 				jobSpec,
 				renovateCR,

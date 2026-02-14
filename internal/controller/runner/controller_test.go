@@ -71,7 +71,6 @@ var _ = Describe("Runner Controller", func() {
 						JobSpec: renovatev1beta1.JobSpec{
 							Schedule: renovatev1beta1.DefaultSchedule,
 						},
-						Strategy:  renovatev1beta1.RunnerStrategy_NONE,
 						Instances: 1,
 					},
 				}

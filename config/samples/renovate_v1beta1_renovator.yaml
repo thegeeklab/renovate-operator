@@ -24,13 +24,8 @@ spec:
   runner:
     suspend: false
     schedule: "0 */2 * * *"
-    # Use 'batch' strategy for parallel processing of repositories
-    strategy: batch
     # Number of parallel job instances (workers) to run simultaneously
     instances: 3
-    # Number of repositories per batch (optional - will auto-calculate if not set)
-    # Setting this allows fine-tuning of batch sizes for optimal performance
-    batchSize: 10
 
   renovate:
     platform:

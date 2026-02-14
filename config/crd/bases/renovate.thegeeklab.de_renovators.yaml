@@ -417,13 +417,6 @@ spec:
                 runner:
                   description: RunnerSpec defines the desired state of Runner.
                   properties:
-                    batchSize:
-                      description: |-
-                        Number of repositories per batch. Only used when strategy is 'batch'.
-                        If not specified, defaults to a reasonable size based on the number of repositories and instances.
-                      maximum: 1000
-                      minimum: 1
-                      type: integer
                     configRef:
                       type: string
                     image:
@@ -441,7 +434,7 @@ spec:
                         More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
                       type: string
                     instances:
-                      description: Maximum number of parallel pods to start. One instance will only process a single batch.
+                      description: Maximum number of parallel pods to start.
                       format: int32
                       maximum: 100
                       minimum: 1
@@ -461,11 +454,6 @@ spec:
                         - level
                       type: object
                     schedule:
-                      type: string
-                    strategy:
-                      enum:
-                        - none
-                        - batch
                       type: string
                     suspend:
                       type: boolean

@@ -53,7 +53,6 @@ var _ = Describe("APIHandler", func() {
 					Namespace: "test-namespace",
 				},
 				Spec: v1beta1.RunnerSpec{
-					Strategy:  v1beta1.RunnerStrategy_NONE,
 					Instances: 1,
 				},
 				Status: v1beta1.RunnerStatus{

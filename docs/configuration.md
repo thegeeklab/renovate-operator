@@ -47,7 +47,6 @@ spec:
 
   # Runner configuration
   runner:
-    strategy: none
     instances: 1
 
   # Logging configuration
@@ -223,91 +222,33 @@ spec:
 
 ## Runner Configuration
 
-Configure parallel processing and job execution. The Renovate Operator supports efficient parallel processing of repositories through its built-in batching strategy, allowing you to significantly reduce total runtime for large repository sets.
+Configure parallel processing and job execution. The Renovate Operator uses Indexed Jobs for efficient parallel processing.
 
-| Field       | Type    | Default | Description                            |
-| ----------- | ------- | ------- | -------------------------------------- |
-| `strategy`  | enum    | `none`  | Execution strategy (`none` or `batch`) |
-| `instances` | integer | `1`     | Number of parallel workers (1-100)     |
-| `batchSize` | integer | auto    | Repositories per batch (1-1000)        |
+| Field       | Type    | Default | Description                        |
+| ----------- | ------- | ------- | ---------------------------------- |
+| `instances` | integer | `1`     | Number of parallel workers (1-100) |
 
-### Runner Strategies
+### Parallel Processing Configuration
 
-#### None Strategy (Sequential)
+The renovate-operator uses Indexed Jobs for parallel processing. The `instances` field controls the number of parallel workers:
 
 ```yaml
 spec:
   runner:
-    strategy: none
-    instances: 1
-```
-
-#### Batch Strategy (Parallel Processing)
-
-Basic parallel processing:
-
-```yaml
-spec:
-  runner:
-    strategy: batch
-    instances: 4 # 4 parallel workers
-    batchSize: 20 # 20 repositories per batch
-```
-
-Auto-calculated batch sizes (recommended for dynamic environments):
-
-```yaml
-spec:
-  runner:
-    strategy: batch
-    instances: 5
-    # batchSize omitted - automatically calculated based on repo count and instances
+    instances: 4 # Allows 4 jobs to run concurrently
 ```
 
 ### How Parallel Processing Works
 
-The operator uses Kubernetes [Indexed Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/#completion-mode) to achieve parallel processing:
+The operator uses Indexed Jobs for efficient parallel processing:
 
 1. **Repository Discovery**: Discovers all repositories matching your filters
-2. **Batch Creation**: Divides repositories into batches based on your configuration
-3. **Parallel Execution**: Creates a single Kubernetes Job with multiple parallel pods
-4. **Index-based Processing**: Each pod processes a specific batch using `JOB_COMPLETION_INDEX`
-
-#### Batch Size Calculation
-
-When `batchSize` is not specified, the operator automatically calculates optimal batch sizes:
-
-- **Target**: 3 batches per instance for optimal parallelization
-- **Formula**: `batchSize = totalRepositories / (instances × 3)`
-- **Bounds**: Minimum 1 repository, maximum 50 repositories per batch
-- **Example**: 120 repositories with 4 instances = 10 repositories per batch (12 total batches)
-
-### Performance Tuning Guidelines
-
-Choose appropriate configuration based on your repository count and infrastructure:
-
-**Performance Considerations:**
-
-- **Choose appropriate instance count**: Don't exceed your cluster's capacity
-- **Optimize batch size**: 10-50 repositories per batch works well
-- **Consider platform rate limits**: Adjust `prHourlyLimit` accordingly
-- **Monitor resource usage**: Use `kubectl top pods` to check resource consumption
-
-#### Best Practices
-
-1. **Start conservative**: Begin with 2-3 instances
-2. **Monitor performance**: Check job completion times
-3. **Gradually increase**: Add more instances if resources allow
-4. **Fine-tune batch size**: Adjust based on your specific needs
-
-#### Migration from Sequential Processing
-
-If you're currently using `strategy: none` and experiencing long runtimes:
-
-1. Start with `instances: 2` and monitor
-2. Check job completion times and resource usage
-3. Gradually increase instances if cluster resources allow
-4. Adjust batch size based on performance
+2. **Indexed Job Creation**: Creates a single Indexed Job with:
+   - `completions`: Total number of repositories to process
+   - `parallelism`: Set to `runner.instances` value
+   - `completionMode: Indexed`
+3. **Dispatcher Preparation**: The dispatcher container prepares repository lists for each job index
+4. **Parallel Execution**: Limits concurrent workers based on the `instances` configuration
 
 ## Complete Example
 
@@ -363,9 +304,7 @@ spec:
 
   # Runner configuration
   runner:
-    strategy: batch
-    instances: 6
-    batchSize: 25
+    instances: 6 # 6 parallel jobs
 
   # Logging
   logging:

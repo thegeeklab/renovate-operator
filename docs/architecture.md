@@ -83,16 +83,17 @@ Manages repository discovery from Git platforms.
 
 #### Runner Reconciler
 
-Manages the execution of Renovate jobs with intelligent batching.
+Manages the execution of Renovate jobs.
 
 **Location:** `pkg/reconciler/runner/`
 
 **Functions:**
 
-- Creates batch configurations based on strategy
-- Generates Kubernetes Jobs with optimal parallelization
+- Creates Indexed Kubernetes Jobs for parallel repository processing
+- Uses dispatcher container to prepare repository lists for each job index
 - Manages job lifecycle and cleanup
-- Handles failure scenarios
+- Controls parallel execution based on the `instances` configuration (sets job parallelism)
+- Handles failure scenarios and resource management
 
 ### 3. Custom Resource Definitions (CRDs)
 
@@ -106,7 +107,7 @@ The main configuration resource that defines a Renovate instance.
 
 - **Platform Configuration**: Git platform connection details
 - **Discovery Settings**: Repository discovery and filtering
-- **Runner Configuration**: Batch strategy and parallelization
+- **Runner Configuration**: Parallel processing configuration
 - **Renovate Settings**: Renovate-specific configuration
 - **Scheduling**: CronJob schedule configuration
 
@@ -127,14 +128,13 @@ Represents a discovered repository that can be processed by Renovate.
 
 #### Dispatcher
 
-A utility component that processes batch configurations and prepares Renovate execution.
+A utility component that prepares Renovate execution.
 
 **Location:** `dispatcher/`
 
 **Functions:**
 
-- Reads batch configuration files
-- Processes repository lists for specific batches
+- Prepares repository lists
 - Prepares Renovate configuration
 - Handles environment variable setup
 
@@ -165,9 +165,9 @@ A standalone service for repository discovery that can run independently or as p
 
 1. **CronJob triggers** based on schedule
 2. **Runner Reconciler** reads GitRepo CRs
-3. **Repository batching** occurs based on strategy
+3. **Job Creation**: Creates one job per repository
 4. **Parallel Kubernetes Jobs** are created
-5. **Dispatcher init containers** prepare each batch
+5. **Dispatcher init containers** prepare each job
 6. **Renovate containers** process repositories
 7. **Job cleanup** occurs after completion
 
@@ -180,49 +180,76 @@ A standalone service for repository discovery that can run independently or as p
 
 ## Parallel Processing Architecture
 
-### Batch Strategy
+### Parallel Processing Modes
 
-The operator uses Kubernetes [Indexed Jobs](https://kubernetes.io/docs/concepts/workloads/controllers/job/#completion-mode) for efficient parallel processing:
+The operator supports two parallel processing modes:
+
+#### 1. Indexed Mode (Primary)
 
 ```yaml
 apiVersion: batch/v1
 kind: Job
 spec:
   completionMode: Indexed
-  completions: 12 # Total number of batches
-  parallelism: 4 # Parallel workers
+  completions: 12 # Total number of repositories to process
+  parallelism: 4 # Parallel workers (controlled by runner.instances)
+  template:
+    spec:
+      initContainers:
+        - name: renovate-dispatcher
+          command: ["/dispatcher"]
+      containers:
+        - name: renovate
+          env:
+            - name: JOB_COMPLETION_INDEX
+              value: "0" # Job index (0-11)
+```
+
+#### 2. Single Repository Mode (Immediate Execution)
+
+```yaml
+apiVersion: batch/v1
+kind: Job
+spec:
+  completionMode: NonIndexed
+  completions: 1
+  parallelism: 1
   template:
     spec:
       containers:
         - name: renovate
           env:
-            - name: JOB_COMPLETION_INDEX
-              value: "0" # Batch index (0-11)
+            - name: RENOVATE_REPOSITORIES
+              value: "owner/repo" # Specific repository to process
 ```
 
-### Batch Size Calculation
+### Parallel Processing Approach
 
-The operator automatically calculates optimal batch sizes:
+The operator uses **Indexed Jobs** as the primary approach for parallel processing. A single Indexed Job is created with:
 
-```go
-// Auto-calculation formula
-targetBatches := instances * 3
-optimalBatchSize := totalRepos / targetBatches
+- `completions`: Set to the total number of repositories to process
+- `parallelism`: Set to the value of `runner.instances` (controls concurrent workers)
+- `completionMode: Indexed`: Enables job indexing capabilities
 
-// With bounds checking
-if optimalBatchSize < 1 {
-    optimalBatchSize = 1
-} else if optimalBatchSize > 50 {
-    optimalBatchSize = 50
-}
-```
+The dispatcher container prepares repository lists for each job index (`JOB_COMPLETION_INDEX`), allowing efficient parallel processing of multiple repositories within a single Kubernetes Job resource.
+
+## Parallel Processing Details
+
+The operator uses **Indexed Jobs** as the primary parallel processing mechanism:
+
+- **Indexed Mode**: Creates a single Indexed Job with `completions` set to the number of repositories and `parallelism` set to `runner.instances`
+- **Dispatcher Container**: Uses an init container (`renovate-dispatcher`) to prepare repository lists for each job index
+- **Parallel Execution**: Limits concurrent execution based on the `instances` value
+- **Efficient Resource Usage**: Uses Kubernetes Indexed Job capabilities for better resource management
+
+The **Single Repository Mode** is used for immediate execution triggered by annotations, where each repository gets its own individual NonIndexed Job.
 
 ## Monitoring and Observability
 
 ### Metrics
 
 - **Controller Metrics**: Reconciliation rates, errors, duration
-- **Job Metrics**: Batch execution times, success rates
+- **Job Metrics**: Job execution times, success rates
 - **Discovery Metrics**: Repository counts, API rate limits
 - **Resource Metrics**: CPU, memory, network usage
 

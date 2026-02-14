@@ -5,14 +5,13 @@
 [![GitHub contributors](https://img.shields.io/github/contributors/thegeeklab/renovate-operator)](https://github.com/thegeeklab/renovate-operator/graphs/contributors)
 [![License: MIT](https://img.shields.io/github/license/thegeeklab/renovate-operator)](https://github.com/thegeeklab/renovate-operator/blob/main/LICENSE)
 
-A Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com/) deployments with advanced parallel processing capabilities. This operator provides automated dependency updates for your repositories with intelligent batching and resource management.
+A Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com/) deployments with advanced parallel processing capabilities. This operator provides automated dependency updates for your repositories.
 
 ## ✨ Features
 
-- **🚀 Parallel Processing**: Intelligent repository batching for faster dependency updates
 - **🔄 Automated Scheduling**: CronJob-based scheduling with configurable intervals
 - **🔍 Repository Discovery**: Automatic discovery of repositories from Git platforms
-- **🎯 Platform Support**: GitHub, Gitea, and more Git platforms
+- **🎯 Platform Support**: GitHub, Gitea, and other Git platforms
 
 > **WARNING:** This project is still in development and is not yet ready for production use.
 
