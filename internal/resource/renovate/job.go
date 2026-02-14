@@ -1,7 +1,7 @@
 package renovate
 
 import (
-	"github.com/thegeeklab/renovate-operator/api/v1beta1"
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -11,7 +11,7 @@ import (
 // jobConfig holds the state required to build the JobSpec.
 type jobConfig struct {
 	// Context (Required)
-	Renovate   *v1beta1.RenovateConfig
+	Renovate   *renovatev1beta1.RenovateConfig
 	RenovateCM string
 
 	// Modifiable Defaults
@@ -32,7 +32,7 @@ type JobOption func(*jobConfig)
 // It requires the base context arguments, followed by any number of JobOptions.
 func DefaultJobSpec(
 	spec *batchv1.JobSpec,
-	renovate *v1beta1.RenovateConfig,
+	renovate *renovatev1beta1.RenovateConfig,
 	renovateCM string,
 	opts ...JobOption,
 ) {
@@ -84,7 +84,7 @@ func DefaultJobSpec(
 }
 
 // WithIndexMode configures the job for a scheduled run.
-func WithIndexMode(runner *v1beta1.Runner, indexCM string, count int32) JobOption {
+func WithIndexMode(runner *renovatev1beta1.Runner, indexCM string, count int32) JobOption {
 	return func(c *jobConfig) {
 		c.Parallelism = ptr.To(runner.Spec.Instances)
 		c.CompletionMode = ptr.To(batchv1.IndexedCompletion)

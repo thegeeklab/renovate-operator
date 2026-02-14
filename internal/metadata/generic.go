@@ -1,12 +1,12 @@
 package metadata
 
 import (
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-func GenericMetadata(request ctrl.Request, suffix ...string) v1.ObjectMeta {
-	return v1.ObjectMeta{
+func GenericMetadata(request ctrl.Request, suffix ...string) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
 		Name:      GenericName(request, suffix...),
 		Namespace: request.Namespace,
 	}

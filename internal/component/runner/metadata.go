@@ -2,7 +2,7 @@ package runner
 
 import (
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -11,8 +11,8 @@ const (
 	RunnerGroupName = "runner"
 )
 
-func RunnerMetadata(request ctrl.Request) v1.ObjectMeta {
-	return v1.ObjectMeta{
+func RunnerMetadata(request ctrl.Request) metav1.ObjectMeta {
+	return metav1.ObjectMeta{
 		Name:      RunnerName(request),
 		Namespace: request.Namespace,
 	}

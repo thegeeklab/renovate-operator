@@ -5,19 +5,18 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"k8s.io/client-go/kubernetes/scheme"
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/envtest"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
-
-	"github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
 
 var (
 	testEnv    *envtest.Environment
 	k8sClient  client.Client
-	testScheme = scheme.Scheme
+	testScheme = clientgoscheme.Scheme
 )
 
 func TestAPI(t *testing.T) {
@@ -36,7 +35,7 @@ var _ = BeforeSuite(func() {
 	Expect(err).NotTo(HaveOccurred())
 	Expect(cfg).NotTo(BeNil())
 
-	err = v1beta1.AddToScheme(testScheme)
+	err = renovatev1beta1.AddToScheme(testScheme)
 	Expect(err).NotTo(HaveOccurred())
 
 	k8sClient, err = client.New(cfg, client.Options{Scheme: testScheme})

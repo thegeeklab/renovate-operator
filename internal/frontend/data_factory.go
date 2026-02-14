@@ -3,7 +3,7 @@ package frontend
 import (
 	"context"
 
-	"github.com/thegeeklab/renovate-operator/api/v1beta1"
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -21,7 +21,7 @@ func NewDataFactory(client client.Client) *DataFactory {
 
 // GetRenovators fetches Renovator resources and transforms them into RenovatorInfo.
 func (df *DataFactory) GetRenovators(ctx context.Context) ([]RenovatorInfo, error) {
-	var renovatorList v1beta1.RenovatorList
+	var renovatorList renovatev1beta1.RenovatorList
 	if err := df.client.List(ctx, &renovatorList); err != nil {
 		return nil, err
 	}
@@ -46,7 +46,7 @@ func (df *DataFactory) GetRenovators(ctx context.Context) ([]RenovatorInfo, erro
 
 // GetGitRepos fetches GitRepo resources with optional filtering.
 func (df *DataFactory) GetGitRepos(ctx context.Context, namespace, renovator string) ([]GitRepoInfo, error) {
-	var gitRepoList v1beta1.GitRepoList
+	var gitRepoList renovatev1beta1.GitRepoList
 	if err := df.client.List(ctx, &gitRepoList); err != nil {
 		return nil, err
 	}
@@ -77,7 +77,7 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, namespace, renovator str
 
 // GetRunners fetches Runner resources with optional filtering.
 func (df *DataFactory) GetRunners(ctx context.Context, namespace, renovator string) ([]RunnerInfo, error) {
-	var runnerList v1beta1.RunnerList
+	var runnerList renovatev1beta1.RunnerList
 	if err := df.client.List(ctx, &runnerList); err != nil {
 		return nil, err
 	}
@@ -108,7 +108,7 @@ func (df *DataFactory) GetRunners(ctx context.Context, namespace, renovator stri
 
 // GetDiscoveries fetches Discovery resources with optional filtering.
 func (df *DataFactory) GetDiscoveries(ctx context.Context, namespace, renovator string) ([]DiscoveryInfo, error) {
-	var discoveryList v1beta1.DiscoveryList
+	var discoveryList renovatev1beta1.DiscoveryList
 	if err := df.client.List(ctx, &discoveryList); err != nil {
 		return nil, err
 	}
