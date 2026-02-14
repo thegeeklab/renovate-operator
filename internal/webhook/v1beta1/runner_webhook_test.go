@@ -39,7 +39,6 @@ var _ = Describe("Runner Webhook", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging).NotTo(BeNil())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_INFO))
-			Expect(obj.Spec.Strategy).To(BeEquivalentTo(renovatev1beta1.RunnerStrategy_NONE))
 			Expect(obj.Spec.Instances).To(BeEquivalentTo(1))
 			Expect(obj.Spec.Image).To(Equal(renovatev1beta1.DefaultOperatorContainerImage))
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
@@ -49,7 +48,6 @@ var _ = Describe("Runner Webhook", func() {
 			By("setting some existing values")
 			obj.Spec.Image = "custom-image:latest"
 			obj.Spec.ImagePullPolicy = corev1.PullAlways
-			obj.Spec.Strategy = renovatev1beta1.RunnerStrategy_BATCH
 			obj.Spec.Instances = 3
 			obj.Spec.Logging = &renovatev1beta1.LoggingSpec{
 				Level: renovatev1beta1.LogLevel_DEBUG,
@@ -58,7 +56,6 @@ var _ = Describe("Runner Webhook", func() {
 			err := defaulter.Default(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_DEBUG))
-			Expect(obj.Spec.Strategy).To(BeEquivalentTo(renovatev1beta1.RunnerStrategy_BATCH))
 			Expect(obj.Spec.Instances).To(BeEquivalentTo(3))
 			Expect(obj.Spec.Image).To(Equal("custom-image:latest"))
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullAlways))

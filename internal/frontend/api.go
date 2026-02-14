@@ -38,7 +38,6 @@ type GitRepoInfo struct {
 type RunnerInfo struct {
 	Name      string    `json:"name"`
 	Namespace string    `json:"namespace"`
-	Strategy  string    `json:"strategy"`
 	Instances int32     `json:"instances"`
 	Ready     bool      `json:"ready"`
 	CreatedAt time.Time `json:"createdAt"`

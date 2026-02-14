@@ -68,10 +68,6 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 		runner.Spec.Schedule = renovatev1beta1.DefaultSchedule
 	}
 
-	if runner.Spec.Strategy == "" {
-		runner.Spec.Strategy = renovatev1beta1.RunnerStrategy_NONE
-	}
-
 	if runner.Spec.Instances == 0 {
 		runner.Spec.Instances = 1
 	}

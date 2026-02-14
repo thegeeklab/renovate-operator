@@ -33,7 +33,7 @@ func run(ctx context.Context) error {
 		return err
 	}
 
-	log.Info("Dispatch batch")
+	log.Info("Dispatch job")
 
 	rawConfig, err := os.ReadFile(d.RawConfigFile)
 	if err != nil {
@@ -42,14 +42,14 @@ func run(ctx context.Context) error {
 
 	log.V(1).Info("Read raw renovate config", "content", rawConfig)
 
-	batchesConfig, err := os.ReadFile(d.BatchesFile)
+	jobConfig, err := os.ReadFile(d.IndexFile)
 	if err != nil {
-		return fmt.Errorf("%w: %s, %w", ErrReadFile, d.BatchesFile, err)
+		return fmt.Errorf("%w: %s, %w", ErrReadFile, d.IndexFile, err)
 	}
 
-	log.V(1).Info("Read batches config", "content", batchesConfig)
+	log.V(1).Info("Read job config", "content", jobConfig)
 
-	mergedConfig, err := d.MergeConfig(rawConfig, batchesConfig, int(d.JobCompletionIndex))
+	mergedConfig, err := d.MergeConfig(rawConfig, jobConfig, int(d.JobCompletionIndex))
 	if err != nil {
 		return err
 	}

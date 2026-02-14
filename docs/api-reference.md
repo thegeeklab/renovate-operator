@@ -39,16 +39,16 @@ The `RenovatorSpec` defines the desired state of a Renovator.
 
 #### Root Fields
 
-| Field             | Type          | Required | Default                                           | Description                      |
-| ----------------- | ------------- | -------- | ------------------------------------------------- | -------------------------------- |
-| `suspend`         | boolean       | No       | `false`                                           | Suspend all operations           |
-| `schedule`        | string        | Yes      | -                                                 | Cron schedule for execution      |
-| `image`           | string        | No       | `"docker.io/thegeeklab/renovate-operator:latest"` | Operator container image         |
-| `imagePullPolicy` | string        | No       | `"IfNotPresent"`                                  | Image pull policy                |
-| `renovate`        | RenovateSpec  | Yes      | -                                                 | Renovate configuration           |
-| `discovery`       | DiscoverySpec | Yes      | -                                                 | Repository discovery settings    |
-| `runner`          | RunnerSpec    | No       | -                                                 | Parallel execution configuration |
-| `logging`         | LoggingSpec   | No       | -                                                 | Logging configuration            |
+| Field             | Type               | Required | Default                                           | Description                      |
+| ----------------- | ------------------ | -------- | ------------------------------------------------- | -------------------------------- |
+| `suspend`         | boolean            | No       | `false`                                           | Suspend all operations           |
+| `schedule`        | string             | Yes      | -                                                 | Cron schedule for execution      |
+| `image`           | string             | No       | `"docker.io/thegeeklab/renovate-operator:latest"` | Operator container image         |
+| `imagePullPolicy` | string             | No       | `"IfNotPresent"`                                  | Image pull policy                |
+| `renovate`        | RenovateConfigSpec | Yes      | -                                                 | Renovate configuration           |
+| `discovery`       | DiscoverySpec      | Yes      | -                                                 | Repository discovery settings    |
+| `runner`          | RunnerSpec         | No       | -                                                 | Parallel execution configuration |
+| `logging`         | LoggingSpec        | No       | -                                                 | Logging configuration            |
 
 #### RenovateSpec
 
@@ -69,7 +69,7 @@ renovate:
   prHourlyLimit: int               # Optional: PR rate limit (default: 10)
   addLabels: []string              # Optional: Labels to add to PRs
 
-  githubToken: *EnvVarSource       # Optional: GitHub token reference for enhanced limits
+  githubToken: *corev1.EnvVarSource       # Optional: GitHub token reference for enhanced limits
 ```
 
 ##### PlatformType
@@ -111,11 +111,11 @@ discovery:
   filter: []string                # Optional: Repository filters
 ```
 
-| Field      | Type     | Default         | Description                  |
-| ---------- | -------- | --------------- | ---------------------------- |
-| `suspend`  | boolean  | `false`         | Suspend discovery operations |
-| `schedule` | string   | `"0 */2 * * *"` | Cron schedule for discovery  |
-| `filter`   | []string | `[]`            | Repository filter patterns   |
+| Field      | Type     | Default | Description                  |
+| ---------- | -------- | ------- | ---------------------------- |
+| `suspend`  | boolean  | `false` | Suspend discovery operations |
+| `schedule` | string   | -       | Cron schedule for discovery  |
+| `filter`   | []string | `[]`    | Repository filter patterns   |
 
 ##### Filter Patterns
 
@@ -134,23 +134,12 @@ Configuration for parallel job execution.
 
 ```yaml
 runner:
-  strategy: RunnerStrategy # Optional: Execution strategy
   instances: int32 # Optional: Parallel instances
-  batchSize: int # Optional: Repositories per batch
 ```
 
-| Field       | Type  | Default  | Validation      | Description                |
-| ----------- | ----- | -------- | --------------- | -------------------------- |
-| `strategy`  | enum  | `"none"` | `none`, `batch` | Execution strategy         |
-| `instances` | int32 | `1`      | 1-100           | Number of parallel workers |
-| `batchSize` | int   | auto     | 1-1000          | Repositories per batch     |
-
-##### RunnerStrategy
-
-| Value   | Description                          |
-| ------- | ------------------------------------ |
-| `none`  | Sequential processing (single batch) |
-| `batch` | Parallel processing with batching    |
+| Field       | Type  | Default | Validation | Description                |
+| ----------- | ----- | ------- | ---------- | -------------------------- |
+| `instances` | int32 | `1`     | 1-100      | Number of parallel workers |
 
 #### LoggingSpec
 
@@ -182,18 +171,16 @@ status:
   failed: int                     # Number of failed operations
   conditions: []Condition         # Detailed status conditions
   specHash: string                # Hash of current spec
-  repositories: []string          # List of discovered repositories
 ```
 
 #### Status Fields
 
-| Field          | Type               | Description                                   |
-| -------------- | ------------------ | --------------------------------------------- |
-| `ready`        | boolean            | Whether the Renovator is ready                |
-| `failed`       | int                | Number of failed operations                   |
-| `conditions`   | []metav1.Condition | Detailed status conditions                    |
-| `specHash`     | string             | Hash of the current spec for change detection |
-| `repositories` | []string           | List of discovered repositories               |
+| Field        | Type               | Description                                   |
+| ------------ | ------------------ | --------------------------------------------- |
+| `ready`      | boolean            | Whether the Renovator is ready                |
+| `failed`     | int                | Number of failed operations                   |
+| `conditions` | []metav1.Condition | Detailed status conditions                    |
+| `specHash`   | string             | Hash of the current spec for change detection |
 
 ## GitRepo CRD
 

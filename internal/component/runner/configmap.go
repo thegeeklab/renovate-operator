@@ -12,7 +12,7 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
-const ConfigMapSuffix = "renovate-batch"
+const ConfigMapSuffix = "renovate-index"
 
 func (r *Reconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, error) {
 	cm := &corev1.ConfigMap{ObjectMeta: metadata.GenericMetadata(r.req, ConfigMapSuffix)}
@@ -27,13 +27,13 @@ func (r *Reconciler) reconcileConfigMap(ctx context.Context) (*ctrl.Result, erro
 func (r *Reconciler) updateConfigMap(cm *corev1.ConfigMap) error {
 	data := make(map[string]string)
 
-	batchesData, err := json.Marshal(r.batches)
+	indexData, err := json.Marshal(r.index)
 	if err != nil {
-		return fmt.Errorf("failed to serialize batches: %w", err)
+		return fmt.Errorf("failed to serialize index: %w", err)
 	}
 
-	if len(batchesData) > 0 {
-		data[renovate.FilenameBatches] = string(batchesData)
+	if len(indexData) > 0 {
+		data[renovate.FilenameIndex] = string(indexData)
 	}
 
 	cm.Data = data

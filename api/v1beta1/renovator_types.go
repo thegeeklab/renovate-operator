@@ -63,17 +63,6 @@ type LoggingSpec struct {
 	Level LogLevel `json:"level"`
 }
 
-type RunnerStrategy string
-
-//nolint:revive
-const (
-	// RunnerStrategy_NONE A single batch be created and no parallelization will take place.
-	RunnerStrategy_NONE = "none"
-	// RunnerStrategy_BATCH Create batches based on number of repositories. If 30 repositories have been found and size
-	// is defined as 10, then 3 batches will be created.
-	RunnerStrategy_BATCH = "batch"
-)
-
 // ImageSpec defines the container image specification.
 type ImageSpec struct {
 	// Name of the container image, supporting both tags (`<image>:<tag>`)

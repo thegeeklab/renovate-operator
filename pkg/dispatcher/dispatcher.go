@@ -4,7 +4,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"maps"
+	"maps" // Added os import
 	"strconv"
 
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
@@ -12,17 +12,19 @@ import (
 )
 
 var (
-	ErrInvalidBatchIndex = errors.New("batch index out of bounds")
-	ErrMergeConfig       = errors.New("failed to merge config")
-	ErrDispatcherClient  = errors.New("failed to create dispatcher client")
+	ErrInvalidIndex     = errors.New("index out of bounds")
+	ErrMergeConfig      = errors.New("failed to merge config")
+	ErrDispatcherClient = errors.New("failed to create dispatcher client")
 )
+
+// Define the standard Kubernetes termination log path.
+const TerminationLogFile = "/dev/termination-log"
 
 type Dispatcher struct {
 	RawConfigFile      string
 	ConfigFile         string
-	BatchesFile        string
+	IndexFile          string
 	JobCompletionIndex int32
-	batch              []byte
 }
 
 func New() (*Dispatcher, error) {
@@ -37,7 +39,7 @@ func New() (*Dispatcher, error) {
 		return nil, fmt.Errorf("%w: %w", ErrDispatcherClient, err)
 	}
 
-	if d.BatchesFile, err = util.ParseEnv(renovate.EnvRenovateBatches); err != nil {
+	if d.IndexFile, err = util.ParseEnv(renovate.EnvRenovateIndex); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrDispatcherClient, err)
 	}
 
@@ -56,31 +58,26 @@ func New() (*Dispatcher, error) {
 	return d, nil
 }
 
-func (d *Dispatcher) MergeConfig(baseConfig, batchConfig []byte, index int) ([]byte, error) {
+func (d *Dispatcher) MergeConfig(baseConfig, jobConfig []byte, index int) ([]byte, error) {
 	var (
-		base    map[string]any
-		batches []map[string]any
-		err     error
+		base        map[string]any
+		indexConfig []map[string]any
 	)
+
 	if err := json.Unmarshal(baseConfig, &base); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMergeConfig, err)
 	}
 
-	if err := json.Unmarshal(batchConfig, &batches); err != nil {
+	if err := json.Unmarshal(jobConfig, &indexConfig); err != nil {
 		return nil, fmt.Errorf("%w: %w", ErrMergeConfig, err)
 	}
 
-	if index >= len(batches) {
-		return nil, fmt.Errorf("%w: %d", ErrInvalidBatchIndex, index)
-	}
-
-	d.batch, err = json.Marshal(batches[index])
-	if err != nil {
-		return nil, err
+	if index >= len(indexConfig) {
+		return nil, fmt.Errorf("%w: %d", ErrInvalidIndex, index)
 	}
 
 	merged := maps.Clone(base)
-	maps.Copy(merged, batches[index])
+	maps.Copy(merged, indexConfig[index])
 
 	return json.Marshal(merged)
 }

@@ -59,7 +59,6 @@ var _ = Describe("WebHandler", func() {
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
 				Spec: v1beta1.RunnerSpec{
-					Strategy:  v1beta1.RunnerStrategy_NONE,
 					Instances: 1,
 				},
 				Status: v1beta1.RunnerStatus{

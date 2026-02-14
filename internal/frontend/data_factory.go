@@ -90,15 +90,9 @@ func (df *DataFactory) GetRunners(ctx context.Context, namespace, renovator stri
 			continue
 		}
 
-		var strategy string
-		if runner.Spec.Strategy != "" {
-			strategy = string(runner.Spec.Strategy)
-		}
-
 		result = append(result, RunnerInfo{
 			Name:      runner.Name,
 			Namespace: runner.Namespace,
-			Strategy:  strategy,
 			Instances: runner.Spec.Instances,
 			Ready:     runner.Status.Ready,
 			CreatedAt: runner.CreationTimestamp.Time,

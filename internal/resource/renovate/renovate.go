@@ -16,11 +16,11 @@ const (
 
 	FilenameRenovateConfig = "renovate.json"
 	FilenameRepositories   = "repositories.json"
-	FilenameBatches        = "batches.json"
+	FilenameIndex          = "index.json"
 
 	EnvRenovateConfigRaw  = "RENOVATE_CONFIG_FILE_RAW"
 	EnvRenovateConfig     = "RENOVATE_CONFIG_FILE"
-	EnvRenovateBatches    = "RENOVATE_BATCHES"
+	EnvRenovateIndex      = "RENOVATE_INDEX"
 	EnvJobCompletionIndex = "JOB_COMPLETION_INDEX"
 )
 
@@ -28,7 +28,7 @@ var (
 	FileRenovateConfig       = filepath.Join(DirRenovateConfig, FilenameRenovateConfig)
 	FileRenovateTmp          = filepath.Join(DirRenovateTmp, FilenameRenovateConfig)
 	FileRenovateRepositories = filepath.Join(DirRenovateTmp, FilenameRepositories)
-	FileRenovateBatches      = filepath.Join(DirRenovateTmp, FilenameBatches)
+	FileRenovateIndex        = filepath.Join(DirRenovateTmp, FilenameIndex)
 )
 
 func DefaultEnvVars(renovate *renovatev1beta1.RenovateConfigSpec) []corev1.EnvVar {

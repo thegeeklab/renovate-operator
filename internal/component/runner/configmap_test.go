@@ -54,7 +54,7 @@ var _ = Describe("ConfigMap Reconciliation", func() {
 				},
 			},
 			instance: instance,
-			batches: []Batch{
+			index: []JobData{
 				{
 					Repositories: []string{"repo1"},
 				},
@@ -62,14 +62,14 @@ var _ = Describe("ConfigMap Reconciliation", func() {
 					Repositories: []string{"repo2"},
 				},
 			},
-			batchesCount: int32(2),
+			indexCount: int32(2),
 		}
 
 		ctx = context.Background()
 	})
 
 	Context("when reconciling ConfigMap", func() {
-		It("should create or update the configmap with batches data", func() {
+		It("should create or update the configmap with index data", func() {
 			// Execute
 			result, err := reconciler.reconcileConfigMap(ctx)
 			Expect(err).ToNot(HaveOccurred())
@@ -81,18 +81,18 @@ var _ = Describe("ConfigMap Reconciliation", func() {
 			Expect(cm.Name).To(Equal(metadata.GenericMetadata(reconciler.req, ConfigMapSuffix).Name))
 			Expect(cm.Namespace).To(Equal(reconciler.req.Namespace))
 
-			// Verify configmap contains batches data
+			// Verify configmap contains index data
 			Expect(cm.Data).ToNot(BeEmpty())
-			Expect(cm.Data).To(HaveKey(renovate.FilenameBatches))
-			Expect(cm.Data[renovate.FilenameBatches]).ToNot(BeEmpty())
+			Expect(cm.Data).To(HaveKey(renovate.FilenameIndex))
+			Expect(cm.Data[renovate.FilenameIndex]).ToNot(BeEmpty())
 		})
 	})
 
 	Context("when updating ConfigMap", func() {
-		It("should correctly serialize batches data", func() {
+		It("should correctly serialize index data", func() {
 			cm := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner-renovate-batch",
+					Name:      "test-runner-renovate-index",
 					Namespace: "test-namespace",
 				},
 				Data: make(map[string]string),
@@ -102,24 +102,24 @@ var _ = Describe("ConfigMap Reconciliation", func() {
 			err := reconciler.updateConfigMap(cm)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Verify batches data was serialized correctly
-			Expect(cm.Data).To(HaveKey(renovate.FilenameBatches))
-			Expect(cm.Data[renovate.FilenameBatches]).ToNot(BeEmpty())
+			// Verify index data was serialized correctly
+			Expect(cm.Data).To(HaveKey(renovate.FilenameIndex))
+			Expect(cm.Data[renovate.FilenameIndex]).ToNot(BeEmpty())
 
 			// Verify the data can be deserialized back
-			var batchesData []Batch
-			err = json.Unmarshal([]byte(cm.Data[renovate.FilenameBatches]), &batchesData)
+			var index []JobData
+			err = json.Unmarshal([]byte(cm.Data[renovate.FilenameIndex]), &index)
 			Expect(err).ToNot(HaveOccurred())
-			Expect(batchesData).To(HaveLen(2))
-			Expect(batchesData[0].Repositories).To(Equal([]string{"repo1"}))
-			Expect(batchesData[1].Repositories).To(Equal([]string{"repo2"}))
+			Expect(index).To(HaveLen(2))
+			Expect(index[0].Repositories).To(Equal([]string{"repo1"}))
+			Expect(index[1].Repositories).To(Equal([]string{"repo2"}))
 		})
 
-		It("should handle empty batches gracefully", func() {
-			reconciler.batches = []Batch{}
+		It("should handle empty index gracefully", func() {
+			reconciler.index = []JobData{}
 			cm := &corev1.ConfigMap{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner-renovate-batch",
+					Name:      "test-runner-renovate-index",
 					Namespace: "test-namespace",
 				},
 				Data: make(map[string]string),
@@ -129,9 +129,9 @@ var _ = Describe("ConfigMap Reconciliation", func() {
 			err := reconciler.updateConfigMap(cm)
 			Expect(err).ToNot(HaveOccurred())
 
-			// Verify configmap data contains empty array when batches are empty
-			Expect(cm.Data).To(HaveKey(renovate.FilenameBatches))
-			Expect(cm.Data[renovate.FilenameBatches]).To(Equal("[]"))
+			// Verify configmap data contains empty array when index is empty
+			Expect(cm.Data).To(HaveKey(renovate.FilenameIndex))
+			Expect(cm.Data[renovate.FilenameIndex]).To(Equal("[]"))
 		})
 	})
 })

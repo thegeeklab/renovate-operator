@@ -13,19 +13,19 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var ErrMaxBatchCount = errors.New("max batch count reached")
+var ErrMaxRepoCount = errors.New("max repo count reached")
 
 type Reconciler struct {
 	client.Client
-	scheme       *runtime.Scheme
-	req          ctrl.Request
-	instance     *renovatev1beta1.Runner
-	renovate     *renovatev1beta1.RenovateConfig
-	batches      []Batch
-	batchesCount int32
+	scheme     *runtime.Scheme
+	req        ctrl.Request
+	instance   *renovatev1beta1.Runner
+	renovate   *renovatev1beta1.RenovateConfig
+	index      []JobData
+	indexCount int32
 }
 
-type Batch struct {
+type JobData struct {
 	Repositories []string `json:"repositories"`
 }
 
@@ -44,19 +44,26 @@ func NewReconciler(
 		renovate: renovate,
 	}
 
-	batches, err := r.createBatches(ctx)
-	if err != nil {
+	gitRepoList := &renovatev1beta1.GitRepoList{}
+	if err := r.List(ctx, gitRepoList, client.InNamespace(r.req.Namespace)); err != nil {
 		return nil, err
 	}
 
-	r.batches = batches
-
-	batchesCount := len(r.batches)
-	if batchesCount > math.MaxInt32 {
-		return nil, fmt.Errorf("%w: %d", ErrMaxBatchCount, batchesCount)
+	maxRepos := len(gitRepoList.Items)
+	if maxRepos > math.MaxInt32 {
+		return nil, fmt.Errorf("%w: %d", ErrMaxRepoCount, maxRepos)
 	}
 
-	r.batchesCount = int32(batchesCount)
+	r.indexCount = int32(maxRepos)
+
+	index := make([]JobData, r.indexCount)
+	for i, repo := range gitRepoList.Items {
+		index[i] = JobData{
+			Repositories: []string{repo.Name},
+		}
+	}
+
+	r.index = index
 
 	return r, nil
 }
@@ -79,85 +86,4 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	}
 
 	return results.ToResult(), nil
-}
-
-func (r *Reconciler) listRepositories(ctx context.Context) ([]string, error) {
-	var gitRepoList renovatev1beta1.GitRepoList
-
-	repos := make([]string, 0)
-
-	if err := r.List(ctx, &gitRepoList, client.InNamespace(r.req.Namespace)); err != nil {
-		return nil, err
-	}
-
-	for _, repo := range gitRepoList.Items {
-		repos = append(repos, repo.Spec.Name)
-	}
-
-	return repos, nil
-}
-
-func (r *Reconciler) createBatches(ctx context.Context) ([]Batch, error) {
-	batches := make([]Batch, 0)
-
-	repos, err := r.listRepositories(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	repoCount := len(repos)
-	if repoCount == 0 {
-		// No repositories to process, return empty batch list
-		return batches, nil
-	}
-
-	switch r.instance.Spec.Strategy {
-	case renovatev1beta1.RunnerStrategy_BATCH:
-		batchSize := r.calculateOptimalBatchSize(repoCount)
-
-		for i := 0; i < repoCount; i += batchSize {
-			end := int(math.Min(float64(i+batchSize), float64(repoCount)))
-			batch := repos[i:end]
-			batches = append(batches, Batch{Repositories: batch})
-		}
-
-		return batches, nil
-
-	case renovatev1beta1.RunnerStrategy_NONE:
-		fallthrough
-	default:
-		// NONE strategy and unknown strategies: process all repositories in a single batch
-		return []Batch{{Repositories: repos}}, nil
-	}
-}
-
-// calculateOptimalBatchSize determines the best batch size based on configuration and repository count.
-func (r *Reconciler) calculateOptimalBatchSize(repoCount int) int {
-	const (
-		instanceMultiplier = 3  // Aim for 2-3 batches per instance
-		maxBatchSize       = 50 // Cap at 50 repositories per batch
-	)
-
-	// If BatchSize is explicitly set, use it
-	if r.instance.Spec.BatchSize > 0 {
-		return r.instance.Spec.BatchSize
-	}
-
-	// Calculate optimal batch size based on instances and repository count
-	instances := int(r.instance.Spec.Instances)
-	if instances <= 0 {
-		instances = 1
-	}
-
-	targetBatches := instances * instanceMultiplier
-	optimalBatchSize := repoCount / targetBatches
-
-	// Ensure batch size is within reasonable bounds
-	if optimalBatchSize < 1 {
-		optimalBatchSize = 1
-	} else if optimalBatchSize > maxBatchSize {
-		optimalBatchSize = maxBatchSize
-	}
-
-	return optimalBatchSize
 }
