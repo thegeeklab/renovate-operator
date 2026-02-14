@@ -158,7 +158,10 @@ build: manifests generate fmt vet ## Build binaries.
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.
-	$(GO) run ./cmd/main.go
+	@echo "Disabling cluster-side webhooks..."
+	$(KUBECTL) delete mutatingwebhookconfigurations renovate-operator-webhook-configuration --ignore-not-found
+	$(KUBECTL) delete validatingwebhookconfigurations renovate-operator-webhook-configuration --ignore-not-found
+	ENABLE_WEBHOOKS=false $(GO) run ./cmd/main.go
 
 .PHONY: docker-build
 docker-build: ## Build container image.
