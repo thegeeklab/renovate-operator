@@ -3,13 +3,15 @@ package frontend
 import (
 	"context"
 	"errors"
-	"fmt"
 	"net/http"
 	"time"
 
 	"github.com/gorilla/mux"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var frontendLog = logf.Log.WithName("frontend")
 
 // ServerConfig holds configuration for the HTTP server.
 type ServerConfig struct {
@@ -76,10 +78,10 @@ func NewServer(config ServerConfig, client client.Client) *Server {
 // Start runs the HTTP server in a separate goroutine.
 func (s *Server) Start() error {
 	go func() {
-		fmt.Printf("Starting HTTP server on %s\n", s.config.Addr)
+		frontendLog.Info("Starting HTTP server", "address", s.config.Addr)
 
 		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			fmt.Printf("HTTP server error: %v\n", err)
+			frontendLog.Error(err, "HTTP server error")
 		}
 	}()
 
@@ -88,7 +90,7 @@ func (s *Server) Start() error {
 
 // Stop gracefully shuts down the HTTP server.
 func (s *Server) Stop(ctx context.Context) error {
-	fmt.Println("Shutting down HTTP server...")
+	frontendLog.Info("Shutting down HTTP server...")
 
 	return s.server.Shutdown(ctx)
 }
