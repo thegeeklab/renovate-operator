@@ -90,7 +90,7 @@ func (s *Server) Start() error {
 
 // Stop gracefully shuts down the HTTP server.
 func (s *Server) Stop(ctx context.Context) error {
-	frontendLog.Info("Shutting down HTTP server...")
+	frontendLog.Info("Shutting down HTTP server")
 
 	return s.server.Shutdown(ctx)
 }
