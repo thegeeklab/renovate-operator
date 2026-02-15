@@ -70,7 +70,8 @@
     "go.sum",
     "renovate.json",
     "*zz_generated*.go",
-    "config/**/*.yaml"
+    "config/**/*.yaml",
+    "dist"
   ],
   "ignoreRegExpList": [
     // ignore mulltiline imports
