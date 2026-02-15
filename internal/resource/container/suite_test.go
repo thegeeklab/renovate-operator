@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestContainers(t *testing.T) {
+func TestContainer(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Containers Suite")
+	RunSpecs(t, "Container Suite")
 }

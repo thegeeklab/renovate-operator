@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDiscovery(t *testing.T) {
+func TestUtil(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "Util Suite")
 }

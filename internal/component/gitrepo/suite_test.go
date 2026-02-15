@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDiscovery(t *testing.T) {
+func TestGitRepo(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "GitRepo Suite")
 }
