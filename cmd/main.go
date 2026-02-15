@@ -18,6 +18,7 @@ import (
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
+	"github.com/thegeeklab/renovate-operator/internal/controller/gitrepo"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
 	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
@@ -226,6 +227,15 @@ func main() {
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", renovator.ControllerName)
+		os.Exit(1)
+	}
+
+	// gitrepo
+	if err = (&gitrepo.Reconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Unable to create controller", "controller", gitrepo.ControllerName)
 		os.Exit(1)
 	}
 
