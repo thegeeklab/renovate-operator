@@ -7,6 +7,6 @@ when:
 
 steps:
   - name: test
-    image: docker.io/library/golang:1.25.7
+    image: docker.io/library/golang:1.26.0
     commands:
       - make deps test-full
