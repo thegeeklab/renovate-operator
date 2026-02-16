@@ -1,4 +1,4 @@
-package runner
+package renovate
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestRunner(t *testing.T) {
+func TestRenovate(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Runner Suite")
+	RunSpecs(t, "Renovate Suite")
 }

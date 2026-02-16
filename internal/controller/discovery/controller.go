@@ -130,7 +130,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&renovatev1beta1.GitRepo{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&batchv1.Job{}).
-		Owns(&batchv1.CronJob{}).
 		Named(ControllerName).
 		Complete(r)
 }

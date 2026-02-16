@@ -22,6 +22,10 @@ const (
 	EnvRenovateConfig     = "RENOVATE_CONFIG_FILE"
 	EnvRenovateIndex      = "RENOVATE_INDEX"
 	EnvJobCompletionIndex = "JOB_COMPLETION_INDEX"
+
+	// LabelRepoName is the label key used for the locking mechanism.
+	// The controller uses this to find active jobs for a specific repository.
+	LabelRepoName = "renovate.thegeeklab.de/repo"
 )
 
 var (
