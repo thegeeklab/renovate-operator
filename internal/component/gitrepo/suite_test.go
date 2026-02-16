@@ -1,4 +1,4 @@
-package util
+package gitrepo
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestUtil(t *testing.T) {
+func TestGitRepo(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Util Suite")
+	RunSpecs(t, "GitRepo Suite")
 }

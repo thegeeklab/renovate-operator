@@ -24,7 +24,10 @@ resources:
   webhooks:
     defaulting: true
     webhookVersion: v1
-- controller: true
+- api:
+    crdVersion: v1
+    namespaced: true
+  controller: true
   domain: thegeeklab.de
   group: renovate
   kind: Discovery
@@ -36,6 +39,7 @@ resources:
 - api:
     crdVersion: v1
     namespaced: true
+  controller: true
   domain: thegeeklab.de
   group: renovate
   kind: GitRepo

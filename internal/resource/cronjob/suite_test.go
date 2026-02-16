@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDiscovery(t *testing.T) {
+func TestCronJob(t *testing.T) {
 	RegisterFailHandler(Fail)
 	RunSpecs(t, "CronJob Suite")
 }

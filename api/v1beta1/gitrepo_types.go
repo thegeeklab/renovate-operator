@@ -7,6 +7,10 @@ import (
 // GitRepoSpec defines the desired state of GitRepo.
 type GitRepoSpec struct {
 	Name string `json:"name"`
+
+	//+kubebuilder:validation:Optional
+	ConfigRef string `json:"configRef,omitempty"`
+
 	// +kubebuilder:validation:Optional
 	WebhookID string `json:"webhookId,omitempty"`
 }
