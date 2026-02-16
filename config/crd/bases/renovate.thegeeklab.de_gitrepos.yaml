@@ -39,6 +39,8 @@ spec:
             spec:
               description: GitRepoSpec defines the desired state of GitRepo.
               properties:
+                configRef:
+                  type: string
                 name:
                   type: string
                 webhookId:

@@ -18,6 +18,10 @@ import (
 func (r *Reconciler) reconcileBatchJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
+	if !renovator.HasRenovatorOperationRenovate(r.instance.Annotations) {
+		return &ctrl.Result{}, nil
+	}
+
 	// Check for active renovate jobs with our specific labels
 	active, err := cronjob.CheckActiveJobs(ctx, r.Client, r.instance.Namespace, runner.RunnerName(r.req))
 	if err != nil {
