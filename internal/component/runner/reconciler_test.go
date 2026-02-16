@@ -56,11 +56,7 @@ var _ = Describe("Reconciler Index Creation", func() {
 		var err error
 
 		r, err = NewReconciler(
-			context.Background(),
-			fakeClient,
-			scheme,
-			instance,
-			&renovatev1beta1.RenovateConfig{},
+			context.Background(), fakeClient, scheme, instance, &renovatev1beta1.RenovateConfig{},
 		)
 
 		Expect(err).NotTo(HaveOccurred())

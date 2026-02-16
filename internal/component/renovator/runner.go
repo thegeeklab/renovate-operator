@@ -1,4 +1,3 @@
-//nolint:dupl
 package renovator
 
 import (
@@ -22,28 +21,69 @@ func (r *Reconciler) reconcileRunner(ctx context.Context) (*ctrl.Result, error) 
 }
 
 func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
-	// Copy the runner configuration from the Renovator spec
-	runner.Spec = r.instance.Spec.Runner
+	spec := r.instance.Spec
+	runnerSpec := r.instance.Spec.Runner
 
-	if runner.Spec.Logging == nil {
-		runner.Spec.Logging = &r.instance.Spec.Logging
+	runner.Spec.ConfigRef = runnerSpec.ConfigRef
+
+	if runnerSpec.Instances > 0 {
+		runner.Spec.Instances = runnerSpec.Instances
 	}
 
-	if runner.Spec.Image == "" {
-		runner.Spec.Image = r.instance.Spec.Image
+	if spec.Image != "" {
+		runner.Spec.Image = spec.Image
 	}
 
-	if runner.Spec.ImagePullPolicy == "" {
-		runner.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
+	if runnerSpec.Image != "" {
+		runner.Spec.Image = runnerSpec.Image
 	}
 
-	if runner.Spec.Suspend == nil {
-		runner.Spec.Suspend = r.instance.Spec.Suspend
+	if spec.ImagePullPolicy != "" {
+		runner.Spec.ImagePullPolicy = spec.ImagePullPolicy
 	}
 
-	if runner.Spec.Schedule == "" {
-		runner.Spec.Schedule = r.instance.Spec.Schedule
+	if runnerSpec.ImagePullPolicy != "" {
+		runner.Spec.ImagePullPolicy = runnerSpec.ImagePullPolicy
 	}
+
+	if spec.Suspend != nil {
+		runner.Spec.Suspend = spec.Suspend
+	}
+
+	if runnerSpec.Suspend != nil {
+		runner.Spec.Suspend = runnerSpec.Suspend
+	}
+
+	if spec.Schedule != "" {
+		runner.Spec.Schedule = spec.Schedule
+	}
+
+	if runnerSpec.Schedule != "" {
+		runner.Spec.Schedule = runnerSpec.Schedule
+	}
+
+	if spec.SuccessLimit != 0 {
+		runner.Spec.SuccessLimit = spec.SuccessLimit
+	}
+
+	if runnerSpec.SuccessLimit != 0 {
+		runner.Spec.SuccessLimit = runnerSpec.SuccessLimit
+	}
+
+	if spec.FailedLimit != 0 {
+		runner.Spec.FailedLimit = spec.FailedLimit
+	}
+
+	if runnerSpec.FailedLimit != 0 {
+		runner.Spec.FailedLimit = runnerSpec.FailedLimit
+	}
+
+	logging := &spec.Logging
+	if runnerSpec.Logging != nil {
+		logging = runnerSpec.Logging
+	}
+
+	runner.Spec.Logging = logging
 
 	if runner.Labels == nil {
 		runner.Labels = make(map[string]string)
@@ -51,7 +91,6 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 
 	runner.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
 
-	// Forward operation annotations from Renovator to Discovery
 	if HasRenovatorOperationRenovate(r.instance.Annotations) {
 		if runner.Annotations == nil {
 			runner.Annotations = make(map[string]string)

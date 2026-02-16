@@ -55,3 +55,44 @@ func CreateOrUpdate(
 
 	return op, nil
 }
+
+func Create(
+	ctx context.Context,
+	c client.Client,
+	obj, owner client.Object,
+	mutate controllerutil.MutateFn,
+) error {
+	log := logf.FromContext(ctx)
+
+	if mutate != nil {
+		if err := mutate(); err != nil {
+			return err
+		}
+	}
+
+	if owner != nil {
+		if err := controllerutil.SetControllerReference(owner, obj, c.Scheme()); err != nil {
+			return err
+		}
+	}
+
+	if err := c.Create(ctx, obj); err != nil {
+		log.Error(
+			err, "Failed to create object",
+			"object", client.ObjectKeyFromObject(obj).String(),
+			"kind", GVK(c.Scheme(), obj).Kind,
+			"operation", "create",
+		)
+
+		return err
+	}
+
+	log.Info(
+		"Created object",
+		"object", client.ObjectKeyFromObject(obj).String(),
+		"kind", GVK(c.Scheme(), obj).Kind,
+		"operation", "create",
+	)
+
+	return nil
+}

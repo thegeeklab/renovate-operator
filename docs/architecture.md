@@ -90,7 +90,6 @@ Manages the execution of Renovate jobs.
 **Functions:**
 
 - Creates Indexed Kubernetes Jobs for parallel repository processing
-- Uses dispatcher container to prepare repository lists for each job index
 - Manages job lifecycle and cleanup
 - Controls parallel execution based on the `instances` configuration (sets job parallelism)
 - Handles failure scenarios and resource management
@@ -125,18 +124,6 @@ Represents a discovered repository that can be processed by Renovate.
 - Last update timestamp
 
 ### 4. Supporting Components
-
-#### Dispatcher
-
-A utility component that prepares Renovate execution.
-
-**Location:** `dispatcher/`
-
-**Functions:**
-
-- Prepares repository lists
-- Prepares Renovate configuration
-- Handles environment variable setup
 
 #### Discovery Service
 
@@ -177,72 +164,6 @@ A standalone service for repository discovery that can run independently or as p
 2. **Conditions reflect** current operational state
 3. **Metrics are exposed** for monitoring
 4. **Events are generated** for audit trail
-
-## Parallel Processing Architecture
-
-### Parallel Processing Modes
-
-The operator supports two parallel processing modes:
-
-#### 1. Indexed Mode (Primary)
-
-```yaml
-apiVersion: batch/v1
-kind: Job
-spec:
-  completionMode: Indexed
-  completions: 12 # Total number of repositories to process
-  parallelism: 4 # Parallel workers (controlled by runner.instances)
-  template:
-    spec:
-      initContainers:
-        - name: renovate-dispatcher
-          command: ["/dispatcher"]
-      containers:
-        - name: renovate
-          env:
-            - name: JOB_COMPLETION_INDEX
-              value: "0" # Job index (0-11)
-```
-
-#### 2. Single Repository Mode (Immediate Execution)
-
-```yaml
-apiVersion: batch/v1
-kind: Job
-spec:
-  completionMode: NonIndexed
-  completions: 1
-  parallelism: 1
-  template:
-    spec:
-      containers:
-        - name: renovate
-          env:
-            - name: RENOVATE_REPOSITORIES
-              value: "owner/repo" # Specific repository to process
-```
-
-### Parallel Processing Approach
-
-The operator uses **Indexed Jobs** as the primary approach for parallel processing. A single Indexed Job is created with:
-
-- `completions`: Set to the total number of repositories to process
-- `parallelism`: Set to the value of `runner.instances` (controls concurrent workers)
-- `completionMode: Indexed`: Enables job indexing capabilities
-
-The dispatcher container prepares repository lists for each job index (`JOB_COMPLETION_INDEX`), allowing efficient parallel processing of multiple repositories within a single Kubernetes Job resource.
-
-## Parallel Processing Details
-
-The operator uses **Indexed Jobs** as the primary parallel processing mechanism:
-
-- **Indexed Mode**: Creates a single Indexed Job with `completions` set to the number of repositories and `parallelism` set to `runner.instances`
-- **Dispatcher Container**: Uses an init container (`renovate-dispatcher`) to prepare repository lists for each job index
-- **Parallel Execution**: Limits concurrent execution based on the `instances` value
-- **Efficient Resource Usage**: Uses Kubernetes Indexed Job capabilities for better resource management
-
-The **Single Repository Mode** is used for immediate execution triggered by annotations, where each repository gets its own individual NonIndexed Job.
 
 ## Monitoring and Observability
 

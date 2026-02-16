@@ -25,6 +25,7 @@ const ControllerName = "discovery"
 // Reconciler reconciles a Renovator object.
 type Reconciler struct {
 	client.Client
+	client.Reader
 	Scheme *runtime.Scheme
 }
 
@@ -44,14 +45,12 @@ type Reconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.0/pkg/reconcile
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
 	rd := &renovatev1beta1.Discovery{}
-	if err := r.Get(ctx, req.NamespacedName, rd); err != nil {
+	if err := r.Client.Get(ctx, req.NamespacedName, rd); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -65,7 +64,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
-	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
+	if err := r.Client.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -73,7 +72,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	discovery, err := discovery.NewReconciler(ctx, r.Client, r.Scheme, rd, rc)
+	discovery, err := discovery.NewReconciler(ctx, r.Client, r.Reader, r.Scheme, rd, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -91,17 +90,13 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	const configRefIndexKey = ".spec.configRef"
 
 	if err := mgr.GetFieldIndexer().IndexField(
-		context.Background(),
-		&renovatev1beta1.Discovery{},
-		configRefIndexKey,
-		discoveryConfigRefIndexFn,
+		context.Background(), &renovatev1beta1.Discovery{}, configRefIndexKey, discoveryConfigRefIndexFn,
 	); err != nil {
 		return err
 	}
 
 	return ctrl.NewControllerManagedBy(mgr).
-		For(&renovatev1beta1.Discovery{}).
-		WithEventFilter(predicate.Or(
+		For(&renovatev1beta1.Discovery{}, builder.WithPredicates(predicate.Or(
 			predicate.GenerationChangedPredicate{},
 			predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
@@ -115,7 +110,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
 				GenericFunc: func(_ event.GenericEvent) bool { return false },
 			},
-		)).
+		))).
 		Watches(&renovatev1beta1.RenovateConfig{},
 			handler.EnqueueRequestsFromMapFunc(r.mapConfigToDiscovery),
 			builder.WithPredicates(predicate.Funcs{
@@ -130,7 +125,6 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Owns(&renovatev1beta1.GitRepo{}).
 		Owns(&corev1.ConfigMap{}).
 		Owns(&batchv1.Job{}).
-		Owns(&batchv1.CronJob{}).
 		Named(ControllerName).
 		Complete(r)
 }
@@ -140,11 +134,8 @@ func (r *Reconciler) mapConfigToDiscovery(ctx context.Context, obj client.Object
 	const configRefIndexKey = ".spec.configRef"
 
 	discoveryList := &renovatev1beta1.DiscoveryList{}
-	if err := r.List(
-		ctx,
-		discoveryList,
-		client.InNamespace(obj.GetNamespace()),
-		client.MatchingFields{configRefIndexKey: obj.GetName()},
+	if err := r.Client.List(
+		ctx, discoveryList, client.InNamespace(obj.GetNamespace()), client.MatchingFields{configRefIndexKey: obj.GetName()},
 	); err != nil {
 		return nil
 	}
@@ -164,9 +155,7 @@ func (r *Reconciler) mapConfigToDiscovery(ctx context.Context, obj client.Object
 
 // resolveRenovateConfig resolves the RenovateConfig name from either .spec.configRef or renovatev1beta1.RenovatorLabel.
 func (r *Reconciler) resolveRenovateConfig(
-	ctx context.Context,
-	namespace string,
-	rd *renovatev1beta1.Discovery,
+	ctx context.Context, namespace string, rd *renovatev1beta1.Discovery,
 ) (client.ObjectKey, error) {
 	if rd.Spec.ConfigRef != "" {
 		return client.ObjectKey{Namespace: namespace, Name: rd.Spec.ConfigRef}, nil
@@ -178,7 +167,7 @@ func (r *Reconciler) resolveRenovateConfig(
 	}
 
 	configList := &renovatev1beta1.RenovateConfigList{}
-	if err := r.List(ctx, configList, client.InNamespace(namespace)); err != nil {
+	if err := r.Client.List(ctx, configList, client.InNamespace(namespace)); err != nil {
 		return client.ObjectKey{}, err
 	}
 

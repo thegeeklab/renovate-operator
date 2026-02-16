@@ -1,4 +1,4 @@
-package runner_test
+package runner
 
 import (
 	"testing"

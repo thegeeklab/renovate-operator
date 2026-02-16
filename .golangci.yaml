@@ -111,6 +111,7 @@ linters:
           - staticcheck
           - dupl
           - goconst
+          - ireturn
         path: (_test\.go|test/.+\.go)
     paths:
       - third_party$

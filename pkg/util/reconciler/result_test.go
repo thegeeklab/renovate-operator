@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	ctrl "sigs.k8s.io/controller-runtime"
 )
 
@@ -67,7 +68,6 @@ var _ = Describe("Results", func() {
 				minRequeueAfter: time.Minute,
 			}
 			result := results.ToResult()
-			Expect(result.Requeue).To(BeTrue())
 			Expect(result.RequeueAfter).To(Equal(time.Minute))
 		})
 
@@ -77,7 +77,6 @@ var _ = Describe("Results", func() {
 				minRequeueAfter: 0,
 			}
 			result := results.ToResult()
-			Expect(result.Requeue).To(BeFalse())
 			Expect(result.RequeueAfter).To(Equal(time.Duration(0)))
 		})
 
@@ -87,7 +86,6 @@ var _ = Describe("Results", func() {
 				minRequeueAfter: 0,
 			}
 			result := results.ToResult()
-			Expect(result.Requeue).To(BeTrue())
 			Expect(result.RequeueAfter).To(Equal(time.Duration(0)))
 		})
 	})

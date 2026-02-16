@@ -1,13 +1,12 @@
-package containers_test
+package containers
 
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
 	"k8s.io/utils/ptr"
-
-	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 )
 
 var _ = Describe("Container Template", func() {
@@ -17,11 +16,11 @@ var _ = Describe("Container Template", func() {
 				{Name: "TEST_VAR", Value: "test-value"},
 			}
 
-			container := containers.ContainerTemplate(
+			container := ContainerTemplate(
 				"test-container",
 				"nginx:latest",
 				corev1.PullAlways,
-				containers.WithEnvVars(baseEnvVars),
+				WithEnvVars(baseEnvVars),
 			)
 
 			Expect(container.Name).To(Equal("test-container"))
@@ -33,13 +32,13 @@ var _ = Describe("Container Template", func() {
 		})
 
 		It("should create container with multiple mutators", func() {
-			container := containers.ContainerTemplate(
+			container := ContainerTemplate(
 				"test-container",
 				"nginx:latest",
 				corev1.PullAlways,
-				containers.WithContainerArgs([]string{"arg1", "arg2"}),
-				containers.WithContainerCommand([]string{"cmd1", "cmd2"}),
-				containers.WithEnvVars([]corev1.EnvVar{
+				WithContainerArgs([]string{"arg1", "arg2"}),
+				WithContainerCommand([]string{"cmd1", "cmd2"}),
+				WithEnvVars([]corev1.EnvVar{
 					{Name: "ADDITIONAL_VAR", Value: "additional-value"},
 				}),
 			)
@@ -59,11 +58,11 @@ var _ = Describe("Container Template", func() {
 				},
 			}
 
-			container := containers.ContainerTemplate(
+			container := ContainerTemplate(
 				"test-container",
 				"nginx:latest",
 				corev1.PullAlways,
-				containers.WithVolumeMounts(volumeMounts),
+				WithVolumeMounts(volumeMounts),
 			)
 
 			Expect(container.VolumeMounts).To(HaveLen(1))
@@ -85,11 +84,11 @@ var _ = Describe("Container Template", func() {
 				},
 			}
 
-			container := containers.ContainerTemplate(
+			container := ContainerTemplate(
 				"test-container",
 				"nginx:latest",
 				corev1.PullAlways,
-				containers.WithResourceRequirements(requirements),
+				WithResourceRequirements(requirements),
 			)
 
 			Expect(container.Resources.Limits.Cpu().String()).To(Equal("1"))
@@ -106,11 +105,11 @@ var _ = Describe("Container Template", func() {
 				RunAsUser:    ptr.To(int64(1000)),
 			}
 
-			container := containers.ContainerTemplate(
+			container := ContainerTemplate(
 				"test-container",
 				"nginx:latest",
 				corev1.PullAlways,
-				containers.WithSecurityContext(securityContext),
+				WithSecurityContext(securityContext),
 			)
 
 			Expect(container.SecurityContext).NotTo(BeNil())
@@ -121,16 +120,16 @@ var _ = Describe("Container Template", func() {
 
 	Describe("VolumesTemplate", func() {
 		It("should create empty volumes template", func() {
-			volumes := containers.VolumesTemplate()
+			volumes := VolumesTemplate()
 			Expect(volumes).To(BeEmpty())
 		})
 
 		It("should create volumes with multiple mutators", func() {
-			volumes := containers.VolumesTemplate(
-				containers.WithConfigMapVolume("test-config", "test-configmap"),
-				containers.WithEmptyDirVolume("test-empty-dir"),
-				containers.WithSecretVolume("test-secret", "test-secret-name"),
-				containers.WithPersistentVolumeClaim("test-pvc", "test-pvc-claim"),
+			volumes := VolumesTemplate(
+				WithConfigMapVolume("test-config", "test-configmap"),
+				WithEmptyDirVolume("test-empty-dir"),
+				WithSecretVolume("test-secret", "test-secret-name"),
+				WithPersistentVolumeClaim("test-pvc", "test-pvc-claim"),
 			)
 
 			Expect(volumes).To(HaveLen(4))
@@ -162,8 +161,8 @@ var _ = Describe("Container Template", func() {
 
 	Describe("WithConfigVolume", func() {
 		It("should create configmap volume", func() {
-			volumes := containers.VolumesTemplate(
-				containers.WithConfigMapVolume("test-volume", "test-configmap"),
+			volumes := VolumesTemplate(
+				WithConfigMapVolume("test-volume", "test-configmap"),
 			)
 
 			Expect(volumes).To(HaveLen(1))

@@ -1,15 +1,15 @@
 package frontend
 
 import (
-	"github.com/gorilla/mux"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/gorilla/mux"
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
 
 var _ = Describe("APIHandler", func() {

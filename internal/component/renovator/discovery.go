@@ -1,4 +1,3 @@
-//nolint:dupl
 package renovator
 
 import (
@@ -22,28 +21,66 @@ func (r *Reconciler) reconcileDiscovery(ctx context.Context) (*ctrl.Result, erro
 }
 
 func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error {
-	// Copy the discovery configuration from the Renovator spec
-	discovery.Spec = r.instance.Spec.Discovery
+	spec := r.instance.Spec
+	discoverySpec := r.instance.Spec.Discovery
 
-	if discovery.Spec.Logging == nil {
-		discovery.Spec.Logging = &r.instance.Spec.Logging
+	discovery.Spec.ConfigRef = discoverySpec.ConfigRef
+	discovery.Spec.Filter = discoverySpec.Filter
+
+	if spec.Image != "" {
+		discovery.Spec.Image = spec.Image
 	}
 
-	if discovery.Spec.Image == "" {
-		discovery.Spec.Image = r.instance.Spec.Image
+	if discoverySpec.Image != "" {
+		discovery.Spec.Image = discoverySpec.Image
 	}
 
-	if discovery.Spec.ImagePullPolicy == "" {
-		discovery.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
+	if spec.ImagePullPolicy != "" {
+		discovery.Spec.ImagePullPolicy = spec.ImagePullPolicy
 	}
 
-	if discovery.Spec.Suspend == nil {
-		discovery.Spec.Suspend = r.instance.Spec.Suspend
+	if discoverySpec.ImagePullPolicy != "" {
+		discovery.Spec.ImagePullPolicy = discoverySpec.ImagePullPolicy
 	}
 
-	if discovery.Spec.Schedule == "" {
-		discovery.Spec.Schedule = r.instance.Spec.Schedule
+	if spec.Suspend != nil {
+		discovery.Spec.Suspend = spec.Suspend
 	}
+
+	if discoverySpec.Suspend != nil {
+		discovery.Spec.Suspend = discoverySpec.Suspend
+	}
+
+	if spec.Schedule != "" {
+		discovery.Spec.Schedule = spec.Schedule
+	}
+
+	if discoverySpec.Schedule != "" {
+		discovery.Spec.Schedule = discoverySpec.Schedule
+	}
+
+	if spec.SuccessLimit != 0 {
+		discovery.Spec.SuccessLimit = spec.SuccessLimit
+	}
+
+	if discoverySpec.SuccessLimit != 0 {
+		discovery.Spec.SuccessLimit = discoverySpec.SuccessLimit
+	}
+
+	if spec.FailedLimit != 0 {
+		discovery.Spec.FailedLimit = spec.FailedLimit
+	}
+
+	if discoverySpec.FailedLimit != 0 {
+		discovery.Spec.FailedLimit = discoverySpec.FailedLimit
+	}
+
+	logging := &spec.Logging
+	if discoverySpec.Logging != nil {
+		logging = discoverySpec.Logging
+	}
+
+	discovery.Spec.Logging = logging
 
 	if discovery.Labels == nil {
 		discovery.Labels = make(map[string]string)
@@ -51,7 +88,6 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 
 	discovery.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
 
-	// Forward operation annotations from Renovator to Discovery
 	if HasRenovatorOperationDiscover(r.instance.Annotations) {
 		if discovery.Annotations == nil {
 			discovery.Annotations = make(map[string]string)

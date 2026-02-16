@@ -154,7 +154,6 @@ lint: yamlfmt-dry golangci-lint
 build: manifests generate fmt vet ## Build binaries.
 	$(GO) build -o bin/manager cmd/main.go
 	$(GO) build -o bin/discovery cmd/discovery/main.go
-	$(GO) build -o bin/dispatcher cmd/dispatcher/main.go
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host.

@@ -1,4 +1,4 @@
-package gitrepo
+package renovate
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGitRepo(t *testing.T) {
+func TestRenovate(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "GitRepo Suite")
+	RunSpecs(t, "Renovate Suite")
 }

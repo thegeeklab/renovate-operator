@@ -1,4 +1,4 @@
-package dispatcher
+package scheduler
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDispatcher(t *testing.T) {
+func TestScheduler(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Dispatcher Suite")
+	RunSpecs(t, "Scheduler Suite")
 }

@@ -247,8 +247,7 @@ The operator uses Indexed Jobs for efficient parallel processing:
    - `completions`: Total number of repositories to process
    - `parallelism`: Set to `runner.instances` value
    - `completionMode: Indexed`
-3. **Dispatcher Preparation**: The dispatcher container prepares repository lists for each job index
-4. **Parallel Execution**: Limits concurrent workers based on the `instances` configuration
+3. **Parallel Execution**: Limits concurrent workers based on the `instances` configuration
 
 ## Complete Example
 
