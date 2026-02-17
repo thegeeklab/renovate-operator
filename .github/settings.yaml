@@ -53,6 +53,7 @@ branches:
         contexts:
           - ci/woodpecker/pr/static
           - ci/woodpecker/pr/test
+          - ci/woodpecker/pr/build-package
           - ci/woodpecker/pr/build-container
           - ci/woodpecker/pr/docs
       enforce_admins: false
