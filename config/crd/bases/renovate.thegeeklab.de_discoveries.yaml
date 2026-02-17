@@ -41,6 +41,9 @@ spec:
               properties:
                 configRef:
                   type: string
+                failedLimit:
+                  format: int32
+                  type: integer
                 filter:
                   items:
                     type: string
@@ -75,6 +78,9 @@ spec:
                   type: object
                 schedule:
                   type: string
+                successLimit:
+                  format: int32
+                  type: integer
                 suspend:
                   type: boolean
               type: object
@@ -138,6 +144,9 @@ spec:
                   type: array
                 failed:
                   type: integer
+                lastScheduleTime:
+                  format: date-time
+                  type: string
                 ready:
                   type: boolean
               required:

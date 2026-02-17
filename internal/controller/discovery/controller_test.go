@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -19,7 +20,7 @@ var _ = Describe("Discovery Controller", func() {
 	Context("When reconciling a resource", func() {
 		const resourceName = "test-discovery"
 
-		ctx := context.Background()
+		var ctx context.Context
 
 		typeNamespacedName := types.NamespacedName{
 			Name:      resourceName,
@@ -27,6 +28,7 @@ var _ = Describe("Discovery Controller", func() {
 		}
 
 		BeforeEach(func() {
+			ctx = context.Background()
 			By("creating the custom resource for the Kind Discovery")
 
 			// Create RenovateConfig resource first
@@ -108,7 +110,7 @@ var _ = Describe("Discovery Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(reconcile.Result{}))
+			Expect(result.RequeueAfter).To(BeNumerically(">", 0))
 		})
 
 		It("should handle missing Discovery resource", func() {

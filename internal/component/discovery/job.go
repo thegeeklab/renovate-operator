@@ -17,16 +17,17 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+// reconcileJob checks if discovery should run, processes the job, and schedules the next run.
 func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	// Check if discovery is suspended
+	// Skip if discovery is suspended
 	if r.instance.Spec.Suspend != nil && *r.instance.Spec.Suspend {
-		log.V(1).Info("Discovery is suspended, skipping")
+		log.V(1).Info("Discovery is suspended: skipping")
 
 		return &ctrl.Result{}, nil
 	}
@@ -36,19 +37,19 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 
 	activeJobs, err := renovate.GetActiveJobs(ctx, r.Client, r.instance.Namespace, discoveryLabels)
 	if err != nil {
-		return &ctrl.Result{}, err
+		return &ctrl.Result{}, fmt.Errorf("failed to check active jobs: %w", err)
 	}
 
 	if len(activeJobs) > 0 {
-		log.V(1).Info("Active discovery job found, lock held. Requeuing.")
+		log.V(1).Info("Active discovery job found: requeuing")
 
 		return &ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
 	}
 
-	// Evaluate schedule to determine if job should run
+	// Evaluate if the job should run
 	shouldRun, nextRun, err := r.evaluateSchedule()
 	if err != nil {
-		return &ctrl.Result{}, err
+		return &ctrl.Result{}, fmt.Errorf("failed to evaluate schedule: %w", err)
 	}
 
 	// Create and execute job if due
@@ -60,35 +61,32 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 				Labels:       discoveryLabels,
 			},
 		}
+		r.updateJob(job)
 
-		op, err := k8s.CreateOrUpdate(ctx, r.Client, job, r.instance, func() error {
-			return r.updateJob(job)
-		})
-		if err != nil {
-			return &ctrl.Result{}, err
+		// Create the job
+		if err := k8s.Create(ctx, r.Client, job, r.instance, nil); err != nil {
+			return &ctrl.Result{}, fmt.Errorf("failed to create job: %w", err)
 		}
 
-		if op != controllerutil.OperationResultNone {
-			log.Info("Discovery job created", "job", job.Name)
+		log.Info("Discovery job created", "job", job.Name)
 
-			// Cleanup old jobs to maintain history limits
-			if err := renovate.PruneJobHistory(
-				ctx,
-				r.Client,
-				r.instance.Namespace,
-				discoveryLabels,
-				r.instance.Spec.SuccessLimit,
-				r.instance.Spec.FailedLimit,
-			); err != nil {
-				log.Error(err, "failed to cleanup old discovery jobs")
-			}
-
-			// Update status and annotations after successful execution
-			return r.updateStatusAfterRun(ctx)
+		// Clean up old jobs
+		if err := renovate.PruneJobHistory(
+			ctx,
+			r.Client,
+			r.instance.Namespace,
+			discoveryLabels,
+			r.instance.Spec.SuccessLimit,
+			r.instance.Spec.FailedLimit,
+		); err != nil {
+			log.Error(err, "Failed to clean up old discovery jobs")
 		}
+
+		// Update status and annotations
+		return r.updateStatusAfterRun(ctx)
 	}
 
-	// Schedule next run if applicable
+	// Schedule next run
 	now := time.Now()
 	if nextRun.After(now) {
 		log.V(1).Info("Next discovery scheduled", "time", nextRun, "wait", nextRun.Sub(now))
@@ -99,7 +97,8 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	return &ctrl.Result{}, nil
 }
 
-func (r *Reconciler) updateJob(job *batchv1.Job) error {
+// updateJob configures the job spec for discovery.
+func (r *Reconciler) updateJob(job *batchv1.Job) {
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 
 	// Create init container for repository discovery
@@ -122,7 +121,7 @@ func (r *Reconciler) updateJob(job *batchv1.Job) error {
 		}),
 	)
 
-	// Apply default job specification with init container
+	// Apply default job spec with init container
 	renovate.DefaultJobSpec(
 		&job.Spec,
 		r.renovate,
@@ -131,7 +130,7 @@ func (r *Reconciler) updateJob(job *batchv1.Job) error {
 		renovate.WithExtraVolumes(containers.WithEmptyDirVolume(renovate.VolumeRenovateTmp)),
 	)
 
-	// Configure main container for discovery operation
+	// Configure main container for discovery
 	job.Spec.Template.Spec.Containers = []corev1.Container{
 		containers.ContainerTemplate(
 			"renovate-discovery",
@@ -151,10 +150,9 @@ func (r *Reconciler) updateJob(job *batchv1.Job) error {
 
 	// Set service account for job execution
 	job.Spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
-
-	return nil
 }
 
+// evaluateSchedule checks if the job should run now and returns the next run time.
 func (r *Reconciler) evaluateSchedule() (bool, time.Time, error) {
 	// Check for immediate execution annotation
 	if renovator.HasRenovatorOperationDiscover(r.instance.Annotations) {
@@ -177,7 +175,7 @@ func (r *Reconciler) evaluateSchedule() (bool, time.Time, error) {
 	nextRun := schedule.Next(lastRun)
 	now := time.Now()
 
-	// Determine if job should run now
+	// Check if the run is due
 	if lastRun.IsZero() || now.After(nextRun) {
 		return true, nextRun, nil
 	}
@@ -185,22 +183,25 @@ func (r *Reconciler) evaluateSchedule() (bool, time.Time, error) {
 	return false, nextRun, nil
 }
 
+// updateStatusAfterRun updates the instance's status after a run.
 func (r *Reconciler) updateStatusAfterRun(ctx context.Context) (*ctrl.Result, error) {
 	// Remove discovery operation annotation if present
 	if renovator.HasRenovatorOperationDiscover(r.instance.Annotations) {
+		patch := client.MergeFrom(r.instance.DeepCopy())
+
 		r.instance.Annotations = renovator.RemoveRenovatorOperation(r.instance.Annotations)
-		if err := r.Update(ctx, r.instance); err != nil {
-			return &ctrl.Result{}, err
+		if err := r.Patch(ctx, r.instance, patch); err != nil {
+			return &ctrl.Result{}, fmt.Errorf("failed to remove annotation: %w", err)
 		}
 	}
 
-	// Update last execution time in status
+	// Update last execution time
 	r.instance.Status.LastScheduleTime = &metav1.Time{Time: time.Now()}
 	if err := r.Status().Update(ctx, r.instance); err != nil {
-		return &ctrl.Result{}, err
+		return &ctrl.Result{}, fmt.Errorf("failed to update status: %w", err)
 	}
 
-	// Schedule next execution based on configured schedule
+	// Schedule next execution
 	schedule, _ := cron.ParseStandard(r.instance.Spec.Schedule)
 	nextRun := schedule.Next(time.Now())
 

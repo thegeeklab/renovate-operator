@@ -108,7 +108,7 @@ var _ = Describe("Runner Controller", func() {
 				NamespacedName: typeNamespacedName,
 			})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(reconcile.Result{}))
+			Expect(result.RequeueAfter).To(BeNumerically(">", 0))
 
 			// Verify that the Runner resource still exists after reconciliation
 			reconciledRunner := &renovatev1beta1.Runner{}

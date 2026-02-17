@@ -6,10 +6,11 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
-	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -49,6 +50,8 @@ var _ = Describe("ReconcileJob", func() {
 				Filter: []string{"*"},
 			},
 		}
+		dd := &DiscoveryCustomDefaulter{}
+		Expect(dd.Default(ctx, instance)).To(Succeed())
 
 		renovate = &renovatev1beta1.RenovateConfig{
 			ObjectMeta: metav1.ObjectMeta{
@@ -65,9 +68,8 @@ var _ = Describe("ReconcileJob", func() {
 				},
 			},
 		}
-
-		_ = (&DiscoveryCustomDefaulter{}).Default(ctx, instance)
-		_ = (&RenovateConfigCustomDefaulter{}).Default(ctx, renovate)
+		rd := &v1beta1.RenovateConfigCustomDefaulter{}
+		Expect(rd.Default(ctx, renovate)).To(Succeed())
 
 		fakeClient = fake.NewClientBuilder().
 			WithScheme(scheme).
@@ -160,9 +162,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-
-			err := reconciler.updateJob(job)
-			Expect(err).NotTo(HaveOccurred())
+			reconciler.updateJob(job)
 
 			Expect(job.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.InitContainers[0].Name).To(Equal("renovate-init"))

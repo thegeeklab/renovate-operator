@@ -8,7 +8,8 @@ import (
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1" // Added: Required for ptr.To()
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -51,6 +52,8 @@ func DefaultJobSpec(
 	}
 
 	// 3. Construct the Job Spec from the Config
+	spec.CompletionMode = ptr.To(batchv1.NonIndexedCompletion)
+	spec.Parallelism = ptr.To(int32(1))
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 	spec.Template.Spec.InitContainers = cfg.InitContainers
 

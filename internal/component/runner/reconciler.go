@@ -72,8 +72,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
-		r.reconcileConfigMap,
-		r.reconcileCronJob,
+		r.reconcileJob,
 	}
 
 	for _, reconcileFunc := range reconcileFuncs {

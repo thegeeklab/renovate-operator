@@ -44,6 +44,9 @@ spec:
                   properties:
                     configRef:
                       type: string
+                    failedLimit:
+                      format: int32
+                      type: integer
                     filter:
                       items:
                         type: string
@@ -78,9 +81,15 @@ spec:
                       type: object
                     schedule:
                       type: string
+                    successLimit:
+                      format: int32
+                      type: integer
                     suspend:
                       type: boolean
                   type: object
+                failedLimit:
+                  format: int32
+                  type: integer
                 image:
                   description: |-
                     Name of the container image, supporting both tags (`<image>:<tag>`)
@@ -419,6 +428,9 @@ spec:
                   properties:
                     configRef:
                       type: string
+                    failedLimit:
+                      format: int32
+                      type: integer
                     image:
                       description: |-
                         Name of the container image, supporting both tags (`<image>:<tag>`)
@@ -455,6 +467,9 @@ spec:
                       type: object
                     schedule:
                       type: string
+                    successLimit:
+                      format: int32
+                      type: integer
                     suspend:
                       type: boolean
                   required:
@@ -462,6 +477,9 @@ spec:
                   type: object
                 schedule:
                   type: string
+                successLimit:
+                  format: int32
+                  type: integer
                 suspend:
                   type: boolean
               required:

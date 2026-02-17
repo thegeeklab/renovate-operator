@@ -5,10 +5,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
-	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -30,6 +30,7 @@ var _ = Describe("RBAC Reconciliation", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = context.Background()
 		scheme = runtime.NewScheme()
 		Expect(clientgoscheme.AddToScheme(scheme)).To(Succeed())
 		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
@@ -54,8 +55,6 @@ var _ = Describe("RBAC Reconciliation", func() {
 			req:      ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "test-namespace", Name: "test-discovery"}},
 			instance: instance,
 		}
-
-		ctx = context.Background()
 	})
 
 	Context("when reconciling ServiceAccount", func() {

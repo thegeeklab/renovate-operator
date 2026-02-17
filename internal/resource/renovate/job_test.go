@@ -6,6 +6,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
+	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -13,10 +17,6 @@ import (
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
-	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 )
 
 func newJob(name, status string) *batchv1.Job {
