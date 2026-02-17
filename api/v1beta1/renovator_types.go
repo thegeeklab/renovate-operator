@@ -54,11 +54,11 @@ const (
 	LogLevel_ERROR = "error"
 	LogLevel_FATAL = "fatal"
 
-	DefaultOperatorContainerImage       = "docker.io/thegeeklab/renovate-operator:latest"
-	DefaultRenovateContainerImage       = "ghcr.io/renovatebot/renovate:latest"
-	DefaultSchedule                     = "0 */2 * * *"
-	DefaultSuccessLimit           int32 = 3
-	DefaultFailedLimit            int32 = 1
+	DefaultOperatorContainerImage = "docker.io/thegeeklab/renovate-operator:latest"
+	DefaultRenovateContainerImage = "ghcr.io/renovatebot/renovate:latest"
+	DefaultSchedule               = "0 */2 * * *"
+	DefaultSuccessLimit           = 3
+	DefaultFailedLimit            = 1
 )
 
 type LoggingSpec struct {
@@ -90,10 +90,10 @@ type JobSpec struct {
 	Schedule string `json:"schedule,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	SuccessLimit int32 `json:"successLimit,omitempty"`
+	SuccessLimit int `json:"successLimit,omitempty"`
 
 	// +kubebuilder:validation:Optional
-	FailedLimit int32 `json:"failedLimit,omitempty"`
+	FailedLimit int `json:"failedLimit,omitempty"`
 }
 
 // RenovatorSpec defines the desired state of Renovator.

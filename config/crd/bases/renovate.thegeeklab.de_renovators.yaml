@@ -45,7 +45,6 @@ spec:
                     configRef:
                       type: string
                     failedLimit:
-                      format: int32
                       type: integer
                     filter:
                       items:
@@ -82,13 +81,11 @@ spec:
                     schedule:
                       type: string
                     successLimit:
-                      format: int32
                       type: integer
                     suspend:
                       type: boolean
                   type: object
                 failedLimit:
-                  format: int32
                   type: integer
                 image:
                   description: |-
@@ -429,7 +426,6 @@ spec:
                     configRef:
                       type: string
                     failedLimit:
-                      format: int32
                       type: integer
                     image:
                       description: |-
@@ -468,7 +464,6 @@ spec:
                     schedule:
                       type: string
                     successLimit:
-                      format: int32
                       type: integer
                     suspend:
                       type: boolean
@@ -478,7 +473,6 @@ spec:
                 schedule:
                   type: string
                 successLimit:
-                  format: int32
                   type: integer
                 suspend:
                   type: boolean

@@ -42,7 +42,6 @@ spec:
                 configRef:
                   type: string
                 failedLimit:
-                  format: int32
                   type: integer
                 filter:
                   items:
@@ -79,7 +78,6 @@ spec:
                 schedule:
                   type: string
                 successLimit:
-                  format: int32
                   type: integer
                 suspend:
                   type: boolean

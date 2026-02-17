@@ -171,7 +171,7 @@ var _ = Describe("Renovate Job Library", func() {
 		)
 
 		DescribeTable("PruneJobHistory",
-			func(jobs []*batchv1.Job, limits [2]int32, expectedNames []string) {
+			func(jobs []*batchv1.Job, limits [2]int, expectedNames []string) {
 				objs := make([]client.Object, len(jobs))
 				for i, j := range jobs {
 					objs[i] = j

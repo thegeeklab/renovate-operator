@@ -142,8 +142,8 @@ func PruneJobHistory(
 	c client.Client,
 	namespace string,
 	labels map[string]string,
-	successLimit int32,
-	failedLimit int32,
+	successLimit int,
+	failedLimit int,
 ) error {
 	jobList := &batchv1.JobList{}
 
@@ -176,8 +176,8 @@ func PruneJobHistory(
 }
 
 // deleteOldestJobs removes jobs that exceed the count limit, starting with the oldest.
-func deleteOldestJobs(ctx context.Context, c client.Client, jobs []batchv1.Job, limit int32) {
-	if len(jobs) <= int(limit) {
+func deleteOldestJobs(ctx context.Context, c client.Client, jobs []batchv1.Job, limit int) {
+	if len(jobs) <= limit {
 		return
 	}
 
@@ -187,7 +187,7 @@ func deleteOldestJobs(ctx context.Context, c client.Client, jobs []batchv1.Job, 
 	})
 
 	// Delete excess jobs
-	for i := 0; i < len(jobs)-int(limit); i++ {
+	for i := 0; i < len(jobs)-limit; i++ {
 		_ = c.Delete(ctx, &jobs[i], client.PropagationPolicy(metav1.DeletePropagationBackground))
 	}
 }

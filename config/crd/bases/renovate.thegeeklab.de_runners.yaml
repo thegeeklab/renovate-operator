@@ -42,7 +42,6 @@ spec:
                 configRef:
                   type: string
                 failedLimit:
-                  format: int32
                   type: integer
                 image:
                   description: |-
@@ -81,7 +80,6 @@ spec:
                 schedule:
                   type: string
                 successLimit:
-                  format: int32
                   type: integer
                 suspend:
                   type: boolean
