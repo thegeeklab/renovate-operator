@@ -25,35 +25,39 @@ import (
 func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	// Skip if discovery is suspended
-	if r.instance.Spec.Suspend != nil && *r.instance.Spec.Suspend {
-		log.V(1).Info("Discovery is suspended: skipping")
-
-		return &ctrl.Result{}, nil
-	}
-
-	// Check for active jobs (locking mechanism)
-	discoveryLabels := DiscoveryMetadata(r.req).Labels
-
-	activeJobs, err := renovate.GetActiveJobs(ctx, r.Client, r.instance.Namespace, discoveryLabels)
-	if err != nil {
-		return &ctrl.Result{}, fmt.Errorf("failed to check active jobs: %w", err)
-	}
-
-	if len(activeJobs) > 0 {
-		log.V(1).Info("Active discovery job found: requeuing")
-
-		return &ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
-	}
-
-	// Evaluate if the job should run
-	shouldRun, nextRun, err := r.evaluateSchedule()
+	// Evaluate if the scheduled run is due
+	scheduleReady, nextRun, err := r.evaluateSchedule()
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to evaluate schedule: %w", err)
 	}
 
-	// Create and execute job if due
+	// Check for manual trigger and suspension state
+	manualTrigger := renovator.HasRenovatorOperationDiscover(r.instance.Annotations)
+	isSuspended := r.instance.Spec.Suspend != nil && *r.instance.Spec.Suspend
+
+	// Determine if the job should run
+	shouldRun := (scheduleReady && !isSuspended) || manualTrigger
+
+	if isSuspended && scheduleReady && !manualTrigger {
+		log.V(1).Info("Discovery is suspended: suppressing scheduled run")
+	}
+
+	// Create and execute job if triggered
 	if shouldRun {
+		// Check for active jobs (locking mechanism)
+		discoveryLabels := DiscoveryMetadata(r.req).Labels
+
+		activeJobs, err := renovate.GetActiveJobs(ctx, r.Client, r.instance.Namespace, discoveryLabels)
+		if err != nil {
+			return &ctrl.Result{}, fmt.Errorf("failed to check active jobs: %w", err)
+		}
+
+		if len(activeJobs) > 0 {
+			log.V(1).Info("Active discovery job found: requeuing")
+
+			return &ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+		}
+
 		job := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: DiscoveryName(r.req) + "-",
@@ -154,11 +158,6 @@ func (r *Reconciler) updateJob(job *batchv1.Job) {
 
 // evaluateSchedule checks if the job should run now and returns the next run time.
 func (r *Reconciler) evaluateSchedule() (bool, time.Time, error) {
-	// Check for immediate execution annotation
-	if renovator.HasRenovatorOperationDiscover(r.instance.Annotations) {
-		return true, time.Now(), nil
-	}
-
 	// Parse schedule from specification
 	schedule, err := cron.ParseStandard(r.instance.Spec.Schedule)
 	if err != nil {

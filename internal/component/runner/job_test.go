@@ -49,6 +49,8 @@ var _ = Describe("ReconcileJob", func() {
 				},
 			},
 		}
+		rr := &RunnerCustomDefaulter{}
+		Expect(rr.Default(ctx, instance)).To(Succeed())
 
 		renovate = &renovatev1beta1.RenovateConfig{
 			ObjectMeta: metav1.ObjectMeta{
@@ -65,9 +67,8 @@ var _ = Describe("ReconcileJob", func() {
 				},
 			},
 		}
-
-		_ = (&RunnerCustomDefaulter{}).Default(ctx, instance)
-		_ = (&v1beta1.RenovateConfigCustomDefaulter{}).Default(ctx, renovate)
+		rd := &v1beta1.RenovateConfigCustomDefaulter{}
+		Expect(rd.Default(ctx, renovate)).To(Succeed())
 
 		fakeClient = fake.NewClientBuilder().
 			WithScheme(scheme).
@@ -101,6 +102,50 @@ var _ = Describe("ReconcileJob", func() {
 				result, err := reconciler.reconcileJob(ctx)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(result).To(Equal(&ctrl.Result{}))
+			})
+		})
+
+		Context("when runner is suspended but manually triggered", func() {
+			BeforeEach(func() {
+				suspended := true
+				instance.Spec.Suspend = &suspended
+				instance.Annotations = map[string]string{
+					"renovate.thegeeklab.de/operation": "renovate",
+				}
+				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+				gitRepo := &renovatev1beta1.GitRepo{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "test-repo",
+						Namespace: instance.Namespace,
+					},
+					Spec: renovatev1beta1.GitRepoSpec{
+						Name: "test/repository",
+					},
+				}
+				Expect(fakeClient.Create(ctx, gitRepo)).To(Succeed())
+			})
+
+			It("should create a job and remove the annotation", func() {
+				// Execute
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Verify Job Creation
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+				Expect(jobList.Items).To(HaveLen(1))
+
+				job := jobList.Items[0]
+				Expect(job.Name).To(HavePrefix("test-repo-"))
+
+				// Verify Annotation Removal
+				updatedInstance := &renovatev1beta1.Runner{}
+				Expect(fakeClient.Get(ctx, reconciler.req.NamespacedName, updatedInstance)).To(Succeed())
+				Expect(updatedInstance.Annotations).NotTo(HaveKey("renovate.thegeeklab.de/operation"))
+
+				// Verify Status Update
+				Expect(updatedInstance.Status.LastScheduleTime).NotTo(BeNil())
 			})
 		})
 
@@ -189,21 +234,6 @@ var _ = Describe("ReconcileJob", func() {
 	})
 
 	Describe("evaluateSchedule", func() {
-		Context("when immediate execution annotation is present", func() {
-			BeforeEach(func() {
-				instance.Annotations = map[string]string{
-					"renovate.thegeeklab.de/renovator-operation": "renovate",
-				}
-				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
-			})
-
-			It("should return true for immediate execution", func() {
-				shouldRun, _, err := reconciler.evaluateSchedule()
-				Expect(err).NotTo(HaveOccurred())
-				Expect(shouldRun).To(BeTrue())
-			})
-		})
-
 		Context("when schedule is due", func() {
 			It("should return true when last run time is zero", func() {
 				shouldRun, _, err := reconciler.evaluateSchedule()

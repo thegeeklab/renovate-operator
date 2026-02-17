@@ -24,7 +24,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
 	// Evaluate if the scheduled run is due
-	isCronDue, nextRun, err := r.evaluateSchedule()
+	scheduleReady, nextRun, err := r.evaluateSchedule()
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to evaluate schedule: %w", err)
 	}
@@ -34,9 +34,9 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	isSuspended := r.instance.Spec.Suspend != nil && *r.instance.Spec.Suspend
 
 	// Determine if a global trigger is active
-	isGlobalTriggerActive := (isCronDue && !isSuspended) || manualRunnerTrigger
+	isGlobalTriggerActive := (scheduleReady && !isSuspended) || manualRunnerTrigger
 
-	if isSuspended && isCronDue && !manualRunnerTrigger {
+	if isSuspended && scheduleReady && !manualRunnerTrigger {
 		log.V(1).Info("Runner is suspended: suppressing scheduled run")
 	}
 
@@ -47,7 +47,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	}
 
 	// Update status and annotations if a global run was triggered
-	if manualRunnerTrigger || (isCronDue && !isSuspended) {
+	if manualRunnerTrigger || (scheduleReady && !isSuspended) {
 		return r.updateStatusAfterRun(ctx)
 	}
 
