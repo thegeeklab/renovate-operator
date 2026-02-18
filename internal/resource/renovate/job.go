@@ -40,8 +40,8 @@ func DefaultJobSpec(
 		Renovate:   renovate,
 		RenovateCM: renovateCM,
 		VolumeMutators: []containers.VolumeMutator{
-			containers.WithEmptyDirVolume(VolumeRenovateConfig),
-			containers.WithConfigMapVolume(renovateCM, renovateCM),
+			containers.WithEmptyDirVolume(VolumeRenovateTmp),
+			containers.WithConfigMapVolume(VolumeRenovateConfig, renovateCM),
 		},
 		EnvVars: DefaultEnvVars(&renovate.Spec),
 	}

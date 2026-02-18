@@ -116,13 +116,27 @@ func (r *Reconciler) updateJob(job *batchv1.Job) {
 		}),
 		containers.WithEnvVars(renovate.DefaultEnvVars(&r.renovate.Spec)),
 		containers.WithEnvVars([]corev1.EnvVar{
-			{Name: "RENOVATE_AUTODISCOVER", Value: "true"},
-			{Name: "RENOVATE_AUTODISCOVER_FILTER", Value: strings.Join(r.instance.Spec.Filter, ",")},
-		}),
+			{
+				Name:  "RENOVATE_AUTODISCOVER",
+				Value: "true",
+			},
+			{
+				Name:  "RENOVATE_AUTODISCOVER_FILTER",
+				Value: strings.Join(r.instance.Spec.Filter, ","),
+			},
+		},
+		),
 		containers.WithVolumeMounts([]corev1.VolumeMount{
-			{Name: renovate.VolumeRenovateTmp, MountPath: renovate.DirRenovateTmp},
-			{Name: renovate.VolumeRenovateConfig, MountPath: renovate.DirRenovateConfig},
-		}),
+			{
+				Name:      renovate.VolumeRenovateTmp,
+				MountPath: renovate.DirRenovateTmp,
+			},
+			{
+				Name:      renovate.VolumeRenovateConfig,
+				MountPath: renovate.DirRenovateConfig,
+			},
+		},
+		),
 	)
 
 	// Apply default job spec with init container
@@ -131,7 +145,6 @@ func (r *Reconciler) updateJob(job *batchv1.Job) {
 		r.renovate,
 		renovateConfigCM,
 		renovate.WithInitContainer(initContainer),
-		renovate.WithExtraVolumes(containers.WithEmptyDirVolume(renovate.VolumeRenovateTmp)),
 	)
 
 	// Configure main container for discovery
@@ -142,13 +155,27 @@ func (r *Reconciler) updateJob(job *batchv1.Job) {
 			r.instance.Spec.ImagePullPolicy,
 			containers.WithContainerCommand([]string{"/discovery"}),
 			containers.WithEnvVars([]corev1.EnvVar{
-				{Name: discovery.EnvDiscoveryInstanceName, Value: r.instance.Name},
-				{Name: discovery.EnvDiscoveryInstanceNamespace, Value: r.instance.Namespace},
-				{Name: discovery.EnvRenovateOutputFile, Value: renovate.FileRenovateRepositories},
-			}),
+				{
+					Name:  discovery.EnvDiscoveryInstanceName,
+					Value: r.instance.Name,
+				},
+				{
+					Name:  discovery.EnvDiscoveryInstanceNamespace,
+					Value: r.instance.Namespace,
+				},
+				{
+					Name:  discovery.EnvRenovateOutputFile,
+					Value: renovate.FileRenovateRepositories,
+				},
+			},
+			),
 			containers.WithVolumeMounts([]corev1.VolumeMount{
-				{Name: renovate.VolumeRenovateTmp, MountPath: renovate.DirRenovateTmp},
-			}),
+				{
+					Name:      renovate.VolumeRenovateTmp,
+					MountPath: renovate.DirRenovateTmp,
+				},
+			},
+			),
 		),
 	}
 

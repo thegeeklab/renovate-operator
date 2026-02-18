@@ -16,12 +16,8 @@ const (
 
 	FilenameRenovateConfig = "renovate.json"
 	FilenameRepositories   = "repositories.json"
-	FilenameIndex          = "index.json"
 
-	EnvRenovateConfigRaw  = "RENOVATE_CONFIG_FILE_RAW"
-	EnvRenovateConfig     = "RENOVATE_CONFIG_FILE"
-	EnvRenovateIndex      = "RENOVATE_INDEX"
-	EnvJobCompletionIndex = "JOB_COMPLETION_INDEX"
+	EnvRenovateConfig = "RENOVATE_CONFIG_FILE"
 
 	// LabelRepoName is the label key used for the locking mechanism.
 	// The controller uses this to find active jobs for a specific repository.
@@ -32,7 +28,6 @@ var (
 	FileRenovateConfig       = filepath.Join(DirRenovateConfig, FilenameRenovateConfig)
 	FileRenovateTmp          = filepath.Join(DirRenovateTmp, FilenameRenovateConfig)
 	FileRenovateRepositories = filepath.Join(DirRenovateTmp, FilenameRepositories)
-	FileRenovateIndex        = filepath.Join(DirRenovateTmp, FilenameIndex)
 )
 
 func DefaultEnvVars(renovate *renovatev1beta1.RenovateConfigSpec) []corev1.EnvVar {
