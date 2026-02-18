@@ -1,4 +1,3 @@
-//nolint:dupl
 package renovator
 
 import (
@@ -22,28 +21,53 @@ func (r *Reconciler) reconcileRunner(ctx context.Context) (*ctrl.Result, error) 
 }
 
 func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
-	// Copy the runner configuration from the Renovator spec
-	runner.Spec = r.instance.Spec.Runner
+	spec := r.instance.Spec
+	runSpec := r.instance.Spec.Runner
 
-	if runner.Spec.Logging == nil {
-		runner.Spec.Logging = &r.instance.Spec.Logging
+	runner.Spec.ConfigRef = runSpec.ConfigRef
+
+	if runSpec.Instances > 0 {
+		runner.Spec.Instances = runSpec.Instances
 	}
 
-	if runner.Spec.Image == "" {
-		runner.Spec.Image = r.instance.Spec.Image
+	if spec.Image != "" {
+		runner.Spec.Image = spec.Image
 	}
 
-	if runner.Spec.ImagePullPolicy == "" {
-		runner.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
+	if runSpec.Image != "" {
+		runner.Spec.Image = runSpec.Image
 	}
 
-	if runner.Spec.Suspend == nil {
-		runner.Spec.Suspend = r.instance.Spec.Suspend
+	if spec.ImagePullPolicy != "" {
+		runner.Spec.ImagePullPolicy = spec.ImagePullPolicy
 	}
 
-	if runner.Spec.Schedule == "" {
-		runner.Spec.Schedule = r.instance.Spec.Schedule
+	if runSpec.ImagePullPolicy != "" {
+		runner.Spec.ImagePullPolicy = runSpec.ImagePullPolicy
 	}
+
+	if spec.Schedule != "" {
+		runner.Spec.Schedule = spec.Schedule
+	}
+
+	if runSpec.Schedule != "" {
+		runner.Spec.Schedule = runSpec.Schedule
+	}
+
+	if spec.Suspend != nil {
+		runner.Spec.Suspend = spec.Suspend
+	}
+
+	if runSpec.Suspend != nil {
+		runner.Spec.Suspend = runSpec.Suspend
+	}
+
+	logging := &spec.Logging
+	if runSpec.Logging != nil {
+		logging = runSpec.Logging
+	}
+
+	runner.Spec.Logging = logging
 
 	if runner.Labels == nil {
 		runner.Labels = make(map[string]string)
@@ -51,7 +75,6 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 
 	runner.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
 
-	// Forward operation annotations from Renovator to Discovery
 	if HasRenovatorOperationRenovate(r.instance.Annotations) {
 		if runner.Annotations == nil {
 			runner.Annotations = make(map[string]string)

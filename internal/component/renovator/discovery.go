@@ -1,4 +1,3 @@
-//nolint:dupl
 package renovator
 
 import (
@@ -22,28 +21,50 @@ func (r *Reconciler) reconcileDiscovery(ctx context.Context) (*ctrl.Result, erro
 }
 
 func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error {
-	// Copy the discovery configuration from the Renovator spec
-	discovery.Spec = r.instance.Spec.Discovery
+	spec := r.instance.Spec
+	disco := r.instance.Spec.Discovery
 
-	if discovery.Spec.Logging == nil {
-		discovery.Spec.Logging = &r.instance.Spec.Logging
+	discovery.Spec.ConfigRef = disco.ConfigRef
+	discovery.Spec.Filter = disco.Filter
+
+	if spec.Image != "" {
+		discovery.Spec.Image = spec.Image
 	}
 
-	if discovery.Spec.Image == "" {
-		discovery.Spec.Image = r.instance.Spec.Image
+	if disco.Image != "" {
+		discovery.Spec.Image = disco.Image
 	}
 
-	if discovery.Spec.ImagePullPolicy == "" {
-		discovery.Spec.ImagePullPolicy = r.instance.Spec.ImagePullPolicy
+	if spec.ImagePullPolicy != "" {
+		discovery.Spec.ImagePullPolicy = spec.ImagePullPolicy
 	}
 
-	if discovery.Spec.Suspend == nil {
-		discovery.Spec.Suspend = r.instance.Spec.Suspend
+	if disco.ImagePullPolicy != "" {
+		discovery.Spec.ImagePullPolicy = disco.ImagePullPolicy
 	}
 
-	if discovery.Spec.Schedule == "" {
-		discovery.Spec.Schedule = r.instance.Spec.Schedule
+	if spec.Schedule != "" {
+		discovery.Spec.Schedule = spec.Schedule
 	}
+
+	if disco.Schedule != "" {
+		discovery.Spec.Schedule = disco.Schedule
+	}
+
+	if spec.Suspend != nil {
+		discovery.Spec.Suspend = spec.Suspend
+	}
+
+	if disco.Suspend != nil {
+		discovery.Spec.Suspend = disco.Suspend
+	}
+
+	logging := &spec.Logging
+	if disco.Logging != nil {
+		logging = disco.Logging
+	}
+
+	discovery.Spec.Logging = logging
 
 	if discovery.Labels == nil {
 		discovery.Labels = make(map[string]string)
@@ -51,7 +72,6 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 
 	discovery.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
 
-	// Forward operation annotations from Renovator to Discovery
 	if HasRenovatorOperationDiscover(r.instance.Annotations) {
 		if discovery.Annotations == nil {
 			discovery.Annotations = make(map[string]string)
