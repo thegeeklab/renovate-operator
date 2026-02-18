@@ -1,4 +1,4 @@
-package dispatcher
+package renovate
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDispatcher(t *testing.T) {
+func TestRenovate(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Dispatcher Suite")
+	RunSpecs(t, "Renovate Suite")
 }

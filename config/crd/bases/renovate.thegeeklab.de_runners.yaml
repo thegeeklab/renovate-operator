@@ -41,6 +41,8 @@ spec:
               properties:
                 configRef:
                   type: string
+                failedLimit:
+                  type: integer
                 image:
                   description: |-
                     Name of the container image, supporting both tags (`<image>:<tag>`)
@@ -77,6 +79,8 @@ spec:
                   type: object
                 schedule:
                   type: string
+                successLimit:
+                  type: integer
                 suspend:
                   type: boolean
               required:
@@ -142,6 +146,9 @@ spec:
                   type: array
                 failed:
                   type: integer
+                lastScheduleTime:
+                  format: date-time
+                  type: string
                 ready:
                   type: boolean
               required:

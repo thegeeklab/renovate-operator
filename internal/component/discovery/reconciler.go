@@ -43,8 +43,8 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		r.reconcileRole,
 		r.reconcileRoleBinding,
 		r.reconcileServiceAccount,
+		r.reconcileJob,
 		r.reconcileGitRepos,
-		r.reconcileCronJob,
 	}
 
 	// Execute each reconciliation step

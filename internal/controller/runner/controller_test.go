@@ -16,23 +16,32 @@ import (
 )
 
 var _ = Describe("Runner Controller", func() {
-	Context("When reconciling a resource", func() {
-		const resourceName = "test-runner"
+	var (
+		ctx                context.Context
+		reconciler         *Reconciler
+		typeNamespacedName types.NamespacedName
+	)
 
-		ctx := context.Background()
-
-		typeNamespacedName := types.NamespacedName{
-			Name:      resourceName,
-			Namespace: "default",
+	BeforeEach(func() {
+		ctx = context.Background()
+		reconciler = &Reconciler{
+			Client: k8sClient,
+			Scheme: k8sClient.Scheme(),
 		}
+	})
+
+	Context("When reconciling a resource via ConfigRef", func() {
+		const resourceName = "test-runner-ref"
 
 		BeforeEach(func() {
-			By("creating the custom resource for the Kind Runner")
+			typeNamespacedName = types.NamespacedName{
+				Name:      resourceName,
+				Namespace: "default",
+			}
 
-			// Create RenovateConfig resource first
 			config := &renovatev1beta1.RenovateConfig{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-config",
+					Name:      "test-config-ref",
 					Namespace: "default",
 				},
 				Spec: renovatev1beta1.RenovateConfigSpec{
@@ -40,120 +49,184 @@ var _ = Describe("Runner Controller", func() {
 						Type: "github",
 						Token: corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{
-									Name: "renovate-token-secret",
-								},
-								Key: "token",
+								LocalObjectReference: corev1.LocalObjectReference{Name: "token"},
+								Key:                  "key",
 							},
 						},
 						Endpoint: "https://api.github.com/",
 					},
 				},
 			}
-			err := k8sClient.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "default"}, config)
-			if err != nil && api_errors.IsNotFound(err) {
-				// Apply webhook defaulter
-				rcd := &v1beta1.RenovateConfigCustomDefaulter{}
-				Expect(rcd.Default(ctx, config)).To(Succeed())
-				Expect(k8sClient.Create(ctx, config)).To(Succeed())
-			}
+			rcd := &v1beta1.RenovateConfigCustomDefaulter{}
+			Expect(rcd.Default(ctx, config)).To(Succeed())
+			Expect(k8sClient.Create(ctx, config)).To(Succeed())
 
-			// Create Runner resource
-			err = k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Runner{})
-			if err != nil && api_errors.IsNotFound(err) {
-				resource := &renovatev1beta1.Runner{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
+			resource := &renovatev1beta1.Runner{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: "default",
+				},
+				Spec: renovatev1beta1.RunnerSpec{
+					ConfigRef: "test-config-ref",
+					JobSpec: renovatev1beta1.JobSpec{
+						Schedule: "*/5 * * * *",
 					},
-					Spec: renovatev1beta1.RunnerSpec{
-						ConfigRef: "test-config",
-						JobSpec: renovatev1beta1.JobSpec{
-							Schedule: renovatev1beta1.DefaultSchedule,
-						},
-						Instances: 1,
-					},
-				}
-				rd := &v1beta1.RunnerCustomDefaulter{}
-				Expect(rd.Default(ctx, resource)).To(Succeed())
-				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+				},
 			}
+			rd := &v1beta1.RunnerCustomDefaulter{}
+			Expect(rd.Default(ctx, resource)).To(Succeed())
+			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 		})
 
 		AfterEach(func() {
-			// Cleanup RenovateConfig resource
-			config := &renovatev1beta1.RenovateConfig{}
-			configErr := k8sClient.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "default"}, config)
-			if configErr == nil {
-				Expect(k8sClient.Delete(ctx, config)).To(Succeed())
+			runner := &renovatev1beta1.Runner{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: "default",
+				},
 			}
+			_ = k8sClient.Delete(ctx, runner)
 
-			// Cleanup Runner resource
-			resource := &renovatev1beta1.Runner{}
-			err := k8sClient.Get(ctx, typeNamespacedName, resource)
-			Expect(err).NotTo(HaveOccurred())
-
-			By("Cleanup the specific resource instance Runner")
-			Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+			config := &renovatev1beta1.RenovateConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-config-ref",
+					Namespace: "default",
+				},
+			}
+			_ = k8sClient.Delete(ctx, config)
 		})
 
 		It("should successfully reconcile the resource", func() {
-			By("Reconciling the created resource")
-			controllerReconciler := &Reconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
-			}
-
-			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
+			result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(reconcile.Result{}))
+			Expect(result.RequeueAfter).To(BeNumerically(">", 0))
+		})
+	})
 
-			// Verify that the Runner resource still exists after reconciliation
-			reconciledRunner := &renovatev1beta1.Runner{}
-			Expect(k8sClient.Get(ctx, typeNamespacedName, reconciledRunner)).To(Succeed())
+	Context("When reconciling via Labels and handling GitRepo events", func() {
+		const (
+			runnerName = "test-runner-label"
+			configName = "test-config-label"
+			repoName   = "test-gitrepo"
+			labelValue = "renovator-01"
+		)
+
+		BeforeEach(func() {
+			config := &renovatev1beta1.RenovateConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      configName,
+					Namespace: "default",
+					Labels: map[string]string{
+						renovatev1beta1.RenovatorLabel: labelValue,
+					},
+				},
+				Spec: renovatev1beta1.RenovateConfigSpec{
+					Platform: renovatev1beta1.PlatformSpec{
+						Type: "github",
+						Token: corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								LocalObjectReference: corev1.LocalObjectReference{Name: "token"},
+								Key:                  "key",
+							},
+						},
+					},
+				},
+			}
+			rcd := &v1beta1.RenovateConfigCustomDefaulter{}
+			Expect(rcd.Default(ctx, config)).To(Succeed())
+			Expect(k8sClient.Create(ctx, config)).To(Succeed())
+
+			runner := &renovatev1beta1.Runner{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      runnerName,
+					Namespace: "default",
+					Labels: map[string]string{
+						renovatev1beta1.RenovatorLabel: labelValue,
+					},
+				},
+				Spec: renovatev1beta1.RunnerSpec{
+					JobSpec: renovatev1beta1.JobSpec{Schedule: "*/5 * * * *"},
+				},
+			}
+			rd := &v1beta1.RunnerCustomDefaulter{}
+			Expect(rd.Default(ctx, runner)).To(Succeed())
+			Expect(k8sClient.Create(ctx, runner)).To(Succeed())
 		})
 
-		It("should handle non-existent Runner resource gracefully", func() {
-			By("Testing reconciliation with non-existent Runner")
-			controllerReconciler := &Reconciler{
-				Client: k8sClient,
-				Scheme: k8sClient.Scheme(),
+		AfterEach(func() {
+			runner := &renovatev1beta1.Runner{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      runnerName,
+					Namespace: "default",
+				},
+			}
+			_ = k8sClient.Delete(ctx, runner)
+
+			config := &renovatev1beta1.RenovateConfig{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      configName,
+					Namespace: "default",
+				},
+			}
+			_ = k8sClient.Delete(ctx, config)
+		})
+
+		It("should resolve RenovateConfig via labels", func() {
+			result, err := reconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: types.NamespacedName{Name: runnerName, Namespace: "default"},
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.RequeueAfter).To(BeNumerically(">", 0))
+		})
+
+		It("should map GitRepo events to the correct Runner", func() {
+			gitRepo := &renovatev1beta1.GitRepo{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      repoName,
+					Namespace: "default",
+					Labels: map[string]string{
+						renovatev1beta1.RenovatorLabel: labelValue,
+					},
+				},
+				Spec: renovatev1beta1.GitRepoSpec{
+					Name: "test/repo",
+				},
 			}
 
-			// Use a non-existent resource name
-			nonExistentName := types.NamespacedName{
-				Name:      "non-existent-runner",
+			requests := reconciler.mapGitRepoToRunner(ctx, gitRepo)
+
+			Expect(requests).To(HaveLen(1))
+			Expect(requests[0].NamespacedName).To(Equal(types.NamespacedName{
+				Name:      runnerName,
 				Namespace: "default",
-			}
-
-			result, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: nonExistentName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(reconcile.Result{}))
+			}))
 		})
 
-		It("should handle missing RenovateConfig resource gracefully", func() {
-			By("Testing error handling when RenovateConfig is missing")
-			// Create a mock client that returns NotFound for RenovateConfig
-			mockClient := &mockErrorClient{
-				Client: k8sClient,
+		It("should NOT map GitRepo events if labels do not match", func() {
+			gitRepo := &renovatev1beta1.GitRepo{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "other-repo",
+					Namespace: "default",
+					Labels: map[string]string{
+						renovatev1beta1.RenovatorLabel: "wrong-id",
+					},
+				},
 			}
 
-			errorReconciler := &Reconciler{
-				Client: mockClient,
-				Scheme: k8sClient.Scheme(),
-			}
-
-			// The mock client returns NotFound for RenovateConfig, which should be handled gracefully
-			result, err := errorReconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: typeNamespacedName,
-			})
-			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(reconcile.Result{}))
+			requests := reconciler.mapGitRepoToRunner(ctx, gitRepo)
+			Expect(requests).To(BeEmpty())
 		})
+	})
+
+	It("should handle missing RenovateConfig resource gracefully", func() {
+		mockClient := &mockErrorClient{Client: k8sClient}
+		errorReconciler := &Reconciler{Client: mockClient, Scheme: k8sClient.Scheme()}
+
+		result, err := errorReconciler.Reconcile(ctx, reconcile.Request{
+			NamespacedName: types.NamespacedName{Name: "missing-config-runner", Namespace: "default"},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
 	})
 })
 

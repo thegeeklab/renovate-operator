@@ -37,8 +37,6 @@ type Reconciler struct {
 
 // Reconcile is part of the main kubernetes reconciliation loop which aims to
 // move the current state of the cluster closer to the desired state.
-// For more details, check Reconcile and its Result here:
-// - https://pkg.go.dev/sigs.k8s.io/controller-runtime@v0.20.0/pkg/reconcile
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
@@ -92,42 +90,32 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
+	renovateOperationPredicate := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldAnn := e.ObjectOld.GetAnnotations()
+			newAnn := e.ObjectNew.GetAnnotations()
+
+			return renovator.HasRenovatorOperationRenovate(newAnn) &&
+				!renovator.HasRenovatorOperationRenovate(oldAnn)
+		},
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Runner{}).
 		WithEventFilter(predicate.Or(
 			predicate.GenerationChangedPredicate{},
-			predicate.Funcs{
-				UpdateFunc: func(e event.UpdateEvent) bool {
-					oldAnn := e.ObjectOld.GetAnnotations()
-					newAnn := e.ObjectNew.GetAnnotations()
-
-					return renovator.HasRenovatorOperationRenovate(newAnn) &&
-						!renovator.HasRenovatorOperationRenovate(oldAnn)
-				},
-				CreateFunc:  func(_ event.CreateEvent) bool { return true },
-				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
-				GenericFunc: func(_ event.GenericEvent) bool { return false },
-			},
+			renovateOperationPredicate,
 		)).
-		Watches(&renovatev1beta1.GitRepo{},
+		Watches(
+			&renovatev1beta1.GitRepo{},
 			handler.EnqueueRequestsFromMapFunc(r.mapGitRepoToRunner),
-			builder.WithPredicates(predicate.Or(
-				predicate.GenerationChangedPredicate{},
-				predicate.Funcs{
-					UpdateFunc: func(e event.UpdateEvent) bool {
-						oldAnn := e.ObjectOld.GetAnnotations()
-						newAnn := e.ObjectNew.GetAnnotations()
-
-						return renovator.HasRenovatorOperationRenovate(newAnn) &&
-							!renovator.HasRenovatorOperationRenovate(oldAnn)
-					},
-					CreateFunc:  func(_ event.CreateEvent) bool { return false },
-					DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
-					GenericFunc: func(_ event.GenericEvent) bool { return false },
-				}),
-			),
+			builder.WithPredicates(renovateOperationPredicate),
 		).
-		Watches(&renovatev1beta1.RenovateConfig{},
+		Watches(
+			&renovatev1beta1.RenovateConfig{},
 			handler.EnqueueRequestsFromMapFunc(r.mapConfigToRunner),
 			builder.WithPredicates(predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {
@@ -152,11 +140,7 @@ func (r *Reconciler) mapGitRepoToRunner(ctx context.Context, obj client.Object) 
 	}
 
 	// Only enqueue requests for runners that match the renovate.thegeeklab.de/renovator label
-	if gitRepo.Labels == nil {
-		return nil
-	}
-
-	renovator, ok := gitRepo.Labels[renovatev1beta1.RenovatorLabel]
+	renovatorID, ok := gitRepo.Labels[renovatev1beta1.RenovatorLabel]
 	if !ok {
 		return nil
 	}
@@ -169,8 +153,7 @@ func (r *Reconciler) mapGitRepoToRunner(ctx context.Context, obj client.Object) 
 	var reqs []ctrl.Request
 
 	for _, runner := range runnerList.Items {
-		// Check if the runner's renovate.thegeeklab.de/renovator label matches the renovator UID
-		if runner.Labels != nil && runner.Labels[renovatev1beta1.RenovatorLabel] == renovator {
+		if runner.Labels != nil && runner.Labels[renovatev1beta1.RenovatorLabel] == renovatorID {
 			reqs = append(reqs, ctrl.Request{
 				NamespacedName: client.ObjectKey{
 					Name:      runner.Name,

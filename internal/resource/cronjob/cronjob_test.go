@@ -1,4 +1,4 @@
-package cronjob_test
+package cronjob
 
 import (
 	"context"
@@ -6,6 +6,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -15,8 +16,6 @@ import (
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-
-	cronjob "github.com/thegeeklab/renovate-operator/internal/resource/cronjob"
 )
 
 var _ = Describe("DeleteOwnedJobs", func() {
@@ -69,7 +68,7 @@ var _ = Describe("DeleteOwnedJobs", func() {
 	Context("when there are no owned jobs", func() {
 		It("should return no error when no jobs exist", func() {
 			// Execute
-			err := cronjob.DeleteOwnedJobs(ctx, fakeClient, cronJob)
+			err := DeleteOwnedJobs(ctx, fakeClient, cronJob)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify no jobs exist
@@ -137,7 +136,7 @@ var _ = Describe("DeleteOwnedJobs", func() {
 
 		It("should delete only the owned jobs", func() {
 			// Execute
-			err := cronjob.DeleteOwnedJobs(ctx, fakeClient, cronJob)
+			err := DeleteOwnedJobs(ctx, fakeClient, cronJob)
 			Expect(err).ToNot(HaveOccurred())
 
 			// Verify owned jobs are deleted
@@ -160,7 +159,7 @@ var _ = Describe("DeleteOwnedJobs", func() {
 			failingClient := &failingClient{Client: fakeClient}
 
 			// Execute
-			err := cronjob.DeleteOwnedJobs(ctx, failingClient, cronJob)
+			err := DeleteOwnedJobs(ctx, failingClient, cronJob)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to delete job"))
 		})
@@ -172,7 +171,7 @@ var _ = Describe("DeleteOwnedJobs", func() {
 			failingListClient := &failingListClient{Client: fakeClient}
 
 			// Execute
-			err := cronjob.DeleteOwnedJobs(ctx, failingListClient, cronJob)
+			err := DeleteOwnedJobs(ctx, failingListClient, cronJob)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to list jobs"))
 		})
@@ -225,7 +224,7 @@ var _ = Describe("CheckActiveJobs", func() {
 			Expect(fakeClient.Create(ctx, otherJob)).To(Succeed())
 
 			// Execute
-			active, err := cronjob.CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
+			active, err := CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(active).To(BeFalse())
 		})
@@ -259,7 +258,7 @@ var _ = Describe("CheckActiveJobs", func() {
 			Expect(fakeClient.Create(ctx, activeJob)).To(Succeed())
 
 			// Execute
-			active, err := cronjob.CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
+			active, err := CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(active).To(BeTrue())
 		})
@@ -294,7 +293,7 @@ var _ = Describe("CheckActiveJobs", func() {
 			Expect(fakeClient.Create(ctx, pendingJob)).To(Succeed())
 
 			// Execute
-			active, err := cronjob.CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
+			active, err := CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(active).To(BeTrue())
 		})
@@ -327,7 +326,7 @@ var _ = Describe("CheckActiveJobs", func() {
 			Expect(fakeClient.Create(ctx, completedJob)).To(Succeed())
 
 			// Execute
-			active, err := cronjob.CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
+			active, err := CheckActiveJobs(ctx, fakeClient, namespace, "test-job")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(active).To(BeFalse())
 		})
@@ -361,7 +360,7 @@ var _ = Describe("CheckActiveJobs", func() {
 			Expect(fakeClient.Create(ctx, noCompletionsJob)).To(Succeed())
 
 			// Execute
-			active, err := cronjob.CheckActiveJobs(ctx, fakeClient, namespace, "test-job-no-completions")
+			active, err := CheckActiveJobs(ctx, fakeClient, namespace, "test-job-no-completions")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(active).To(BeFalse())
 		})
@@ -396,7 +395,7 @@ var _ = Describe("CheckActiveJobs", func() {
 			Expect(fakeClient.Create(ctx, zeroCompletionsJob)).To(Succeed())
 
 			// Execute
-			active, err := cronjob.CheckActiveJobs(ctx, fakeClient, namespace, "test-job-zero-completions")
+			active, err := CheckActiveJobs(ctx, fakeClient, namespace, "test-job-zero-completions")
 			Expect(err).ToNot(HaveOccurred())
 			Expect(active).To(BeFalse())
 		})
@@ -408,7 +407,7 @@ var _ = Describe("CheckActiveJobs", func() {
 			failingListClient := &failingListClient{Client: fakeClient}
 
 			// Execute
-			active, err := cronjob.CheckActiveJobs(ctx, failingListClient, namespace, "test-job")
+			active, err := CheckActiveJobs(ctx, failingListClient, namespace, "test-job")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to list jobs"))
 			Expect(active).To(BeFalse())

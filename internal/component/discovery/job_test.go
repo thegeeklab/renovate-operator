@@ -2,18 +2,17 @@ package discovery
 
 import (
 	"context"
-	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
-	cronjob "github.com/thegeeklab/renovate-operator/internal/resource/cronjob"
-	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/api/equality"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,7 +22,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
-var _ = Describe("ReconcileCronJob", func() {
+var _ = Describe("ReconcileJob", func() {
 	var (
 		fakeClient client.Client
 		reconciler *Reconciler
@@ -34,186 +33,202 @@ var _ = Describe("ReconcileCronJob", func() {
 	)
 
 	BeforeEach(func() {
+		ctx = context.Background()
 		scheme = runtime.NewScheme()
 		Expect(clientgoscheme.AddToScheme(scheme)).To(Succeed())
 		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
 
-		fakeClient = fake.NewClientBuilder().
-			WithScheme(scheme).
-			Build()
-
 		instance = &renovatev1beta1.Discovery{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-renovator",
-				Namespace: "test-namespace",
+				Name:      "test-discovery",
+				Namespace: "default",
 			},
 			Spec: renovatev1beta1.DiscoverySpec{
 				JobSpec: renovatev1beta1.JobSpec{
-					Schedule: "* * * * *",
+					Schedule: "*/5 * * * *",
 				},
 				Filter: []string{"*"},
 			},
 		}
-		dd := &v1beta1.DiscoveryCustomDefaulter{}
+		dd := &DiscoveryCustomDefaulter{}
 		Expect(dd.Default(ctx, instance)).To(Succeed())
 
 		renovate = &renovatev1beta1.RenovateConfig{
 			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-renovate-config",
-				Namespace: "test-namespace",
+				Name:      "test-renovate",
+				Namespace: "default",
+			},
+			Spec: renovatev1beta1.RenovateConfigSpec{
+				ImageSpec: renovatev1beta1.ImageSpec{
+					Image:           "renovate/renovate:latest",
+					ImagePullPolicy: corev1.PullAlways,
+				},
+				Platform: renovatev1beta1.PlatformSpec{
+					Type: "github",
+				},
 			},
 		}
 		rd := &v1beta1.RenovateConfigCustomDefaulter{}
 		Expect(rd.Default(ctx, renovate)).To(Succeed())
-		Expect(fakeClient.Create(ctx, renovate)).To(Succeed())
+
+		fakeClient = fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(instance, renovate).
+			WithStatusSubresource(instance).
+			Build()
 
 		reconciler = &Reconciler{
-			Client:   fakeClient,
-			scheme:   scheme,
-			req:      ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "test-namespace", Name: "test-renovator"}},
+			Client: fakeClient,
+			scheme: scheme,
+			req: ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: instance.Namespace,
+					Name:      instance.Name,
+				},
+			},
 			instance: instance,
 			renovate: renovate,
 		}
-
-		ctx = context.Background()
 	})
 
-	Context("when the cron job is created or updated", func() {
-		It("should create or update the cron job and return no error", func() {
-			// Execute
-			result, err := reconciler.reconcileCronJob(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(result).ToNot(BeNil())
+	Describe("reconcileJob", func() {
+		Context("when discovery is suspended", func() {
+			BeforeEach(func() {
+				suspended := true
+				instance.Spec.Suspend = &suspended
+				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+			})
 
-			job := &batchv1.CronJob{ObjectMeta: DiscoveryMetadata(reconciler.req)}
-			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(job), job)).To(Succeed())
-
-			jobExpected := job.DeepCopy()
-			jobExpected.ObjectMeta = DiscoveryMetadata(reconciler.req)
-			Expect(reconciler.updateCronJob(jobExpected)).To(Succeed())
-			Expect(equality.Semantic.DeepEqual(jobExpected.Spec, job.Spec)).To(BeTrue())
+			It("should skip job creation", func() {
+				result, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result).To(Equal(&ctrl.Result{}))
+			})
 		})
-	})
 
-	Context("when immediate discovery annotation is set", func() {
-		It("should trigger handleImmediateDiscovery", func() {
-			// Set the annotation to trigger immediate discovery
-			instance.Annotations = map[string]string{
-				renovatev1beta1.RenovatorOperation: string(renovatev1beta1.OperationDiscover),
-			}
-			Expect(fakeClient.Create(ctx, instance)).To(Succeed())
-
-			// Execute
-			result, err := reconciler.reconcileCronJob(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(result).ToNot(BeNil())
-
-			// Verify that the annotation was removed after handling
-			updatedInstance := &renovatev1beta1.Discovery{}
-			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updatedInstance)).To(Succeed())
-			Expect(updatedInstance.Annotations).ToNot(HaveKey(renovatev1beta1.RenovatorOperation))
-
-			// Verify that a discovery job was created
-			jobList := &batchv1.JobList{}
-			Expect(fakeClient.List(ctx, jobList, client.InNamespace(instance.Namespace))).To(Succeed())
-			Expect(jobList.Items).ToNot(BeEmpty())
-
-			// Additional verification: check that the job has the correct name pattern
-			discoveryName := DiscoveryName(reconciler.req)
-			foundMatchingJob := false
-			for _, job := range jobList.Items {
-				if job.Name == discoveryName || strings.HasPrefix(job.Name, discoveryName+"-") {
-					foundMatchingJob = true
-
-					break
+		Context("when discovery is suspended but manually triggered", func() {
+			BeforeEach(func() {
+				suspended := true
+				instance.Spec.Suspend = &suspended
+				instance.Annotations = map[string]string{
+					"renovate.thegeeklab.de/operation": "discover",
 				}
-			}
-			Expect(foundMatchingJob).To(BeTrue(), "No job found with expected name pattern")
-		})
-	})
+				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+			})
 
-	Context("when active discovery jobs exist", func() {
-		It("should requeue when active discovery jobs are found", func() {
-			// Create an active discovery job
-			activeJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      DiscoveryName(reconciler.req) + "-active",
-					Namespace: instance.Namespace,
-					Labels: map[string]string{
-						"app.kubernetes.io/instance": instance.Name,
-						"app.kubernetes.io/name":     "discovery",
+			It("should create a job and remove the annotation", func() {
+				// Execute
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				// Verify Job Creation
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+				Expect(jobList.Items).To(HaveLen(1))
+
+				job := jobList.Items[0]
+				Expect(job.Name).To(HavePrefix("test-discovery-"))
+
+				// Verify Annotation Removal
+				updatedInstance := &renovatev1beta1.Discovery{}
+				Expect(fakeClient.Get(ctx, reconciler.req.NamespacedName, updatedInstance)).To(Succeed())
+				Expect(updatedInstance.Annotations).NotTo(HaveKey("renovate.thegeeklab.de/operation"))
+
+				// Verify Status Update
+				Expect(updatedInstance.Status.LastScheduleTime).NotTo(BeNil())
+			})
+		})
+
+		Context("when there are active jobs", func() {
+			BeforeEach(func() {
+				activeJob := &batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "active-job",
+						Namespace: "default",
+						Labels:    DiscoveryMetadata(reconciler.req).Labels,
 					},
-				},
-				Spec: batchv1.JobSpec{},
-				Status: batchv1.JobStatus{
-					Active: 1,
-				},
-			}
-			Expect(fakeClient.Create(ctx, activeJob)).To(Succeed())
+					Status: batchv1.JobStatus{
+						Active: 1,
+					},
+				}
+				Expect(fakeClient.Create(ctx, activeJob)).To(Succeed())
+			})
 
-			// Set the annotation to trigger immediate discovery
-			instance.Annotations = map[string]string{
-				renovatev1beta1.RenovatorOperation: string(renovatev1beta1.OperationDiscover),
-			}
-			Expect(fakeClient.Create(ctx, instance)).To(Succeed())
+			It("should requeue after 1 minute", func() {
+				result, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(result.RequeueAfter).To(Equal(1 * time.Minute))
+			})
+		})
 
-			// Execute
-			result, err := reconciler.reconcileCronJob(ctx)
-			Expect(err).ToNot(HaveOccurred())
-			Expect(result).ToNot(BeNil())
-			Expect(result.RequeueAfter).To(Equal(cronjob.RequeueDelay))
+		Context("when job should run based on schedule", func() {
+			It("should create a new job", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+				Expect(jobList.Items).To(HaveLen(1))
+
+				job := jobList.Items[0]
+				Expect(job.Name).To(HavePrefix("test-discovery-"))
+				Expect(job.Namespace).To(Equal("default"))
+				Expect(job.Labels).To(Equal(DiscoveryMetadata(reconciler.req).Labels))
+			})
+
+			It("should update status after job creation", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				updatedInstance := &renovatev1beta1.Discovery{}
+				Expect(fakeClient.Get(ctx, reconciler.req.NamespacedName, updatedInstance)).To(Succeed())
+				Expect(updatedInstance.Status.LastScheduleTime).NotTo(BeNil())
+			})
 		})
 	})
 
-	Context("when updateCronJob is called", func() {
-		It("should update the cron job spec correctly", func() {
-			job := &batchv1.CronJob{
-				ObjectMeta: DiscoveryMetadata(reconciler.req),
-				Spec:       batchv1.CronJobSpec{},
+	Describe("updateJob", func() {
+		It("should configure job with init and main containers", func() {
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
 			}
+			reconciler.updateJob(job)
 
-			// Execute
-			err := reconciler.updateCronJob(job)
-			Expect(err).ToNot(HaveOccurred())
+			Expect(job.Spec.Template.Spec.InitContainers).To(HaveLen(1))
+			Expect(job.Spec.Template.Spec.InitContainers[0].Name).To(Equal("renovate-init"))
 
-			// Verify the cron job spec
-			Expect(job.Spec.Schedule).To(Equal(instance.Spec.Schedule))
-			Expect(job.Spec.ConcurrencyPolicy).To(Equal(batchv1.ForbidConcurrent))
-			Expect(job.Spec.Suspend).To(Equal(instance.Spec.Suspend))
+			Expect(job.Spec.Template.Spec.Containers).To(HaveLen(1))
+			Expect(job.Spec.Template.Spec.Containers[0].Name).To(Equal("renovate-discovery"))
 
-			// Verify the job template spec
-			jobSpec := &job.Spec.JobTemplate.Spec
-			Expect(jobSpec.Template.Spec.ServiceAccountName).To(Equal(metadata.GenericMetadata(reconciler.req).Name))
-			Expect(jobSpec.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
+			expectedServiceAccountName := metadata.GenericMetadata(reconciler.req).Name
+			Expect(job.Spec.Template.Spec.ServiceAccountName).To(Equal(expectedServiceAccountName))
+		})
+	})
 
-			// Verify volumes
-			Expect(jobSpec.Template.Spec.Volumes).To(HaveLen(2))
-			Expect(jobSpec.Template.Spec.Volumes[0].Name).To(Equal("renovate-tmp"))
-			Expect(jobSpec.Template.Spec.Volumes[1].Name).To(Equal("renovate-config"))
+	Describe("evaluateSchedule", func() {
+		Context("when schedule is valid and job should run", func() {
+			It("should return true when last run time is zero", func() {
+				shouldRun, _, err := reconciler.evaluateSchedule()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shouldRun).To(BeTrue())
+			})
+		})
 
-			// Verify init containers
-			Expect(jobSpec.Template.Spec.InitContainers).To(HaveLen(1))
-			initContainer := jobSpec.Template.Spec.InitContainers[0]
-			Expect(initContainer.Name).To(Equal("renovate-init"))
-			Expect(initContainer.Image).To(Equal(renovate.Spec.Image))
-			Expect(initContainer.Env).To(ContainElement(
-				corev1.EnvVar{Name: "RENOVATE_AUTODISCOVER", Value: "true"},
-			))
-			Expect(initContainer.Env).To(ContainElement(
-				corev1.EnvVar{Name: "RENOVATE_AUTODISCOVER_FILTER", Value: strings.Join(instance.Spec.Filter, ",")},
-			))
+		Context("when schedule is valid but job should not run yet", func() {
+			BeforeEach(func() {
+				now := metav1.NewTime(time.Now())
+				instance.Status.LastScheduleTime = &now
+				Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+			})
 
-			// Verify main container
-			Expect(jobSpec.Template.Spec.Containers).To(HaveLen(1))
-			mainContainer := jobSpec.Template.Spec.Containers[0]
-			Expect(mainContainer.Name).To(Equal("renovate-discovery"))
-			Expect(mainContainer.Command).To(Equal([]string{"/discovery"}))
-			Expect(mainContainer.Env).To(ContainElement(
-				corev1.EnvVar{Name: "DISCOVERY_INSTANCE_NAME", Value: instance.Name},
-			))
-			Expect(mainContainer.Env).To(ContainElement(
-				corev1.EnvVar{Name: "DISCOVERY_INSTANCE_NAMESPACE", Value: instance.Namespace},
-			))
+			It("should return false when current time is before next scheduled time", func() {
+				shouldRun, _, err := reconciler.evaluateSchedule()
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shouldRun).To(BeFalse())
+			})
 		})
 	})
 })

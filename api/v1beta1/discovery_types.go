@@ -22,9 +22,10 @@ type DiscoverySpec struct {
 //
 //nolint:lll
 type DiscoveryStatus struct {
-	Ready      bool               `json:"ready"`
-	Failed     int                `json:"failed,omitempty"`
-	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	Ready            bool               `json:"ready"`
+	Failed           int                `json:"failed,omitempty"`
+	Conditions       []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	LastScheduleTime *metav1.Time       `json:"lastScheduleTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true
