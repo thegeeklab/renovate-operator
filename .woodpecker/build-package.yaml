@@ -7,7 +7,7 @@ when:
 
 steps:
   - name: build-installer
-    image: docker.io/library/golang:1.25.7
+    image: docker.io/library/golang:1.26.0
     commands:
       - make deps build-installer
       - git diff --exit-code

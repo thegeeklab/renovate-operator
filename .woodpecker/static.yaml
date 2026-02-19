@@ -7,12 +7,12 @@ when:
 
 steps:
   - name: golangci-lint
-    image: docker.io/library/golang:1.25.7
+    image: docker.io/library/golang:1.26.0
     commands:
       - make deps golangci-lint
 
   - name: yaml-lint
-    image: docker.io/library/golang:1.25.7
+    image: docker.io/library/golang:1.26.0
     commands:
       - make deps yamlfmt-lint
 
