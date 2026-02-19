@@ -50,6 +50,7 @@ var _ = Describe("Discovery Controller", func() {
 					},
 				},
 			}
+
 			err := k8sClient.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "default"}, config)
 			if err != nil && api_errors.IsNotFound(err) {
 				// Apply webhook defaulter
@@ -83,6 +84,7 @@ var _ = Describe("Discovery Controller", func() {
 		AfterEach(func() {
 			// Cleanup RenovateConfig resource
 			config := &renovatev1beta1.RenovateConfig{}
+
 			configErr := k8sClient.Get(ctx, types.NamespacedName{Name: "test-config", Namespace: "default"}, config)
 			if configErr == nil {
 				Expect(k8sClient.Delete(ctx, config)).To(Succeed())
@@ -99,6 +101,7 @@ var _ = Describe("Discovery Controller", func() {
 
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
+
 			controllerReconciler := &Reconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
@@ -113,6 +116,7 @@ var _ = Describe("Discovery Controller", func() {
 
 		It("should handle missing Discovery resource", func() {
 			By("Testing reconciliation with non-existent Discovery")
+
 			controllerReconciler := &Reconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
