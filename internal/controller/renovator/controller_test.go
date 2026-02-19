@@ -38,6 +38,7 @@ var _ = Describe("Renovator Controller", func() {
 					"token": "dummy-token",
 				},
 			}
+
 			err := k8sClient.Create(ctx, secret)
 			if err != nil {
 				Expect(api_errors.IsAlreadyExists(err)).To(BeTrue())
@@ -46,6 +47,7 @@ var _ = Describe("Renovator Controller", func() {
 			}
 
 			By("creating the custom resource for the Kind Renovator")
+
 			err = k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Renovator{})
 			if err != nil && api_errors.IsNotFound(err) {
 				resource := &renovatev1beta1.Renovator{
@@ -94,6 +96,7 @@ var _ = Describe("Renovator Controller", func() {
 
 		It("should successfully reconcile the resource", func() {
 			By("Reconciling the created resource")
+
 			controllerReconciler := &Reconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
@@ -113,6 +116,7 @@ var _ = Describe("Renovator Controller", func() {
 
 		It("should handle non-existent resource gracefully", func() {
 			By("Testing reconciliation of non-existent resource")
+
 			controllerReconciler := &Reconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
@@ -239,6 +243,7 @@ var _ = Describe("Renovator Controller", func() {
 				Name:      "test-no-double-reconcile",
 				Namespace: "default",
 			}
+
 			Expect(k8sClient.Create(ctx, rr)).To(Succeed())
 
 			// First reconciliation - should process the annotation
@@ -256,6 +261,7 @@ var _ = Describe("Renovator Controller", func() {
 			// Verify the annotation was removed from the Renovator
 			updatedRenovator := &renovatev1beta1.Renovator{}
 			Expect(k8sClient.Get(ctx, doubleReconcileTestName, updatedRenovator)).To(Succeed())
+
 			if updatedRenovator.Annotations != nil {
 				Expect(updatedRenovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
 			}

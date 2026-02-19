@@ -54,6 +54,7 @@ var _ = Describe("Reconciler Index Creation", func() {
 		}
 
 		var err error
+
 		r, err = NewReconciler(
 			context.Background(),
 			fakeClient,

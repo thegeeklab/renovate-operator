@@ -35,6 +35,7 @@ var _ = Describe("Config Merging", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			var merged map[string]any
+
 			err = json.Unmarshal(result, &merged)
 			Expect(err).NotTo(HaveOccurred())
 
@@ -78,6 +79,7 @@ var _ = Describe("Config Merging", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			var merged map[string]any
+
 			err = json.Unmarshal(result, &merged)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(merged["name"]).To(Equal("new"))

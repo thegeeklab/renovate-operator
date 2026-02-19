@@ -37,9 +37,11 @@ func TestE2E(t *testing.T) {
 
 var _ = BeforeSuite(func() {
 	By("Ensure that Prometheus is enabled")
+
 	_ = utils.UncommentCode("config/default/kustomization.yaml", "#- ../prometheus", "#")
 
 	By("building the manager(Operator) image")
+
 	cmd := exec.Command("make", "docker-build", fmt.Sprintf("IMG=%s", projectImage))
 	_, err := utils.Run(cmd)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Failed to build the manager(Operator) image")
@@ -47,6 +49,7 @@ var _ = BeforeSuite(func() {
 	// TODO(user): If you want to change the e2e test vendor from Kind, ensure the image is
 	// built and available before running the tests. Also, remove the following block.
 	By("loading the manager(Operator) image on Kind")
+
 	err = utils.LoadImageToKindClusterWithName(projectImage)
 	ExpectWithOffset(1, err).NotTo(HaveOccurred(), "Failed to load the manager(Operator) image into Kind")
 
@@ -56,9 +59,11 @@ var _ = BeforeSuite(func() {
 	// Setup Prometheus before the suite if not skipped and if not already installed
 	if !skipPrometheusInstall {
 		By("checking if prometheus is installed already")
+
 		isPrometheusOperatorAlreadyInstalled = utils.IsPrometheusCRDsInstalled()
 		if !isPrometheusOperatorAlreadyInstalled {
 			_, _ = fmt.Fprintf(GinkgoWriter, "Installing Prometheus Operator...\n")
+
 			Expect(utils.InstallPrometheusOperator()).To(Succeed(), "Failed to install Prometheus Operator")
 		} else {
 			_, _ = fmt.Fprintf(GinkgoWriter, "WARNING: Prometheus Operator is already installed. Skipping installation...\n")
@@ -70,6 +75,7 @@ var _ = AfterSuite(func() {
 	// Teardown Prometheus after the suite if not skipped and if they were not already installed
 	if !skipPrometheusInstall && !isPrometheusOperatorAlreadyInstalled {
 		_, _ = fmt.Fprintf(GinkgoWriter, "Uninstalling Prometheus Operator...\n")
+
 		utils.UninstallPrometheusOperator()
 	}
 })

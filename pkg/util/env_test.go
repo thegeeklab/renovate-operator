@@ -14,6 +14,7 @@ var _ = Describe("parseEnv", func() {
 
 	It("should return environment variable value when set", func() {
 		os.Setenv("TEST_VAR", "test-value")
+
 		value, err := ParseEnv("TEST_VAR")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value).To(Equal("test-value"))
@@ -27,6 +28,7 @@ var _ = Describe("parseEnv", func() {
 
 	It("should handle empty environment variable value", func() {
 		os.Setenv("EMPTY_VAR", "")
+
 		value, err := ParseEnv("EMPTY_VAR")
 		Expect(err).NotTo(HaveOccurred())
 		Expect(value).To(BeEmpty())

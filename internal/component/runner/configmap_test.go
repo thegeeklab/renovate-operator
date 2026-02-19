@@ -108,6 +108,7 @@ var _ = Describe("ConfigMap Reconciliation", func() {
 
 			// Verify the data can be deserialized back
 			var index []JobData
+
 			err = json.Unmarshal([]byte(cm.Data[renovate.FilenameIndex]), &index)
 			Expect(err).ToNot(HaveOccurred())
 			Expect(index).To(HaveLen(2))

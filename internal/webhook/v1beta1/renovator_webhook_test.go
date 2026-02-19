@@ -23,6 +23,7 @@ var _ = Describe("Renovator Webhook", func() {
 		oldObj = &renovatev1beta1.Renovator{}
 		defaulter = RenovatorCustomDefaulter{}
 		ctx = context.Background()
+
 		Expect(defaulter).NotTo(BeNil(), "Expected defaulter to be initialized")
 		Expect(oldObj).NotTo(BeNil(), "Expected oldObj to be initialized")
 		Expect(obj).NotTo(BeNil(), "Expected obj to be initialized")
@@ -35,6 +36,7 @@ var _ = Describe("Renovator Webhook", func() {
 	Context("When creating Renovator under Defaulting Webhook", func() {
 		It("Should apply defaults when required fields are empty", func() {
 			By("calling the Default method to apply defaults")
+
 			err := defaulter.Default(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_INFO))
@@ -49,6 +51,7 @@ var _ = Describe("Renovator Webhook", func() {
 
 		It("Should not override existing values when defaults are applied", func() {
 			By("setting some existing values")
+
 			obj.Spec.Image = "custom-image:latest"
 			obj.Spec.ImagePullPolicy = corev1.PullAlways
 			obj.Spec.Logging.Level = renovatev1beta1.LogLevel_DEBUG
@@ -59,7 +62,9 @@ var _ = Describe("Renovator Webhook", func() {
 			obj.Spec.Discovery.Schedule = "0 */1 * * *"
 			obj.Spec.Renovate.Image = "custom-renovate:latest"
 			obj.Spec.Renovate.ImagePullPolicy = corev1.PullAlways
+
 			By("calling the Default method to apply defaults")
+
 			err := defaulter.Default(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Spec.Logging.Level).To(BeEquivalentTo(renovatev1beta1.LogLevel_DEBUG))
@@ -76,6 +81,7 @@ var _ = Describe("Renovator Webhook", func() {
 
 		It("Should return error when object is not a Renovator", func() {
 			By("calling the Default method with wrong object type")
+
 			err := defaulter.Default(ctx, nil)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("expected a Renovator object but got other type"))

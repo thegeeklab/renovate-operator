@@ -108,6 +108,7 @@ var _ = Describe("WebHandler", func() {
 		It("should handle renovators partial requests", func() {
 			req := httptest.NewRequest(http.MethodGet, "/partials/renovators", nil)
 			req.Header.Set("HX-Request", "true")
+
 			w := httptest.NewRecorder()
 
 			handler.HandleRenovatorsPartial(w, req)
@@ -121,6 +122,7 @@ var _ = Describe("WebHandler", func() {
 		It("should handle git repos partial requests", func() {
 			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepos?namespace=test-namespace", nil)
 			req.Header.Set("HX-Request", "true")
+
 			w := httptest.NewRecorder()
 
 			handler.HandleGitReposPartial(w, req)
@@ -132,6 +134,7 @@ var _ = Describe("WebHandler", func() {
 		It("should return bad request for missing namespace parameter", func() {
 			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepos", nil)
 			req.Header.Set("HX-Request", "true")
+
 			w := httptest.NewRecorder()
 
 			handler.HandleGitReposPartial(w, req)
@@ -158,6 +161,7 @@ var _ = Describe("WebHandler", func() {
 		It("should allow HTMX requests", func() {
 			req := httptest.NewRequest(http.MethodGet, "/partials/test", nil)
 			req.Header.Set("HX-Request", "true")
+
 			w := httptest.NewRecorder()
 
 			dummyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

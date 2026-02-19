@@ -103,6 +103,7 @@ var _ = Describe("DeleteOwnedJobs", func() {
 				if err := ctrl.SetControllerReference(cronJob, job, scheme); err != nil {
 					Fail("Failed to set controller reference: " + err.Error())
 				}
+
 				Expect(fakeClient.Create(ctx, job)).To(Succeed())
 
 				return job

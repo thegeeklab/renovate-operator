@@ -98,15 +98,18 @@ var _ = Describe("APIHandler", func() {
 
 			for _, path := range testCases {
 				var found bool
+
 				_ = router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
 					routePath, err := route.GetPathTemplate()
 					Expect(err).NotTo(HaveOccurred())
+
 					if routePath == path {
 						found = true
 					}
 
 					return nil
 				})
+
 				Expect(found).To(BeTrue(), "Route %s should be registered", path)
 			}
 		})

@@ -129,6 +129,7 @@ var _ = Describe("Job Reconciliation", func() {
 			// Additional verification: check that the job has the correct name pattern
 			runnerName := RunnerName(reconciler.req)
 			foundMatchingJob := false
+
 			for _, job := range jobList.Items {
 				if job.Name == runnerName || strings.HasPrefix(job.Name, runnerName+"-") {
 					foundMatchingJob = true
@@ -136,6 +137,7 @@ var _ = Describe("Job Reconciliation", func() {
 					break
 				}
 			}
+
 			Expect(foundMatchingJob).To(BeTrue(), "No job found with expected name pattern")
 		})
 	})

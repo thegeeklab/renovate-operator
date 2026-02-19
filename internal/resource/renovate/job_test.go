@@ -92,10 +92,12 @@ var _ = Describe("JobSpec", func() {
 
 			// Verify environment variables
 			Expect(mainContainer.Env).To(HaveLen(3)) // LOG_LEVEL, RENOVATE_CONFIG_FILE, RENOVATE_TOKEN
+
 			envMap := make(map[string]string)
 			for _, env := range mainContainer.Env {
 				envMap[env.Name] = env.Value
 			}
+
 			Expect(envMap["LOG_LEVEL"]).To(Equal("debug"))
 			Expect(envMap["RENOVATE_CONFIG_FILE"]).To(Equal("/etc/config/renovate/renovate.json"))
 			Expect(envMap["RENOVATE_TOKEN"]).To(Equal(""))
@@ -120,10 +122,12 @@ var _ = Describe("JobSpec", func() {
 
 			// Verify repository override environment variable
 			mainContainer := jobSpec.Template.Spec.Containers[0]
+
 			envMap := make(map[string]string)
 			for _, env := range mainContainer.Env {
 				envMap[env.Name] = env.Value
 			}
+
 			Expect(envMap["RENOVATE_REPOSITORIES"]).To(Equal("test-org/test-repo"))
 		})
 	})
@@ -161,10 +165,12 @@ var _ = Describe("JobSpec", func() {
 
 			// Verify dispatcher volume mounts
 			Expect(dispatcher.VolumeMounts).To(HaveLen(3))
+
 			dispatcherMountMap := make(map[string]string)
 			for _, vm := range dispatcher.VolumeMounts {
 				dispatcherMountMap[vm.Name] = vm.MountPath
 			}
+
 			Expect(dispatcherMountMap["renovate-config"]).To(Equal("/etc/config/renovate"))
 			Expect(dispatcherMountMap[renovateCM]).To(Equal("/tmp/renovate/renovate.json"))
 			Expect(dispatcherMountMap["test-index"]).To(Equal("/tmp/renovate/index.json"))
@@ -174,6 +180,7 @@ var _ = Describe("JobSpec", func() {
 			for _, env := range dispatcher.Env {
 				dispatcherEnvMap[env.Name] = env.Value
 			}
+
 			Expect(dispatcherEnvMap["RENOVATE_CONFIG_FILE_RAW"]).To(Equal("/tmp/renovate/renovate.json"))
 			Expect(dispatcherEnvMap["RENOVATE_CONFIG_FILE"]).To(Equal("/etc/config/renovate/renovate.json"))
 			Expect(dispatcherEnvMap["RENOVATE_INDEX"]).To(Equal("/tmp/renovate/index.json"))
@@ -200,10 +207,12 @@ var _ = Describe("JobSpec", func() {
 
 			// Verify repository override environment variable
 			mainContainer := jobSpec.Template.Spec.Containers[0]
+
 			envMap := make(map[string]string)
 			for _, env := range mainContainer.Env {
 				envMap[env.Name] = env.Value
 			}
+
 			Expect(envMap["RENOVATE_REPOSITORIES"]).To(Equal("test-org/test-repo"))
 
 			// Verify no init containers for single repo mode
