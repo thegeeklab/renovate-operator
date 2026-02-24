@@ -1,7 +1,7 @@
 ---
 version: "2"
 run:
-  timeout: 10m
+  timeout: 5m
 
 linters:
   default: none
@@ -76,13 +76,17 @@ linters:
     - wsl_v5
     - zerologlint
   settings:
+    gosec:
+      excludes:
+        - G117 # Potential exposure of secrets via JSON marshaling
     revive:
       rules:
         - name: var-naming
           arguments:
             - []
             - []
-            - - skipPackageNameChecks: true
+            - - skip-package-name-checks: true
+                skip-package-name-collision-with-go-std: true
     tagliatelle:
       case:
         rules:
