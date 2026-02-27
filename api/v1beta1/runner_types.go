@@ -26,7 +26,7 @@ type RunnerSpec struct {
 //
 //nolint:lll
 type RunnerStatus struct {
-	Ready            bool               `json:"ready"`
+	Ready            bool               `json:"ready,omitempty"`
 	Failed           int                `json:"failed,omitempty"`
 	Conditions       []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
 	LastScheduleTime *metav1.Time       `json:"lastScheduleTime,omitempty"`

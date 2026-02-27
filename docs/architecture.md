@@ -154,9 +154,8 @@ A standalone service for repository discovery that can run independently or as p
 2. **Runner Reconciler** reads GitRepo CRs
 3. **Job Creation**: Creates one job per repository
 4. **Parallel Kubernetes Jobs** are created
-5. **Dispatcher init containers** prepare each job
-6. **Renovate containers** process repositories
-7. **Job cleanup** occurs after completion
+5. **Renovate containers** process repositories
+6. **Job cleanup** occurs after completion
 
 ### 3. Status Management
 

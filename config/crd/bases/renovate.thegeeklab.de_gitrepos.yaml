@@ -112,8 +112,6 @@ spec:
                   type: boolean
                 specHash:
                   type: string
-              required:
-                - ready
               type: object
           type: object
       served: true
