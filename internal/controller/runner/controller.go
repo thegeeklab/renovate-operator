@@ -64,7 +64,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	runner, err := runner.NewReconciler(ctx, r.Client, r.Scheme, rr, rc)
+	runner, err := runner.NewReconciler(r.Client, r.Scheme, rr, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

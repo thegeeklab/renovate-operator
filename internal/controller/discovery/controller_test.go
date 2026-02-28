@@ -27,7 +27,6 @@ var _ = Describe("Discovery Controller", func() {
 		ctx = context.Background()
 		reconciler = &Reconciler{
 			Client: k8sClient,
-			Reader: k8sClient,
 			Scheme: k8sClient.Scheme(),
 		}
 	})

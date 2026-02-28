@@ -5,11 +5,14 @@ import (
 	"errors"
 	"fmt"
 	"sort"
+	"strings"
 	"time"
 
 	"github.com/netresearch/go-cron"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/clock"
@@ -38,7 +41,6 @@ type Schedulable interface {
 
 type Manager struct {
 	client.Client
-	client.Reader
 	scheme *runtime.Scheme
 	clock  clock.Clock
 }
@@ -49,10 +51,9 @@ type DecisionResult struct {
 	Trigger   string
 }
 
-func NewManager(c client.Client, reader client.Reader, s *runtime.Scheme, clock clock.Clock) *Manager {
+func NewManager(c client.Client, s *runtime.Scheme, clock clock.Clock) *Manager {
 	return &Manager{
 		Client: c,
-		Reader: reader,
 		scheme: s,
 		clock:  clock,
 	}
@@ -97,6 +98,7 @@ func (m *Manager) Evaluate(obj Schedulable, checkManualTrigger func(map[string]s
 func (m *Manager) EnsureJob(
 	ctx context.Context, owner Schedulable, job *batchv1.Job, lockLabels map[string]string,
 ) (bool, error) {
+	// Check local cache for active jobs
 	activeJobs, err := m.getActiveJobs(ctx, owner.GetNamespace(), lockLabels)
 	if err != nil {
 		return false, fmt.Errorf("failed to check active jobs: %w", err)
@@ -110,11 +112,32 @@ func (m *Manager) EnsureJob(
 		return false, fmt.Errorf("failed to set controller reference: %w", err)
 	}
 
-	if job.GenerateName == "" && job.Name == "" {
-		job.GenerateName = owner.GetName() + "-"
+	if job.Name == "" {
+		baseName := owner.GetName()
+
+		// Extract the target base name from GenerateName if provided
+		// (crucial for multiple jobs running under the same owner, like GitRepos)
+		if job.GenerateName != "" {
+			baseName = strings.TrimRight(job.GenerateName, "-")
+			job.GenerateName = "" // Clear it so the API server doesn't use it
+		}
+
+		timeInMinutes := m.clock.Now().Unix() / int64(time.Minute.Seconds())
+		suffix := fmt.Sprintf("-%d", timeInMinutes)
+
+		jobName, err := k8s.DeterministicName(baseName, suffix)
+		if err != nil {
+			return false, fmt.Errorf("failed to generate deterministic job name: %w", err)
+		}
+
+		job.Name = jobName
 	}
 
 	if err := m.Create(ctx, job); err != nil {
+		if api_errors.IsAlreadyExists(err) {
+			return false, nil
+		}
+
 		return false, fmt.Errorf("failed to create job: %w", err)
 	}
 
@@ -125,7 +148,7 @@ func (m *Manager) CompleteRun(
 	ctx context.Context, obj Schedulable, cleanupManualTrigger func(map[string]string) map[string]string,
 ) error {
 	key := client.ObjectKeyFromObject(obj)
-	if err := m.Reader.Get(ctx, key, obj); err != nil {
+	if err := m.Get(ctx, key, obj); err != nil {
 		return fmt.Errorf("failed to refresh object for status update: %w", err)
 	}
 
@@ -170,7 +193,7 @@ func (m *Manager) getActiveJobs(
 	ctx context.Context, namespace string, matchLabels map[string]string,
 ) ([]batchv1.Job, error) {
 	var jobList batchv1.JobList
-	if err := m.Reader.List(ctx, &jobList, client.InNamespace(namespace), client.MatchingLabels(matchLabels)); err != nil {
+	if err := m.List(ctx, &jobList, client.InNamespace(namespace), client.MatchingLabels(matchLabels)); err != nil {
 		return nil, err
 	}
 
@@ -195,7 +218,7 @@ func (m *Manager) PruneJobs(
 		failedJobs     []batchv1.Job
 	)
 
-	if err := m.Reader.List(ctx, &jobList, client.InNamespace(ns), client.MatchingLabels(labels)); err != nil {
+	if err := m.List(ctx, &jobList, client.InNamespace(ns), client.MatchingLabels(labels)); err != nil {
 		return err
 	}
 

@@ -25,7 +25,6 @@ const ControllerName = "discovery"
 // Reconciler reconciles a Renovator object.
 type Reconciler struct {
 	client.Client
-	client.Reader
 	Scheme *runtime.Scheme
 }
 
@@ -50,7 +49,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
 	rd := &renovatev1beta1.Discovery{}
-	if err := r.Client.Get(ctx, req.NamespacedName, rd); err != nil {
+	if err := r.Get(ctx, req.NamespacedName, rd); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -64,7 +63,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
-	if err := r.Client.Get(ctx, rcNamespacedName, rc); err != nil {
+	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
 		}
@@ -72,7 +71,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	discovery, err := discovery.NewReconciler(ctx, r.Client, r.Reader, r.Scheme, rd, rc)
+	discovery, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -134,7 +133,7 @@ func (r *Reconciler) mapConfigToDiscovery(ctx context.Context, obj client.Object
 	const configRefIndexKey = ".spec.configRef"
 
 	discoveryList := &renovatev1beta1.DiscoveryList{}
-	if err := r.Client.List(
+	if err := r.List(
 		ctx, discoveryList, client.InNamespace(obj.GetNamespace()), client.MatchingFields{configRefIndexKey: obj.GetName()},
 	); err != nil {
 		return nil
@@ -167,7 +166,7 @@ func (r *Reconciler) resolveRenovateConfig(
 	}
 
 	configList := &renovatev1beta1.RenovateConfigList{}
-	if err := r.Client.List(ctx, configList, client.InNamespace(namespace)); err != nil {
+	if err := r.List(ctx, configList, client.InNamespace(namespace)); err != nil {
 		return client.ObjectKey{}, err
 	}
 

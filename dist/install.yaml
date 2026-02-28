@@ -156,8 +156,6 @@ spec:
                   type: string
                 ready:
                   type: boolean
-              required:
-                - ready
               type: object
           type: object
       served: true
@@ -278,8 +276,6 @@ spec:
                   type: boolean
                 specHash:
                   type: string
-              required:
-                - ready
               type: object
           type: object
       served: true
@@ -691,8 +687,6 @@ spec:
                   type: integer
                 ready:
                   type: boolean
-              required:
-                - ready
               type: object
           type: object
       served: true
@@ -1244,8 +1238,6 @@ spec:
                   type: boolean
                 specHash:
                   type: string
-              required:
-                - ready
               type: object
           type: object
       served: true
@@ -1405,8 +1397,6 @@ spec:
                   type: string
                 ready:
                   type: boolean
-              required:
-                - ready
               type: object
           type: object
       served: true

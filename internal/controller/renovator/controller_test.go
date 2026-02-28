@@ -309,5 +309,5 @@ func (m *mockErrorClient) Get(
 		return api_errors.NewNotFound(renovatev1beta1.GroupVersion.WithResource("renovators").GroupResource(), key.Name)
 	}
 
-	return m.Client.Get(ctx, key, obj, opts...)
+	return m.Get(ctx, key, obj, opts...)
 }

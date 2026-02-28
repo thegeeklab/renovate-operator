@@ -15,7 +15,6 @@ import (
 
 type Reconciler struct {
 	client.Client
-	client.Reader
 	scheme    *runtime.Scheme
 	scheduler *scheduler.Manager
 	req       ctrl.Request
@@ -24,18 +23,15 @@ type Reconciler struct {
 }
 
 func NewReconciler(
-	_ context.Context,
 	c client.Client,
-	r client.Reader,
 	scheme *runtime.Scheme,
 	instance *renovatev1beta1.Discovery,
 	renovate *renovatev1beta1.RenovateConfig,
 ) (*Reconciler, error) {
 	return &Reconciler{
 		Client:    c,
-		Reader:    r,
 		scheme:    scheme,
-		scheduler: scheduler.NewManager(c, r, scheme, clock.RealClock{}),
+		scheduler: scheduler.NewManager(c, scheme, clock.RealClock{}),
 		req:       ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
 		instance:  instance,
 		renovate:  renovate,

@@ -232,7 +232,6 @@ func main() {
 	// discovery
 	if err = (&discovery.Reconciler{
 		Client: mgr.GetClient(),
-		Reader: mgr.GetAPIReader(),
 		Scheme: mgr.GetScheme(),
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", discovery.ControllerName)

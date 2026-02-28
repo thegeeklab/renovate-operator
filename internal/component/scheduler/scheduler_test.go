@@ -46,8 +46,7 @@ var _ = Describe("Scheduler Manager", func() {
 	BeforeEach(func() {
 		now = time.Date(2026, 2, 25, 12, 0, 0, 0, time.UTC)
 		fakeClock = fakeclock.NewFakeClock(now)
-		// Client and Reader are nil here; Evaluate doesn't use them.
-		mgr = NewManager(nil, nil, nil, fakeClock)
+		mgr = NewManager(nil, nil, fakeClock)
 
 		obj = &MockSchedulable{
 			ObjectMeta: metav1.ObjectMeta{Name: "test-task"},

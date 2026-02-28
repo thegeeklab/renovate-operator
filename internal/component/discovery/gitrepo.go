@@ -27,7 +27,7 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 
 	// 1. Find the ConfigMap using the owner reference
 	cms := &corev1.ConfigMapList{}
-	if err := r.Client.List(ctx, cms, client.InNamespace(r.instance.Namespace)); err != nil {
+	if err := r.List(ctx, cms, client.InNamespace(r.instance.Namespace)); err != nil {
 		return &ctrl.Result{}, err
 	}
 
@@ -129,7 +129,7 @@ func (r *Reconciler) pruneOrphanedRepos(ctx context.Context, discovered map[stri
 	log := logf.FromContext(ctx)
 
 	existingRepos := &renovatev1beta1.GitRepoList{}
-	if err := r.Client.List(ctx, existingRepos, client.InNamespace(r.instance.Namespace)); err != nil {
+	if err := r.List(ctx, existingRepos, client.InNamespace(r.instance.Namespace)); err != nil {
 		return fmt.Errorf("failed to list existing GitRepos: %w", err)
 	}
 

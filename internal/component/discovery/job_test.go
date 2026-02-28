@@ -87,7 +87,7 @@ var _ = Describe("ReconcileJob", func() {
 		reconciler = &Reconciler{
 			Client:    fakeClient,
 			scheme:    scheme,
-			scheduler: scheduler.NewManager(fakeClient, fakeClient, scheme, fakeClock),
+			scheduler: scheduler.NewManager(fakeClient, scheme, fakeClock),
 			req: ctrl.Request{
 				NamespacedName: types.NamespacedName{
 					Namespace: instance.Namespace,

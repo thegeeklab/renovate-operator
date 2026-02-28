@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	corev1 "k8s.io/api/core/v1"
@@ -224,6 +225,19 @@ var _ = Describe("Runner Controller", func() {
 
 		result, err := errorReconciler.Reconcile(ctx, reconcile.Request{
 			NamespacedName: types.NamespacedName{Name: "missing-config-runner", Namespace: "default"},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+	})
+
+	It("should handle missing Runner resource gracefully", func() {
+		nonExistentName := types.NamespacedName{
+			Name:      "non-existent-runner",
+			Namespace: "default",
+		}
+
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{
+			NamespacedName: nonExistentName,
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))

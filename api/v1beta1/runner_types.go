@@ -56,3 +56,37 @@ type RunnerList struct {
 func init() {
 	SchemeBuilder.Register(&Runner{}, &RunnerList{})
 }
+
+// GetSchedule returns the cron schedule string.
+func (r *Runner) GetSchedule() string {
+	return r.Spec.Schedule
+}
+
+// GetSuspend returns true if the schedule is suspended.
+func (r *Runner) GetSuspend() bool {
+	if r.Spec.Suspend == nil {
+		return false
+	}
+
+	return *r.Spec.Suspend
+}
+
+// GetLastScheduleTime returns the time of the last execution.
+func (r *Runner) GetLastScheduleTime() *metav1.Time {
+	return r.Status.LastScheduleTime
+}
+
+// SetLastScheduleTime updates the time of the last execution.
+func (r *Runner) SetLastScheduleTime(t *metav1.Time) {
+	r.Status.LastScheduleTime = t
+}
+
+// GetSuccessLimit returns the history limit for successful jobs.
+func (r *Runner) GetSuccessLimit() int {
+	return r.Spec.SuccessLimit
+}
+
+// GetFailedLimit returns the history limit for failed jobs.
+func (r *Runner) GetFailedLimit() int {
+	return r.Spec.FailedLimit
+}
