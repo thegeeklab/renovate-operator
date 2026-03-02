@@ -7,10 +7,10 @@ import (
 	"time"
 
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
-	"github.com/thegeeklab/renovate-operator/internal/component/scheduler"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
+	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/discovery"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
