@@ -5,6 +5,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
@@ -301,15 +302,12 @@ type mockErrorClient struct {
 }
 
 func (m *mockErrorClient) Get(
-	ctx context.Context,
-	key client.ObjectKey,
-	obj client.Object,
-	opts ...client.GetOption,
+	ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption,
 ) error {
 	// Return error for dependent resources to simulate missing resources
 	if _, ok := obj.(*renovatev1beta1.Renovator); ok {
 		return api_errors.NewNotFound(renovatev1beta1.GroupVersion.WithResource("renovators").GroupResource(), key.Name)
 	}
 
-	return m.Client.Get(ctx, key, obj, opts...)
+	return m.Get(ctx, key, obj, opts...)
 }

@@ -53,7 +53,8 @@
     "admissionregistrationv1",
     "frontend",
     "subrouter",
-    "HTMX"
+    "HTMX",
+    "Schedulable"
   ],
   "ignorePaths": [
     ".woodpecker",

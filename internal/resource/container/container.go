@@ -13,10 +13,7 @@ type VolumeMutator func(*[]corev1.Volume)
 
 // ContainerTemplate creates a default container with optional mutators.
 func ContainerTemplate(
-	name string,
-	image string,
-	imagePullPolicy corev1.PullPolicy,
-	mutators ...ContainerMutator,
+	name, image string, imagePullPolicy corev1.PullPolicy, mutators ...ContainerMutator,
 ) corev1.Container {
 	container := corev1.Container{
 		Name:            name,

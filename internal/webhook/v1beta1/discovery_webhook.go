@@ -68,5 +68,13 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 		discovery.Spec.Schedule = renovatev1beta1.DefaultSchedule
 	}
 
+	if discovery.Spec.SuccessLimit == 0 {
+		discovery.Spec.SuccessLimit = renovatev1beta1.DefaultSuccessLimit
+	}
+
+	if discovery.Spec.FailedLimit == 0 {
+		discovery.Spec.FailedLimit = renovatev1beta1.DefaultFailedLimit
+	}
+
 	return nil
 }

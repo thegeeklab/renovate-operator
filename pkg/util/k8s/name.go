@@ -3,22 +3,36 @@ package k8s
 import (
 	"errors"
 	"fmt"
+	"hash/fnv"
 	"regexp"
 	"strings"
 )
 
-// DNS1123MaxLength is the maximum length for DNS-1123 subdomain names (253 characters).
-// This is a DNS protocol constraint for domain name labels.
-const DNS1123MaxLength = 253
+const (
+	// DNS1123MaxLength is the maximum length for DNS-1123 subdomain names (253 characters).
+	// This is a DNS protocol constraint for domain name labels.
+	DNS1123MaxLength = 253
 
-var errInvalidName = errors.New("invalid name")
+	// DNS1035LabelMaxLength is the maximum length for DNS-1035 labels (63 characters).
+	// This is strictly enforced for Kubernetes Job names because they are mapped to K8s labels.
+	DNS1035LabelMaxLength = 63
+)
+
+var (
+	errInvalidName   = errors.New("invalid name")
+	errInvalidSuffix = errors.New("suffix is too long")
+
+	// invalidCharsRegex matches any sequence of characters that are not lowercase a-z or 0-9.
+	// Compiling this globally prevents expensive recompilation on every function call.
+	invalidCharsRegex = regexp.MustCompile(`[^a-z0-9]+`)
+)
 
 // SanitizeName sanitizes a string to create a valid Kubernetes object name.
 // It follows DNS-1123 subdomain conventions:
-// - Contains only lowercase alphanumeric characters, hyphens (-), and dots (.).
+// - Contains only lowercase alphanumeric characters and hyphens (-).
 // - Starts and ends with an alphanumeric character.
 // - No longer than 253 characters.
-// - No consecutive hyphens or dots.
+// - No consecutive hyphens.
 // Returns an error if the input contains only invalid characters.
 func SanitizeName(name string) (string, error) {
 	if name == "" {
@@ -33,18 +47,9 @@ func SanitizeName(name string) (string, error) {
 	// Convert to lowercase
 	name = strings.ToLower(name)
 
-	// Replace common separators with hyphens, but preserve dots
-	name = strings.ReplaceAll(name, "/", "-")
-	name = strings.ReplaceAll(name, "_", "-")
-
-	// Replace other invalid characters with hyphens
-	// Keep only alphanumeric characters, hyphens, and dots
-	validChars := regexp.MustCompile(`[^a-z0-9\-\.]`)
-	name = validChars.ReplaceAllString(name, "-")
-
-	// Replace consecutive hyphens with a single hyphen
-	consecutiveHyphens := regexp.MustCompile(`-+`)
-	name = consecutiveHyphens.ReplaceAllString(name, "-")
+	// Replace ANY sequence of non-alphanumeric characters (including /, _, ., etc.)
+	// with a single hyphen. This handles replacement and deduplication in one pass.
+	name = invalidCharsRegex.ReplaceAllString(name, "-")
 
 	// Ensure the name starts with an alphanumeric character
 	if len(name) > 0 && !isAlphanumeric(name[0]) {
@@ -60,12 +65,51 @@ func SanitizeName(name string) (string, error) {
 	if len(name) > DNS1123MaxLength {
 		name = name[:DNS1123MaxLength]
 		// Ensure it still ends with alphanumeric after truncation
-		if len(name) > 0 && !isAlphanumeric(name[len(name)-1]) {
+		for len(name) > 0 && !isAlphanumeric(name[len(name)-1]) {
 			name = name[:len(name)-1]
 		}
 	}
 
 	return name, nil
+}
+
+// DeterministicName generates a valid Kubernetes name bounded by the 63-character limit.
+// If the combined length exceeds 63 characters, it safely truncates the base name
+// and injects a hash of the original base name to prevent duplicate name collisions.
+func DeterministicName(baseName, suffix string) (string, error) {
+	sanitizedBase, err := SanitizeName(baseName)
+	if err != nil {
+		return "", err
+	}
+
+	// If it fits perfectly, just concatenate and return
+	if len(sanitizedBase)+len(suffix) <= DNS1035LabelMaxLength {
+		return fmt.Sprintf("%s%s", sanitizedBase, suffix), nil
+	}
+
+	// If it exceeds 63 characters, we must truncate and add a hash to avoid collisions.
+	// We use the original baseName for the hash to maximize uniqueness before sanitization.
+	h := fnv.New32a()
+	h.Write([]byte(baseName))
+
+	// Use %08x to pad with leading zeros, guaranteeing exactly 8 characters every time
+	hashStr := fmt.Sprintf("%08x", h.Sum32())
+
+	// Calculate how much space we have for the base name.
+	// We need room for: "-<hash><suffix>"
+	reservedLength := 1 + len(hashStr) + len(suffix)
+	maxBaseLength := DNS1035LabelMaxLength - reservedLength
+
+	if maxBaseLength <= 0 {
+		return "", fmt.Errorf("failed to generate deterministic name: %w", errInvalidSuffix)
+	}
+
+	truncatedBase := sanitizedBase[:maxBaseLength]
+
+	// Ensure truncation doesn't leave a trailing hyphen
+	truncatedBase = strings.TrimRight(truncatedBase, "-")
+
+	return fmt.Sprintf("%s-%s%s", truncatedBase, hashStr, suffix), nil
 }
 
 func hasValidCharacters(name string) bool {

@@ -1,4 +1,4 @@
-package dispatcher
+package k8s
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestDispatcher(t *testing.T) {
+func TestK8SUtil(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Dispatcher Suite")
+	RunSpecs(t, "K8S util Suite")
 }

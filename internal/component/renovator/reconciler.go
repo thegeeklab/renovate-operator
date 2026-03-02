@@ -19,10 +19,7 @@ type Reconciler struct {
 }
 
 func NewReconciler(
-	_ context.Context,
-	c client.Client,
-	scheme *runtime.Scheme,
-	instance *renovatev1beta1.Renovator,
+	_ context.Context, c client.Client, scheme *runtime.Scheme, instance *renovatev1beta1.Renovator,
 ) (*Reconciler, error) {
 	return &Reconciler{
 		Client:   c,

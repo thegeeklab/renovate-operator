@@ -1,4 +1,4 @@
-package gitrepo
+package scheduler
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestGitRepo(t *testing.T) {
+func TestScheduler(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "GitRepo Suite")
+	RunSpecs(t, "Scheduler Suite")
 }
