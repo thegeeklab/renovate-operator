@@ -22,6 +22,16 @@ import (
 func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
+	runnerLabels := map[string]string{
+		renovatev1beta1.RenovatorLabel: r.instance.Labels[renovatev1beta1.RenovatorLabel],
+	}
+
+	if err := r.scheduler.PruneJobs(
+		ctx, r.instance.Namespace, runnerLabels, r.instance.GetSuccessLimit(), r.instance.GetFailedLimit(),
+	); err != nil {
+		log.Error(err, "Failed to prune runner jobs")
+	}
+
 	decision, err := r.scheduler.Evaluate(r.instance, renovator.HasRenovatorOperationRenovate)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to evaluate schedule: %w", err)

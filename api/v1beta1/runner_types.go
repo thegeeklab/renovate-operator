@@ -15,11 +15,6 @@ type RunnerSpec struct {
 	ConfigRef string `json:"configRef,omitempty"`
 
 	JobSpec `json:",inline"`
-
-	// Maximum number of parallel pods to start.
-	// +kubebuilder:validation:Minimum=1
-	// +kubebuilder:validation:Maximum=100
-	Instances int32 `json:"instances"`
 }
 
 // RunnerStatus defines the observed state of Runner.
@@ -83,10 +78,10 @@ func (r *Runner) SetLastScheduleTime(t *metav1.Time) {
 
 // GetSuccessLimit returns the history limit for successful jobs.
 func (r *Runner) GetSuccessLimit() int {
-	return r.Spec.SuccessLimit
+	return int(*r.Spec.SuccessLimit)
 }
 
 // GetFailedLimit returns the history limit for failed jobs.
 func (r *Runner) GetFailedLimit() int {
-	return r.Spec.FailedLimit
+	return int(*r.Spec.FailedLimit)
 }

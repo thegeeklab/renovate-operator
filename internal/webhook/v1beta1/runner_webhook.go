@@ -1,3 +1,4 @@
+//nolint:dupl
 package v1beta1
 
 import (
@@ -68,8 +69,20 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 		runner.Spec.Schedule = renovatev1beta1.DefaultSchedule
 	}
 
-	if runner.Spec.Instances == 0 {
-		runner.Spec.Instances = 1
+	if runner.Spec.SuccessLimit == nil {
+		runner.Spec.SuccessLimit = ptr.To(renovatev1beta1.DefaultSuccessLimit)
+	}
+
+	if runner.Spec.FailedLimit == nil {
+		runner.Spec.FailedLimit = ptr.To(renovatev1beta1.DefaultFailedLimit)
+	}
+
+	if runner.Spec.BackoffLimit == nil {
+		runner.Spec.BackoffLimit = ptr.To(renovatev1beta1.DefaultBackoffLimit)
+	}
+
+	if runner.Spec.TTLSecondsAfterFinished == nil {
+		runner.Spec.TTLSecondsAfterFinished = ptr.To(renovatev1beta1.DefaultTTLSecondsAfterFinished)
 	}
 
 	return nil

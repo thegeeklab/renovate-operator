@@ -80,10 +80,10 @@ func (d *Discovery) SetLastScheduleTime(t *metav1.Time) {
 
 // GetSuccessLimit returns the history limit for successful jobs.
 func (d *Discovery) GetSuccessLimit() int {
-	return d.Spec.SuccessLimit
+	return int(*d.Spec.SuccessLimit)
 }
 
 // GetFailedLimit returns the history limit for failed jobs.
 func (d *Discovery) GetFailedLimit() int {
-	return d.Spec.FailedLimit
+	return int(*d.Spec.FailedLimit)
 }

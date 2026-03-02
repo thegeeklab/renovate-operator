@@ -2,24 +2,22 @@ package renovate
 
 import (
 	"context"
-	"sort"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 // jobConfig holds the state required to build the JobSpec.
 type jobConfig struct {
-	// Context
-	Renovate   *renovatev1beta1.RenovateConfig
-	RenovateCM string
+	Renovate                *renovatev1beta1.RenovateConfig
+	RenovateCM              string
+	BackoffLimit            *int32
+	TTLSecondsAfterFinished *int32
 
-	// Accumulators
 	InitContainers []corev1.Container
 	VolumeMutators []containers.VolumeMutator
 	EnvVars        []corev1.EnvVar
@@ -53,6 +51,8 @@ func DefaultJobSpec(
 	spec.Parallelism = ptr.To(int32(1))
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 	spec.Template.Spec.InitContainers = cfg.InitContainers
+	spec.BackoffLimit = cfg.BackoffLimit
+	spec.TTLSecondsAfterFinished = cfg.TTLSecondsAfterFinished
 
 	// Build Final Volume Slice
 	spec.Template.Spec.Volumes = containers.VolumesTemplate(cfg.VolumeMutators...)
@@ -105,6 +105,19 @@ func WithExtraEnv(env []corev1.EnvVar) JobOption {
 	}
 }
 
+// WithRenovateJobSpec applies the operator's Job configuration to the Kubernetes Job.
+func WithRenovateJobSpec(js renovatev1beta1.JobSpec) JobOption {
+	return func(c *jobConfig) {
+		if js.BackoffLimit != nil {
+			c.BackoffLimit = js.BackoffLimit
+		}
+
+		if js.TTLSecondsAfterFinished != nil {
+			c.TTLSecondsAfterFinished = js.TTLSecondsAfterFinished
+		}
+	}
+}
+
 // GetActiveJobs returns a list of running jobs matching the given labels.
 func GetActiveJobs(
 	ctx context.Context, c client.Client, namespace string, labels map[string]string,
@@ -128,55 +141,4 @@ func GetActiveJobs(
 	}
 
 	return active, nil
-}
-
-// PruneJobHistory deletes old completed/failed jobs based on the provided limits.
-func PruneJobHistory(
-	ctx context.Context, c client.Client, namespace string, labels map[string]string, successLimit, failedLimit int,
-) error {
-	jobList := &batchv1.JobList{}
-
-	err := c.List(ctx, jobList,
-		client.InNamespace(namespace),
-		client.MatchingLabels(labels),
-	)
-	if err != nil {
-		return err
-	}
-
-	var successful, failed []batchv1.Job
-
-	for _, job := range jobList.Items {
-		if job.Status.Active > 0 {
-			continue
-		}
-
-		if job.Status.Succeeded > 0 {
-			successful = append(successful, job)
-		} else if job.Status.Failed > 0 {
-			failed = append(failed, job)
-		}
-	}
-
-	deleteOldestJobs(ctx, c, successful, successLimit)
-	deleteOldestJobs(ctx, c, failed, failedLimit)
-
-	return nil
-}
-
-// deleteOldestJobs removes jobs that exceed the count limit, starting with the oldest.
-func deleteOldestJobs(ctx context.Context, c client.Client, jobs []batchv1.Job, limit int) {
-	if len(jobs) <= limit {
-		return
-	}
-
-	// Sort by creation timestamp (Oldest first)
-	sort.Slice(jobs, func(i, j int) bool {
-		return jobs[i].CreationTimestamp.Before(&jobs[j].CreationTimestamp)
-	})
-
-	// Delete excess jobs
-	for i := 0; i < len(jobs)-limit; i++ {
-		_ = c.Delete(ctx, &jobs[i], client.PropagationPolicy(metav1.DeletePropagationBackground))
-	}
 }

@@ -46,6 +46,9 @@ var _ = Describe("ReconcileJob", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-discovery",
 				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.RenovatorLabel: "renovator-id",
+				},
 			},
 			Spec: renovatev1beta1.DiscoverySpec{
 				JobSpec: renovatev1beta1.JobSpec{
@@ -153,7 +156,7 @@ var _ = Describe("ReconcileJob", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "active-job",
 						Namespace: "default",
-						Labels:    DiscoveryMetadata(reconciler.req).Labels,
+						Labels:    instance.Labels,
 					},
 					Status: batchv1.JobStatus{
 						Active: 1,
@@ -181,7 +184,7 @@ var _ = Describe("ReconcileJob", func() {
 				job := jobList.Items[0]
 				Expect(job.Name).To(HavePrefix("test-discovery-"))
 				Expect(job.Namespace).To(Equal("default"))
-				Expect(job.Labels).To(Equal(DiscoveryMetadata(reconciler.req).Labels))
+				Expect(job.Labels).To(Equal(instance.Labels))
 			})
 
 			It("should update status after job creation", func() {

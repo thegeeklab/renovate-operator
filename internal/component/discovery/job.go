@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
@@ -22,7 +23,10 @@ import (
 // reconcileJob checks if discovery should run, processes the job, and schedules the next run.
 func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
-	discoveryLabels := DiscoveryMetadata(r.req).Labels
+
+	discoveryLabels := map[string]string{
+		renovatev1beta1.RenovatorLabel: r.instance.Labels[renovatev1beta1.RenovatorLabel],
+	}
 
 	if err := r.scheduler.PruneJobs(
 		ctx, r.instance.Namespace, discoveryLabels, r.instance.GetSuccessLimit(), r.instance.GetFailedLimit(),

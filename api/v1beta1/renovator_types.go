@@ -54,11 +54,13 @@ const (
 	LogLevel_ERROR = "error"
 	LogLevel_FATAL = "fatal"
 
-	DefaultOperatorContainerImage = "docker.io/thegeeklab/renovate-operator:latest"
-	DefaultRenovateContainerImage = "ghcr.io/renovatebot/renovate:latest"
-	DefaultSchedule               = "0 */2 * * *"
-	DefaultSuccessLimit           = 3
-	DefaultFailedLimit            = 1
+	DefaultOperatorContainerImage        = "docker.io/thegeeklab/renovate-operator:latest"
+	DefaultRenovateContainerImage        = "ghcr.io/renovatebot/renovate:latest"
+	DefaultSchedule                      = "0 */2 * * *"
+	DefaultSuccessLimit            int32 = 3
+	DefaultFailedLimit             int32 = 1
+	DefaultBackoffLimit            int32 = 0
+	DefaultTTLSecondsAfterFinished int32 = 3600
 )
 
 type LoggingSpec struct {
@@ -83,17 +85,31 @@ type ImageSpec struct {
 }
 
 type JobSpec struct {
+	// Suspend specifies whether the job execution and scheduling should be paused.
 	// +kubebuilder:validation:Optional
 	Suspend *bool `json:"suspend,omitempty"`
 
+	// Schedule specifies the cron-formatted schedule on which the job should run.
 	// +kubebuilder:validation:Optional
 	Schedule string `json:"schedule,omitempty"`
 
+	// SuccessLimit specifies the number of successful finished jobs to retain for history.
 	// +kubebuilder:validation:Optional
-	SuccessLimit int `json:"successLimit,omitempty"`
+	SuccessLimit *int32 `json:"successLimit,omitempty"`
 
+	// FailedLimit specifies the number of failed finished jobs to retain for history.
 	// +kubebuilder:validation:Optional
-	FailedLimit int `json:"failedLimit,omitempty"`
+	FailedLimit *int32 `json:"failedLimit,omitempty"`
+
+	// BackoffLimit specifies the number of retries before marking this job as failed.
+	// +kubebuilder:validation:Optional
+	BackoffLimit *int32 `json:"backoffLimit,omitempty"`
+
+	// TTLSecondsAfterFinished limits the lifetime of a Job that has finished execution
+	// (either Complete or Failed). If this field is set, the job and its pods will be
+	// automatically deleted after the specified number of seconds.
+	// +kubebuilder:validation:Optional
+	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
 }
 
 // RenovatorSpec defines the desired state of Renovator.

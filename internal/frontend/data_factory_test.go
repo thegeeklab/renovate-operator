@@ -57,9 +57,6 @@ var _ = Describe("DataFactory", func() {
 					Namespace:         "test-namespace",
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
-				Spec: renovatev1beta1.RunnerSpec{
-					Instances: 1,
-				},
 				Status: renovatev1beta1.RunnerStatus{
 					Ready: true,
 				},
@@ -128,7 +125,6 @@ var _ = Describe("DataFactory", func() {
 			Expect(runners).To(HaveLen(1))
 			Expect(runners[0].Name).To(Equal("test-runner"))
 			Expect(runners[0].Namespace).To(Equal("test-namespace"))
-			Expect(runners[0].Instances).To(Equal(int32(1)))
 			Expect(runners[0].Ready).To(BeTrue())
 		})
 

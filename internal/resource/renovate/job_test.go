@@ -2,7 +2,6 @@ package renovate_test
 
 import (
 	"context"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -37,13 +36,6 @@ func newJob(name, status string) *batchv1.Job {
 	case "failed":
 		j.Status.Failed = 1
 	}
-
-	return j
-}
-
-func newDatedJob(name string, ageHours int, status string) *batchv1.Job {
-	j := newJob(name, status)
-	j.CreationTimestamp = metav1.NewTime(time.Now().Add(time.Duration(-ageHours) * time.Hour))
 
 	return j
 }
@@ -169,56 +161,6 @@ var _ = Describe("Renovate Job Library", func() {
 				newJob("active", "active"),
 				newJob("done", "succeeded"),
 			}, 1),
-		)
-
-		DescribeTable("PruneJobHistory",
-			func(jobs []*batchv1.Job, limits [2]int, expectedNames []string) {
-				objs := make([]client.Object, len(jobs))
-				for i, j := range jobs {
-					objs[i] = j
-				}
-
-				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(objs...).Build()
-
-				err := renovate.PruneJobHistory(ctx, k8sClient, namespace, labels, limits[0], limits[1])
-				Expect(err).NotTo(HaveOccurred())
-
-				remaining := &batchv1.JobList{}
-				err = k8sClient.List(ctx, remaining, client.InNamespace(namespace))
-				Expect(err).NotTo(HaveOccurred())
-
-				var names []string
-				for _, j := range remaining.Items {
-					names = append(names, j.Name)
-				}
-
-				Expect(names).To(ConsistOf(expectedNames))
-			},
-			Entry("Deletes old successful jobs",
-				[]*batchv1.Job{
-					newDatedJob("new", 0, "succeeded"),
-					newDatedJob("old", 1, "succeeded"),
-					newDatedJob("oldest", 2, "succeeded"),
-				},
-				[2]int{2, 1},
-				[]string{"new", "old"},
-			),
-			Entry("Deletes old failed jobs",
-				[]*batchv1.Job{
-					newDatedJob("fail-new", 0, "failed"),
-					newDatedJob("fail-old", 2, "failed"),
-				},
-				[2]int{3, 1},
-				[]string{"fail-new"},
-			),
-			Entry("Preserves active jobs regardless of limits",
-				[]*batchv1.Job{
-					newDatedJob("active-old", 5, "active"),
-					newDatedJob("success-new", 0, "succeeded"),
-				},
-				[2]int{0, 0},
-				[]string{"active-old"},
-			),
 		)
 	})
 })

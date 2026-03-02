@@ -39,12 +39,22 @@ spec:
             spec:
               description: RenovatorSpec defines the desired state of Renovator.
               properties:
+                backoffLimit:
+                  description: BackoffLimit specifies the number of retries before marking this job as failed.
+                  format: int32
+                  type: integer
                 discovery:
                   description: DiscoverySpec defines the desired state of Discovery.
                   properties:
+                    backoffLimit:
+                      description: BackoffLimit specifies the number of retries before marking this job as failed.
+                      format: int32
+                      type: integer
                     configRef:
                       type: string
                     failedLimit:
+                      description: FailedLimit specifies the number of failed finished jobs to retain for history.
+                      format: int32
                       type: integer
                     filter:
                       items:
@@ -79,13 +89,26 @@ spec:
                         - level
                       type: object
                     schedule:
+                      description: Schedule specifies the cron-formatted schedule on which the job should run.
                       type: string
                     successLimit:
+                      description: SuccessLimit specifies the number of successful finished jobs to retain for history.
+                      format: int32
                       type: integer
                     suspend:
+                      description: Suspend specifies whether the job execution and scheduling should be paused.
                       type: boolean
+                    ttlSecondsAfterFinished:
+                      description: |-
+                        TTLSecondsAfterFinished limits the lifetime of a Job that has finished execution
+                        (either Complete or Failed). If this field is set, the job and its pods will be
+                        automatically deleted after the specified number of seconds.
+                      format: int32
+                      type: integer
                   type: object
                 failedLimit:
+                  description: FailedLimit specifies the number of failed finished jobs to retain for history.
+                  format: int32
                   type: integer
                 image:
                   description: |-
@@ -423,9 +446,15 @@ spec:
                 runner:
                   description: RunnerSpec defines the desired state of Runner.
                   properties:
+                    backoffLimit:
+                      description: BackoffLimit specifies the number of retries before marking this job as failed.
+                      format: int32
+                      type: integer
                     configRef:
                       type: string
                     failedLimit:
+                      description: FailedLimit specifies the number of failed finished jobs to retain for history.
+                      format: int32
                       type: integer
                     image:
                       description: |-
@@ -441,12 +470,6 @@ spec:
                         Cannot be updated.
                         More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
                       type: string
-                    instances:
-                      description: Maximum number of parallel pods to start.
-                      format: int32
-                      maximum: 100
-                      minimum: 1
-                      type: integer
                     logging:
                       properties:
                         level:
@@ -462,20 +485,40 @@ spec:
                         - level
                       type: object
                     schedule:
+                      description: Schedule specifies the cron-formatted schedule on which the job should run.
                       type: string
                     successLimit:
+                      description: SuccessLimit specifies the number of successful finished jobs to retain for history.
+                      format: int32
                       type: integer
                     suspend:
+                      description: Suspend specifies whether the job execution and scheduling should be paused.
                       type: boolean
-                  required:
-                    - instances
+                    ttlSecondsAfterFinished:
+                      description: |-
+                        TTLSecondsAfterFinished limits the lifetime of a Job that has finished execution
+                        (either Complete or Failed). If this field is set, the job and its pods will be
+                        automatically deleted after the specified number of seconds.
+                      format: int32
+                      type: integer
                   type: object
                 schedule:
+                  description: Schedule specifies the cron-formatted schedule on which the job should run.
                   type: string
                 successLimit:
+                  description: SuccessLimit specifies the number of successful finished jobs to retain for history.
+                  format: int32
                   type: integer
                 suspend:
+                  description: Suspend specifies whether the job execution and scheduling should be paused.
                   type: boolean
+                ttlSecondsAfterFinished:
+                  description: |-
+                    TTLSecondsAfterFinished limits the lifetime of a Job that has finished execution
+                    (either Complete or Failed). If this field is set, the job and its pods will be
+                    automatically deleted after the specified number of seconds.
+                  format: int32
+                  type: integer
               required:
                 - discovery
               type: object

@@ -93,7 +93,6 @@ func (df *DataFactory) GetRunners(ctx context.Context, namespace, renovator stri
 		result = append(result, RunnerInfo{
 			Name:      runner.Name,
 			Namespace: runner.Namespace,
-			Instances: runner.Spec.Instances,
 			Ready:     runner.Status.Ready,
 			CreatedAt: runner.CreationTimestamp.Time,
 		})

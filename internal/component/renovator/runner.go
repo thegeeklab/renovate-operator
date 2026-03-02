@@ -26,10 +26,6 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 
 	runner.Spec.ConfigRef = runnerSpec.ConfigRef
 
-	if runnerSpec.Instances > 0 {
-		runner.Spec.Instances = runnerSpec.Instances
-	}
-
 	if spec.Image != "" {
 		runner.Spec.Image = spec.Image
 	}
@@ -62,20 +58,37 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.Schedule = runnerSpec.Schedule
 	}
 
-	if spec.SuccessLimit != 0 {
+	// Update to check for nil because these are now pointers
+	if spec.SuccessLimit != nil {
 		runner.Spec.SuccessLimit = spec.SuccessLimit
 	}
 
-	if runnerSpec.SuccessLimit != 0 {
+	if runnerSpec.SuccessLimit != nil {
 		runner.Spec.SuccessLimit = runnerSpec.SuccessLimit
 	}
 
-	if spec.FailedLimit != 0 {
+	if spec.FailedLimit != nil {
 		runner.Spec.FailedLimit = spec.FailedLimit
 	}
 
-	if runnerSpec.FailedLimit != 0 {
+	if runnerSpec.FailedLimit != nil {
 		runner.Spec.FailedLimit = runnerSpec.FailedLimit
+	}
+
+	if spec.BackoffLimit != nil {
+		runner.Spec.BackoffLimit = spec.BackoffLimit
+	}
+
+	if runnerSpec.BackoffLimit != nil {
+		runner.Spec.BackoffLimit = runnerSpec.BackoffLimit
+	}
+
+	if spec.TTLSecondsAfterFinished != nil {
+		runner.Spec.TTLSecondsAfterFinished = spec.TTLSecondsAfterFinished
+	}
+
+	if runnerSpec.TTLSecondsAfterFinished != nil {
+		runner.Spec.TTLSecondsAfterFinished = runnerSpec.TTLSecondsAfterFinished
 	}
 
 	logging := &spec.Logging
