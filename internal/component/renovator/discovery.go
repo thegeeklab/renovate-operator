@@ -59,7 +59,6 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Spec.Schedule = discoverySpec.Schedule
 	}
 
-	// Update to check for nil because these are now pointers
 	if spec.SuccessLimit != nil {
 		discovery.Spec.SuccessLimit = spec.SuccessLimit
 	}

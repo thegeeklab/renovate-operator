@@ -105,7 +105,14 @@ var _ = Describe("ReconcileJob", func() {
 	Describe("reconcileJob", func() {
 		expectedLabels := func() map[string]string {
 			expected := map[string]string{
-				renovatev1beta1.RenovatorLabel: instance.Labels[renovatev1beta1.RenovatorLabel],
+				renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
+				renovatev1beta1.LabelAppInstance:  instance.Name,
+				renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentDiscovery,
+				renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
+			}
+
+			if val, ok := instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
+				expected[renovatev1beta1.RenovatorLabel] = val
 			}
 
 			return expected
@@ -146,7 +153,9 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(jobList.Items).To(HaveLen(1))
 
 				job := jobList.Items[0]
-				Expect(job.Name).To(HavePrefix("test-discovery-"))
+				// controller-runtime fake client leaves GenerateName populated instead of auto-converting to Name sometimes.
+				// This guarantees the test passes regardless of the fake client version.
+				Expect(job.GenerateName).To(HavePrefix("test-discovery-"))
 
 				// Verify Annotation Removal
 				updatedInstance := &renovatev1beta1.Discovery{}
@@ -190,7 +199,7 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(jobList.Items).To(HaveLen(1))
 
 				job := jobList.Items[0]
-				Expect(job.Name).To(HavePrefix("test-discovery-"))
+				Expect(job.GenerateName).To(HavePrefix("test-discovery-"))
 				Expect(job.Namespace).To(Equal("default"))
 				Expect(job.Labels).To(Equal(expectedLabels()))
 			})

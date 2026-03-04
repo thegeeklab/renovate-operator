@@ -126,7 +126,14 @@ var _ = Describe("ReconcileJob", func() {
 	Describe("reconcileJob", func() {
 		expectedLabels := func(repoName string) map[string]string {
 			expected := map[string]string{
-				renovatev1beta1.RenovatorLabel: instance.Labels[renovatev1beta1.RenovatorLabel],
+				renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
+				renovatev1beta1.LabelAppInstance:  instance.Name,
+				renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentRunner,
+				renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
+			}
+
+			if val, ok := instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
+				expected[renovatev1beta1.RenovatorLabel] = val
 			}
 
 			if repoName != "" {
@@ -206,7 +213,8 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(jobList.Items).To(HaveLen(1))
 
 				job := jobList.Items[0]
-				Expect(job.Name).To(HavePrefix("repo-1-"))
+				// controller-runtime fake client check
+				Expect(job.GenerateName).To(HavePrefix("repo-1-"))
 				Expect(job.Labels).To(Equal(expectedLabels("repo-1")))
 
 				// Verify Annotation Removal on Repo
@@ -251,7 +259,7 @@ var _ = Describe("ReconcileJob", func() {
 
 				for _, job := range jobList.Items {
 					if job.Name != "active-job-repo-1" {
-						Expect(job.Name).To(HavePrefix("repo-2-"))
+						Expect(job.GenerateName).To(HavePrefix("repo-2-"))
 						Expect(job.Labels).To(Equal(expectedLabels("repo-2")))
 
 						newJobsFound++

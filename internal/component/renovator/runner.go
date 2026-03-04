@@ -58,7 +58,6 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.Schedule = runnerSpec.Schedule
 	}
 
-	// Update to check for nil because these are now pointers
 	if spec.SuccessLimit != nil {
 		runner.Spec.SuccessLimit = spec.SuccessLimit
 	}
