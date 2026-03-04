@@ -3,6 +3,7 @@ package runner
 import (
 	"context"
 	"fmt"
+	"maps"
 	"time"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
@@ -42,12 +43,11 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	}
 
 	// Process all GitRepo resources
-	triggeredAny, err := r.processGitRepos(ctx, decision.ShouldRun)
+	triggeredAny, err := r.processGitRepos(ctx, decision.ShouldRun, runnerLabels)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to process GitRepos: %w", err)
 	}
 
-	// Update status and annotations if a global run was triggered
 	if decision.ShouldRun {
 		log.Info("Runner run active", "trigger", decision.Trigger)
 
@@ -55,12 +55,9 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 			return &ctrl.Result{}, fmt.Errorf("failed to complete run: %w", err)
 		}
 	} else if triggeredAny {
-		// If only individual repos were triggered, return without rescheduling.
-		// The GitRepo annotation patch inside processGitRepos will trigger a new reconciliation.
 		return &ctrl.Result{}, nil
 	}
 
-	// Schedule the next run
 	nextDecision, err := r.scheduler.Evaluate(r.instance, renovator.HasRenovatorOperationRenovate)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to re-evaluate schedule: %w", err)
@@ -78,50 +75,45 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 }
 
 // processGitRepos processes each GitRepo and creates jobs if needed.
-func (r *Reconciler) processGitRepos(ctx context.Context, isGlobalTriggerActive bool) (bool, error) {
+func (r *Reconciler) processGitRepos(
+	ctx context.Context, isGlobalTrigger bool, labels map[string]string,
+) (bool, error) {
 	log := logf.FromContext(ctx)
 	triggeredAny := false
 
-	// List all GitRepos in the namespace
 	gitRepos := &renovatev1beta1.GitRepoList{}
 	if err := r.List(ctx, gitRepos, client.InNamespace(r.instance.Namespace)); err != nil {
 		return false, fmt.Errorf("failed to list GitRepos: %w", err)
 	}
 
-	// Iterate over each GitRepo
 	for _, repo := range gitRepos.Items {
-		// Skip if neither global trigger nor repo annotation is present
 		hasRepoAnnotation := renovator.HasRenovatorOperationRenovate(repo.Annotations)
-		if !isGlobalTriggerActive && !hasRepoAnnotation {
+		if !isGlobalTrigger && !hasRepoAnnotation {
 			continue
 		}
 
 		triggeredAny = true
 
-		repoLabels := map[string]string{
-			renovatev1beta1.RenovatorLabel:   r.instance.Labels[renovatev1beta1.RenovatorLabel],
-			"renovate.thegeeklab.de/gitrepo": repo.Name,
-		}
+		runnerLabels := make(map[string]string)
+		maps.Copy(runnerLabels, labels)
+		runnerLabels["renovate.thegeeklab.de/gitrepo"] = repo.Name
 
-		// Clean up old jobs for this repo
 		if err := r.scheduler.PruneJobs(
-			ctx, repo.Namespace, repoLabels, r.instance.GetSuccessLimit(), r.instance.GetFailedLimit(),
+			ctx, repo.Namespace, runnerLabels, r.instance.GetSuccessLimit(), r.instance.GetFailedLimit(),
 		); err != nil {
 			log.Error(err, "Failed to clean up old jobs", "repo", repo.Name)
 		}
 
-		// Prepare job
 		job := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{
 				GenerateName: repo.Name + "-",
 				Namespace:    repo.Namespace,
-				Labels:       repoLabels,
+				Labels:       runnerLabels,
 			},
 		}
-		r.updateJob(job, &repo)
+		r.updateJob(job, &repo, runnerLabels)
 
-		// Ensure the job runs using the scheduler
-		created, err := r.scheduler.EnsureJob(ctx, r.instance, job, repoLabels)
+		created, err := r.scheduler.EnsureJob(ctx, r.instance, job, runnerLabels)
 		if err != nil {
 			log.Error(err, "Failed to ensure job", "repo", repo.Name)
 
@@ -136,7 +128,6 @@ func (r *Reconciler) processGitRepos(ctx context.Context, isGlobalTriggerActive 
 
 		log.Info("Renovate job created", "job", job.Name, "repo", repo.Spec.Name)
 
-		// Remove repo annotation if ad-hoc trigger occurred
 		if hasRepoAnnotation {
 			patch := client.MergeFrom(repo.DeepCopy())
 
@@ -151,12 +142,17 @@ func (r *Reconciler) processGitRepos(ctx context.Context, isGlobalTriggerActive 
 }
 
 // updateJob configures the job spec for a GitRepo.
-func (r *Reconciler) updateJob(job *batchv1.Job, repo *renovatev1beta1.GitRepo) {
+func (r *Reconciler) updateJob(job *batchv1.Job, repo *renovatev1beta1.GitRepo, podLabels map[string]string) {
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 
 	// Set default job spec for the repository
 	renovate.DefaultJobSpec(
-		&job.Spec, r.renovate, renovateConfigCM, renovate.WithRepository(repo.Spec.Name),
+		&job.Spec,
+		r.renovate,
+		renovateConfigCM,
+		renovate.WithRenovateJobSpec(r.instance.Spec.JobSpec),
+		renovate.WithPodLabels(podLabels),
+		renovate.WithRepository(repo.Spec.Name),
 	)
 
 	// Configure job execution details

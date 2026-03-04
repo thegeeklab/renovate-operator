@@ -51,7 +51,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 				Labels:       discoveryLabels,
 			},
 		}
-		r.updateJob(job)
+		r.updateJob(job, discoveryLabels)
 
 		created, err := r.scheduler.EnsureJob(ctx, r.instance, job, discoveryLabels)
 		if err != nil {
@@ -86,7 +86,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 }
 
 // updateJob configures the job spec for discovery.
-func (r *Reconciler) updateJob(job *batchv1.Job) {
+func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 
 	// Create init container for repository discovery
@@ -123,7 +123,12 @@ func (r *Reconciler) updateJob(job *batchv1.Job) {
 
 	// Apply default job spec with init container
 	renovate.DefaultJobSpec(
-		&job.Spec, r.renovate, renovateConfigCM, renovate.WithInitContainer(initContainer),
+		&job.Spec,
+		r.renovate,
+		renovateConfigCM,
+		renovate.WithRenovateJobSpec(r.instance.Spec.JobSpec),
+		renovate.WithPodLabels(podLabels),
+		renovate.WithInitContainer(initContainer),
 	)
 
 	// Configure main container for discovery

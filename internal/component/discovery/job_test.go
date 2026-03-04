@@ -103,6 +103,14 @@ var _ = Describe("ReconcileJob", func() {
 	})
 
 	Describe("reconcileJob", func() {
+		expectedLabels := func() map[string]string {
+			expected := map[string]string{
+				renovatev1beta1.RenovatorLabel: instance.Labels[renovatev1beta1.RenovatorLabel],
+			}
+
+			return expected
+		}
+
 		Context("when discovery is suspended", func() {
 			BeforeEach(func() {
 				suspended := true
@@ -156,7 +164,7 @@ var _ = Describe("ReconcileJob", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "active-job",
 						Namespace: "default",
-						Labels:    instance.Labels,
+						Labels:    expectedLabels(),
 					},
 					Status: batchv1.JobStatus{
 						Active: 1,
@@ -184,7 +192,7 @@ var _ = Describe("ReconcileJob", func() {
 				job := jobList.Items[0]
 				Expect(job.Name).To(HavePrefix("test-discovery-"))
 				Expect(job.Namespace).To(Equal("default"))
-				Expect(job.Labels).To(Equal(instance.Labels))
+				Expect(job.Labels).To(Equal(expectedLabels()))
 			})
 
 			It("should update status after job creation", func() {
@@ -206,7 +214,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job)
+			reconciler.updateJob(job, nil)
 
 			Expect(job.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.InitContainers[0].Name).To(Equal("renovate-init"))

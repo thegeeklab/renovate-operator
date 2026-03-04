@@ -76,10 +76,6 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 		renovator.Spec.BackoffLimit = ptr.To(renovatev1beta1.DefaultBackoffLimit)
 	}
 
-	if renovator.Spec.TTLSecondsAfterFinished == nil {
-		renovator.Spec.TTLSecondsAfterFinished = ptr.To(renovatev1beta1.DefaultTTLSecondsAfterFinished)
-	}
-
 	// RenovateConfig spec
 	if renovator.Spec.Renovate.Image == "" {
 		renovator.Spec.Renovate.Image = renovatev1beta1.DefaultRenovateContainerImage

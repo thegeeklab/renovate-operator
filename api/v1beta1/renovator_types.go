@@ -54,13 +54,12 @@ const (
 	LogLevel_ERROR = "error"
 	LogLevel_FATAL = "fatal"
 
-	DefaultOperatorContainerImage        = "docker.io/thegeeklab/renovate-operator:latest"
-	DefaultRenovateContainerImage        = "ghcr.io/renovatebot/renovate:latest"
-	DefaultSchedule                      = "0 */2 * * *"
-	DefaultSuccessLimit            int32 = 3
-	DefaultFailedLimit             int32 = 1
-	DefaultBackoffLimit            int32 = 0
-	DefaultTTLSecondsAfterFinished int32 = 3600
+	DefaultOperatorContainerImage       = "docker.io/thegeeklab/renovate-operator:latest"
+	DefaultRenovateContainerImage       = "ghcr.io/renovatebot/renovate:latest"
+	DefaultSchedule                     = "0 */2 * * *"
+	DefaultSuccessLimit           int32 = 3
+	DefaultFailedLimit            int32 = 1
+	DefaultBackoffLimit           int32 = 0
 )
 
 type LoggingSpec struct {

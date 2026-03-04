@@ -21,6 +21,7 @@ type jobConfig struct {
 	InitContainers []corev1.Container
 	VolumeMutators []containers.VolumeMutator
 	EnvVars        []corev1.EnvVar
+	PodLabels      map[string]string
 }
 
 // JobOption defines a function that modifies the job configuration.
@@ -49,12 +50,12 @@ func DefaultJobSpec(
 	// 3. Construct the Job Spec from the Config
 	spec.CompletionMode = ptr.To(batchv1.NonIndexedCompletion)
 	spec.Parallelism = ptr.To(int32(1))
-	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
-	spec.Template.Spec.InitContainers = cfg.InitContainers
 	spec.BackoffLimit = cfg.BackoffLimit
 	spec.TTLSecondsAfterFinished = cfg.TTLSecondsAfterFinished
 
-	// Build Final Volume Slice
+	spec.Template.Labels = cfg.PodLabels
+	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
+	spec.Template.Spec.InitContainers = cfg.InitContainers
 	spec.Template.Spec.Volumes = containers.VolumesTemplate(cfg.VolumeMutators...)
 
 	// Build Main Container
@@ -71,6 +72,13 @@ func DefaultJobSpec(
 				},
 			}),
 		),
+	}
+}
+
+// WithPodLabels injects custom labels into the Pod template.
+func WithPodLabels(labels map[string]string) JobOption {
+	return func(c *jobConfig) {
+		c.PodLabels = labels
 	}
 }
 

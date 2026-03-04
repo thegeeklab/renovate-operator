@@ -81,9 +81,5 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 		discovery.Spec.BackoffLimit = ptr.To(renovatev1beta1.DefaultBackoffLimit)
 	}
 
-	if discovery.Spec.TTLSecondsAfterFinished == nil {
-		discovery.Spec.TTLSecondsAfterFinished = ptr.To(renovatev1beta1.DefaultTTLSecondsAfterFinished)
-	}
-
 	return nil
 }

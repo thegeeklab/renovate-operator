@@ -81,9 +81,5 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 		runner.Spec.BackoffLimit = ptr.To(renovatev1beta1.DefaultBackoffLimit)
 	}
 
-	if runner.Spec.TTLSecondsAfterFinished == nil {
-		runner.Spec.TTLSecondsAfterFinished = ptr.To(renovatev1beta1.DefaultTTLSecondsAfterFinished)
-	}
-
 	return nil
 }
