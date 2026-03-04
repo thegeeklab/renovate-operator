@@ -25,7 +25,7 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 	log := logf.FromContext(ctx)
 	discoveredRepoMatcher := make(map[string]bool)
 
-	// 1. Find the ConfigMap using the owner reference
+	// Find the ConfigMap using the owner reference
 	cms := &corev1.ConfigMapList{}
 	if err := r.List(ctx, cms, client.InNamespace(r.instance.Namespace)); err != nil {
 		return &ctrl.Result{}, err
@@ -39,14 +39,14 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 		}
 	}
 
-	// 2. If no ConfigMap found, skip sync
+	// If no ConfigMap found, skip sync
 	if targetCM == nil {
 		log.V(1).Info("No discovery result ConfigMap found, skipping GitRepo sync")
 
 		return &ctrl.Result{}, nil
 	}
 
-	// 3. Validate ConfigMap data
+	// Validate ConfigMap data
 	repoData, exists := targetCM.Data["repositories"]
 	if !exists {
 		log.Error(nil, "ConfigMap does not contain 'repositories' key", "cm", targetCM.Name)
@@ -54,7 +54,7 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 		return &ctrl.Result{}, nil
 	}
 
-	// 4. Parse repositories from the owned ConfigMap
+	// Parse repositories from the owned ConfigMap
 	var discoveredRepos []string
 	if err := json.Unmarshal([]byte(repoData), &discoveredRepos); err != nil {
 		log.Error(err, "Failed to unmarshal discovery results from ConfigMap", "cm", targetCM.Name)
@@ -62,7 +62,7 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 		return &ctrl.Result{}, nil
 	}
 
-	// 5. Sync State (Create/Update)
+	// Sync State (Create/Update)
 	for _, repoName := range discoveredRepos {
 		discoveredRepoMatcher[repoName] = true
 
@@ -92,12 +92,11 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 		}
 	}
 
-	// 6. Prune
+	// Prune
 	if err := r.pruneOrphanedRepos(ctx, discoveredRepoMatcher); err != nil {
 		allErrors = append(allErrors, fmt.Errorf("failed to prune orphaned repos: %w", err))
 	}
 
-	// Return aggregated errors if any
 	if len(allErrors) > 0 {
 		return &ctrl.Result{}, errors.Join(allErrors...)
 	}

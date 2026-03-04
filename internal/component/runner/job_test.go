@@ -213,7 +213,6 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(jobList.Items).To(HaveLen(1))
 
 				job := jobList.Items[0]
-				// controller-runtime fake client check
 				Expect(job.GenerateName).To(HavePrefix("repo-1-"))
 				Expect(job.Labels).To(Equal(expectedLabels("repo-1")))
 

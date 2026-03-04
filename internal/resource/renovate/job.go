@@ -31,7 +31,7 @@ type JobOption func(*jobConfig)
 func DefaultJobSpec(
 	spec *batchv1.JobSpec, renovate *renovatev1beta1.RenovateConfig, renovateCM string, opts ...JobOption,
 ) {
-	// 1. Initialize Configuration with Safe Defaults
+	// Initialize Configuration with Safe Defaults
 	cfg := &jobConfig{
 		Renovate:   renovate,
 		RenovateCM: renovateCM,
@@ -42,12 +42,12 @@ func DefaultJobSpec(
 		EnvVars: DefaultEnvVars(&renovate.Spec),
 	}
 
-	// 2. Apply all Functional Options
+	// Apply all Functional Options
 	for _, opt := range opts {
 		opt(cfg)
 	}
 
-	// 3. Construct the Job Spec from the Config
+	// Construct the Job Spec from the Config
 	spec.CompletionMode = ptr.To(batchv1.NonIndexedCompletion)
 	spec.Parallelism = ptr.To(int32(1))
 	spec.BackoffLimit = cfg.BackoffLimit

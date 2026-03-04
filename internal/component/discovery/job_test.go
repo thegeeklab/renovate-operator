@@ -153,8 +153,6 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(jobList.Items).To(HaveLen(1))
 
 				job := jobList.Items[0]
-				// controller-runtime fake client leaves GenerateName populated instead of auto-converting to Name sometimes.
-				// This guarantees the test passes regardless of the fake client version.
 				Expect(job.GenerateName).To(HavePrefix("test-discovery-"))
 
 				// Verify Annotation Removal
