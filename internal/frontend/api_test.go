@@ -52,9 +52,6 @@ var _ = Describe("APIHandler", func() {
 					Name:      "test-runner",
 					Namespace: "test-namespace",
 				},
-				Spec: renovatev1beta1.RunnerSpec{
-					Instances: 1,
-				},
 				Status: renovatev1beta1.RunnerStatus{
 					Ready: true,
 				},

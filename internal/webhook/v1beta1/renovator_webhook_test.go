@@ -58,7 +58,6 @@ var _ = Describe("Renovator Webhook", func() {
 			defaultSuspend := true
 			obj.Spec.Suspend = &defaultSuspend
 			obj.Spec.Schedule = "0 */1 * * *"
-			obj.Spec.Runner.Instances = 3
 			obj.Spec.Discovery.Schedule = "0 */1 * * *"
 			obj.Spec.Renovate.Image = "custom-renovate:latest"
 			obj.Spec.Renovate.ImagePullPolicy = corev1.PullAlways
@@ -73,7 +72,6 @@ var _ = Describe("Renovator Webhook", func() {
 			Expect(obj.Spec.Schedule).To(Equal("0 */1 * * *"))
 			Expect(obj.Spec.Image).To(Equal("custom-image:latest"))
 			Expect(obj.Spec.ImagePullPolicy).To(BeEquivalentTo(corev1.PullAlways))
-			Expect(obj.Spec.Runner.Instances).To(BeEquivalentTo(3))
 			Expect(obj.Spec.Discovery.Schedule).To(Equal("0 */1 * * *"))
 			Expect(obj.Spec.Renovate.Image).To(Equal("custom-renovate:latest"))
 			Expect(obj.Spec.Renovate.ImagePullPolicy).To(Equal(corev1.PullAlways))

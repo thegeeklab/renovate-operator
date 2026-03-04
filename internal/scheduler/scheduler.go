@@ -5,14 +5,11 @@ import (
 	"errors"
 	"fmt"
 	"sort"
-	"strings"
 	"time"
 
 	"github.com/netresearch/go-cron"
-	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/clock"
@@ -98,7 +95,6 @@ func (m *Manager) Evaluate(obj Schedulable, checkManualTrigger func(map[string]s
 func (m *Manager) EnsureJob(
 	ctx context.Context, owner Schedulable, job *batchv1.Job, lockLabels map[string]string,
 ) (bool, error) {
-	// Check local cache for active jobs
 	activeJobs, err := m.getActiveJobs(ctx, owner.GetNamespace(), lockLabels)
 	if err != nil {
 		return false, fmt.Errorf("failed to check active jobs: %w", err)
@@ -112,32 +108,14 @@ func (m *Manager) EnsureJob(
 		return false, fmt.Errorf("failed to set controller reference: %w", err)
 	}
 
-	if job.Name == "" {
-		baseName := owner.GetName()
-
-		// Extract the target base name from GenerateName if provided
-		// (crucial for multiple jobs running under the same owner, like GitRepos)
-		if job.GenerateName != "" {
-			baseName = strings.TrimRight(job.GenerateName, "-")
-			job.GenerateName = "" // Clear it so the API server doesn't use it
-		}
-
-		timeInMinutes := m.clock.Now().Unix() / int64(time.Minute.Seconds())
-		suffix := fmt.Sprintf("-%d", timeInMinutes)
-
-		jobName, err := k8s.DeterministicName(baseName, suffix)
-		if err != nil {
-			return false, fmt.Errorf("failed to generate deterministic job name: %w", err)
-		}
-
-		job.Name = jobName
+	// Ensure GenerateName is set so the API server handles uniqueness
+	if job.GenerateName == "" {
+		job.GenerateName = owner.GetName() + "-"
 	}
 
-	if err := m.Create(ctx, job); err != nil {
-		if api_errors.IsAlreadyExists(err) {
-			return false, nil
-		}
+	job.Name = ""
 
+	if err := m.Create(ctx, job); err != nil {
 		return false, fmt.Errorf("failed to create job: %w", err)
 	}
 
@@ -244,10 +222,6 @@ func (m *Manager) PruneJobs(
 }
 
 func (m *Manager) deleteOldJobs(ctx context.Context, jobs []batchv1.Job, limit int) error {
-	if limit == 0 {
-		return nil
-	}
-
 	if len(jobs) <= limit {
 		return nil
 	}

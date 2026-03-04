@@ -59,20 +59,36 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Spec.Schedule = discoverySpec.Schedule
 	}
 
-	if spec.SuccessLimit != 0 {
+	if spec.SuccessLimit != nil {
 		discovery.Spec.SuccessLimit = spec.SuccessLimit
 	}
 
-	if discoverySpec.SuccessLimit != 0 {
+	if discoverySpec.SuccessLimit != nil {
 		discovery.Spec.SuccessLimit = discoverySpec.SuccessLimit
 	}
 
-	if spec.FailedLimit != 0 {
+	if spec.FailedLimit != nil {
 		discovery.Spec.FailedLimit = spec.FailedLimit
 	}
 
-	if discoverySpec.FailedLimit != 0 {
+	if discoverySpec.FailedLimit != nil {
 		discovery.Spec.FailedLimit = discoverySpec.FailedLimit
+	}
+
+	if spec.BackoffLimit != nil {
+		discovery.Spec.BackoffLimit = spec.BackoffLimit
+	}
+
+	if discoverySpec.BackoffLimit != nil {
+		discovery.Spec.BackoffLimit = discoverySpec.BackoffLimit
+	}
+
+	if spec.TTLSecondsAfterFinished != nil {
+		discovery.Spec.TTLSecondsAfterFinished = spec.TTLSecondsAfterFinished
+	}
+
+	if discoverySpec.TTLSecondsAfterFinished != nil {
+		discovery.Spec.TTLSecondsAfterFinished = discoverySpec.TTLSecondsAfterFinished
 	}
 
 	logging := &spec.Logging

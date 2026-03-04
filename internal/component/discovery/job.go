@@ -6,6 +6,7 @@ import (
 	"strings"
 	"time"
 
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
@@ -22,7 +23,17 @@ import (
 // reconcileJob checks if discovery should run, processes the job, and schedules the next run.
 func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
-	discoveryLabels := DiscoveryMetadata(r.req).Labels
+
+	discoveryLabels := map[string]string{
+		renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
+		renovatev1beta1.LabelAppInstance:  r.instance.Name,
+		renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentDiscovery,
+		renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
+	}
+
+	if val, ok := r.instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
+		discoveryLabels[renovatev1beta1.RenovatorLabel] = val
+	}
 
 	if err := r.scheduler.PruneJobs(
 		ctx, r.instance.Namespace, discoveryLabels, r.instance.GetSuccessLimit(), r.instance.GetFailedLimit(),
@@ -47,7 +58,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 				Labels:       discoveryLabels,
 			},
 		}
-		r.updateJob(job)
+		r.updateJob(job, discoveryLabels)
 
 		created, err := r.scheduler.EnsureJob(ctx, r.instance, job, discoveryLabels)
 		if err != nil {
@@ -82,7 +93,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 }
 
 // updateJob configures the job spec for discovery.
-func (r *Reconciler) updateJob(job *batchv1.Job) {
+func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 
 	// Create init container for repository discovery
@@ -119,7 +130,12 @@ func (r *Reconciler) updateJob(job *batchv1.Job) {
 
 	// Apply default job spec with init container
 	renovate.DefaultJobSpec(
-		&job.Spec, r.renovate, renovateConfigCM, renovate.WithInitContainer(initContainer),
+		&job.Spec,
+		r.renovate,
+		renovateConfigCM,
+		renovate.WithRenovateJobSpec(r.instance.Spec.JobSpec),
+		renovate.WithPodLabels(podLabels),
+		renovate.WithInitContainer(initContainer),
 	)
 
 	// Configure main container for discovery

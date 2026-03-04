@@ -64,16 +64,19 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 		renovator.Spec.Schedule = renovatev1beta1.DefaultSchedule
 	}
 
-	if renovator.Spec.SuccessLimit == 0 {
-		renovator.Spec.SuccessLimit = renovatev1beta1.DefaultSuccessLimit
+	if renovator.Spec.SuccessLimit == nil {
+		renovator.Spec.SuccessLimit = ptr.To(renovatev1beta1.DefaultSuccessLimit)
 	}
 
-	if renovator.Spec.FailedLimit == 0 {
-		renovator.Spec.FailedLimit = renovatev1beta1.DefaultFailedLimit
+	if renovator.Spec.FailedLimit == nil {
+		renovator.Spec.FailedLimit = ptr.To(renovatev1beta1.DefaultFailedLimit)
+	}
+
+	if renovator.Spec.BackoffLimit == nil {
+		renovator.Spec.BackoffLimit = ptr.To(renovatev1beta1.DefaultBackoffLimit)
 	}
 
 	// RenovateConfig spec
-
 	if renovator.Spec.Renovate.Image == "" {
 		renovator.Spec.Renovate.Image = renovatev1beta1.DefaultRenovateContainerImage
 	}

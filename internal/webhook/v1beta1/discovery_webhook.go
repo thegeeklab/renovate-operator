@@ -1,3 +1,4 @@
+//nolint:dupl
 package v1beta1
 
 import (
@@ -68,12 +69,16 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 		discovery.Spec.Schedule = renovatev1beta1.DefaultSchedule
 	}
 
-	if discovery.Spec.SuccessLimit == 0 {
-		discovery.Spec.SuccessLimit = renovatev1beta1.DefaultSuccessLimit
+	if discovery.Spec.SuccessLimit == nil {
+		discovery.Spec.SuccessLimit = ptr.To(renovatev1beta1.DefaultSuccessLimit)
 	}
 
-	if discovery.Spec.FailedLimit == 0 {
-		discovery.Spec.FailedLimit = renovatev1beta1.DefaultFailedLimit
+	if discovery.Spec.FailedLimit == nil {
+		discovery.Spec.FailedLimit = ptr.To(renovatev1beta1.DefaultFailedLimit)
+	}
+
+	if discovery.Spec.BackoffLimit == nil {
+		discovery.Spec.BackoffLimit = ptr.To(renovatev1beta1.DefaultBackoffLimit)
 	}
 
 	return nil

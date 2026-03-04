@@ -46,6 +46,9 @@ var _ = Describe("ReconcileJob", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-discovery",
 				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.RenovatorLabel: "renovator-id",
+				},
 			},
 			Spec: renovatev1beta1.DiscoverySpec{
 				JobSpec: renovatev1beta1.JobSpec{
@@ -100,6 +103,21 @@ var _ = Describe("ReconcileJob", func() {
 	})
 
 	Describe("reconcileJob", func() {
+		expectedLabels := func() map[string]string {
+			expected := map[string]string{
+				renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
+				renovatev1beta1.LabelAppInstance:  instance.Name,
+				renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentDiscovery,
+				renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
+			}
+
+			if val, ok := instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
+				expected[renovatev1beta1.RenovatorLabel] = val
+			}
+
+			return expected
+		}
+
 		Context("when discovery is suspended", func() {
 			BeforeEach(func() {
 				suspended := true
@@ -135,7 +153,7 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(jobList.Items).To(HaveLen(1))
 
 				job := jobList.Items[0]
-				Expect(job.Name).To(HavePrefix("test-discovery-"))
+				Expect(job.GenerateName).To(HavePrefix("test-discovery-"))
 
 				// Verify Annotation Removal
 				updatedInstance := &renovatev1beta1.Discovery{}
@@ -153,7 +171,7 @@ var _ = Describe("ReconcileJob", func() {
 					ObjectMeta: metav1.ObjectMeta{
 						Name:      "active-job",
 						Namespace: "default",
-						Labels:    DiscoveryMetadata(reconciler.req).Labels,
+						Labels:    expectedLabels(),
 					},
 					Status: batchv1.JobStatus{
 						Active: 1,
@@ -179,9 +197,9 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(jobList.Items).To(HaveLen(1))
 
 				job := jobList.Items[0]
-				Expect(job.Name).To(HavePrefix("test-discovery-"))
+				Expect(job.GenerateName).To(HavePrefix("test-discovery-"))
 				Expect(job.Namespace).To(Equal("default"))
-				Expect(job.Labels).To(Equal(DiscoveryMetadata(reconciler.req).Labels))
+				Expect(job.Labels).To(Equal(expectedLabels()))
 			})
 
 			It("should update status after job creation", func() {
@@ -203,7 +221,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job)
+			reconciler.updateJob(job, nil)
 
 			Expect(job.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.InitContainers[0].Name).To(Equal("renovate-init"))

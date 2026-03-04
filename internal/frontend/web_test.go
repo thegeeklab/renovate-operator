@@ -58,9 +58,6 @@ var _ = Describe("WebHandler", func() {
 					Namespace:         "test-namespace",
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
-				Spec: renovatev1beta1.RunnerSpec{
-					Instances: 1,
-				},
 				Status: renovatev1beta1.RunnerStatus{
 					Ready: true,
 				},
