@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -31,7 +32,6 @@ var _ = Describe("Renovator Discovery", func() {
 
 	Describe("Annotation Forwarding", func() {
 		It("should forward operation annotation from Renovator to Discovery", func() {
-			// Create a Renovator instance with operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
@@ -49,11 +49,9 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Discovery instance
 			discovery := &renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-discovery",
@@ -61,18 +59,15 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Call updateDiscovery
 			err = reconciler.updateDiscovery(discovery)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify the annotation was forwarded
 			Expect(discovery.Annotations).NotTo(BeNil())
 			Expect(discovery.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
 			Expect(discovery.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationDiscover))
 		})
 
 		It("should not forward annotation when Renovator has no annotations", func() {
-			// Create a Renovator instance without annotations
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
@@ -87,11 +82,9 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Discovery instance
 			discovery := &renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-discovery",
@@ -99,16 +92,13 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Call updateDiscovery
 			err = reconciler.updateDiscovery(discovery)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify no annotation was added
 			Expect(discovery.Annotations).To(BeNil())
 		})
 
 		It("should preserve existing annotations on Discovery", func() {
-			// Create a Renovator instance with operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
@@ -126,11 +116,9 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Discovery instance with existing annotations
 			discovery := &renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-discovery",
@@ -141,11 +129,9 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Call updateDiscovery
 			err = reconciler.updateDiscovery(discovery)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify both annotations exist
 			Expect(discovery.Annotations).NotTo(BeNil())
 			Expect(discovery.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
 			Expect(discovery.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationDiscover))
@@ -154,7 +140,6 @@ var _ = Describe("Renovator Discovery", func() {
 		})
 
 		It("should test annotation cleanup in component reconciler", func() {
-			// Create a Renovator instance with operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator-cleanup",
@@ -172,24 +157,19 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Create the Renovator resource in the fake client first
 			Expect(fakeClient.Create(ctx, renovator)).To(Succeed())
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Call the full Reconcile method to test annotation cleanup
 			_, err = reconciler.Reconcile(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify the annotation was removed from the Renovator
 			Expect(renovator.Annotations).To(BeEmpty())
 			Expect(renovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
 		})
 
 		It("should copy Discovery configuration from Renovator spec", func() {
-			// Create a Renovator instance with Discovery configuration
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator-config",
@@ -213,11 +193,9 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Discovery instance
 			discovery := &renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-discovery",
@@ -225,11 +203,9 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Call updateDiscovery
 			err = reconciler.updateDiscovery(discovery)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify the Discovery configuration was copied
 			Expect(discovery.Spec.ConfigRef).To(Equal("test-config"))
 			Expect(discovery.Spec.Filter).To(Equal([]string{"test-filter"}))
 			Expect(discovery.Spec.Image).To(Equal("renovate/renovate:36"))
@@ -239,7 +215,6 @@ var _ = Describe("Renovator Discovery", func() {
 		})
 
 		It("should set default Image and ImagePullPolicy from Renovator", func() {
-			// Create a Renovator instance with Image and ImagePullPolicy
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator-defaults",
@@ -258,11 +233,9 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Discovery instance with empty Image and ImagePullPolicy
 			discovery := &renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-discovery",
@@ -275,17 +248,14 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Call updateDiscovery
 			err = reconciler.updateDiscovery(discovery)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify the default Image and ImagePullPolicy were set
 			Expect(discovery.Spec.Image).To(Equal("renovate/renovate:35"))
 			Expect(discovery.Spec.ImagePullPolicy).To(Equal(corev1.PullAlways))
 		})
 
 		It("should set Renovator UID label on Discovery", func() {
-			// Create a Renovator instance
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator-label",
@@ -301,11 +271,9 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Discovery instance
 			discovery := &renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-discovery",
@@ -313,18 +281,15 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Call updateDiscovery
 			err = reconciler.updateDiscovery(discovery)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify the Renovator UID label was set
 			Expect(discovery.Labels).NotTo(BeNil())
 			Expect(discovery.Labels).To(HaveKey(renovatev1beta1.RenovatorLabel))
 			Expect(discovery.Labels[renovatev1beta1.RenovatorLabel]).To(Equal("test-uid-123"))
 		})
 
 		It("should preserve existing labels on Discovery", func() {
-			// Create a Renovator instance
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator-preserve-labels",
@@ -340,11 +305,9 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Discovery instance with existing labels
 			discovery := &renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-discovery",
@@ -355,16 +318,95 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			// Call updateDiscovery
 			err = reconciler.updateDiscovery(discovery)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify both labels exist
 			Expect(discovery.Labels).NotTo(BeNil())
 			Expect(discovery.Labels).To(HaveKey(renovatev1beta1.RenovatorLabel))
 			Expect(discovery.Labels[renovatev1beta1.RenovatorLabel]).To(Equal("test-uid-456"))
 			Expect(discovery.Labels).To(HaveKey("existing-label"))
 			Expect(discovery.Labels["existing-label"]).To(Equal("existing-value"))
+		})
+	})
+
+	Describe("Spec Synchronization", func() {
+		var existingDiscovery *renovatev1beta1.Discovery
+
+		BeforeEach(func() {
+			existingDiscovery = &renovatev1beta1.Discovery{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-discovery",
+					Namespace: "default",
+				},
+				Spec: renovatev1beta1.DiscoverySpec{
+					JobSpec: renovatev1beta1.JobSpec{
+						TTLSecondsAfterFinished: ptr.To(int32(3600)),
+						Schedule:                "*/10 * * * *",
+					},
+				},
+			}
+		})
+
+		It("should inherit properties from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					JobSpec: renovatev1beta1.JobSpec{
+						TTLSecondsAfterFinished: ptr.To(int32(1800)),
+						Schedule:                "*/5 * * * *",
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.TTLSecondsAfterFinished).To(Equal(ptr.To(int32(1800))))
+			Expect(existingDiscovery.Spec.Schedule).To(Equal("*/5 * * * *"))
+		})
+
+		It("should override global properties with discovery-specific properties", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					JobSpec: renovatev1beta1.JobSpec{
+						TTLSecondsAfterFinished: ptr.To(int32(1800)),
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						JobSpec: renovatev1beta1.JobSpec{
+							TTLSecondsAfterFinished: ptr.To(int32(600)),
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.TTLSecondsAfterFinished).To(Equal(ptr.To(int32(600))))
+		})
+
+		It("should successfully unset properties if they are removed from the parent Renovator", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					Discovery: renovatev1beta1.DiscoverySpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.TTLSecondsAfterFinished).To(Equal(ptr.To(int32(3600))))
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.TTLSecondsAfterFinished).To(BeNil())
 		})
 	})
 })

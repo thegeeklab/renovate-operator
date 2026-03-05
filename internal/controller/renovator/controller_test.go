@@ -295,7 +295,6 @@ type mockErrorClient struct {
 func (m *mockErrorClient) Get(
 	ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption,
 ) error {
-	// Return error for dependent resources to simulate missing resources
 	if _, ok := obj.(*renovatev1beta1.Renovator); ok {
 		return api_errors.NewNotFound(renovatev1beta1.GroupVersion.WithResource("renovators").GroupResource(), key.Name)
 	}

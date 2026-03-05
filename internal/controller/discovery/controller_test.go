@@ -220,7 +220,6 @@ type mockErrorClient struct {
 func (m *mockErrorClient) Get(
 	ctx context.Context, key client.ObjectKey, obj client.Object, opts ...client.GetOption,
 ) error {
-	// Return error for RenovateConfig to simulate missing config
 	if _, ok := obj.(*renovatev1beta1.RenovateConfig); ok {
 		return api_errors.NewNotFound(renovatev1beta1.GroupVersion.WithResource("renovateconfigs").GroupResource(), key.Name)
 	}
