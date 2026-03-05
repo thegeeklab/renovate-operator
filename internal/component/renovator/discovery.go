@@ -27,66 +27,42 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 	discovery.Spec.ConfigRef = discoverySpec.ConfigRef
 	discovery.Spec.Filter = discoverySpec.Filter
 
-	if spec.Image != "" {
-		discovery.Spec.Image = spec.Image
-	}
-
+	discovery.Spec.Image = spec.Image
 	if discoverySpec.Image != "" {
 		discovery.Spec.Image = discoverySpec.Image
 	}
 
-	if spec.ImagePullPolicy != "" {
-		discovery.Spec.ImagePullPolicy = spec.ImagePullPolicy
-	}
-
+	discovery.Spec.ImagePullPolicy = spec.ImagePullPolicy
 	if discoverySpec.ImagePullPolicy != "" {
 		discovery.Spec.ImagePullPolicy = discoverySpec.ImagePullPolicy
 	}
 
-	if spec.Suspend != nil {
-		discovery.Spec.Suspend = spec.Suspend
-	}
-
+	discovery.Spec.Suspend = spec.Suspend
 	if discoverySpec.Suspend != nil {
 		discovery.Spec.Suspend = discoverySpec.Suspend
 	}
 
-	if spec.Schedule != "" {
-		discovery.Spec.Schedule = spec.Schedule
-	}
-
+	discovery.Spec.Schedule = spec.Schedule
 	if discoverySpec.Schedule != "" {
 		discovery.Spec.Schedule = discoverySpec.Schedule
 	}
 
-	if spec.SuccessLimit != nil {
-		discovery.Spec.SuccessLimit = spec.SuccessLimit
-	}
-
+	discovery.Spec.SuccessLimit = spec.SuccessLimit
 	if discoverySpec.SuccessLimit != nil {
 		discovery.Spec.SuccessLimit = discoverySpec.SuccessLimit
 	}
 
-	if spec.FailedLimit != nil {
-		discovery.Spec.FailedLimit = spec.FailedLimit
-	}
-
+	discovery.Spec.FailedLimit = spec.FailedLimit
 	if discoverySpec.FailedLimit != nil {
 		discovery.Spec.FailedLimit = discoverySpec.FailedLimit
 	}
 
-	if spec.BackoffLimit != nil {
-		discovery.Spec.BackoffLimit = spec.BackoffLimit
-	}
-
+	discovery.Spec.BackoffLimit = spec.BackoffLimit
 	if discoverySpec.BackoffLimit != nil {
 		discovery.Spec.BackoffLimit = discoverySpec.BackoffLimit
 	}
 
-	if spec.TTLSecondsAfterFinished != nil {
-		discovery.Spec.TTLSecondsAfterFinished = spec.TTLSecondsAfterFinished
-	}
-
+	discovery.Spec.TTLSecondsAfterFinished = spec.TTLSecondsAfterFinished
 	if discoverySpec.TTLSecondsAfterFinished != nil {
 		discovery.Spec.TTLSecondsAfterFinished = discoverySpec.TTLSecondsAfterFinished
 	}

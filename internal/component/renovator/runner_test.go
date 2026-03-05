@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -31,7 +32,6 @@ var _ = Describe("Renovator Runner", func() {
 
 	Describe("Annotation Forwarding", func() {
 		It("should forward operation annotation from Renovator to Runner", func() {
-			// Create a Renovator instance with operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
@@ -49,11 +49,9 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Runner instance
 			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-runner",
@@ -61,18 +59,15 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Call updateRunner
 			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify the annotation was forwarded
 			Expect(runner.Annotations).NotTo(BeNil())
 			Expect(runner.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
 			Expect(runner.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
 		})
 
 		It("should not forward annotation when Renovator has no annotations", func() {
-			// Create a Renovator instance without annotations
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
@@ -87,11 +82,9 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Runner instance
 			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-runner",
@@ -99,16 +92,13 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Call updateRunner
 			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify no annotation was added
 			Expect(runner.Annotations).To(BeNil())
 		})
 
 		It("should preserve existing annotations on Runner", func() {
-			// Create a Renovator instance with operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator",
@@ -126,11 +116,9 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Runner instance with existing annotations
 			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-runner",
@@ -141,11 +129,9 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Call updateRunner
 			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify both annotations exist
 			Expect(runner.Annotations).NotTo(BeNil())
 			Expect(runner.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
 			Expect(runner.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
@@ -154,7 +140,6 @@ var _ = Describe("Renovator Runner", func() {
 		})
 
 		It("should test annotation cleanup in component reconciler", func() {
-			// Create a Renovator instance with operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator-cleanup",
@@ -172,24 +157,19 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Create the Renovator resource in the fake client first
 			Expect(fakeClient.Create(ctx, renovator)).To(Succeed())
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Call the full Reconcile method to test annotation cleanup
 			_, err = reconciler.Reconcile(ctx)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify the annotation was removed from the Renovator
 			Expect(renovator.Annotations).To(BeEmpty())
 			Expect(renovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
 		})
 
 		It("should not forward annotation when Renovator has no renovate operation", func() {
-			// Create a Renovator instance with discover operation annotation
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator-discover",
@@ -207,11 +187,9 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Runner instance
 			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-runner",
@@ -219,16 +197,12 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Call updateRunner
 			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
-
-			// Verify no annotation was added
 			Expect(runner.Annotations).To(BeNil())
 		})
 
 		It("should forward renovate operation annotation when Renovator has multiple operations", func() {
-			// Create a Renovator instance with multiple operation annotations
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-renovator-multi",
@@ -246,11 +220,9 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Create a Reconciler
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Create a Runner instance
 			runner := &renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-runner",
@@ -258,14 +230,93 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			// Call updateRunner
 			err = reconciler.updateRunner(runner)
 			Expect(err).NotTo(HaveOccurred())
 
-			// Verify the renovate annotation was forwarded
 			Expect(runner.Annotations).NotTo(BeNil())
 			Expect(runner.Annotations).To(HaveKey(renovatev1beta1.RenovatorOperation))
 			Expect(runner.Annotations[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
+		})
+	})
+
+	Describe("Spec Synchronization", func() {
+		var existingRunner *renovatev1beta1.Runner
+
+		BeforeEach(func() {
+			existingRunner = &renovatev1beta1.Runner{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-runner",
+					Namespace: "default",
+				},
+				Spec: renovatev1beta1.RunnerSpec{
+					JobSpec: renovatev1beta1.JobSpec{
+						TTLSecondsAfterFinished: ptr.To(int32(3600)),
+						Schedule:                "*/10 * * * *",
+					},
+				},
+			}
+		})
+
+		It("should inherit properties from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					JobSpec: renovatev1beta1.JobSpec{
+						TTLSecondsAfterFinished: ptr.To(int32(1800)),
+						Schedule:                "*/5 * * * *",
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(ptr.To(int32(1800))))
+			Expect(existingRunner.Spec.Schedule).To(Equal("*/5 * * * *"))
+		})
+
+		It("should override global properties with runner-specific properties", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					JobSpec: renovatev1beta1.JobSpec{
+						TTLSecondsAfterFinished: ptr.To(int32(1800)),
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						JobSpec: renovatev1beta1.JobSpec{
+							TTLSecondsAfterFinished: ptr.To(int32(600)),
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(ptr.To(int32(600))))
+		})
+
+		It("should successfully unset properties if they are removed from the parent Renovator", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(ptr.To(int32(3600))))
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(BeNil())
 		})
 	})
 })
