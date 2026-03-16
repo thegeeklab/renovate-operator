@@ -3,7 +3,7 @@ GOFUMPT_PACKAGE_VERSION := v0.9.2
 # renovate: datasource=github-releases depName=google/yamlfmt
 YAMLFMT_PACKAGE_VERSION := v0.21.0
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_PACKAGE_VERSION := v2.11.2
+GOLANGCI_LINT_PACKAGE_VERSION := v2.11.3
 
 GOFUMPT_PACKAGE ?= mvdan.cc/gofumpt@$(GOFUMPT_PACKAGE_VERSION)
 YAMLFMT_PACKAGE ?= github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_PACKAGE_VERSION)
