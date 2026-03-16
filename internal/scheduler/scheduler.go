@@ -178,7 +178,7 @@ func (m *Manager) getActiveJobs(
 	var active []batchv1.Job
 
 	for _, job := range jobList.Items {
-		isFinished := isJobFinished(&job)
+		isFinished := IsJobFinished(&job)
 		if !isFinished {
 			active = append(active, job)
 		}
@@ -201,7 +201,7 @@ func (m *Manager) PruneJobs(
 	}
 
 	for _, job := range jobList.Items {
-		if isJobFinished(&job) {
+		if IsJobFinished(&job) {
 			if job.Status.Succeeded > 0 {
 				successfulJobs = append(successfulJobs, job)
 			} else if job.Status.Failed > 0 {
@@ -252,7 +252,8 @@ func (m *Manager) deleteOldJobs(ctx context.Context, jobs []batchv1.Job, limit i
 	return nil
 }
 
-func isJobFinished(job *batchv1.Job) bool {
+// IsJobFinished checks if the job has a Complete or Failed condition.
+func IsJobFinished(job *batchv1.Job) bool {
 	for _, c := range job.Status.Conditions {
 		if (c.Type == batchv1.JobComplete || c.Type == batchv1.JobFailed) && c.Status == corev1.ConditionTrue {
 			return true

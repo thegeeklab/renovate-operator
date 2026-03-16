@@ -49,6 +49,7 @@ spec:
             - --leader-elect
             - --health-probe-bind-address=:8081
             - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+            - --log-base-dir=/tmp/runner-logs
           image: docker.io/thegeeklab/renovate-operator:devel
           name: manager
           ports:
@@ -88,10 +89,15 @@ spec:
             - mountPath: /tmp/k8s-webhook-server/serving-certs
               name: cert
               readOnly: true
+            - mountPath: /tmp/runner-logs
+              name: log-storage
       volumes:
         - name: cert
           secret:
             defaultMode: 420
             secretName: renovate-operator-webhook-server-cert
+        - name: log-storage
+          emptyDir:
+            sizeLimit: 100Mi
       serviceAccountName: controller-manager
       terminationGracePeriodSeconds: 10

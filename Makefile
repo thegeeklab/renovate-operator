@@ -8,6 +8,7 @@ GOLANGCI_LINT_PACKAGE_VERSION := v2.11.3
 GOFUMPT_PACKAGE ?= mvdan.cc/gofumpt@$(GOFUMPT_PACKAGE_VERSION)
 YAMLFMT_PACKAGE ?= github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_PACKAGE_VERSION)
 GOTESTSUM_PACKAGE ?= gotest.tools/gotestsum@latest
+MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
 
 # Image URL to use all building image targets
 IMG ?= docker.io/thegeeklab/renovate-operator:devel
@@ -75,6 +76,7 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object paths="./..."
+	$(GO) run $(MOCKERY_PACKAGE)
 	@$(MAKE) --no-print-directory yamlfmt
 
 .PHONY: yamlfmt

@@ -23,12 +23,7 @@ import (
 func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	runnerLabels := map[string]string{
-		renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
-		renovatev1beta1.LabelAppInstance:  r.instance.Name,
-		renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentRunner,
-		renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
-	}
+	runnerLabels := RunnerLabels(r.req)
 
 	if val, ok := r.instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
 		runnerLabels[renovatev1beta1.RenovatorLabel] = val

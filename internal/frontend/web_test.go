@@ -3,29 +3,39 @@ package frontend
 import (
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/logstore"
+	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	fakeclientset "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var _ = Describe("WebHandler", func() {
 	var (
-		client      client.Client
+		k8sClient   client.Client
 		handler     *WebHandler
 		scheme      *runtime.Scheme
 		testObjects []runtime.Object
+		tempLogDir  string
+		logManager  *logstore.Manager
 	)
 
 	BeforeEach(func() {
 		scheme = runtime.NewScheme()
+
 		err := renovatev1beta1.AddToScheme(scheme)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = batchv1.AddToScheme(scheme)
 		Expect(err).NotTo(HaveOccurred())
 
 		testObjects = []runtime.Object{
@@ -74,13 +84,26 @@ var _ = Describe("WebHandler", func() {
 			},
 		}
 
-		client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		handler = NewWebHandler(client)
+		tempLogDir, err = os.MkdirTemp("", "operator-web-test-*")
+		Expect(err).NotTo(HaveOccurred())
+
+		k8sClientset := fakeclientset.NewSimpleClientset()
+		fileStore := logstore.NewFileStore(tempLogDir)
+		logManager = logstore.NewManager(k8sClientset, fileStore)
+
+		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
+		handler = NewWebHandler(k8sClient, logManager)
+	})
+
+	AfterEach(func() {
+		err := os.RemoveAll(tempLogDir)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Describe("NewWebHandler", func() {
 		It("should create a new WebHandler", func() {
 			Expect(handler).NotTo(BeNil())
+			Expect(handler.logManager).NotTo(BeNil())
 		})
 	})
 
@@ -90,7 +113,7 @@ var _ = Describe("WebHandler", func() {
 		})
 	})
 
-	Describe("handleIndex", func() {
+	Describe("HandleIndex", func() {
 		It("should handle index requests", func() {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			w := httptest.NewRecorder()
@@ -102,7 +125,7 @@ var _ = Describe("WebHandler", func() {
 		})
 	})
 
-	Describe("handleRenovatorsPartial", func() {
+	Describe("HandleRenovatorsPartial", func() {
 		It("should handle renovators partial requests", func() {
 			req := httptest.NewRequest(http.MethodGet, "/partials/renovators", nil)
 			req.Header.Set("HX-Request", "true")
@@ -116,7 +139,7 @@ var _ = Describe("WebHandler", func() {
 		})
 	})
 
-	Describe("handleGitReposPartial", func() {
+	Describe("HandleGitReposPartial", func() {
 		It("should handle git repos partial requests", func() {
 			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepos?namespace=test-namespace", nil)
 			req.Header.Set("HX-Request", "true")
@@ -141,7 +164,61 @@ var _ = Describe("WebHandler", func() {
 		})
 	})
 
-	Describe("ensureHTMXRequest", func() {
+	Describe("HandleGitRepoView", func() {
+		It("should return bad request for missing parameters", func() {
+			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepo", nil)
+			req.Header.Set("HX-Request", "true")
+
+			w := httptest.NewRecorder()
+
+			handler.HandleGitRepoView(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("should handle git repo view requests", func() {
+			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepo?namespace=test-namespace&name=test-repo", nil)
+			req.Header.Set("HX-Request", "true")
+
+			w := httptest.NewRecorder()
+
+			handler.HandleGitRepoView(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+		})
+	})
+
+	Describe("HandleJobLogs", func() {
+		It("should return bad request for missing parameters", func() {
+			req := httptest.NewRequest(http.MethodGet, "/partials/joblogs", nil)
+			req.Header.Set("HX-Request", "true")
+
+			w := httptest.NewRecorder()
+
+			handler.HandleJobLogs(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("should gracefully handle missing logs with an error template", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/partials/joblogs?namespace=test-namespace&runner=test-runner&job=missing-job",
+				nil,
+			)
+			req.Header.Set("HX-Request", "true")
+
+			w := httptest.NewRecorder()
+
+			handler.HandleJobLogs(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).To(ContainSubstring("Logs are no longer available"))
+		})
+	})
+
+	Describe("EnsureHTMXRequest", func() {
 		It("should redirect non-HTMX requests", func() {
 			req := httptest.NewRequest(http.MethodGet, "/partials/test", nil)
 			w := httptest.NewRecorder()

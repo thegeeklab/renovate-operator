@@ -6,12 +6,11 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
-	"github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -76,7 +75,7 @@ var _ = Describe("ReconcileJob", func() {
 				},
 			},
 		}
-		rd := &v1beta1.RenovateConfigCustomDefaulter{}
+		rd := &RenovateConfigCustomDefaulter{}
 		Expect(rd.Default(ctx, renovate)).To(Succeed())
 
 		// Create two GitRepos for runner specific tests
@@ -125,12 +124,7 @@ var _ = Describe("ReconcileJob", func() {
 
 	Describe("reconcileJob", func() {
 		expectedLabels := func(repoName string) map[string]string {
-			expected := map[string]string{
-				renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
-				renovatev1beta1.LabelAppInstance:  instance.Name,
-				renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentRunner,
-				renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
-			}
+			expected := RunnerLabels(reconciler.req)
 
 			if val, ok := instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
 				expected[renovatev1beta1.RenovatorLabel] = val

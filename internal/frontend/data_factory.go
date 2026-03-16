@@ -4,6 +4,7 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -131,6 +132,47 @@ func (df *DataFactory) GetDiscoveries(ctx context.Context, namespace, renovator 
 
 	if result == nil {
 		result = []DiscoveryInfo{}
+	}
+
+	return result, nil
+}
+
+// GetJobsForRepo fetches jobs associated with a specific GitRepo.
+func (df *DataFactory) GetJobsForRepo(ctx context.Context, namespace, repoName string) ([]JobInfo, error) {
+	var jobList batchv1.JobList
+
+	opts := []client.ListOption{
+		client.InNamespace(namespace),
+		client.MatchingLabels{"renovate.thegeeklab.de/gitrepo": repoName},
+	}
+
+	if err := df.client.List(ctx, &jobList, opts...); err != nil {
+		return nil, err
+	}
+
+	var result []JobInfo
+
+	for _, job := range jobList.Items {
+		status := "Running"
+		if job.Status.Succeeded > 0 {
+			status = "Succeeded"
+		} else if job.Status.Failed > 0 {
+			status = "Failed"
+		}
+
+		runnerName := job.Labels["app.kubernetes.io/instance"]
+
+		result = append(result, JobInfo{
+			Name:      job.Name,
+			Namespace: job.Namespace,
+			Runner:    runnerName,
+			Status:    status,
+			CreatedAt: job.CreationTimestamp.Time,
+		})
+	}
+
+	if result == nil {
+		result = []JobInfo{}
 	}
 
 	return result, nil

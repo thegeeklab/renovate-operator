@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -50,17 +51,27 @@ type DiscoveryInfo struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+type JobInfo struct {
+	Name      string    `json:"name"`
+	Namespace string    `json:"namespace"`
+	Runner    string    `json:"runner"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
 // APIHandler manages the web UI API endpoints.
 type APIHandler struct {
 	client      client.Client
 	dataFactory *DataFactory
+	logManager  *logstore.Manager
 }
 
 // NewAPIHandler creates a new APIHandler.
-func NewAPIHandler(client client.Client) *APIHandler {
+func NewAPIHandler(client client.Client, logManager *logstore.Manager) *APIHandler {
 	return &APIHandler{
 		client:      client,
 		dataFactory: NewDataFactory(client),
+		logManager:  logManager,
 	}
 }
 

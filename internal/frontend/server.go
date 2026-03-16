@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -48,9 +49,9 @@ type Server struct {
 }
 
 // NewServer creates a new HTTP server instance.
-func NewServer(config ServerConfig, client client.Client) *Server {
-	apiHandler := NewAPIHandler(client)
-	dashboardHandler := NewWebHandler(client)
+func NewServer(config ServerConfig, client client.Client, logManager *logstore.Manager) *Server {
+	apiHandler := NewAPIHandler(client, logManager)
+	dashboardHandler := NewWebHandler(client, logManager)
 
 	router := mux.NewRouter()
 

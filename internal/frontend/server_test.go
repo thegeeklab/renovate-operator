@@ -22,7 +22,7 @@ var _ = Describe("Server", func() {
 	BeforeEach(func() {
 		client = fake.NewClientBuilder().Build()
 		config = DefaultServerConfig()
-		server = NewServer(config, client)
+		server = NewServer(config, client, nil)
 	})
 
 	Describe("NewServer", func() {
@@ -38,7 +38,7 @@ var _ = Describe("Server", func() {
 				IdleTimeout:  60 * time.Second,
 			}
 
-			customServer := NewServer(customConfig, client)
+			customServer := NewServer(customConfig, client, nil)
 
 			Expect(customServer).NotTo(BeNil())
 		})

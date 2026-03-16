@@ -5,10 +5,10 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
-	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -73,7 +73,7 @@ var _ = Describe("Renovator Controller", func() {
 						},
 					},
 				}
-				rd := &v1beta1.RenovatorCustomDefaulter{}
+				rd := &RenovatorCustomDefaulter{}
 				Expect(rd.Default(ctx, resource)).To(Succeed())
 				resource.Spec.Schedule = "0 0 * * *"
 				Expect(k8sClient.Create(ctx, resource)).To(Succeed())
@@ -83,7 +83,7 @@ var _ = Describe("Renovator Controller", func() {
 		AfterEach(func() {
 			// Cleanup the resource instance after each test
 			resource := &renovatev1beta1.Renovator{}
-			rd := &v1beta1.RenovatorCustomDefaulter{}
+			rd := &RenovatorCustomDefaulter{}
 			Expect(rd.Default(ctx, resource)).To(Succeed())
 			err := k8sClient.Get(ctx, typeNamespacedName, resource)
 			Expect(err).NotTo(HaveOccurred())
@@ -181,7 +181,7 @@ var _ = Describe("Renovator Controller", func() {
 				},
 			}
 
-			rd := &v1beta1.RenovatorCustomDefaulter{}
+			rd := &RenovatorCustomDefaulter{}
 			Expect(rd.Default(ctx, additionalResource)).To(Succeed())
 			additionalResource.Spec.Schedule = "0 0 * * *"
 			Expect(k8sClient.Create(ctx, additionalResource)).To(Succeed())
@@ -226,7 +226,7 @@ var _ = Describe("Renovator Controller", func() {
 			}
 
 			// Apply defaults
-			webhook := &v1beta1.RenovatorCustomDefaulter{}
+			webhook := &RenovatorCustomDefaulter{}
 			Expect(webhook.Default(ctx, rr)).To(Succeed())
 			rr.Spec.Schedule = "0 0 * * *"
 

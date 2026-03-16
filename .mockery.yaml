@@ -1,0 +1,8 @@
+---
+all: True
+dir: "{{.InterfaceDir}}/mocks"
+pkgname: "mocks"
+structname: "{{ .InterfaceName }}"
+filename: "mock_{{ .StructName }}.go"
+packages:
+  github.com/thegeeklab/renovate-operator/internal/logstore:

@@ -54,11 +54,16 @@
     "frontend",
     "subrouter",
     "HTMX",
-    "Schedulable"
+    "Schedulable",
+    "logstore",
+    "clientset",
+    "pkgname",
+    "structname"
   ],
   "ignorePaths": [
     ".woodpecker",
     "*_test.go",
+    "mock_*.go",
     ".cspell.json",
     ".git/**/*",
     ".gitignore",

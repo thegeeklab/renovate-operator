@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,7 +17,7 @@ import (
 
 var _ = Describe("DataFactory", func() {
 	var (
-		client      client.Client
+		k8sClient   client.Client
 		dataFactory *DataFactory
 		scheme      *runtime.Scheme
 		testObjects []runtime.Object
@@ -24,7 +25,11 @@ var _ = Describe("DataFactory", func() {
 
 	BeforeEach(func() {
 		scheme = runtime.NewScheme()
+
 		err := renovatev1beta1.AddToScheme(scheme)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = batchv1.AddToScheme(scheme)
 		Expect(err).NotTo(HaveOccurred())
 
 		testObjects = []runtime.Object{
@@ -71,10 +76,34 @@ var _ = Describe("DataFactory", func() {
 					Ready: true,
 				},
 			},
+			&batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "test-job-1",
+					Namespace:         "test-namespace",
+					CreationTimestamp: metav1.NewTime(time.Now()),
+					Labels: map[string]string{
+						"renovate.thegeeklab.de/gitrepo": "test-repo",
+						"app.kubernetes.io/instance":     "test-runner",
+					},
+				},
+				Status: batchv1.JobStatus{Succeeded: 1},
+			},
+			&batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "test-job-2",
+					Namespace:         "test-namespace",
+					CreationTimestamp: metav1.NewTime(time.Now()),
+					Labels: map[string]string{
+						"renovate.thegeeklab.de/gitrepo": "other-repo",
+						"app.kubernetes.io/instance":     "test-runner",
+					},
+				},
+				Status: batchv1.JobStatus{Active: 1},
+			},
 		}
 
-		client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		dataFactory = NewDataFactory(client)
+		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
+		dataFactory = NewDataFactory(k8sClient)
 	})
 
 	Describe("NewDataFactory", func() {
@@ -143,7 +172,6 @@ var _ = Describe("DataFactory", func() {
 
 	Describe("GetDiscoveries", func() {
 		It("should return a list of discoveries", func() {
-			// Call the method
 			discoveries, err := dataFactory.GetDiscoveries(context.Background(), "", "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(discoveries).To(HaveLen(1))
@@ -153,7 +181,6 @@ var _ = Describe("DataFactory", func() {
 		})
 
 		It("should filter by namespace", func() {
-			// Call the method with namespace filter
 			discoveries, err := dataFactory.GetDiscoveries(context.Background(), "test-namespace", "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(discoveries).To(HaveLen(1))
@@ -163,6 +190,31 @@ var _ = Describe("DataFactory", func() {
 			discoveries, err := dataFactory.GetDiscoveries(context.Background(), "non-existent", "")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(discoveries).To(BeEmpty())
+		})
+	})
+
+	Describe("GetJobsForRepo", func() {
+		It("should return a list of jobs matching the git repo", func() {
+			jobs, err := dataFactory.GetJobsForRepo(context.Background(), "test-namespace", "test-repo")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(jobs).To(HaveLen(1))
+
+			Expect(jobs[0].Name).To(Equal("test-job-1"))
+			Expect(jobs[0].Namespace).To(Equal("test-namespace"))
+			Expect(jobs[0].Runner).To(Equal("test-runner"))
+			Expect(jobs[0].Status).To(Equal("Succeeded"))
+		})
+
+		It("should return empty list for non-matching repo", func() {
+			jobs, err := dataFactory.GetJobsForRepo(context.Background(), "test-namespace", "non-existent-repo")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(jobs).To(BeEmpty())
+		})
+
+		It("should return empty list for non-matching namespace", func() {
+			jobs, err := dataFactory.GetJobsForRepo(context.Background(), "non-existent-namespace", "test-repo")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(jobs).To(BeEmpty())
 		})
 	})
 })

@@ -3,6 +3,7 @@ package runner
 import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -66,5 +67,34 @@ var _ = Describe("RunnerName", func() {
 		request.Name = longName
 		name := RunnerName(request)
 		Expect(name).To(Equal(longName + "-runner"))
+	})
+})
+
+var _ = Describe("RunnerLabels", func() {
+	var request reconcile.Request
+
+	BeforeEach(func() {
+		request = reconcile.Request{
+			NamespacedName: types.NamespacedName{
+				Name: "test-instance",
+			},
+		}
+	})
+
+	It("should generate the correct set of base labels", func() {
+		labels := RunnerLabels(request)
+
+		Expect(labels).To(HaveLen(4))
+		Expect(labels).To(HaveKeyWithValue(renovatev1beta1.LabelAppName, renovatev1beta1.OperatorName))
+		Expect(labels).To(HaveKeyWithValue(renovatev1beta1.LabelAppInstance, "test-instance"))
+		Expect(labels).To(HaveKeyWithValue(renovatev1beta1.LabelAppComponent, renovatev1beta1.ComponentRunner))
+		Expect(labels).To(HaveKeyWithValue(renovatev1beta1.LabelAppManagedBy, renovatev1beta1.OperatorManagedBy))
+	})
+
+	It("should handle empty name in request", func() {
+		request.Name = ""
+		labels := RunnerLabels(request)
+
+		Expect(labels).To(HaveKeyWithValue(renovatev1beta1.LabelAppInstance, ""))
 	})
 })
