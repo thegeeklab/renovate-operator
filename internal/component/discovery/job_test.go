@@ -46,7 +46,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-discovery",
 				Namespace: "default",
 				Labels: map[string]string{
-					renovatev1beta1.RenovatorLabel: "renovator-id",
+					renovatev1beta1.LabelRenovator: "renovator-id",
 				},
 			},
 			Spec: renovatev1beta1.DiscoverySpec{
@@ -105,8 +105,8 @@ var _ = Describe("ReconcileJob", func() {
 		expectedLabels := func() map[string]string {
 			expected := DiscoveryLabels(reconciler.req)
 
-			if val, ok := instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
-				expected[renovatev1beta1.RenovatorLabel] = val
+			if val, ok := instance.Labels[renovatev1beta1.LabelRenovator]; ok {
+				expected[renovatev1beta1.LabelRenovator] = val
 			}
 
 			return expected

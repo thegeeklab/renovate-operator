@@ -58,7 +58,8 @@
     "logstore",
     "clientset",
     "pkgname",
-    "structname"
+    "structname",
+    "joblogs"
   ],
   "ignorePaths": [
     ".woodpecker",

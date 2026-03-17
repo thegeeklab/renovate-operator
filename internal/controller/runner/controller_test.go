@@ -118,7 +118,7 @@ var _ = Describe("Runner Controller", func() {
 					Name:      configName,
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: labelValue,
+						renovatev1beta1.LabelRenovator: labelValue,
 					},
 				},
 				Spec: renovatev1beta1.RenovateConfigSpec{
@@ -142,7 +142,7 @@ var _ = Describe("Runner Controller", func() {
 					Name:      runnerName,
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: labelValue,
+						renovatev1beta1.LabelRenovator: labelValue,
 					},
 				},
 				Spec: renovatev1beta1.RunnerSpec{
@@ -186,7 +186,7 @@ var _ = Describe("Runner Controller", func() {
 					Name:      repoName,
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: labelValue,
+						renovatev1beta1.LabelRenovator: labelValue,
 					},
 				},
 				Spec: renovatev1beta1.GitRepoSpec{
@@ -209,7 +209,7 @@ var _ = Describe("Runner Controller", func() {
 					Name:      "other-repo",
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: "wrong-id",
+						renovatev1beta1.LabelRenovator: "wrong-id",
 					},
 				},
 			}

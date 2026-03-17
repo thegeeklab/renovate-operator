@@ -50,7 +50,7 @@ var _ = Describe("reconcileLogs", func() {
 				Name:      "test-runner",
 				Namespace: "default",
 				Labels: map[string]string{
-					renovatev1beta1.RenovatorLabel: "renovator-id",
+					renovatev1beta1.LabelRenovator: "renovator-id",
 				},
 			},
 			Spec: renovatev1beta1.RunnerSpec{
@@ -110,13 +110,13 @@ var _ = Describe("reconcileLogs", func() {
 					renovatev1beta1.LabelAppInstance:  instance.Name,
 					renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentRunner,
 					renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
-					renovatev1beta1.RenovatorLabel:    "renovator-id",
+					renovatev1beta1.LabelRenovator:    "renovator-id",
 				},
 				Annotations: make(map[string]string),
 			},
 		}
 		if collected {
-			job.Annotations[renovatev1beta1.RenovatorLogsCollected] = "true"
+			job.Annotations[renovatev1beta1.LabelLogsCollected] = "true"
 		}
 
 		if finished {
@@ -162,7 +162,7 @@ var _ = Describe("reconcileLogs", func() {
 		updatedJob := &batchv1.Job{}
 		jobKey := types.NamespacedName{Name: "finished-job", Namespace: "default"}
 		Expect(fakeClient.Get(ctx, jobKey, updatedJob)).To(Succeed())
-		Expect(updatedJob.Annotations[renovatev1beta1.RenovatorLogsCollected]).To(Equal("true"))
+		Expect(updatedJob.Annotations[renovatev1beta1.LabelLogsCollected]).To(Equal("true"))
 	})
 
 	It("should requeue when hitting maxLogsPerReconcile", func() {
@@ -185,7 +185,7 @@ var _ = Describe("reconcileLogs", func() {
 		Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
 
 		for _, job := range jobList.Items {
-			if job.Annotations[renovatev1beta1.RenovatorLogsCollected] == "true" {
+			if job.Annotations[renovatev1beta1.LabelLogsCollected] == "true" {
 				collectedCount++
 			}
 		}
@@ -202,7 +202,7 @@ var _ = Describe("reconcileLogs", func() {
 					renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
 					renovatev1beta1.LabelAppInstance:  instance.Name,
 					renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentRunner,
-					renovatev1beta1.RenovatorLabel:    "renovator-id",
+					renovatev1beta1.LabelRenovator:    "renovator-id",
 				},
 			},
 			Status: batchv1.JobStatus{
@@ -218,6 +218,6 @@ var _ = Describe("reconcileLogs", func() {
 		updatedJob := &batchv1.Job{}
 		jobKey := types.NamespacedName{Name: "missing-pod-job", Namespace: "default"}
 		Expect(fakeClient.Get(ctx, jobKey, updatedJob)).To(Succeed())
-		Expect(updatedJob.Annotations[renovatev1beta1.RenovatorLogsCollected]).To(BeEmpty())
+		Expect(updatedJob.Annotations[renovatev1beta1.LabelLogsCollected]).To(BeEmpty())
 	})
 })

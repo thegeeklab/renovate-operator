@@ -20,8 +20,8 @@ func (r *Reconciler) reconcileLogs(ctx context.Context) (*ctrl.Result, error) {
 
 	runnerLabels := RunnerLabels(r.req)
 
-	if val, ok := r.instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
-		runnerLabels[renovatev1beta1.RenovatorLabel] = val
+	if val, ok := r.instance.Labels[renovatev1beta1.LabelRenovator]; ok {
+		runnerLabels[renovatev1beta1.LabelRenovator] = val
 	}
 
 	var jobList batchv1.JobList
@@ -39,7 +39,7 @@ func (r *Reconciler) reconcileLogs(ctx context.Context) (*ctrl.Result, error) {
 			continue
 		}
 
-		if job.Annotations[renovatev1beta1.RenovatorLogsCollected] == renovatev1beta1.ValueTrue {
+		if job.Annotations[renovatev1beta1.LabelLogsCollected] == renovatev1beta1.ValueTrue {
 			continue
 		}
 
@@ -63,7 +63,7 @@ func (r *Reconciler) reconcileLogs(ctx context.Context) (*ctrl.Result, error) {
 			job.Annotations = make(map[string]string)
 		}
 
-		job.Annotations[renovatev1beta1.RenovatorLogsCollected] = renovatev1beta1.ValueTrue
+		job.Annotations[renovatev1beta1.LabelLogsCollected] = renovatev1beta1.ValueTrue
 
 		if err := r.Patch(ctx, &job, patch); err != nil {
 			log.Error(err, "Failed to patch job annotation after log collection", "job", job.Name)

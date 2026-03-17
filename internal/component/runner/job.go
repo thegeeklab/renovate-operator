@@ -25,8 +25,8 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 
 	runnerLabels := RunnerLabels(r.req)
 
-	if val, ok := r.instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
-		runnerLabels[renovatev1beta1.RenovatorLabel] = val
+	if val, ok := r.instance.Labels[renovatev1beta1.LabelRenovator]; ok {
+		runnerLabels[renovatev1beta1.LabelRenovator] = val
 	}
 
 	if err := r.scheduler.PruneJobs(
@@ -98,7 +98,7 @@ func (r *Reconciler) processGitRepos(
 
 		runnerLabels := make(map[string]string)
 		maps.Copy(runnerLabels, labels)
-		runnerLabels["renovate.thegeeklab.de/gitrepo"] = repo.Name
+		runnerLabels[renovatev1beta1.LabelGitRepo] = repo.Name
 
 		if err := r.scheduler.PruneJobs(
 			ctx, repo.Namespace, runnerLabels, r.instance.GetSuccessLimit(), r.instance.GetFailedLimit(),

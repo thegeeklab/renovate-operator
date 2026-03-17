@@ -2,11 +2,21 @@ package frontend
 
 import (
 	"context"
+	"sort"
+	"time"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+// ListOptions holds optional parameters for filtering and sorting data.
+type ListOptions struct {
+	Namespace string
+	Renovator string
+	SortBy    string
+	Order     string
+}
 
 // DataFactory provides methods to fetch and transform data for both API and UI handlers.
 type DataFactory struct {
@@ -21,14 +31,23 @@ func NewDataFactory(client client.Client) *DataFactory {
 }
 
 // GetRenovators fetches Renovator resources and transforms them into RenovatorInfo.
-func (df *DataFactory) GetRenovators(ctx context.Context) ([]RenovatorInfo, error) {
-	var renovatorList renovatev1beta1.RenovatorList
-	if err := df.client.List(ctx, &renovatorList); err != nil {
+func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) ([]RenovatorInfo, error) {
+	opt := getListOptions(opts)
+
+	var list renovatev1beta1.RenovatorList
+	if err := df.client.List(ctx, &list); err != nil {
 		return nil, err
 	}
 
 	var result []RenovatorInfo
-	for _, renovator := range renovatorList.Items {
+
+	for _, renovator := range list.Items {
+		// Renovators typically aren't filtered by the renovator option itself,
+		// but we still respect the namespace filter if provided.
+		if opt.Namespace != "" && renovator.Namespace != opt.Namespace {
+			continue
+		}
+
 		result = append(result, RenovatorInfo{
 			Name:      renovator.Name,
 			Namespace: renovator.Namespace,
@@ -42,21 +61,30 @@ func (df *DataFactory) GetRenovators(ctx context.Context) ([]RenovatorInfo, erro
 		result = []RenovatorInfo{}
 	}
 
+	sortItems(result, opt,
+		func(i RenovatorInfo) string { return i.Name },
+		func(i RenovatorInfo) time.Time { return i.CreatedAt },
+	)
+
 	return result, nil
 }
 
 // GetGitRepos fetches GitRepo resources with optional filtering.
-func (df *DataFactory) GetGitRepos(ctx context.Context, namespace, renovator string) ([]GitRepoInfo, error) {
-	var gitRepoList renovatev1beta1.GitRepoList
-	if err := df.client.List(ctx, &gitRepoList); err != nil {
+//
+//nolint:dupl
+func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]GitRepoInfo, error) {
+	opt := getListOptions(opts)
+
+	var list renovatev1beta1.GitRepoList
+	if err := df.client.List(ctx, &list); err != nil {
 		return nil, err
 	}
 
 	var result []GitRepoInfo
 
-	for _, gitrepo := range gitRepoList.Items {
-		if (namespace != "" && gitrepo.Namespace != namespace) ||
-			(renovator != "" && gitrepo.Namespace != renovator) {
+	for _, gitrepo := range list.Items {
+		if (opt.Namespace != "" && gitrepo.Namespace != opt.Namespace) ||
+			(opt.Renovator != "" && gitrepo.Namespace != opt.Renovator) {
 			continue
 		}
 
@@ -73,21 +101,28 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, namespace, renovator str
 		result = []GitRepoInfo{}
 	}
 
+	sortItems(result, opt,
+		func(i GitRepoInfo) string { return i.Name },
+		func(i GitRepoInfo) time.Time { return i.CreatedAt },
+	)
+
 	return result, nil
 }
 
 // GetRunners fetches Runner resources with optional filtering.
-func (df *DataFactory) GetRunners(ctx context.Context, namespace, renovator string) ([]RunnerInfo, error) {
-	var runnerList renovatev1beta1.RunnerList
-	if err := df.client.List(ctx, &runnerList); err != nil {
+func (df *DataFactory) GetRunners(ctx context.Context, opts ...ListOptions) ([]RunnerInfo, error) {
+	opt := getListOptions(opts)
+
+	var list renovatev1beta1.RunnerList
+	if err := df.client.List(ctx, &list); err != nil {
 		return nil, err
 	}
 
 	var result []RunnerInfo
 
-	for _, runner := range runnerList.Items {
-		if (namespace != "" && runner.Namespace != namespace) ||
-			(renovator != "" && runner.Namespace != renovator) {
+	for _, runner := range list.Items {
+		if (opt.Namespace != "" && runner.Namespace != opt.Namespace) ||
+			(opt.Renovator != "" && runner.Namespace != opt.Renovator) {
 			continue
 		}
 
@@ -103,21 +138,30 @@ func (df *DataFactory) GetRunners(ctx context.Context, namespace, renovator stri
 		result = []RunnerInfo{}
 	}
 
+	sortItems(result, opt,
+		func(i RunnerInfo) string { return i.Name },
+		func(i RunnerInfo) time.Time { return i.CreatedAt },
+	)
+
 	return result, nil
 }
 
 // GetDiscoveries fetches Discovery resources with optional filtering.
-func (df *DataFactory) GetDiscoveries(ctx context.Context, namespace, renovator string) ([]DiscoveryInfo, error) {
-	var discoveryList renovatev1beta1.DiscoveryList
-	if err := df.client.List(ctx, &discoveryList); err != nil {
+//
+//nolint:dupl
+func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) ([]DiscoveryInfo, error) {
+	opt := getListOptions(opts)
+
+	var list renovatev1beta1.DiscoveryList
+	if err := df.client.List(ctx, &list); err != nil {
 		return nil, err
 	}
 
 	var result []DiscoveryInfo
 
-	for _, discovery := range discoveryList.Items {
-		if (namespace != "" && discovery.Namespace != namespace) ||
-			(renovator != "" && discovery.Namespace != renovator) {
+	for _, discovery := range list.Items {
+		if (opt.Namespace != "" && discovery.Namespace != opt.Namespace) ||
+			(opt.Renovator != "" && discovery.Namespace != opt.Renovator) {
 			continue
 		}
 
@@ -134,19 +178,29 @@ func (df *DataFactory) GetDiscoveries(ctx context.Context, namespace, renovator 
 		result = []DiscoveryInfo{}
 	}
 
+	sortItems(result, opt,
+		func(i DiscoveryInfo) string { return i.Name },
+		func(i DiscoveryInfo) time.Time { return i.CreatedAt },
+	)
+
 	return result, nil
 }
 
 // GetJobsForRepo fetches jobs associated with a specific GitRepo.
-func (df *DataFactory) GetJobsForRepo(ctx context.Context, namespace, repoName string) ([]JobInfo, error) {
+func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts ...ListOptions) ([]JobInfo, error) {
+	opt := getListOptions(opts)
+
 	var jobList batchv1.JobList
 
-	opts := []client.ListOption{
-		client.InNamespace(namespace),
-		client.MatchingLabels{"renovate.thegeeklab.de/gitrepo": repoName},
+	listOpts := []client.ListOption{
+		client.MatchingLabels{renovatev1beta1.LabelGitRepo: repoName},
 	}
 
-	if err := df.client.List(ctx, &jobList, opts...); err != nil {
+	if opt.Namespace != "" {
+		listOpts = append(listOpts, client.InNamespace(opt.Namespace))
+	}
+
+	if err := df.client.List(ctx, &jobList, listOpts...); err != nil {
 		return nil, err
 	}
 
@@ -160,7 +214,7 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, namespace, repoName s
 			status = "Failed"
 		}
 
-		runnerName := job.Labels["app.kubernetes.io/instance"]
+		runnerName := job.Labels[renovatev1beta1.LabelAppInstance]
 
 		result = append(result, JobInfo{
 			Name:      job.Name,
@@ -175,5 +229,46 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, namespace, repoName s
 		result = []JobInfo{}
 	}
 
+	if opt.SortBy == "" {
+		opt.SortBy = "date"
+		opt.Order = "desc"
+	}
+
+	sortItems(result, opt,
+		func(i JobInfo) string { return i.Name },
+		func(i JobInfo) time.Time { return i.CreatedAt },
+	)
+
 	return result, nil
+}
+
+func getListOptions(opts []ListOptions) ListOptions {
+	if len(opts) > 0 {
+		return opts[0]
+	}
+
+	return ListOptions{}
+}
+
+func sortItems[T any](items []T, opt ListOptions, nameFn func(T) string, dateFn func(T) time.Time) {
+	sort.Slice(items, func(i, j int) bool {
+		a, b := items[i], items[j]
+
+		var less, greater bool
+
+		switch opt.SortBy {
+		case "date":
+			less = dateFn(a).Before(dateFn(b))
+			greater = dateFn(a).After(dateFn(b))
+		default:
+			less = nameFn(a) < nameFn(b)
+			greater = nameFn(a) > nameFn(b)
+		}
+
+		if opt.Order == "desc" {
+			return greater
+		}
+
+		return less
+	})
 }

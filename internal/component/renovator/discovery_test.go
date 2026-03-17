@@ -285,8 +285,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(discovery.Labels).NotTo(BeNil())
-			Expect(discovery.Labels).To(HaveKey(renovatev1beta1.RenovatorLabel))
-			Expect(discovery.Labels[renovatev1beta1.RenovatorLabel]).To(Equal("test-uid-123"))
+			Expect(discovery.Labels).To(HaveKey(renovatev1beta1.LabelRenovator))
+			Expect(discovery.Labels[renovatev1beta1.LabelRenovator]).To(Equal("test-uid-123"))
 		})
 
 		It("should preserve existing labels on Discovery", func() {
@@ -322,8 +322,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(discovery.Labels).NotTo(BeNil())
-			Expect(discovery.Labels).To(HaveKey(renovatev1beta1.RenovatorLabel))
-			Expect(discovery.Labels[renovatev1beta1.RenovatorLabel]).To(Equal("test-uid-456"))
+			Expect(discovery.Labels).To(HaveKey(renovatev1beta1.LabelRenovator))
+			Expect(discovery.Labels[renovatev1beta1.LabelRenovator]).To(Equal("test-uid-456"))
 			Expect(discovery.Labels).To(HaveKey("existing-label"))
 			Expect(discovery.Labels["existing-label"]).To(Equal("existing-value"))
 		})

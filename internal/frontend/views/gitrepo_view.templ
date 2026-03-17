@@ -3,15 +3,16 @@ package views
 import "fmt"
 
 func getJobClass(status string) string {
-	base := `relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm
-cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2
-hover:border-blue-400`
-	if status == "Succeeded" {
+	base := `relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-blue-400`
+
+	switch status {
+	case "Succeeded":
 		return base + " border-l-4 border-l-green-500"
-	} else if status == "Running" {
+	case "Running":
 		return base + " border-l-4 border-l-blue-500"
+	default:
+		return base + " border-l-4 border-l-red-500"
 	}
-	return base + " border-l-4 border-l-red-500"
 }
 
 templ GitRepoView(data GitRepoViewData) {
@@ -28,9 +29,10 @@ templ GitRepoView(data GitRepoViewData) {
 				hx-get="/"
 				hx-push-url="true"
 				hx-target="#dashboard-content"
-				class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+				class="inline-flex items-center text-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 gap-1"
 			>
-				&larr; Back to Dashboard
+				@IconArrowLeft("h-5 w-5 text-gray-500")
+				<span>Back to Dashboard</span>
 			</button>
 		</div>
 	</div>
@@ -55,21 +57,15 @@ templ GitRepoView(data GitRepoViewData) {
 					</div>
 					<div class="flex-shrink-0">
 						if job.Status == "Succeeded" {
-							<span
-								class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20"
-							>
+							<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
 								Succeeded
 							</span>
 						} else if job.Status == "Running" {
-							<span
-								class="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"
-							>
+							<span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
 								Running
 							</span>
 						} else {
-							<span
-								class="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10"
-							>
+							<span class="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
 								Failed
 							</span>
 						}
@@ -79,14 +75,7 @@ templ GitRepoView(data GitRepoViewData) {
 		</div>
 	} else {
 		<div class="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
-			<svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-				<path
-					stroke-linecap="round"
-					stroke-linejoin="round"
-					stroke-width="2"
-					d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
-				></path>
-			</svg>
+			@IconServer("mx-auto h-12 w-12 text-gray-400")
 			<h3 class="mt-2 text-sm font-semibold text-gray-900">No Jobs Found</h3>
 			<p class="mt-1 text-sm text-gray-500">
 				Renovate hasn't triggered any runs for this repository yet.

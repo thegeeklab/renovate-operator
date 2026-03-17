@@ -141,7 +141,7 @@ func (r *Reconciler) mapGitRepoToRunner(ctx context.Context, obj client.Object) 
 	}
 
 	// Only enqueue requests for runners that match the renovate.thegeeklab.de/renovator label
-	renovatorID, ok := gitRepo.Labels[renovatev1beta1.RenovatorLabel]
+	renovatorID, ok := gitRepo.Labels[renovatev1beta1.LabelRenovator]
 	if !ok {
 		return nil
 	}
@@ -154,7 +154,7 @@ func (r *Reconciler) mapGitRepoToRunner(ctx context.Context, obj client.Object) 
 	var reqs []ctrl.Request
 
 	for _, runner := range runnerList.Items {
-		if runner.Labels != nil && runner.Labels[renovatev1beta1.RenovatorLabel] == renovatorID {
+		if runner.Labels != nil && runner.Labels[renovatev1beta1.LabelRenovator] == renovatorID {
 			reqs = append(reqs, ctrl.Request{
 				NamespacedName: client.ObjectKey{
 					Name:      runner.Name,
@@ -191,7 +191,7 @@ func (r *Reconciler) mapConfigToRunner(ctx context.Context, obj client.Object) [
 	return reqs
 }
 
-// resolveRenovateConfig resolves the RenovateConfig name from either .spec.configRef or renovatev1beta1.RenovatorLabel.
+// resolveRenovateConfig resolves the RenovateConfig name from either .spec.configRef or renovatev1beta1.LabelRenovator.
 func (r *Reconciler) resolveRenovateConfig(
 	ctx context.Context, namespace string, rr *renovatev1beta1.Runner,
 ) (client.ObjectKey, error) {
@@ -199,7 +199,7 @@ func (r *Reconciler) resolveRenovateConfig(
 		return client.ObjectKey{Namespace: namespace, Name: rr.Spec.ConfigRef}, nil
 	}
 
-	renovator, ok := rr.Labels[renovatev1beta1.RenovatorLabel]
+	renovator, ok := rr.Labels[renovatev1beta1.LabelRenovator]
 	if !ok {
 		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
 	}
@@ -210,7 +210,7 @@ func (r *Reconciler) resolveRenovateConfig(
 	}
 
 	for _, config := range configList.Items {
-		if config.Labels != nil && config.Labels[renovatev1beta1.RenovatorLabel] == renovator {
+		if config.Labels != nil && config.Labels[renovatev1beta1.LabelRenovator] == renovator {
 			return client.ObjectKey{Namespace: namespace, Name: config.Name}, nil
 		}
 	}

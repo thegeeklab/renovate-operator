@@ -1,6 +1,9 @@
 package frontend
 
 import (
+	"net/http"
+	"net/http/httptest"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -109,6 +112,73 @@ var _ = Describe("APIHandler", func() {
 
 				Expect(found).To(BeTrue(), "Route %s should be registered", path)
 			}
+		})
+	})
+
+	Describe("Endpoints", func() {
+		Describe("getVersion", func() {
+			It("should return version information", func() {
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/version", nil)
+				w := httptest.NewRecorder()
+
+				handler.getVersion(w, req)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
+				Expect(w.Body.String()).To(ContainSubstring(`"version":"v1.0.0"`))
+			})
+		})
+
+		Describe("getRenovators", func() {
+			It("should return renovators with sorting parameters", func() {
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/renovators?sort=name&order=desc", nil)
+				w := httptest.NewRecorder()
+
+				handler.getRenovators(w, req)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
+				Expect(w.Body.String()).To(ContainSubstring("test-renovator"))
+			})
+		})
+
+		Describe("getGitRepos", func() {
+			It("should return git repos with filtering and sorting parameters", func() {
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/gitrepos?namespace=test-namespace&sort=date&order=asc", nil)
+				w := httptest.NewRecorder()
+
+				handler.getGitRepos(w, req)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
+				Expect(w.Body.String()).To(ContainSubstring("test-repo"))
+			})
+		})
+
+		Describe("getRunners", func() {
+			It("should return runners with sorting parameters", func() {
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/runners?sort=name&order=asc", nil)
+				w := httptest.NewRecorder()
+
+				handler.getRunners(w, req)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
+				Expect(w.Body.String()).To(ContainSubstring("test-runner"))
+			})
+		})
+
+		Describe("getDiscoveries", func() {
+			It("should return discoveries with sorting parameters", func() {
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/discoveries?sort=date&order=desc", nil)
+				w := httptest.NewRecorder()
+
+				handler.getDiscoveries(w, req)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
+				Expect(w.Body.String()).To(ContainSubstring("test-discovery"))
+			})
 		})
 	})
 })

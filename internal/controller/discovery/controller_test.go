@@ -121,7 +121,7 @@ var _ = Describe("Discovery Controller", func() {
 					Name:      configName,
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: labelValue,
+						renovatev1beta1.LabelRenovator: labelValue,
 					},
 				},
 				Spec: renovatev1beta1.RenovateConfigSpec{
@@ -145,7 +145,7 @@ var _ = Describe("Discovery Controller", func() {
 					Name:      discoveryName,
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: labelValue,
+						renovatev1beta1.LabelRenovator: labelValue,
 					},
 				},
 				Spec: renovatev1beta1.DiscoverySpec{

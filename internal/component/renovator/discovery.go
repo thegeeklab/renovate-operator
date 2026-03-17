@@ -78,7 +78,7 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Labels = make(map[string]string)
 	}
 
-	discovery.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
+	discovery.Labels[renovatev1beta1.LabelRenovator] = string(r.instance.UID)
 
 	if HasRenovatorOperationDiscover(r.instance.Annotations) {
 		if discovery.Annotations == nil {

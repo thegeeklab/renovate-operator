@@ -26,8 +26,8 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 
 	discoveryLabels := DiscoveryLabels(r.req)
 
-	if val, ok := r.instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
-		discoveryLabels[renovatev1beta1.RenovatorLabel] = val
+	if val, ok := r.instance.Labels[renovatev1beta1.LabelRenovator]; ok {
+		discoveryLabels[renovatev1beta1.LabelRenovator] = val
 	}
 
 	if err := r.scheduler.PruneJobs(

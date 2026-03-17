@@ -53,7 +53,7 @@ var _ = Describe("Renovator Renovate Functions", func() {
 			renovateConfig := &renovatev1beta1.RenovateConfig{}
 			err = fakeClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "test-renovator"}, renovateConfig)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(renovateConfig.Labels).To(HaveKey(renovatev1beta1.RenovatorLabel))
+			Expect(renovateConfig.Labels).To(HaveKey(renovatev1beta1.LabelRenovator))
 		})
 
 		It("should update existing RenovateConfig resource", func() {
@@ -81,7 +81,7 @@ var _ = Describe("Renovator Renovate Functions", func() {
 			renovateConfig := &renovatev1beta1.RenovateConfig{}
 			err = fakeClient.Get(ctx, client.ObjectKey{Namespace: "default", Name: "test-renovator"}, renovateConfig)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(renovateConfig.Labels).To(HaveKey(renovatev1beta1.RenovatorLabel))
+			Expect(renovateConfig.Labels).To(HaveKey(renovatev1beta1.LabelRenovator))
 		})
 	})
 
@@ -109,8 +109,8 @@ var _ = Describe("Renovator Renovate Functions", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			// Verify labels and spec were updated
-			Expect(renovateConfig.Labels).To(HaveKey(renovatev1beta1.RenovatorLabel))
-			Expect(renovateConfig.Labels[renovatev1beta1.RenovatorLabel]).To(Equal("test-uid"))
+			Expect(renovateConfig.Labels).To(HaveKey(renovatev1beta1.LabelRenovator))
+			Expect(renovateConfig.Labels[renovatev1beta1.LabelRenovator]).To(Equal("test-uid"))
 		})
 	})
 

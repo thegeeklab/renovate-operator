@@ -38,38 +38,53 @@ func (h *WebHandler) RegisterRoutes(router *mux.Router) {
 }
 
 func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, component templ.Component) {
-	if r.Header.Get("HX-Request") == "true" {
+	isHxRequest := r.Header.Get("HX-Request") == "true"
+	isHxBoosted := r.Header.Get("HX-Boosted") == "true"
+
+	if isHxRequest && !isHxBoosted {
 		_ = component.Render(r.Context(), w)
 	} else {
 		_ = views.Layout(component).Render(r.Context(), w)
 	}
 }
 
+func getWebListOptions(r *http.Request) ListOptions {
+	q := r.URL.Query()
+
+	return ListOptions{
+		Namespace: q.Get("namespace"),
+		Renovator: q.Get("renovator"),
+		SortBy:    q.Get("sort"),
+		Order:     q.Get("order"),
+	}
+}
+
 func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
+	opts := getWebListOptions(r)
 
-	renovators, err := h.dataFactory.GetRenovators(ctx)
+	renovators, err := h.dataFactory.GetRenovators(ctx, opts)
 	if err != nil {
 		http.Error(w, "Failed to list renovators", http.StatusInternalServerError)
 
 		return
 	}
 
-	runners, err := h.dataFactory.GetRunners(ctx, "", "")
+	runners, err := h.dataFactory.GetRunners(ctx, opts)
 	if err != nil {
 		http.Error(w, "Failed to list runners", http.StatusInternalServerError)
 
 		return
 	}
 
-	discoveries, err := h.dataFactory.GetDiscoveries(ctx, "", "")
+	discoveries, err := h.dataFactory.GetDiscoveries(ctx, opts)
 	if err != nil {
 		http.Error(w, "Failed to list discoveries", http.StatusInternalServerError)
 
 		return
 	}
 
-	repos, err := h.dataFactory.GetGitRepos(ctx, "", "")
+	repos, err := h.dataFactory.GetGitRepos(ctx, opts)
 	if err != nil {
 		http.Error(w, "Failed to list repos", http.StatusInternalServerError)
 
@@ -119,15 +134,15 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	namespace := r.URL.Query().Get("namespace")
+	opts := getWebListOptions(r)
 
-	if namespace == "" {
+	if opts.Namespace == "" {
 		http.Error(w, "Namespace parameter is required", http.StatusBadRequest)
 
 		return
 	}
 
-	repos, err := h.dataFactory.GetGitRepos(ctx, namespace, "")
+	repos, err := h.dataFactory.GetGitRepos(ctx, opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
@@ -135,14 +150,13 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 	}
 
 	var viewRepos []views.GitRepoInfo
-
-	for _, r := range repos {
+	for _, repo := range repos {
 		viewRepos = append(viewRepos, views.GitRepoInfo{
-			Name:      r.Name,
-			Namespace: r.Namespace,
-			WebhookID: r.WebhookID,
-			Ready:     r.Ready,
-			CreatedAt: r.CreatedAt,
+			Name:      repo.Name,
+			Namespace: repo.Namespace,
+			WebhookID: repo.WebhookID,
+			Ready:     repo.Ready,
+			CreatedAt: repo.CreatedAt,
 		})
 	}
 
@@ -152,17 +166,17 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 
 func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	namespace := r.URL.Query().Get("namespace")
+	opts := getWebListOptions(r)
 	name := r.URL.Query().Get("name")
 
-	if namespace == "" || name == "" {
+	if opts.Namespace == "" || name == "" {
 		http.Error(w, "Namespace and name parameters are required", http.StatusBadRequest)
 
 		return
 	}
 
 	var repo renovatev1beta1.GitRepo
-	if err := h.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, &repo); err != nil {
+	if err := h.client.Get(ctx, types.NamespacedName{Namespace: opts.Namespace, Name: name}, &repo); err != nil {
 		http.Error(w, "GitRepo not found", http.StatusNotFound)
 
 		return
@@ -176,7 +190,7 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: repo.CreationTimestamp.Time,
 	}
 
-	jobs, err := h.dataFactory.GetJobsForRepo(ctx, namespace, name)
+	jobs, err := h.dataFactory.GetJobsForRepo(ctx, name, opts)
 	if err != nil {
 		http.Error(w, "Failed to fetch jobs", http.StatusInternalServerError)
 

@@ -48,7 +48,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-runner",
 				Namespace: "default",
 				Labels: map[string]string{
-					renovatev1beta1.RenovatorLabel: "renovator-id",
+					renovatev1beta1.LabelRenovator: "renovator-id",
 				},
 			},
 			Spec: renovatev1beta1.RunnerSpec{
@@ -126,12 +126,12 @@ var _ = Describe("ReconcileJob", func() {
 		expectedLabels := func(repoName string) map[string]string {
 			expected := RunnerLabels(reconciler.req)
 
-			if val, ok := instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
-				expected[renovatev1beta1.RenovatorLabel] = val
+			if val, ok := instance.Labels[renovatev1beta1.LabelRenovator]; ok {
+				expected[renovatev1beta1.LabelRenovator] = val
 			}
 
 			if repoName != "" {
-				expected["renovate.thegeeklab.de/gitrepo"] = repoName
+				expected[renovatev1beta1.LabelGitRepo] = repoName
 			}
 
 			return expected
@@ -273,7 +273,7 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(jobList.Items).To(HaveLen(2))
 
 				for _, job := range jobList.Items {
-					repoName := job.Labels["renovate.thegeeklab.de/gitrepo"]
+					repoName := job.Labels[renovatev1beta1.LabelGitRepo]
 					Expect(job.Labels).To(Equal(expectedLabels(repoName)))
 				}
 

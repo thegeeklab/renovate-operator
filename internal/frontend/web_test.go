@@ -142,6 +142,20 @@ var _ = Describe("WebHandler", func() {
 			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
 		})
 
+		It("should handle git repos partial requests with sorting parameters", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepos?namespace=test-namespace&sort=name&order=desc",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleGitReposPartial(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+		})
+
 		It("should return bad request for missing namespace parameter", func() {
 			req := httptest.NewRequest(http.MethodGet, "/gitrepos", nil)
 			w := httptest.NewRecorder()
@@ -164,6 +178,22 @@ var _ = Describe("WebHandler", func() {
 
 		It("should handle git repo view requests", func() {
 			req := httptest.NewRequest(http.MethodGet, "/gitrepo?namespace=test-namespace&name=test-repo", nil)
+			req.Header.Set("HX-Request", "true")
+
+			w := httptest.NewRecorder()
+
+			handler.HandleGitRepoView(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+		})
+
+		It("should handle git repo view requests with sorting parameters", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepo?namespace=test-namespace&name=test-repo&sort=date&order=desc",
+				nil,
+			)
 			req.Header.Set("HX-Request", "true")
 
 			w := httptest.NewRecorder()
