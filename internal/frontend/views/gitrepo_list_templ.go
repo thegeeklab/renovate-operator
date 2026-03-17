@@ -5,8 +5,10 @@ package views
 
 //lint:file-ignore SA4006 This context is only used if a nested component is present.
 
-import "github.com/a-h/templ"
-import templruntime "github.com/a-h/templ/runtime"
+import (
+	"github.com/a-h/templ"
+	templruntime "github.com/a-h/templ/runtime"
+)
 
 import "fmt"
 
@@ -46,7 +48,7 @@ func GitRepoList(repos []GitRepoInfo) templ.Component {
 				return templ_7745c5c3_Err
 			}
 			for _, r := range repos {
-				var templ_7745c5c3_Var2 = []any{getRepoClass(r.Ready)}
+				templ_7745c5c3_Var2 := []any{getRepoClass(r.Ready)}
 				templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var2...)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err

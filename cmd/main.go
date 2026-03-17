@@ -46,7 +46,7 @@ var (
 	setupLog = ctrl.Log.WithName("setup")
 
 	errWebhookTimeout   = errors.New("timeout waiting for webhook")
-	errUnknownFileStore = errors.New("")
+	errUnknownFileStore = errors.New("unknown file store")
 )
 
 const (
