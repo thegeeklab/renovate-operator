@@ -17,8 +17,7 @@ import (
 func NewStore(t interface {
 	mock.TestingT
 	Cleanup(func())
-},
-) *Store {
+}) *Store {
 	mock := &Store{}
 	mock.Mock.Test(t)
 
@@ -41,7 +40,7 @@ func (_m *Store) EXPECT() *Store_Expecter {
 }
 
 // DeleteLog provides a mock function for the type Store
-func (_mock *Store) DeleteLog(ctx context.Context, namespace, component, owner, jobName string) error {
+func (_mock *Store) DeleteLog(ctx context.Context, namespace string, component string, owner string, jobName string) error {
 	ret := _mock.Called(ctx, namespace, component, owner, jobName)
 
 	if len(ret) == 0 {
@@ -68,11 +67,11 @@ type Store_DeleteLog_Call struct {
 //   - component string
 //   - owner string
 //   - jobName string
-func (_e *Store_Expecter) DeleteLog(ctx, namespace, component, owner, jobName interface{}) *Store_DeleteLog_Call {
+func (_e *Store_Expecter) DeleteLog(ctx interface{}, namespace interface{}, component interface{}, owner interface{}, jobName interface{}) *Store_DeleteLog_Call {
 	return &Store_DeleteLog_Call{Call: _e.mock.On("DeleteLog", ctx, namespace, component, owner, jobName)}
 }
 
-func (_c *Store_DeleteLog_Call) Run(run func(ctx context.Context, namespace, component, owner, jobName string)) *Store_DeleteLog_Call {
+func (_c *Store_DeleteLog_Call) Run(run func(ctx context.Context, namespace string, component string, owner string, jobName string)) *Store_DeleteLog_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -110,13 +109,13 @@ func (_c *Store_DeleteLog_Call) Return(err error) *Store_DeleteLog_Call {
 	return _c
 }
 
-func (_c *Store_DeleteLog_Call) RunAndReturn(run func(ctx context.Context, namespace, component, owner, jobName string) error) *Store_DeleteLog_Call {
+func (_c *Store_DeleteLog_Call) RunAndReturn(run func(ctx context.Context, namespace string, component string, owner string, jobName string) error) *Store_DeleteLog_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // GetLog provides a mock function for the type Store
-func (_mock *Store) GetLog(ctx context.Context, namespace, component, owner, jobName string) (io.ReadCloser, error) {
+func (_mock *Store) GetLog(ctx context.Context, namespace string, component string, owner string, jobName string) (io.ReadCloser, error) {
 	ret := _mock.Called(ctx, namespace, component, owner, jobName)
 
 	if len(ret) == 0 {
@@ -154,11 +153,11 @@ type Store_GetLog_Call struct {
 //   - component string
 //   - owner string
 //   - jobName string
-func (_e *Store_Expecter) GetLog(ctx, namespace, component, owner, jobName interface{}) *Store_GetLog_Call {
+func (_e *Store_Expecter) GetLog(ctx interface{}, namespace interface{}, component interface{}, owner interface{}, jobName interface{}) *Store_GetLog_Call {
 	return &Store_GetLog_Call{Call: _e.mock.On("GetLog", ctx, namespace, component, owner, jobName)}
 }
 
-func (_c *Store_GetLog_Call) Run(run func(ctx context.Context, namespace, component, owner, jobName string)) *Store_GetLog_Call {
+func (_c *Store_GetLog_Call) Run(run func(ctx context.Context, namespace string, component string, owner string, jobName string)) *Store_GetLog_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -196,13 +195,13 @@ func (_c *Store_GetLog_Call) Return(readCloser io.ReadCloser, err error) *Store_
 	return _c
 }
 
-func (_c *Store_GetLog_Call) RunAndReturn(run func(ctx context.Context, namespace, component, owner, jobName string) (io.ReadCloser, error)) *Store_GetLog_Call {
+func (_c *Store_GetLog_Call) RunAndReturn(run func(ctx context.Context, namespace string, component string, owner string, jobName string) (io.ReadCloser, error)) *Store_GetLog_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // ListLogs provides a mock function for the type Store
-func (_mock *Store) ListLogs(ctx context.Context, namespace, component, owner string) ([]logstore.LogEntry, error) {
+func (_mock *Store) ListLogs(ctx context.Context, namespace string, component string, owner string) ([]logstore.LogEntry, error) {
 	ret := _mock.Called(ctx, namespace, component, owner)
 
 	if len(ret) == 0 {
@@ -239,11 +238,11 @@ type Store_ListLogs_Call struct {
 //   - namespace string
 //   - component string
 //   - owner string
-func (_e *Store_Expecter) ListLogs(ctx, namespace, component, owner interface{}) *Store_ListLogs_Call {
+func (_e *Store_Expecter) ListLogs(ctx interface{}, namespace interface{}, component interface{}, owner interface{}) *Store_ListLogs_Call {
 	return &Store_ListLogs_Call{Call: _e.mock.On("ListLogs", ctx, namespace, component, owner)}
 }
 
-func (_c *Store_ListLogs_Call) Run(run func(ctx context.Context, namespace, component, owner string)) *Store_ListLogs_Call {
+func (_c *Store_ListLogs_Call) Run(run func(ctx context.Context, namespace string, component string, owner string)) *Store_ListLogs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -276,13 +275,13 @@ func (_c *Store_ListLogs_Call) Return(logEntrys []logstore.LogEntry, err error) 
 	return _c
 }
 
-func (_c *Store_ListLogs_Call) RunAndReturn(run func(ctx context.Context, namespace, component, owner string) ([]logstore.LogEntry, error)) *Store_ListLogs_Call {
+func (_c *Store_ListLogs_Call) RunAndReturn(run func(ctx context.Context, namespace string, component string, owner string) ([]logstore.LogEntry, error)) *Store_ListLogs_Call {
 	_c.Call.Return(run)
 	return _c
 }
 
 // SaveLog provides a mock function for the type Store
-func (_mock *Store) SaveLog(ctx context.Context, namespace, component, owner, jobName string, logReader io.Reader) error {
+func (_mock *Store) SaveLog(ctx context.Context, namespace string, component string, owner string, jobName string, logReader io.Reader) error {
 	ret := _mock.Called(ctx, namespace, component, owner, jobName, logReader)
 
 	if len(ret) == 0 {
@@ -310,11 +309,11 @@ type Store_SaveLog_Call struct {
 //   - owner string
 //   - jobName string
 //   - logReader io.Reader
-func (_e *Store_Expecter) SaveLog(ctx, namespace, component, owner, jobName, logReader interface{}) *Store_SaveLog_Call {
+func (_e *Store_Expecter) SaveLog(ctx interface{}, namespace interface{}, component interface{}, owner interface{}, jobName interface{}, logReader interface{}) *Store_SaveLog_Call {
 	return &Store_SaveLog_Call{Call: _e.mock.On("SaveLog", ctx, namespace, component, owner, jobName, logReader)}
 }
 
-func (_c *Store_SaveLog_Call) Run(run func(ctx context.Context, namespace, component, owner, jobName string, logReader io.Reader)) *Store_SaveLog_Call {
+func (_c *Store_SaveLog_Call) Run(run func(ctx context.Context, namespace string, component string, owner string, jobName string, logReader io.Reader)) *Store_SaveLog_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -357,7 +356,7 @@ func (_c *Store_SaveLog_Call) Return(err error) *Store_SaveLog_Call {
 	return _c
 }
 
-func (_c *Store_SaveLog_Call) RunAndReturn(run func(ctx context.Context, namespace, component, owner, jobName string, logReader io.Reader) error) *Store_SaveLog_Call {
+func (_c *Store_SaveLog_Call) RunAndReturn(run func(ctx context.Context, namespace string, component string, owner string, jobName string, logReader io.Reader) error) *Store_SaveLog_Call {
 	_c.Call.Return(run)
 	return _c
 }
