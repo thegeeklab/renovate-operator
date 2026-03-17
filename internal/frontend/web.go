@@ -1,81 +1,53 @@
 package frontend
 
 import (
-	"html/template"
 	"io"
 	"net/http"
 
+	"github.com/a-h/templ"
 	"github.com/gorilla/mux"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	ui_template "github.com/thegeeklab/renovate-operator/internal/frontend/template"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/views"
 	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-type WebView struct {
-	Name          string
-	Namespace     string
-	GitRepoCount  int
-	RunnerName    string
-	DiscoveryName string
-}
-
 type WebHandler struct {
 	client      client.Client
 	dataFactory *DataFactory
-	templates   *template.Template
 	logManager  *logstore.Manager
 }
 
-type GitRepoViewData struct {
-	Repo GitRepoInfo
-	Jobs []JobInfo
-}
-
-type JobLogData struct {
-	JobName string
-	Content string
-	Error   string
-}
-
 func NewWebHandler(client client.Client, logManager *logstore.Manager) *WebHandler {
-	tmpl, err := ui_template.Parse()
-	if err != nil {
-		panic(err)
-	}
-
 	return &WebHandler{
 		client:      client,
 		dataFactory: NewDataFactory(client),
-		templates:   tmpl,
 		logManager:  logManager,
 	}
 }
 
 func (h *WebHandler) RegisterRoutes(router *mux.Router) {
-	router.HandleFunc("/", h.HandleIndex).Methods("GET")
+	// Root and full page routes
+	router.HandleFunc("/", h.HandleDashboard).Methods("GET")
+	router.HandleFunc("/gitrepo", h.HandleGitRepoView).Methods("GET")
 
-	partialsRouter := router.PathPrefix("/partials").Subrouter()
-	partialsRouter.Use(h.EnsureHTMXRequest)
-	partialsRouter.HandleFunc("/renovators", h.HandleRenovatorsPartial).Methods("GET")
-	partialsRouter.HandleFunc("/gitrepos", h.HandleGitReposPartial).Methods("GET")
-	partialsRouter.HandleFunc("/gitrepo", h.HandleGitRepoView).Methods("GET")
-	partialsRouter.HandleFunc("/joblogs", h.HandleJobLogs).Methods("GET")
+	// Partial routes
+	router.HandleFunc("/gitrepos", h.HandleGitReposPartial).Methods("GET")
+	router.HandleFunc("/joblogs", h.HandleJobLogs).Methods("GET")
 }
 
-func (h *WebHandler) HandleIndex(w http.ResponseWriter, r *http.Request) {
-	w.Header().Set("Content-Type", "text/html; charset=utf-8")
-
-	if err := h.templates.ExecuteTemplate(w, "index", nil); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, component templ.Component) {
+	if r.Header.Get("HX-Request") == "true" {
+		_ = component.Render(r.Context(), w)
+	} else {
+		_ = views.Layout(component).Render(r.Context(), w)
 	}
 }
 
-func (h *WebHandler) HandleRenovatorsPartial(w http.ResponseWriter, r *http.Request) {
+func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 
-	// Get all renovators
 	renovators, err := h.dataFactory.GetRenovators(ctx)
 	if err != nil {
 		http.Error(w, "Failed to list renovators", http.StatusInternalServerError)
@@ -83,7 +55,6 @@ func (h *WebHandler) HandleRenovatorsPartial(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Get all runners
 	runners, err := h.dataFactory.GetRunners(ctx, "", "")
 	if err != nil {
 		http.Error(w, "Failed to list runners", http.StatusInternalServerError)
@@ -91,7 +62,6 @@ func (h *WebHandler) HandleRenovatorsPartial(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Get all discoveries
 	discoveries, err := h.dataFactory.GetDiscoveries(ctx, "", "")
 	if err != nil {
 		http.Error(w, "Failed to list discoveries", http.StatusInternalServerError)
@@ -99,7 +69,6 @@ func (h *WebHandler) HandleRenovatorsPartial(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	// Get all git repos
 	repos, err := h.dataFactory.GetGitRepos(ctx, "", "")
 	if err != nil {
 		http.Error(w, "Failed to list repos", http.StatusInternalServerError)
@@ -122,10 +91,10 @@ func (h *WebHandler) HandleRenovatorsPartial(w http.ResponseWriter, r *http.Requ
 		repoCountByNs[repo.Namespace]++
 	}
 
-	var views []WebView
+	var viewsList []views.WebView
 
 	for _, ren := range renovators {
-		view := WebView{
+		view := views.WebView{
 			Name:          ren.Name,
 			Namespace:     ren.Namespace,
 			GitRepoCount:  repoCountByNs[ren.Namespace],
@@ -141,14 +110,11 @@ func (h *WebHandler) HandleRenovatorsPartial(w http.ResponseWriter, r *http.Requ
 			view.DiscoveryName = "-"
 		}
 
-		views = append(views, view)
+		viewsList = append(viewsList, view)
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-
-	if err := h.templates.ExecuteTemplate(w, "renovator_list", views); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	h.render(w, r, views.RenovatorList(viewsList))
 }
 
 func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Request) {
@@ -161,7 +127,6 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	// Get git repos for the specified namespace
 	repos, err := h.dataFactory.GetGitRepos(ctx, namespace, "")
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
@@ -169,26 +134,22 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	w.Header().Set("Content-Type", "text/html")
+	var viewRepos []views.GitRepoInfo
 
-	if err := h.templates.ExecuteTemplate(w, "gitrepo_list", repos); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+	for _, r := range repos {
+		viewRepos = append(viewRepos, views.GitRepoInfo{
+			Name:      r.Name,
+			Namespace: r.Namespace,
+			WebhookID: r.WebhookID,
+			Ready:     r.Ready,
+			CreatedAt: r.CreatedAt,
+		})
 	}
+
+	w.Header().Set("Content-Type", "text/html")
+	_ = views.GitRepoList(viewRepos).Render(r.Context(), w)
 }
 
-func (h *WebHandler) EnsureHTMXRequest(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("HX-Request") != "true" {
-			http.Redirect(w, r, "/", http.StatusFound)
-
-			return
-		}
-
-		next.ServeHTTP(w, r)
-	})
-}
-
-// HandleGitRepoView renders a dedicated view for a GitRepo and its jobs.
 func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	namespace := r.URL.Query().Get("namespace")
@@ -207,7 +168,7 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repoInfo := GitRepoInfo{
+	repoInfo := views.GitRepoInfo{
 		Name:      repo.Name,
 		Namespace: repo.Namespace,
 		WebhookID: repo.Spec.WebhookID,
@@ -222,16 +183,24 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := GitRepoViewData{
+	var viewJobs []views.JobInfo
+	for _, j := range jobs {
+		viewJobs = append(viewJobs, views.JobInfo{
+			Name:      j.Name,
+			Namespace: j.Namespace,
+			Runner:    j.Runner,
+			Status:    j.Status,
+			CreatedAt: j.CreatedAt,
+		})
+	}
+
+	data := views.GitRepoViewData{
 		Repo: repoInfo,
-		Jobs: jobs,
+		Jobs: viewJobs,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-
-	if err := h.templates.ExecuteTemplate(w, "gitrepo_view", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	h.render(w, r, views.GitRepoView(data))
 }
 
 // HandleJobLogs fetches the log stream and renders it.
@@ -247,7 +216,7 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := JobLogData{
+	data := views.JobLogData{
 		JobName: job,
 	}
 
@@ -267,9 +236,5 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-
-	// Pass the struct to the template
-	if err := h.templates.ExecuteTemplate(w, "job_logs", data); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
-	}
+	_ = views.JobLogs(data).Render(r.Context(), w)
 }

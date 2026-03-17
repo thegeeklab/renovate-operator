@@ -9,6 +9,7 @@ GOFUMPT_PACKAGE ?= mvdan.cc/gofumpt@$(GOFUMPT_PACKAGE_VERSION)
 YAMLFMT_PACKAGE ?= github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_PACKAGE_VERSION)
 GOTESTSUM_PACKAGE ?= gotest.tools/gotestsum@latest
 MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
+TEMPL_PACKAGE ?= github.com/a-h/templ/cmd/templ@latest
 
 # Image URL to use all building image targets
 IMG ?= docker.io/thegeeklab/renovate-operator:devel
@@ -64,6 +65,7 @@ deps:
 	$(GO) install $(GOFUMPT_PACKAGE)
 	$(GO) install $(YAMLFMT_PACKAGE)
 	$(GO) install $(GOTESTSUM_PACKAGE)
+	$(GO) install $(TEMPL_PACKAGE)
 
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
@@ -77,7 +79,12 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object paths="./..."
 	$(GO) run $(MOCKERY_PACKAGE)
+	@$(MAKE) --no-print-directory templ
 	@$(MAKE) --no-print-directory yamlfmt
+
+.PHONY: templ
+templ: ## Generate templ components.
+	templ generate -include-version false --path ./internal/frontend/views
 
 .PHONY: yamlfmt
 yamlfmt: ## Run yamlfmt.
@@ -94,6 +101,11 @@ yamlfmt-lint:
 .PHONY: fmt
 fmt: ## Run go fmt against code.
 	$(shell go env GOPATH)/bin/gofumpt -extra -w $(SOURCES)
+	@$(MAKE) --no-print-directory templ-fmt
+
+.PHONY: templ-fmt
+templ-fmt: ## Format templ files.
+	templ fmt ./internal/frontend/views
 
 .PHONY: vet
 vet: ## Run go vet against code.

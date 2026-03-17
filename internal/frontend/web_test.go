@@ -107,43 +107,33 @@ var _ = Describe("WebHandler", func() {
 		})
 	})
 
-	Describe("RegisterRoutes", func() {
-		It("should register dashboard routes", func() {
-			Expect(handler).NotTo(BeNil())
-		})
-	})
-
-	Describe("HandleIndex", func() {
+	Describe("HandleDashboard", func() {
 		It("should handle index requests", func() {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			w := httptest.NewRecorder()
 
-			handler.HandleIndex(w, req)
+			handler.HandleDashboard(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(w.Header().Get("Content-Type")).To(Equal("text/html; charset=utf-8"))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
 		})
-	})
 
-	Describe("HandleRenovatorsPartial", func() {
-		It("should handle renovators partial requests", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/renovators", nil)
+		It("should return partial for HTMX requests", func() {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set("HX-Request", "true")
 
 			w := httptest.NewRecorder()
 
-			handler.HandleRenovatorsPartial(w, req)
+			handler.HandleDashboard(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+			Expect(w.Body.String()).NotTo(ContainSubstring("<!DOCTYPE html>"))
 		})
 	})
 
 	Describe("HandleGitReposPartial", func() {
 		It("should handle git repos partial requests", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepos?namespace=test-namespace", nil)
-			req.Header.Set("HX-Request", "true")
-
+			req := httptest.NewRequest(http.MethodGet, "/gitrepos?namespace=test-namespace", nil)
 			w := httptest.NewRecorder()
 
 			handler.HandleGitReposPartial(w, req)
@@ -153,9 +143,7 @@ var _ = Describe("WebHandler", func() {
 		})
 
 		It("should return bad request for missing namespace parameter", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepos", nil)
-			req.Header.Set("HX-Request", "true")
-
+			req := httptest.NewRequest(http.MethodGet, "/gitrepos", nil)
 			w := httptest.NewRecorder()
 
 			handler.HandleGitReposPartial(w, req)
@@ -166,9 +154,7 @@ var _ = Describe("WebHandler", func() {
 
 	Describe("HandleGitRepoView", func() {
 		It("should return bad request for missing parameters", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepo", nil)
-			req.Header.Set("HX-Request", "true")
-
+			req := httptest.NewRequest(http.MethodGet, "/gitrepo", nil)
 			w := httptest.NewRecorder()
 
 			handler.HandleGitRepoView(w, req)
@@ -177,7 +163,7 @@ var _ = Describe("WebHandler", func() {
 		})
 
 		It("should handle git repo view requests", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepo?namespace=test-namespace&name=test-repo", nil)
+			req := httptest.NewRequest(http.MethodGet, "/gitrepo?namespace=test-namespace&name=test-repo", nil)
 			req.Header.Set("HX-Request", "true")
 
 			w := httptest.NewRecorder()
@@ -191,9 +177,7 @@ var _ = Describe("WebHandler", func() {
 
 	Describe("HandleJobLogs", func() {
 		It("should return bad request for missing parameters", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/joblogs", nil)
-			req.Header.Set("HX-Request", "true")
-
+			req := httptest.NewRequest(http.MethodGet, "/joblogs", nil)
 			w := httptest.NewRecorder()
 
 			handler.HandleJobLogs(w, req)
@@ -201,52 +185,18 @@ var _ = Describe("WebHandler", func() {
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})
 
-		It("should gracefully handle missing logs with an error template", func() {
+		It("should gracefully handle missing logs with an error message", func() {
 			req := httptest.NewRequest(
 				http.MethodGet,
-				"/partials/joblogs?namespace=test-namespace&runner=test-runner&job=missing-job",
+				"/joblogs?namespace=test-namespace&runner=test-runner&job=missing-job",
 				nil,
 			)
-			req.Header.Set("HX-Request", "true")
-
 			w := httptest.NewRecorder()
 
 			handler.HandleJobLogs(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Body.String()).To(ContainSubstring("Logs are no longer available"))
-		})
-	})
-
-	Describe("EnsureHTMXRequest", func() {
-		It("should redirect non-HTMX requests", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/test", nil)
-			w := httptest.NewRecorder()
-
-			dummyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-			})
-			wrappedHandler := handler.EnsureHTMXRequest(dummyHandler)
-
-			wrappedHandler.ServeHTTP(w, req)
-
-			Expect(w.Code).To(Equal(http.StatusFound))
-		})
-
-		It("should allow HTMX requests", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/test", nil)
-			req.Header.Set("HX-Request", "true")
-
-			w := httptest.NewRecorder()
-
-			dummyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-			})
-			wrappedHandler := handler.EnsureHTMXRequest(dummyHandler)
-
-			wrappedHandler.ServeHTTP(w, req)
-
-			Expect(w.Code).To(Equal(http.StatusOK))
 		})
 	})
 })

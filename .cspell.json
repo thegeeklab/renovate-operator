@@ -98,7 +98,8 @@
     ".*corev1.*",
     ".*rbacv1.*",
     ".*batchv1.*",
-    ".*metav1.*"
+    ".*metav1.*",
+    "templ.*"
   ],
   "enableFiletypes": ["dockercompose"]
 }

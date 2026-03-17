@@ -1,0 +1,97 @@
+package views
+
+import "fmt"
+
+func getJobClass(status string) string {
+	base := `relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm
+cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2
+hover:border-blue-400`
+	if status == "Succeeded" {
+		return base + " border-l-4 border-l-green-500"
+	} else if status == "Running" {
+		return base + " border-l-4 border-l-blue-500"
+	}
+	return base + " border-l-4 border-l-red-500"
+}
+
+templ GitRepoView(data GitRepoViewData) {
+	<div class="mb-6 flex items-center justify-between">
+		<div>
+			<h2 class="text-2xl font-bold leading-7 text-gray-900 sm:truncate sm:text-3xl sm:tracking-tight">
+				{ data.Repo.Name }
+			</h2>
+			<p class="mt-1 text-sm text-gray-500">Namespace: { data.Repo.Namespace }</p>
+		</div>
+		<div class="mt-4 flex md:ml-4 md:mt-0">
+			<button
+				type="button"
+				hx-get="/"
+				hx-push-url="true"
+				hx-target="#dashboard-content"
+				class="inline-flex items-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50"
+			>
+				&larr; Back to Dashboard
+			</button>
+		</div>
+	</div>
+	<h3 class="text-base font-semibold leading-6 text-gray-900 mb-4">Recent Jobs</h3>
+	if len(data.Jobs) > 0 {
+		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+			for _, job := range data.Jobs {
+				<div
+					hx-get={ fmt.Sprintf("/joblogs?namespace=%s&runner=%s&job=%s", job.Namespace, job.Runner, job.Name) }
+					hx-target="#log-viewer"
+					hx-swap="innerHTML"
+					class={ getJobClass(job.Status) }
+				>
+					<div class="min-w-0 flex-1">
+						<div class="focus:outline-none">
+							<span class="absolute inset-0" aria-hidden="true"></span>
+							<p class="text-sm font-medium text-gray-900 truncate">{ job.Name }</p>
+							<p class="truncate text-xs text-gray-500">
+								Created: { job.CreatedAt.Format("Jan 02, 2006 15:04") }
+							</p>
+						</div>
+					</div>
+					<div class="flex-shrink-0">
+						if job.Status == "Succeeded" {
+							<span
+								class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20"
+							>
+								Succeeded
+							</span>
+						} else if job.Status == "Running" {
+							<span
+								class="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"
+							>
+								Running
+							</span>
+						} else {
+							<span
+								class="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10"
+							>
+								Failed
+							</span>
+						}
+					</div>
+				</div>
+			}
+		</div>
+	} else {
+		<div class="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
+			<svg class="mx-auto h-12 w-12 text-gray-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+				<path
+					stroke-linecap="round"
+					stroke-linejoin="round"
+					stroke-width="2"
+					d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 002-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10"
+				></path>
+			</svg>
+			<h3 class="mt-2 text-sm font-semibold text-gray-900">No Jobs Found</h3>
+			<p class="mt-1 text-sm text-gray-500">
+				Renovate hasn't triggered any runs for this repository yet.
+			</p>
+		</div>
+	}
+	<div id="log-viewer" class="mt-8"></div>
+}
