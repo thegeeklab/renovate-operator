@@ -178,7 +178,7 @@ var _ = Describe("reconcileLogs", func() {
 
 		result, err := reconciler.reconcileLogs(ctx)
 		Expect(err).NotTo(HaveOccurred())
-		Expect(result.Requeue).To(BeTrue())
+		Expect(result.RequeueAfter).To(BeZero())
 
 		collectedCount := 0
 		jobList := &batchv1.JobList{}

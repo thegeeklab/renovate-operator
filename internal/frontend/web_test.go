@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -8,13 +9,15 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/logstore"
+	logstorte_mocks "github.com/thegeeklab/renovate-operator/internal/logstore/mocks"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	fakeclientset "k8s.io/client-go/kubernetes/fake"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -27,6 +30,7 @@ var _ = Describe("WebHandler", func() {
 		testObjects []runtime.Object
 		tempLogDir  string
 		logManager  *logstore.Manager
+		mockStore   *logstorte_mocks.Store
 	)
 
 	BeforeEach(func() {
@@ -87,9 +91,9 @@ var _ = Describe("WebHandler", func() {
 		tempLogDir, err = os.MkdirTemp("", "operator-web-test-*")
 		Expect(err).NotTo(HaveOccurred())
 
-		k8sClientset := fakeclientset.NewSimpleClientset()
-		fileStore := logstore.NewFileStore(tempLogDir)
-		logManager = logstore.NewManager(k8sClientset, fileStore)
+		fakeClientset := kubernetesfake.NewClientset()
+		mockStore = logstorte_mocks.NewStore(GinkgoT())
+		logManager = logstore.NewManager(fakeClientset, mockStore)
 
 		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
 		handler = NewWebHandler(k8sClient, logManager)
@@ -222,6 +226,9 @@ var _ = Describe("WebHandler", func() {
 				nil,
 			)
 			w := httptest.NewRecorder()
+
+			mockStore.On("GetLog", mock.Anything, "test-namespace", "runner", "test-runner", "missing-job").
+				Return(nil, errors.New("log not found"))
 
 			handler.HandleJobLogs(w, req)
 

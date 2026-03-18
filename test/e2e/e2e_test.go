@@ -340,7 +340,7 @@ spec:
 
 			defer os.Remove(jobFile.Name())
 
-			_, err = jobFile.Write([]byte(fmt.Sprintf(jobYaml, namespace)))
+			_, err = fmt.Fprintf(jobFile, jobYaml, namespace)
 			Expect(err).NotTo(HaveOccurred())
 			err = jobFile.Close()
 			Expect(err).NotTo(HaveOccurred())
