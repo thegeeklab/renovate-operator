@@ -1,7 +1,7 @@
 {
   "version": "0.2",
   "language": "en",
-  "dictionaries": ["en_us", "go"],
+  "dictionaries": ["en_us", "go", "html"],
   "words": [
     "thegeeklab",
     "kubebuilder",
@@ -59,7 +59,10 @@
     "clientset",
     "pkgname",
     "structname",
-    "joblogs"
+    "joblogs",
+    "Sprintf",
+    "Heroicon",
+    "evenodd"
   ],
   "ignorePaths": [
     ".woodpecker",
