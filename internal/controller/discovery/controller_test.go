@@ -5,9 +5,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,7 +58,7 @@ var _ = Describe("Discovery Controller", func() {
 					},
 				},
 			}
-			rcd := &v1beta1.RenovateConfigCustomDefaulter{}
+			rcd := &RenovateConfigCustomDefaulter{}
 			Expect(rcd.Default(ctx, config)).To(Succeed())
 			Expect(k8sClient.Create(ctx, config)).To(Succeed())
 
@@ -75,7 +75,7 @@ var _ = Describe("Discovery Controller", func() {
 					Filter: []string{"org/repo1", "org/repo2"},
 				},
 			}
-			dd := &v1beta1.DiscoveryCustomDefaulter{}
+			dd := &DiscoveryCustomDefaulter{}
 			Expect(dd.Default(ctx, resource)).To(Succeed())
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 
@@ -121,7 +121,7 @@ var _ = Describe("Discovery Controller", func() {
 					Name:      configName,
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: labelValue,
+						renovatev1beta1.LabelRenovator: labelValue,
 					},
 				},
 				Spec: renovatev1beta1.RenovateConfigSpec{
@@ -136,7 +136,7 @@ var _ = Describe("Discovery Controller", func() {
 					},
 				},
 			}
-			rcd := &v1beta1.RenovateConfigCustomDefaulter{}
+			rcd := &RenovateConfigCustomDefaulter{}
 			Expect(rcd.Default(ctx, config)).To(Succeed())
 			Expect(k8sClient.Create(ctx, config)).To(Succeed())
 
@@ -145,7 +145,7 @@ var _ = Describe("Discovery Controller", func() {
 					Name:      discoveryName,
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: labelValue,
+						renovatev1beta1.LabelRenovator: labelValue,
 					},
 				},
 				Spec: renovatev1beta1.DiscoverySpec{
@@ -155,7 +155,7 @@ var _ = Describe("Discovery Controller", func() {
 					Filter: []string{"org/repo1"},
 				},
 			}
-			dd := &v1beta1.DiscoveryCustomDefaulter{}
+			dd := &DiscoveryCustomDefaulter{}
 			Expect(dd.Default(ctx, resource)).To(Succeed())
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 		})

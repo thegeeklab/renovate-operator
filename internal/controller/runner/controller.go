@@ -7,6 +7,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/component/runner"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
+	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,12 +25,15 @@ const ControllerName = "runner"
 // Reconciler reconciles a Runner object.
 type Reconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme     *runtime.Scheme
+	LogManager *logstore.Manager
 }
 
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=batch,resources=cronjobs,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=core,resources=configmaps,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups="",resources=pods,verbs=get;list;watch
+// +kubebuilder:rbac:groups="",resources=pods/log,verbs=get;list;watch
 
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners,verbs=get;list;watch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners/status,verbs=get
@@ -64,7 +68,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	runner, err := runner.NewReconciler(r.Client, r.Scheme, rr, rc)
+	runner, err := runner.NewReconciler(r.Client, r.Scheme, r.LogManager, rr, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -137,7 +141,7 @@ func (r *Reconciler) mapGitRepoToRunner(ctx context.Context, obj client.Object) 
 	}
 
 	// Only enqueue requests for runners that match the renovate.thegeeklab.de/renovator label
-	renovatorID, ok := gitRepo.Labels[renovatev1beta1.RenovatorLabel]
+	renovatorID, ok := gitRepo.Labels[renovatev1beta1.LabelRenovator]
 	if !ok {
 		return nil
 	}
@@ -150,7 +154,7 @@ func (r *Reconciler) mapGitRepoToRunner(ctx context.Context, obj client.Object) 
 	var reqs []ctrl.Request
 
 	for _, runner := range runnerList.Items {
-		if runner.Labels != nil && runner.Labels[renovatev1beta1.RenovatorLabel] == renovatorID {
+		if runner.Labels != nil && runner.Labels[renovatev1beta1.LabelRenovator] == renovatorID {
 			reqs = append(reqs, ctrl.Request{
 				NamespacedName: client.ObjectKey{
 					Name:      runner.Name,
@@ -187,7 +191,7 @@ func (r *Reconciler) mapConfigToRunner(ctx context.Context, obj client.Object) [
 	return reqs
 }
 
-// resolveRenovateConfig resolves the RenovateConfig name from either .spec.configRef or renovatev1beta1.RenovatorLabel.
+// resolveRenovateConfig resolves the RenovateConfig name from either .spec.configRef or renovatev1beta1.LabelRenovator.
 func (r *Reconciler) resolveRenovateConfig(
 	ctx context.Context, namespace string, rr *renovatev1beta1.Runner,
 ) (client.ObjectKey, error) {
@@ -195,7 +199,7 @@ func (r *Reconciler) resolveRenovateConfig(
 		return client.ObjectKey{Namespace: namespace, Name: rr.Spec.ConfigRef}, nil
 	}
 
-	renovator, ok := rr.Labels[renovatev1beta1.RenovatorLabel]
+	renovator, ok := rr.Labels[renovatev1beta1.LabelRenovator]
 	if !ok {
 		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
 	}
@@ -206,7 +210,7 @@ func (r *Reconciler) resolveRenovateConfig(
 	}
 
 	for _, config := range configList.Items {
-		if config.Labels != nil && config.Labels[renovatev1beta1.RenovatorLabel] == renovator {
+		if config.Labels != nil && config.Labels[renovatev1beta1.LabelRenovator] == renovator {
 			return client.ObjectKey{Namespace: namespace, Name: config.Name}, nil
 		}
 	}

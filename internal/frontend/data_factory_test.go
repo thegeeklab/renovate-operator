@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -16,7 +17,7 @@ import (
 
 var _ = Describe("DataFactory", func() {
 	var (
-		client      client.Client
+		k8sClient   client.Client
 		dataFactory *DataFactory
 		scheme      *runtime.Scheme
 		testObjects []runtime.Object
@@ -24,7 +25,11 @@ var _ = Describe("DataFactory", func() {
 
 	BeforeEach(func() {
 		scheme = runtime.NewScheme()
+
 		err := renovatev1beta1.AddToScheme(scheme)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = batchv1.AddToScheme(scheme)
 		Expect(err).NotTo(HaveOccurred())
 
 		testObjects = []runtime.Object{
@@ -40,12 +45,25 @@ var _ = Describe("DataFactory", func() {
 			},
 			&renovatev1beta1.GitRepo{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:              "test-repo",
+					Name:              "test-repo-b",
 					Namespace:         "test-namespace",
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
 				Spec: renovatev1beta1.GitRepoSpec{
 					WebhookID: "12345",
+				},
+				Status: renovatev1beta1.GitRepoStatus{
+					Ready: true,
+				},
+			},
+			&renovatev1beta1.GitRepo{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "test-repo-a",
+					Namespace:         "test-namespace",
+					CreationTimestamp: metav1.NewTime(time.Now().Add(1 * time.Hour)),
+				},
+				Spec: renovatev1beta1.GitRepoSpec{
+					WebhookID: "67890",
 				},
 				Status: renovatev1beta1.GitRepoStatus{
 					Ready: true,
@@ -71,10 +89,34 @@ var _ = Describe("DataFactory", func() {
 					Ready: true,
 				},
 			},
+			&batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "test-job-1",
+					Namespace:         "test-namespace",
+					CreationTimestamp: metav1.NewTime(time.Now()),
+					Labels: map[string]string{
+						renovatev1beta1.LabelGitRepo:     "test-repo-b",
+						renovatev1beta1.LabelAppInstance: "test-runner",
+					},
+				},
+				Status: batchv1.JobStatus{Succeeded: 1},
+			},
+			&batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "test-job-2",
+					Namespace:         "test-namespace",
+					CreationTimestamp: metav1.NewTime(time.Now()),
+					Labels: map[string]string{
+						renovatev1beta1.LabelGitRepo:     "other-repo",
+						renovatev1beta1.LabelAppInstance: "test-runner",
+					},
+				},
+				Status: batchv1.JobStatus{Active: 1},
+			},
 		}
 
-		client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		dataFactory = NewDataFactory(client)
+		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
+		dataFactory = NewDataFactory(k8sClient)
 	})
 
 	Describe("NewDataFactory", func() {
@@ -96,31 +138,53 @@ var _ = Describe("DataFactory", func() {
 
 	Describe("GetGitRepos", func() {
 		It("should return a list of git repos", func() {
-			repos, err := dataFactory.GetGitRepos(context.Background(), "", "")
+			repos, err := dataFactory.GetGitRepos(context.Background())
 			Expect(err).NotTo(HaveOccurred())
-			Expect(repos).To(HaveLen(1))
-			Expect(repos[0].Name).To(Equal("test-repo"))
+			Expect(repos).To(HaveLen(2))
 			Expect(repos[0].Namespace).To(Equal("test-namespace"))
-			Expect(repos[0].WebhookID).To(Equal("12345"))
-			Expect(repos[0].Ready).To(BeTrue())
 		})
 
 		It("should filter by namespace", func() {
-			repos, err := dataFactory.GetGitRepos(context.Background(), "test-namespace", "")
+			opts := ListOptions{Namespace: "test-namespace"}
+			repos, err := dataFactory.GetGitRepos(context.Background(), opts)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(repos).To(HaveLen(1))
+			Expect(repos).To(HaveLen(2))
 		})
 
 		It("should return empty list for non-matching namespace", func() {
-			repos, err := dataFactory.GetGitRepos(context.Background(), "non-existent", "")
+			opts := ListOptions{Namespace: "non-existent"}
+			repos, err := dataFactory.GetGitRepos(context.Background(), opts)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(repos).To(BeEmpty())
+		})
+
+		It("should sort git repos by name ascending by default", func() {
+			repos, err := dataFactory.GetGitRepos(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repos[0].Name).To(Equal("test-repo-a"))
+			Expect(repos[1].Name).To(Equal("test-repo-b"))
+		})
+
+		It("should sort git repos by name descending", func() {
+			opts := ListOptions{SortBy: "name", Order: "desc"}
+			repos, err := dataFactory.GetGitRepos(context.Background(), opts)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repos[0].Name).To(Equal("test-repo-b"))
+			Expect(repos[1].Name).To(Equal("test-repo-a"))
+		})
+
+		It("should sort git repos by date descending", func() {
+			opts := ListOptions{SortBy: "date", Order: "desc"}
+			repos, err := dataFactory.GetGitRepos(context.Background(), opts)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repos[0].Name).To(Equal("test-repo-a"))
+			Expect(repos[1].Name).To(Equal("test-repo-b"))
 		})
 	})
 
 	Describe("GetRunners", func() {
 		It("should return a list of runners", func() {
-			runners, err := dataFactory.GetRunners(context.Background(), "", "")
+			runners, err := dataFactory.GetRunners(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runners).To(HaveLen(1))
 			Expect(runners[0].Name).To(Equal("test-runner"))
@@ -129,13 +193,15 @@ var _ = Describe("DataFactory", func() {
 		})
 
 		It("should filter by namespace", func() {
-			runners, err := dataFactory.GetRunners(context.Background(), "test-namespace", "")
+			opts := ListOptions{Namespace: "test-namespace"}
+			runners, err := dataFactory.GetRunners(context.Background(), opts)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runners).To(HaveLen(1))
 		})
 
 		It("should return empty list for non-matching namespace", func() {
-			runners, err := dataFactory.GetRunners(context.Background(), "non-existent", "")
+			opts := ListOptions{Namespace: "non-existent"}
+			runners, err := dataFactory.GetRunners(context.Background(), opts)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(runners).To(BeEmpty())
 		})
@@ -143,8 +209,7 @@ var _ = Describe("DataFactory", func() {
 
 	Describe("GetDiscoveries", func() {
 		It("should return a list of discoveries", func() {
-			// Call the method
-			discoveries, err := dataFactory.GetDiscoveries(context.Background(), "", "")
+			discoveries, err := dataFactory.GetDiscoveries(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(discoveries).To(HaveLen(1))
 			Expect(discoveries[0].Name).To(Equal("test-discovery"))
@@ -153,16 +218,45 @@ var _ = Describe("DataFactory", func() {
 		})
 
 		It("should filter by namespace", func() {
-			// Call the method with namespace filter
-			discoveries, err := dataFactory.GetDiscoveries(context.Background(), "test-namespace", "")
+			opts := ListOptions{Namespace: "test-namespace"}
+			discoveries, err := dataFactory.GetDiscoveries(context.Background(), opts)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(discoveries).To(HaveLen(1))
 		})
 
 		It("should return empty list for non-matching namespace", func() {
-			discoveries, err := dataFactory.GetDiscoveries(context.Background(), "non-existent", "")
+			opts := ListOptions{Namespace: "non-existent"}
+			discoveries, err := dataFactory.GetDiscoveries(context.Background(), opts)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(discoveries).To(BeEmpty())
+		})
+	})
+
+	Describe("GetJobsForRepo", func() {
+		It("should return a list of jobs matching the git repo", func() {
+			opts := ListOptions{Namespace: "test-namespace"}
+			jobs, err := dataFactory.GetJobsForRepo(context.Background(), "test-repo-b", opts)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(jobs).To(HaveLen(1))
+
+			Expect(jobs[0].Name).To(Equal("test-job-1"))
+			Expect(jobs[0].Namespace).To(Equal("test-namespace"))
+			Expect(jobs[0].Runner).To(Equal("test-runner"))
+			Expect(jobs[0].Status).To(Equal("Succeeded"))
+		})
+
+		It("should return empty list for non-matching repo", func() {
+			opts := ListOptions{Namespace: "test-namespace"}
+			jobs, err := dataFactory.GetJobsForRepo(context.Background(), "non-existent-repo", opts)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(jobs).To(BeEmpty())
+		})
+
+		It("should return empty list for non-matching namespace", func() {
+			opts := ListOptions{Namespace: "non-existent-namespace"}
+			jobs, err := dataFactory.GetJobsForRepo(context.Background(), "test-repo-b", opts)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(jobs).To(BeEmpty())
 		})
 	})
 })

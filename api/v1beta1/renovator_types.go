@@ -8,24 +8,6 @@ import (
 // +kubebuilder:validation:Enum=github;gitea
 type PlatformType string
 
-//nolint:revive
-const (
-	PlatformType_GITHUB = "github"
-	PlatformType_GITEA  = "gitea"
-
-	// RenovatorLabel is the label used to associate resources with a Renovator instance.
-	RenovatorLabel = "renovate.thegeeklab.de/renovator"
-	// RenovatorOperation is the annotation used to trigger operations.
-	RenovatorOperation = "renovate.thegeeklab.de/operation"
-	// RenovatorOperationSeparator is the separator used to separate parallel operations in the
-	// RenovatorOperation annotation.
-	RenovatorOperationSeparator = ";"
-	// OperationDiscover is the value used to trigger immediate discovery.
-	OperationDiscover = "discover"
-	// OperationRenovate is the value used to trigger immediate renovate run.
-	OperationRenovate = "renovate"
-)
-
 type PlatformSpec struct {
 	Type     PlatformType        `json:"type"`
 	Endpoint string              `json:"endpoint"`

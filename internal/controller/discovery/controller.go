@@ -152,7 +152,7 @@ func (r *Reconciler) mapConfigToDiscovery(ctx context.Context, obj client.Object
 	return reqs
 }
 
-// resolveRenovateConfig resolves the RenovateConfig name from either .spec.configRef or renovatev1beta1.RenovatorLabel.
+// resolveRenovateConfig resolves the RenovateConfig name from either .spec.configRef or renovatev1beta1.LabelRenovator.
 func (r *Reconciler) resolveRenovateConfig(
 	ctx context.Context, namespace string, rd *renovatev1beta1.Discovery,
 ) (client.ObjectKey, error) {
@@ -160,7 +160,7 @@ func (r *Reconciler) resolveRenovateConfig(
 		return client.ObjectKey{Namespace: namespace, Name: rd.Spec.ConfigRef}, nil
 	}
 
-	renovator, ok := rd.Labels[renovatev1beta1.RenovatorLabel]
+	renovator, ok := rd.Labels[renovatev1beta1.LabelRenovator]
 	if !ok {
 		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
 	}
@@ -171,7 +171,7 @@ func (r *Reconciler) resolveRenovateConfig(
 	}
 
 	for _, config := range configList.Items {
-		if config.Labels != nil && config.Labels[renovatev1beta1.RenovatorLabel] == renovator {
+		if config.Labels != nil && config.Labels[renovatev1beta1.LabelRenovator] == renovator {
 			return client.ObjectKey{Namespace: namespace, Name: config.Name}, nil
 		}
 	}

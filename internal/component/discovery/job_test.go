@@ -6,12 +6,11 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
-	"github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -47,7 +46,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-discovery",
 				Namespace: "default",
 				Labels: map[string]string{
-					renovatev1beta1.RenovatorLabel: "renovator-id",
+					renovatev1beta1.LabelRenovator: "renovator-id",
 				},
 			},
 			Spec: renovatev1beta1.DiscoverySpec{
@@ -75,7 +74,7 @@ var _ = Describe("ReconcileJob", func() {
 				},
 			},
 		}
-		rd := &v1beta1.RenovateConfigCustomDefaulter{}
+		rd := &RenovateConfigCustomDefaulter{}
 		Expect(rd.Default(ctx, renovate)).To(Succeed())
 
 		now = time.Date(2026, 2, 27, 15, 0, 0, 0, time.UTC)
@@ -104,15 +103,10 @@ var _ = Describe("ReconcileJob", func() {
 
 	Describe("reconcileJob", func() {
 		expectedLabels := func() map[string]string {
-			expected := map[string]string{
-				renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
-				renovatev1beta1.LabelAppInstance:  instance.Name,
-				renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentDiscovery,
-				renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
-			}
+			expected := DiscoveryLabels(reconciler.req)
 
-			if val, ok := instance.Labels[renovatev1beta1.RenovatorLabel]; ok {
-				expected[renovatev1beta1.RenovatorLabel] = val
+			if val, ok := instance.Labels[renovatev1beta1.LabelRenovator]; ok {
+				expected[renovatev1beta1.LabelRenovator] = val
 			}
 
 			return expected
@@ -143,11 +137,9 @@ var _ = Describe("ReconcileJob", func() {
 			})
 
 			It("should create a job and remove the annotation", func() {
-				// Execute
 				_, err := reconciler.reconcileJob(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Verify Job Creation
 				jobList := &batchv1.JobList{}
 				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
 				Expect(jobList.Items).To(HaveLen(1))
@@ -155,12 +147,10 @@ var _ = Describe("ReconcileJob", func() {
 				job := jobList.Items[0]
 				Expect(job.GenerateName).To(HavePrefix("test-discovery-"))
 
-				// Verify Annotation Removal
 				updatedInstance := &renovatev1beta1.Discovery{}
 				Expect(fakeClient.Get(ctx, reconciler.req.NamespacedName, updatedInstance)).To(Succeed())
 				Expect(updatedInstance.Annotations).NotTo(HaveKey("renovate.thegeeklab.de/operation"))
 
-				// Verify Status Update
 				Expect(updatedInstance.Status.LastScheduleTime).NotTo(BeNil())
 			})
 		})

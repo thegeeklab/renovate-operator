@@ -1610,6 +1610,15 @@ rules:
       - update
       - watch
   - apiGroups:
+      - ""
+    resources:
+      - pods
+      - pods/log
+    verbs:
+      - get
+      - list
+      - watch
+  - apiGroups:
       - admissionregistration.k8s.io
     resources:
       - mutatingwebhookconfigurations
@@ -2045,6 +2054,7 @@ spec:
             - --leader-elect
             - --health-probe-bind-address=:8081
             - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+            - --log-base-dir=/tmp/runner-logs
           command:
             - /manager
             - -zap-devel
@@ -2087,6 +2097,8 @@ spec:
             - mountPath: /tmp/k8s-webhook-server/serving-certs
               name: cert
               readOnly: true
+            - mountPath: /tmp/runner-logs
+              name: log-storage
       securityContext:
         runAsNonRoot: true
         seccompProfile:
@@ -2098,6 +2110,9 @@ spec:
           secret:
             defaultMode: 420
             secretName: renovate-operator-webhook-server-cert
+        - emptyDir:
+            sizeLimit: 100Mi
+          name: log-storage
 ---
 apiVersion: admissionregistration.k8s.io/v1
 kind: MutatingWebhookConfiguration

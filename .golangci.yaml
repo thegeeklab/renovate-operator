@@ -94,6 +94,7 @@ linters:
     mnd:
       ignored-numbers:
         - "0o644"
+        - "0o755"
   exclusions:
     generated: lax
     presets:
@@ -108,7 +109,6 @@ linters:
           - gochecknoglobals
           - gosec
           - revive
-          - staticcheck
           - dupl
           - goconst
           - ireturn

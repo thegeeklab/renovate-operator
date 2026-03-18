@@ -1,31 +1,45 @@
 package frontend
 
 import (
+	"errors"
 	"net/http"
 	"net/http/httptest"
+	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/logstore"
+	logstorte_mocks "github.com/thegeeklab/renovate-operator/internal/logstore/mocks"
+	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
 
 var _ = Describe("WebHandler", func() {
 	var (
-		client      client.Client
+		k8sClient   client.Client
 		handler     *WebHandler
 		scheme      *runtime.Scheme
 		testObjects []runtime.Object
+		tempLogDir  string
+		logManager  *logstore.Manager
+		mockStore   *logstorte_mocks.Store
 	)
 
 	BeforeEach(func() {
 		scheme = runtime.NewScheme()
+
 		err := renovatev1beta1.AddToScheme(scheme)
+		Expect(err).NotTo(HaveOccurred())
+
+		err = batchv1.AddToScheme(scheme)
 		Expect(err).NotTo(HaveOccurred())
 
 		testObjects = []runtime.Object{
@@ -74,53 +88,70 @@ var _ = Describe("WebHandler", func() {
 			},
 		}
 
-		client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		handler = NewWebHandler(client)
+		tempLogDir, err = os.MkdirTemp("", "operator-web-test-*")
+		Expect(err).NotTo(HaveOccurred())
+
+		fakeClientset := kubernetesfake.NewClientset()
+		mockStore = logstorte_mocks.NewStore(GinkgoT())
+		logManager = logstore.NewManager(fakeClientset, mockStore)
+
+		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
+		handler = NewWebHandler(k8sClient, logManager)
+	})
+
+	AfterEach(func() {
+		err := os.RemoveAll(tempLogDir)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Describe("NewWebHandler", func() {
 		It("should create a new WebHandler", func() {
 			Expect(handler).NotTo(BeNil())
+			Expect(handler.logManager).NotTo(BeNil())
 		})
 	})
 
-	Describe("RegisterRoutes", func() {
-		It("should register dashboard routes", func() {
-			Expect(handler).NotTo(BeNil())
-		})
-	})
-
-	Describe("handleIndex", func() {
+	Describe("HandleDashboard", func() {
 		It("should handle index requests", func() {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			w := httptest.NewRecorder()
 
-			handler.HandleIndex(w, req)
-
-			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(w.Header().Get("Content-Type")).To(Equal("text/html; charset=utf-8"))
-		})
-	})
-
-	Describe("handleRenovatorsPartial", func() {
-		It("should handle renovators partial requests", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/renovators", nil)
-			req.Header.Set("HX-Request", "true")
-
-			w := httptest.NewRecorder()
-
-			handler.HandleRenovatorsPartial(w, req)
+			handler.HandleDashboard(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
 		})
-	})
 
-	Describe("handleGitReposPartial", func() {
-		It("should handle git repos partial requests", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepos?namespace=test-namespace", nil)
+		It("should return partial for HTMX requests", func() {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			req.Header.Set("HX-Request", "true")
 
+			w := httptest.NewRecorder()
+
+			handler.HandleDashboard(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).NotTo(ContainSubstring("<!DOCTYPE html>"))
+		})
+	})
+
+	Describe("HandleGitReposPartial", func() {
+		It("should handle git repos partial requests", func() {
+			req := httptest.NewRequest(http.MethodGet, "/gitrepos?namespace=test-namespace", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleGitReposPartial(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+		})
+
+		It("should handle git repos partial requests with sorting parameters", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepos?namespace=test-namespace&sort=name&order=desc",
+				nil,
+			)
 			w := httptest.NewRecorder()
 
 			handler.HandleGitReposPartial(w, req)
@@ -130,9 +161,7 @@ var _ = Describe("WebHandler", func() {
 		})
 
 		It("should return bad request for missing namespace parameter", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/gitrepos", nil)
-			req.Header.Set("HX-Request", "true")
-
+			req := httptest.NewRequest(http.MethodGet, "/gitrepos", nil)
 			w := httptest.NewRecorder()
 
 			handler.HandleGitReposPartial(w, req)
@@ -141,35 +170,70 @@ var _ = Describe("WebHandler", func() {
 		})
 	})
 
-	Describe("ensureHTMXRequest", func() {
-		It("should redirect non-HTMX requests", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/test", nil)
+	Describe("HandleGitRepoView", func() {
+		It("should return bad request for missing parameters", func() {
+			req := httptest.NewRequest(http.MethodGet, "/gitrepo", nil)
 			w := httptest.NewRecorder()
 
-			dummyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-			})
-			wrappedHandler := handler.EnsureHTMXRequest(dummyHandler)
+			handler.HandleGitRepoView(w, req)
 
-			wrappedHandler.ServeHTTP(w, req)
-
-			Expect(w.Code).To(Equal(http.StatusFound))
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})
 
-		It("should allow HTMX requests", func() {
-			req := httptest.NewRequest(http.MethodGet, "/partials/test", nil)
+		It("should handle git repo view requests", func() {
+			req := httptest.NewRequest(http.MethodGet, "/gitrepo?namespace=test-namespace&name=test-repo", nil)
 			req.Header.Set("HX-Request", "true")
 
 			w := httptest.NewRecorder()
 
-			dummyHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				w.WriteHeader(http.StatusOK)
-			})
-			wrappedHandler := handler.EnsureHTMXRequest(dummyHandler)
-
-			wrappedHandler.ServeHTTP(w, req)
+			handler.HandleGitRepoView(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+		})
+
+		It("should handle git repo view requests with sorting parameters", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepo?namespace=test-namespace&name=test-repo&sort=date&order=desc",
+				nil,
+			)
+			req.Header.Set("HX-Request", "true")
+
+			w := httptest.NewRecorder()
+
+			handler.HandleGitRepoView(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+		})
+	})
+
+	Describe("HandleJobLogs", func() {
+		It("should return bad request for missing parameters", func() {
+			req := httptest.NewRequest(http.MethodGet, "/joblogs", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleJobLogs(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("should gracefully handle missing logs with an error message", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/joblogs?namespace=test-namespace&runner=test-runner&job=missing-job",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			mockStore.On("GetLog", mock.Anything, "test-namespace", "runner", "test-runner", "missing-job").
+				Return(nil, errors.New("log not found"))
+
+			handler.HandleJobLogs(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).To(ContainSubstring("Logs are no longer available"))
 		})
 	})
 })

@@ -77,7 +77,7 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Labels = make(map[string]string)
 	}
 
-	runner.Labels[renovatev1beta1.RenovatorLabel] = string(r.instance.UID)
+	runner.Labels[renovatev1beta1.LabelRenovator] = string(r.instance.UID)
 
 	if HasRenovatorOperationRenovate(r.instance.Annotations) {
 		if runner.Annotations == nil {

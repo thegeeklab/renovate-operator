@@ -12,7 +12,6 @@ import (
 
 	// Import all Kubernetes client auth plugins (e.g. Azure, GCP, OIDC, etc.)
 	// to ensure that exec-entrypoint and run can make use of them.
-
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
@@ -21,12 +20,14 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
 	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
+	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/cache"
@@ -44,7 +45,8 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	errWebhookTimeout = errors.New("timeout waiting for webhook")
+	errWebhookTimeout   = errors.New("timeout waiting for webhook")
+	errUnknownFileStore = errors.New("unknown file store")
 )
 
 const (
@@ -87,6 +89,8 @@ func main() {
 		tlsOpts              []func(*tls.Config)
 		watchNamespace       string
 		frontendAddr         string
+		logBackend           string
+		logBaseDir           string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
@@ -104,6 +108,9 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&watchNamespace, "watch-namespace", "", "The namespace the controller will watch.")
 	flag.StringVar(&frontendAddr, "frontend-bind-address", ":8082", "The address the web frontend endpoint binds to.")
+	flag.StringVar(&logBackend, "log-backend", "file", "The storage backend for logs (options: 'file', 's3')")
+	flag.StringVar(&logBaseDir, "log-base-dir", "/tmp/renovate-operator", "The directory to store job logs "+
+		"(used if log-backend=file)")
 
 	opts := zap.Options{
 		Development: false,
@@ -184,6 +191,28 @@ func main() {
 		os.Exit(1)
 	}
 
+	clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
+	if err != nil {
+		setupLog.Error(err, "Unable to create clientset")
+		os.Exit(1)
+	}
+
+	var backendStore logstore.Store
+
+	switch logBackend {
+	case "file":
+		backendStore = logstore.NewFileStore(logBaseDir)
+		setupLog.Info("Using local filesystem for log storage", "dir", logBaseDir)
+	case "s3":
+		setupLog.Error(fmt.Errorf("%w: %s", errUnknownFileStore, logBackend), "S3 log backend is not yet implemented")
+		os.Exit(1)
+	default:
+		setupLog.Error(fmt.Errorf("%w: %s", errUnknownFileStore, logBackend), "Invalid log backend specified")
+		os.Exit(1)
+	}
+
+	logManager := logstore.NewManager(clientset, backendStore)
+
 	setupFinished := make(chan struct{})
 
 	if webhookCertRotation && os.Getenv("ENABLE_WEBHOOKS") != "false" {
@@ -240,8 +269,9 @@ func main() {
 
 	// runner
 	if err = (&runner.Reconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:     mgr.GetClient(),
+		Scheme:     mgr.GetScheme(),
+		LogManager: logManager,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", runner.ControllerName)
 		os.Exit(1)
@@ -305,9 +335,11 @@ func main() {
 
 	// Setup web frontend server if enabled
 	if frontendAddr != "0" {
-		frontendServer := frontend.NewServer(frontend.ServerConfig{
-			Addr: frontendAddr,
-		}, mgr.GetClient())
+		frontendServer := frontend.NewServer(
+			frontend.ServerConfig{Addr: frontendAddr},
+			mgr.GetClient(),
+			logManager,
+		)
 
 		if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 			setupLog.Info("Starting web frontend server", "addr", frontendAddr)

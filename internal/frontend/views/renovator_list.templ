@@ -1,0 +1,61 @@
+package views
+
+import "fmt"
+
+templ RenovatorList(views []WebView) {
+	<div class="space-y-4">
+		for _, v := range views {
+			<details
+				x-data={ fmt.Sprintf("{ open: $persist(false).as('renovator-%s') }", v.Name) }
+				:open="open"
+				@toggle="open = $el.open"
+				class="group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200"
+			>
+				<summary class="cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out">
+					<div class="flex items-center justify-between">
+						<div class="flex items-center gap-4">
+							@IconChevron("chevron h-5 w-5 text-gray-400 group-open:rotate-90 transition-transform duration-200")
+							<div>
+								<h3 class="text-base font-semibold leading-6 text-gray-900">
+									{ v.Name }
+								</h3>
+								<p class="mt-1 max-w-2xl text-sm text-gray-500">
+									Namespace:
+									<span class="font-medium text-gray-900">{ v.Namespace }</span>
+								</p>
+							</div>
+						</div>
+						<div class="flex items-center gap-2 sm:gap-6">
+							<div class="flex flex-col items-end sm:items-center justify-center gap-1">
+								<span class="text-xs text-gray-500">Repos</span>
+								<span class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
+									{ fmt.Sprint(v.GitRepoCount) }
+								</span>
+							</div>
+							<div class="hidden sm:flex flex-col items-end justify-center gap-1">
+								<span class="text-xs text-gray-500">Runner</span>
+								<span class="text-sm font-medium text-gray-900">{ v.RunnerName }</span>
+							</div>
+							<div class="hidden sm:flex flex-col items-end justify-center gap-1">
+								<span class="text-xs text-gray-500">Discovery</span>
+								<span class="text-sm font-medium text-gray-900">{ v.DiscoveryName }</span>
+							</div>
+						</div>
+					</div>
+				</summary>
+				<div class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6">
+					<div
+						hx-get={ fmt.Sprintf("/gitrepos?namespace=%s", v.Namespace) }
+						hx-trigger="revealed once"
+						hx-swap="outerHTML"
+					>
+						<div class="flex justify-center py-4">
+							@IconSpinner("animate-spin h-5 w-5 text-indigo-600")
+							<span class="ml-2 text-sm text-gray-500">Loading Repositories...</span>
+						</div>
+					</div>
+				</div>
+			</details>
+		}
+	</div>
+}

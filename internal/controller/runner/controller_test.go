@@ -5,9 +5,9 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	v1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,7 +58,7 @@ var _ = Describe("Runner Controller", func() {
 					},
 				},
 			}
-			rcd := &v1beta1.RenovateConfigCustomDefaulter{}
+			rcd := &RenovateConfigCustomDefaulter{}
 			Expect(rcd.Default(ctx, config)).To(Succeed())
 			Expect(k8sClient.Create(ctx, config)).To(Succeed())
 
@@ -74,7 +74,7 @@ var _ = Describe("Runner Controller", func() {
 					},
 				},
 			}
-			rd := &v1beta1.RunnerCustomDefaulter{}
+			rd := &RunnerCustomDefaulter{}
 			Expect(rd.Default(ctx, resource)).To(Succeed())
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
 		})
@@ -118,7 +118,7 @@ var _ = Describe("Runner Controller", func() {
 					Name:      configName,
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: labelValue,
+						renovatev1beta1.LabelRenovator: labelValue,
 					},
 				},
 				Spec: renovatev1beta1.RenovateConfigSpec{
@@ -133,7 +133,7 @@ var _ = Describe("Runner Controller", func() {
 					},
 				},
 			}
-			rcd := &v1beta1.RenovateConfigCustomDefaulter{}
+			rcd := &RenovateConfigCustomDefaulter{}
 			Expect(rcd.Default(ctx, config)).To(Succeed())
 			Expect(k8sClient.Create(ctx, config)).To(Succeed())
 
@@ -142,14 +142,14 @@ var _ = Describe("Runner Controller", func() {
 					Name:      runnerName,
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: labelValue,
+						renovatev1beta1.LabelRenovator: labelValue,
 					},
 				},
 				Spec: renovatev1beta1.RunnerSpec{
 					JobSpec: renovatev1beta1.JobSpec{Schedule: "*/5 * * * *"},
 				},
 			}
-			rd := &v1beta1.RunnerCustomDefaulter{}
+			rd := &RunnerCustomDefaulter{}
 			Expect(rd.Default(ctx, runner)).To(Succeed())
 			Expect(k8sClient.Create(ctx, runner)).To(Succeed())
 		})
@@ -186,7 +186,7 @@ var _ = Describe("Runner Controller", func() {
 					Name:      repoName,
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: labelValue,
+						renovatev1beta1.LabelRenovator: labelValue,
 					},
 				},
 				Spec: renovatev1beta1.GitRepoSpec{
@@ -209,7 +209,7 @@ var _ = Describe("Runner Controller", func() {
 					Name:      "other-repo",
 					Namespace: "default",
 					Labels: map[string]string{
-						renovatev1beta1.RenovatorLabel: "wrong-id",
+						renovatev1beta1.LabelRenovator: "wrong-id",
 					},
 				},
 			}

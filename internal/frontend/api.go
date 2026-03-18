@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -50,17 +51,27 @@ type DiscoveryInfo struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
+type JobInfo struct {
+	Name      string    `json:"name"`
+	Namespace string    `json:"namespace"`
+	Runner    string    `json:"runner"`
+	Status    string    `json:"status"`
+	CreatedAt time.Time `json:"createdAt"`
+}
+
 // APIHandler manages the web UI API endpoints.
 type APIHandler struct {
 	client      client.Client
 	dataFactory *DataFactory
+	logManager  *logstore.Manager
 }
 
 // NewAPIHandler creates a new APIHandler.
-func NewAPIHandler(client client.Client) *APIHandler {
+func NewAPIHandler(client client.Client, logManager *logstore.Manager) *APIHandler {
 	return &APIHandler{
 		client:      client,
 		dataFactory: NewDataFactory(client),
+		logManager:  logManager,
 	}
 }
 
@@ -76,6 +87,17 @@ func (h *APIHandler) RegisterRoutes(router *mux.Router) {
 	apiV1.HandleFunc("/discovery/status", h.getDiscoveryStatus).Methods("GET")
 }
 
+func getOptionsFromRequest(r *http.Request) ListOptions {
+	q := r.URL.Query()
+
+	return ListOptions{
+		Namespace: q.Get("namespace"),
+		Renovator: q.Get("renovator"),
+		SortBy:    q.Get("sort"),
+		Order:     q.Get("order"),
+	}
+}
+
 // getVersion returns the API version information.
 func (h *APIHandler) getVersion(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
@@ -86,16 +108,14 @@ func (h *APIHandler) getVersion(w http.ResponseWriter, r *http.Request) {
 		Version: "v1.0.0",
 	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-
-		return
 	}
 }
 
 // getRenovators returns a list of all Renovator resources.
 func (h *APIHandler) getRenovators(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	opts := getOptionsFromRequest(r)
 
-	result, err := h.dataFactory.GetRenovators(ctx)
+	result, err := h.dataFactory.GetRenovators(r.Context(), opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
@@ -111,13 +131,9 @@ func (h *APIHandler) getRenovators(w http.ResponseWriter, r *http.Request) {
 
 // getGitRepos returns a list of GitRepo resources with optional filtering.
 func (h *APIHandler) getGitRepos(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	opts := getOptionsFromRequest(r)
 
-	queryParams := r.URL.Query()
-	namespace := queryParams.Get("namespace")
-	renovator := queryParams.Get("renovator")
-
-	result, err := h.dataFactory.GetGitRepos(ctx, namespace, renovator)
+	result, err := h.dataFactory.GetGitRepos(r.Context(), opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
@@ -132,13 +148,9 @@ func (h *APIHandler) getGitRepos(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *APIHandler) getRunners(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	opts := getOptionsFromRequest(r)
 
-	queryParams := r.URL.Query()
-	namespace := queryParams.Get("namespace")
-	renovator := queryParams.Get("renovator")
-
-	result, err := h.dataFactory.GetRunners(ctx, namespace, renovator)
+	result, err := h.dataFactory.GetRunners(r.Context(), opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
@@ -154,13 +166,9 @@ func (h *APIHandler) getRunners(w http.ResponseWriter, r *http.Request) {
 
 // getDiscoveries returns a list of Discovery resources with optional filtering.
 func (h *APIHandler) getDiscoveries(w http.ResponseWriter, r *http.Request) {
-	ctx := r.Context()
+	opts := getOptionsFromRequest(r)
 
-	queryParams := r.URL.Query()
-	namespace := queryParams.Get("namespace")
-	renovator := queryParams.Get("renovator")
-
-	result, err := h.dataFactory.GetDiscoveries(ctx, namespace, renovator)
+	result, err := h.dataFactory.GetDiscoveries(r.Context(), opts)
 	if err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
@@ -187,8 +195,6 @@ func (h *APIHandler) startDiscovery(w http.ResponseWriter, r *http.Request) {
 		Message: "Discovery started",
 	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-
-		return
 	}
 }
 
@@ -203,7 +209,5 @@ func (h *APIHandler) getDiscoveryStatus(w http.ResponseWriter, r *http.Request) 
 		Status: "running",
 	}); err != nil {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
-
-		return
 	}
 }

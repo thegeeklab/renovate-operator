@@ -61,7 +61,7 @@ var _ = Describe("GitRepo Reconciliation", func() {
 				Namespace: "default",
 				UID:       "test-uid",
 				Labels: map[string]string{
-					renovatev1beta1.RenovatorLabel: "test-renovator",
+					renovatev1beta1.LabelRenovator: "test-renovator",
 				},
 			},
 		}
@@ -85,7 +85,7 @@ var _ = Describe("GitRepo Reconciliation", func() {
 
 			repo := gitRepos.Items[0]
 			Expect(repo.Spec.Name).To(Equal("repo1"))
-			Expect(repo.Labels).To(HaveKeyWithValue(renovatev1beta1.RenovatorLabel, "test-renovator"))
+			Expect(repo.Labels).To(HaveKeyWithValue(renovatev1beta1.LabelRenovator, "test-renovator"))
 			Expect(metav1.IsControlledBy(&repo, instance)).To(BeTrue())
 		})
 
@@ -183,7 +183,7 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			Expect(err).ToNot(HaveOccurred())
 
 			Expect(repo.Spec.Name).To(Equal("my-repo"))
-			Expect(repo.Labels).To(HaveKeyWithValue(renovatev1beta1.RenovatorLabel, "test-renovator"))
+			Expect(repo.Labels).To(HaveKeyWithValue(renovatev1beta1.LabelRenovator, "test-renovator"))
 		})
 
 		It("should handle missing labels on discovery instance gracefully", func() {
@@ -192,7 +192,7 @@ var _ = Describe("GitRepo Reconciliation", func() {
 
 			err := reconciler.updateGitRepo(repo, "my-repo")
 			Expect(err).ToNot(HaveOccurred())
-			Expect(repo.Labels).To(Not(HaveKey(renovatev1beta1.RenovatorLabel)))
+			Expect(repo.Labels).To(Not(HaveKey(renovatev1beta1.LabelRenovator)))
 		})
 	})
 
