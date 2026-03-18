@@ -15,7 +15,7 @@ TEMPL_PACKAGE ?= github.com/a-h/templ/cmd/templ@latest
 IMG ?= docker.io/thegeeklab/renovate-operator:devel
 
 GO ?= go
-SOURCES ?= $(shell find . -name "*.go" -type f)
+SOURCES ?= $(shell find . -name "*.go" -type f ! -path "*/mocks/*" ! -name "*_templ.go")
 
 # Get the currently used golang install path (in GOPATH/bin, unless GOBIN is set)
 ifeq (,$(shell go env GOBIN))
