@@ -15,6 +15,7 @@ import (
 type RenovatorInfo struct {
 	Name      string    `json:"name"`
 	Namespace string    `json:"namespace"`
+	UID       string    `json:"uid"`
 	Schedule  string    `json:"schedule"`
 	Ready     bool      `json:"ready"`
 	CreatedAt time.Time `json:"createdAt"`

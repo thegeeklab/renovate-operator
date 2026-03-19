@@ -17,22 +17,23 @@ type WebHandler struct {
 	client      client.Client
 	dataFactory *DataFactory
 	logManager  *logstore.Manager
+	Broker      *SSEBroker
 }
 
-func NewWebHandler(client client.Client, logManager *logstore.Manager) *WebHandler {
+func NewWebHandler(client client.Client, logManager *logstore.Manager, broker *SSEBroker) *WebHandler {
 	return &WebHandler{
 		client:      client,
 		dataFactory: NewDataFactory(client),
 		logManager:  logManager,
+		Broker:      broker,
 	}
 }
 
 func (h *WebHandler) RegisterRoutes(router *mux.Router) {
-	// Root and full page routes
+	router.Handle("/events", h.Broker).Methods("GET")
+
 	router.HandleFunc("/", h.HandleDashboard).Methods("GET")
 	router.HandleFunc("/gitrepo", h.HandleGitRepoView).Methods("GET")
-
-	// Partial routes
 	router.HandleFunc("/gitrepos", h.HandleGitReposPartial).Methods("GET")
 	router.HandleFunc("/joblogs", h.HandleJobLogs).Methods("GET")
 }
@@ -70,62 +71,35 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	runners, err := h.dataFactory.GetRunners(ctx, opts)
-	if err != nil {
-		http.Error(w, "Failed to list runners", http.StatusInternalServerError)
-
-		return
-	}
-
-	discoveries, err := h.dataFactory.GetDiscoveries(ctx, opts)
-	if err != nil {
-		http.Error(w, "Failed to list discoveries", http.StatusInternalServerError)
-
-		return
-	}
-
-	repos, err := h.dataFactory.GetGitRepos(ctx, opts)
-	if err != nil {
-		http.Error(w, "Failed to list repos", http.StatusInternalServerError)
-
-		return
-	}
-
-	runnersByNs := make(map[string]string)
-	for _, runner := range runners {
-		runnersByNs[runner.Namespace] = runner.Name
-	}
-
-	discoveriesByNs := make(map[string]string)
-	for _, discovery := range discoveries {
-		discoveriesByNs[discovery.Namespace] = discovery.Name
-	}
-
-	repoCountByNs := make(map[string]int)
-	for _, repo := range repos {
-		repoCountByNs[repo.Namespace]++
-	}
-
 	var viewsList []views.WebView
 
 	for _, ren := range renovators {
-		view := views.WebView{
+		renOpts := opts
+		renOpts.Namespace = ren.Namespace
+		renOpts.Renovator = ren.UID
+
+		runners, _ := h.dataFactory.GetRunners(ctx, renOpts)
+		discoveries, _ := h.dataFactory.GetDiscoveries(ctx, renOpts)
+		repos, _ := h.dataFactory.GetGitRepos(ctx, renOpts)
+
+		runnerName := "-"
+		if len(runners) > 0 {
+			runnerName = runners[0].Name
+		}
+
+		discoveryName := "-"
+		if len(discoveries) > 0 {
+			discoveryName = discoveries[0].Name
+		}
+
+		viewsList = append(viewsList, views.WebView{
 			Name:          ren.Name,
 			Namespace:     ren.Namespace,
-			GitRepoCount:  repoCountByNs[ren.Namespace],
-			RunnerName:    runnersByNs[ren.Namespace],
-			DiscoveryName: discoveriesByNs[ren.Namespace],
-		}
-
-		if view.RunnerName == "" {
-			view.RunnerName = "-"
-		}
-
-		if view.DiscoveryName == "" {
-			view.DiscoveryName = "-"
-		}
-
-		viewsList = append(viewsList, view)
+			Renovator:     ren.UID,
+			GitRepoCount:  len(repos),
+			RunnerName:    runnerName,
+			DiscoveryName: discoveryName,
+		})
 	}
 
 	w.Header().Set("Content-Type", "text/html")

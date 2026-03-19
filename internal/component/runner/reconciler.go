@@ -5,6 +5,7 @@ import (
 	"errors"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/frontend"
 	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
@@ -21,6 +22,7 @@ type Reconciler struct {
 	scheme     *runtime.Scheme
 	scheduler  *scheduler.Manager
 	logManager *logstore.Manager
+	broker     *frontend.SSEBroker
 	req        ctrl.Request
 	instance   *renovatev1beta1.Runner
 	renovate   *renovatev1beta1.RenovateConfig
@@ -34,6 +36,7 @@ func NewReconciler(
 	c client.Client,
 	scheme *runtime.Scheme,
 	manager *logstore.Manager,
+	broker *frontend.SSEBroker,
 	instance *renovatev1beta1.Runner,
 	renovate *renovatev1beta1.RenovateConfig,
 ) (*Reconciler, error) {
@@ -45,10 +48,15 @@ func NewReconciler(
 		instance:   instance,
 		renovate:   renovate,
 		logManager: manager,
+		broker:     broker,
 	}, nil
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
+	if r.broker != nil {
+		r.broker.Broadcast("job-updated", "refresh")
+	}
+
 	results := &reconciler.Results{}
 
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){

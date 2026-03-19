@@ -212,6 +212,7 @@ func main() {
 	}
 
 	logManager := logstore.NewManager(clientset, backendStore)
+	sseBroker := frontend.NewSSEBroker()
 
 	setupFinished := make(chan struct{})
 
@@ -272,6 +273,7 @@ func main() {
 		Client:     mgr.GetClient(),
 		Scheme:     mgr.GetScheme(),
 		LogManager: logManager,
+		Broker:     sseBroker,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", runner.ControllerName)
 		os.Exit(1)
@@ -339,6 +341,7 @@ func main() {
 			frontend.ServerConfig{Addr: frontendAddr},
 			mgr.GetClient(),
 			logManager,
+			sseBroker,
 		)
 
 		if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {

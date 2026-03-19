@@ -14,15 +14,17 @@ import (
 
 var _ = Describe("Server", func() {
 	var (
-		client client.Client
-		server *Server
-		config ServerConfig
+		fakeClient client.Client
+		server     *Server
+		config     ServerConfig
+		broker     *SSEBroker
 	)
 
 	BeforeEach(func() {
-		client = fake.NewClientBuilder().Build()
+		fakeClient = fake.NewClientBuilder().Build()
+		broker = NewSSEBroker()
 		config = DefaultServerConfig()
-		server = NewServer(config, client, nil)
+		server = NewServer(config, fakeClient, nil, broker)
 	})
 
 	Describe("NewServer", func() {
@@ -38,7 +40,7 @@ var _ = Describe("Server", func() {
 				IdleTimeout:  60 * time.Second,
 			}
 
-			customServer := NewServer(customConfig, client, nil)
+			customServer := NewServer(customConfig, fakeClient, nil, broker)
 
 			Expect(customServer).NotTo(BeNil())
 		})
@@ -46,12 +48,15 @@ var _ = Describe("Server", func() {
 
 	Describe("Start and Stop", func() {
 		It("should start and stop the server", func() {
+			config.Addr = "127.0.0.1:18082"
+			server = NewServer(config, fakeClient, nil, broker)
+
 			err := server.Start()
 			Expect(err).NotTo(HaveOccurred())
 
 			time.Sleep(100 * time.Millisecond)
 
-			resp, err := http.Get("http://" + config.Addr)
+			resp, err := http.Get("http://" + config.Addr + "/")
 			if err == nil {
 				defer resp.Body.Close()
 			}

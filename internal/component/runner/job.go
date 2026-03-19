@@ -29,12 +29,6 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 		runnerLabels[renovatev1beta1.LabelRenovator] = val
 	}
 
-	if err := r.scheduler.PruneJobs(
-		ctx, r.instance.Namespace, runnerLabels, r.instance.GetSuccessLimit(), r.instance.GetFailedLimit(),
-	); err != nil {
-		log.Error(err, "Failed to prune runner jobs")
-	}
-
 	decision, err := r.scheduler.Evaluate(r.instance, renovator.HasRenovatorOperationRenovate)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to evaluate schedule: %w", err)
@@ -84,18 +78,21 @@ func (r *Reconciler) processGitRepos(
 	triggeredAny := false
 
 	gitRepos := &renovatev1beta1.GitRepoList{}
-	if err := r.List(ctx, gitRepos, client.InNamespace(r.instance.Namespace)); err != nil {
+
+	listOpts := []client.ListOption{
+		client.InNamespace(r.instance.Namespace),
+	}
+	if val, ok := labels[renovatev1beta1.LabelRenovator]; ok {
+		listOpts = append(listOpts, client.MatchingLabels{
+			renovatev1beta1.LabelRenovator: val,
+		})
+	}
+
+	if err := r.List(ctx, gitRepos, listOpts...); err != nil {
 		return false, fmt.Errorf("failed to list GitRepos: %w", err)
 	}
 
 	for _, repo := range gitRepos.Items {
-		hasRepoAnnotation := renovator.HasRenovatorOperationRenovate(repo.Annotations)
-		if !isGlobalTrigger && !hasRepoAnnotation {
-			continue
-		}
-
-		triggeredAny = true
-
 		runnerLabels := make(map[string]string)
 		maps.Copy(runnerLabels, labels)
 		runnerLabels[renovatev1beta1.LabelGitRepo] = repo.Name
@@ -105,6 +102,13 @@ func (r *Reconciler) processGitRepos(
 		); err != nil {
 			log.Error(err, "Failed to clean up old jobs", "repo", repo.Name)
 		}
+
+		hasRepoAnnotation := renovator.HasRenovatorOperationRenovate(repo.Annotations)
+		if !isGlobalTrigger && !hasRepoAnnotation {
+			continue
+		}
+
+		triggeredAny = true
 
 		job := &batchv1.Job{
 			ObjectMeta: metav1.ObjectMeta{

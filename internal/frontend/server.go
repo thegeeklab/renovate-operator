@@ -16,10 +16,10 @@ var frontendLog = logf.Log.WithName("frontend")
 
 // ServerConfig holds configuration for the HTTP server.
 type ServerConfig struct {
-	Addr         string        // Address to listen on (e.g., ":8080")
-	ReadTimeout  time.Duration // Read timeout for HTTP server
-	WriteTimeout time.Duration // Write timeout for HTTP server
-	IdleTimeout  time.Duration // Idle timeout for HTTP server
+	Addr         string
+	ReadTimeout  time.Duration
+	WriteTimeout time.Duration
+	IdleTimeout  time.Duration
 }
 
 // Default timeouts for the HTTP server.
@@ -49,9 +49,10 @@ type Server struct {
 }
 
 // NewServer creates a new HTTP server instance.
-func NewServer(config ServerConfig, client client.Client, logManager *logstore.Manager) *Server {
+func NewServer(config ServerConfig, client client.Client, logManager *logstore.Manager, broker *SSEBroker) *Server {
 	apiHandler := NewAPIHandler(client, logManager)
-	dashboardHandler := NewWebHandler(client, logManager)
+
+	dashboardHandler := NewWebHandler(client, logManager, broker)
 
 	router := mux.NewRouter()
 

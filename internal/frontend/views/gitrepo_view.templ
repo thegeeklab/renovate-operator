@@ -36,51 +36,61 @@ templ GitRepoView(data GitRepoViewData) {
 			</button>
 		</div>
 	</div>
-	<h3 class="text-base font-semibold leading-6 text-gray-900 mb-4">Recent Jobs</h3>
-	if len(data.Jobs) > 0 {
-		<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
-			for _, job := range data.Jobs {
-				<div
-					hx-get={ fmt.Sprintf("/joblogs?namespace=%s&runner=%s&job=%s", job.Namespace, job.Runner, job.Name) }
-					hx-target="#log-viewer"
-					hx-swap="innerHTML"
-					class={ getJobClass(job.Status) }
-				>
-					<div class="min-w-0 flex-1">
-						<div class="focus:outline-none">
-							<span class="absolute inset-0" aria-hidden="true"></span>
-							<p class="text-sm font-medium text-gray-900 truncate">{ job.Name }</p>
-							<p class="truncate text-xs text-gray-500">
-								Created: { job.CreatedAt.Format("Jan 02, 2006 15:04") }
-							</p>
+	<div
+		id="job-list-container"
+		hx-get={ fmt.Sprintf("/gitrepo?namespace=%s&name=%s", data.Repo.Namespace, data.Repo.Name) }
+		hx-trigger="sse:job-updated delay:200ms"
+		hx-select="#job-list-container"
+		hx-target="this"
+		hx-swap="outerHTML"
+		hx-disinherit="hx-select hx-target hx-swap"
+	>
+		<h3 class="text-base font-semibold leading-6 text-gray-900 mb-4">Recent Jobs</h3>
+		if len(data.Jobs) > 0 {
+			<div class="grid grid-cols-1 gap-4 sm:grid-cols-2">
+				for _, job := range data.Jobs {
+					<div
+						hx-get={ fmt.Sprintf("/joblogs?namespace=%s&runner=%s&job=%s", job.Namespace, job.Runner, job.Name) }
+						hx-target="#log-viewer"
+						hx-swap="innerHTML"
+						class={ getJobClass(job.Status) }
+					>
+						<div class="min-w-0 flex-1">
+							<div class="focus:outline-none">
+								<span class="absolute inset-0" aria-hidden="true"></span>
+								<p class="text-sm font-medium text-gray-900 truncate">{ job.Name }</p>
+								<p class="truncate text-xs text-gray-500">
+									Created: { job.CreatedAt.Format("Jan 02, 2006 15:04") }
+								</p>
+							</div>
+						</div>
+						<div class="flex-shrink-0">
+							if job.Status == "Succeeded" {
+								<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
+									Succeeded
+								</span>
+							} else if job.Status == "Running" {
+								<span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
+									Running
+								</span>
+							} else {
+								<span class="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
+									Failed
+								</span>
+							}
 						</div>
 					</div>
-					<div class="flex-shrink-0">
-						if job.Status == "Succeeded" {
-							<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-								Succeeded
-							</span>
-						} else if job.Status == "Running" {
-							<span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
-								Running
-							</span>
-						} else {
-							<span class="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
-								Failed
-							</span>
-						}
-					</div>
-				</div>
-			}
-		</div>
-	} else {
-		<div class="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
-			@IconServer("mx-auto h-12 w-12 text-gray-400")
-			<h3 class="mt-2 text-sm font-semibold text-gray-900">No Jobs Found</h3>
-			<p class="mt-1 text-sm text-gray-500">
-				Renovate hasn't triggered any runs for this repository yet.
-			</p>
-		</div>
-	}
+				}
+			</div>
+		} else {
+			<div class="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
+				@IconServer("mx-auto h-12 w-12 text-gray-400")
+				<h3 class="mt-2 text-sm font-semibold text-gray-900">No Jobs Found</h3>
+				<p class="mt-1 text-sm text-gray-500">
+					Renovate hasn't triggered any runs for this repository yet.
+				</p>
+			</div>
+		}
+	</div>
 	<div id="log-viewer" class="mt-8"></div>
 }

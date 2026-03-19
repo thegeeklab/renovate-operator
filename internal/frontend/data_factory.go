@@ -30,27 +30,43 @@ func NewDataFactory(client client.Client) *DataFactory {
 	}
 }
 
+// buildListOptions creates standard client.ListOptions for server-side filtering.
+func buildListOptions(opt ListOptions) []client.ListOption {
+	var listOpts []client.ListOption
+
+	if opt.Namespace != "" {
+		listOpts = append(listOpts, client.InNamespace(opt.Namespace))
+	}
+
+	if opt.Renovator != "" {
+		listOpts = append(listOpts, client.MatchingLabels{
+			renovatev1beta1.LabelRenovator: opt.Renovator,
+		})
+	}
+
+	return listOpts
+}
+
 // GetRenovators fetches Renovator resources and transforms them into RenovatorInfo.
 func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) ([]RenovatorInfo, error) {
 	opt := getListOptions(opts)
 
+	var listOpts []client.ListOption
+	if opt.Namespace != "" {
+		listOpts = append(listOpts, client.InNamespace(opt.Namespace))
+	}
+
 	var list renovatev1beta1.RenovatorList
-	if err := df.client.List(ctx, &list); err != nil {
+	if err := df.client.List(ctx, &list, listOpts...); err != nil {
 		return nil, err
 	}
 
 	var result []RenovatorInfo
-
 	for _, renovator := range list.Items {
-		// Renovators typically aren't filtered by the renovator option itself,
-		// but we still respect the namespace filter if provided.
-		if opt.Namespace != "" && renovator.Namespace != opt.Namespace {
-			continue
-		}
-
 		result = append(result, RenovatorInfo{
 			Name:      renovator.Name,
 			Namespace: renovator.Namespace,
+			UID:       string(renovator.UID),
 			Schedule:  renovator.Spec.Schedule,
 			Ready:     renovator.Status.Ready,
 			CreatedAt: renovator.CreationTimestamp.Time,
@@ -74,20 +90,16 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 //nolint:dupl
 func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]GitRepoInfo, error) {
 	opt := getListOptions(opts)
+	listOpts := buildListOptions(opt)
 
 	var list renovatev1beta1.GitRepoList
-	if err := df.client.List(ctx, &list); err != nil {
+	if err := df.client.List(ctx, &list, listOpts...); err != nil {
 		return nil, err
 	}
 
 	var result []GitRepoInfo
 
 	for _, gitrepo := range list.Items {
-		if (opt.Namespace != "" && gitrepo.Namespace != opt.Namespace) ||
-			(opt.Renovator != "" && gitrepo.Namespace != opt.Renovator) {
-			continue
-		}
-
 		result = append(result, GitRepoInfo{
 			Name:      gitrepo.Name,
 			Namespace: gitrepo.Namespace,
@@ -112,20 +124,15 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 // GetRunners fetches Runner resources with optional filtering.
 func (df *DataFactory) GetRunners(ctx context.Context, opts ...ListOptions) ([]RunnerInfo, error) {
 	opt := getListOptions(opts)
+	listOpts := buildListOptions(opt)
 
 	var list renovatev1beta1.RunnerList
-	if err := df.client.List(ctx, &list); err != nil {
+	if err := df.client.List(ctx, &list, listOpts...); err != nil {
 		return nil, err
 	}
 
 	var result []RunnerInfo
-
 	for _, runner := range list.Items {
-		if (opt.Namespace != "" && runner.Namespace != opt.Namespace) ||
-			(opt.Renovator != "" && runner.Namespace != opt.Renovator) {
-			continue
-		}
-
 		result = append(result, RunnerInfo{
 			Name:      runner.Name,
 			Namespace: runner.Namespace,
@@ -151,20 +158,15 @@ func (df *DataFactory) GetRunners(ctx context.Context, opts ...ListOptions) ([]R
 //nolint:dupl
 func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) ([]DiscoveryInfo, error) {
 	opt := getListOptions(opts)
+	listOpts := buildListOptions(opt)
 
 	var list renovatev1beta1.DiscoveryList
-	if err := df.client.List(ctx, &list); err != nil {
+	if err := df.client.List(ctx, &list, listOpts...); err != nil {
 		return nil, err
 	}
 
 	var result []DiscoveryInfo
-
 	for _, discovery := range list.Items {
-		if (opt.Namespace != "" && discovery.Namespace != opt.Namespace) ||
-			(opt.Renovator != "" && discovery.Namespace != opt.Renovator) {
-			continue
-		}
-
 		result = append(result, DiscoveryInfo{
 			Name:      discovery.Name,
 			Namespace: discovery.Namespace,
@@ -208,10 +210,19 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts
 
 	for _, job := range jobList.Items {
 		status := "Running"
-		if job.Status.Succeeded > 0 {
+
+		if job.Status.CompletionTime != nil {
 			status = "Succeeded"
-		} else if job.Status.Failed > 0 {
-			status = "Failed"
+		}
+
+		for _, cond := range job.Status.Conditions {
+			if cond.Type == batchv1.JobComplete && cond.Status == "True" {
+				status = "Succeeded"
+			}
+
+			if cond.Type == batchv1.JobFailed && cond.Status == "True" {
+				status = "Failed"
+			}
 		}
 
 		runnerName := job.Labels[renovatev1beta1.LabelAppInstance]
