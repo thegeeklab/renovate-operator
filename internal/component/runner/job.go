@@ -70,6 +70,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	return &ctrl.Result{}, nil
 }
 
+// processGitRepos processes each GitRepo and creates jobs if needed.
 func (r *Reconciler) processGitRepos(
 	ctx context.Context, isGlobalTrigger bool, labels map[string]string,
 ) (bool, error) {
