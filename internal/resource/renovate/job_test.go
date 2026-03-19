@@ -129,10 +129,10 @@ var _ = Describe("Renovate Job Library", func() {
 
 	Describe("Controller Helpers", func() {
 		var (
-			ctx       context.Context
-			k8sClient client.Client
-			labels    map[string]string
-			namespace string
+			ctx        context.Context
+			fakeClient client.Client
+			labels     map[string]string
+			namespace  string
 		)
 
 		BeforeEach(func() {
@@ -148,9 +148,9 @@ var _ = Describe("Renovate Job Library", func() {
 					objs[i] = j
 				}
 
-				k8sClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(objs...).Build()
+				fakeClient = fake.NewClientBuilder().WithScheme(scheme.Scheme).WithObjects(objs...).Build()
 
-				active, err := renovate.GetActiveJobs(ctx, k8sClient, namespace, labels)
+				active, err := renovate.GetActiveJobs(ctx, fakeClient, namespace, labels)
 				Expect(err).NotTo(HaveOccurred())
 				Expect(active).To(HaveLen(expectedCount))
 			},

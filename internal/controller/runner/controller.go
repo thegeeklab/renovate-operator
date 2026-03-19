@@ -7,6 +7,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/component/runner"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
+	"github.com/thegeeklab/renovate-operator/internal/frontend"
 	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -27,6 +28,7 @@ type Reconciler struct {
 	client.Client
 	Scheme     *runtime.Scheme
 	LogManager *logstore.Manager
+	Broker     *frontend.SSEBroker
 }
 
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
@@ -68,7 +70,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	runner, err := runner.NewReconciler(r.Client, r.Scheme, r.LogManager, rr, rc)
+	runner, err := runner.NewReconciler(r.Client, r.Scheme, r.LogManager, r.Broker, rr, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
@@ -104,11 +106,30 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 	}
 
+	jobStatusPredicate := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldJob, ok1 := e.ObjectOld.(*batchv1.Job)
+
+			newJob, ok2 := e.ObjectNew.(*batchv1.Job)
+			if !ok1 || !ok2 {
+				return false
+			}
+
+			return oldJob.Status.Succeeded != newJob.Status.Succeeded ||
+				oldJob.Status.Failed != newJob.Status.Failed ||
+				oldJob.Status.Active != newJob.Status.Active
+		},
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Runner{}).
 		WithEventFilter(predicate.Or(
 			predicate.GenerationChangedPredicate{},
 			renovateOperationPredicate,
+			jobStatusPredicate,
 		)).
 		Watches(
 			&renovatev1beta1.GitRepo{},

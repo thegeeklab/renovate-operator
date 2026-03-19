@@ -5,6 +5,7 @@ import "time"
 type WebView struct {
 	Name          string
 	Namespace     string
+	Renovator     string
 	GitRepoCount  int
 	RunnerName    string
 	DiscoveryName string

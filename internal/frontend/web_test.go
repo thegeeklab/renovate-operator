@@ -24,13 +24,14 @@ import (
 
 var _ = Describe("WebHandler", func() {
 	var (
-		k8sClient   client.Client
+		fakeClient  client.Client
 		handler     *WebHandler
 		scheme      *runtime.Scheme
 		testObjects []runtime.Object
 		tempLogDir  string
 		logManager  *logstore.Manager
 		mockStore   *logstorte_mocks.Store
+		broker      *SSEBroker
 	)
 
 	BeforeEach(func() {
@@ -55,8 +56,11 @@ var _ = Describe("WebHandler", func() {
 			},
 			&renovatev1beta1.GitRepo{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:              "test-repo",
-					Namespace:         "test-namespace",
+					Name:      "test-repo",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
 				Spec: renovatev1beta1.GitRepoSpec{
@@ -68,8 +72,11 @@ var _ = Describe("WebHandler", func() {
 			},
 			&renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:              "test-runner",
-					Namespace:         "test-namespace",
+					Name:      "test-runner",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
 				Status: renovatev1beta1.RunnerStatus{
@@ -78,8 +85,11 @@ var _ = Describe("WebHandler", func() {
 			},
 			&renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
-					Name:              "test-discovery",
-					Namespace:         "test-namespace",
+					Name:      "test-discovery",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
 				Status: renovatev1beta1.DiscoveryStatus{
@@ -94,9 +104,10 @@ var _ = Describe("WebHandler", func() {
 		fakeClientset := kubernetesfake.NewClientset()
 		mockStore = logstorte_mocks.NewStore(GinkgoT())
 		logManager = logstore.NewManager(fakeClientset, mockStore)
+		broker = NewSSEBroker()
 
-		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		handler = NewWebHandler(k8sClient, logManager)
+		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
+		handler = NewWebHandler(fakeClient, logManager, broker)
 	})
 
 	AfterEach(func() {
@@ -108,6 +119,7 @@ var _ = Describe("WebHandler", func() {
 		It("should create a new WebHandler", func() {
 			Expect(handler).NotTo(BeNil())
 			Expect(handler.logManager).NotTo(BeNil())
+			Expect(handler.Broker).To(Equal(broker))
 		})
 	})
 

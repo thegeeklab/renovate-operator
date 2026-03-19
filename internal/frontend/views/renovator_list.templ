@@ -45,9 +45,9 @@ templ RenovatorList(views []WebView) {
 				</summary>
 				<div class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6">
 					<div
-						hx-get={ fmt.Sprintf("/gitrepos?namespace=%s", v.Namespace) }
-						hx-trigger="revealed once"
-						hx-swap="outerHTML"
+						hx-get={ fmt.Sprintf("/gitrepos?namespace=%s&renovator=%s", v.Namespace, v.Renovator) }
+						hx-trigger="revealed once, sse:repo-updated"
+						hx-swap="innerHTML"
 					>
 						<div class="flex justify-center py-4">
 							@IconSpinner("animate-spin h-5 w-5 text-indigo-600")

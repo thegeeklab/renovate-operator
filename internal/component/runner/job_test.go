@@ -31,6 +31,7 @@ var _ = Describe("ReconcileJob", func() {
 		renovate   *renovatev1beta1.RenovateConfig
 		repo1      *renovatev1beta1.GitRepo
 		repo2      *renovatev1beta1.GitRepo
+		repo3      *renovatev1beta1.GitRepo
 		ctx        context.Context
 		scheme     *runtime.Scheme
 		now        time.Time
@@ -78,24 +79,36 @@ var _ = Describe("ReconcileJob", func() {
 		rd := &RenovateConfigCustomDefaulter{}
 		Expect(rd.Default(ctx, renovate)).To(Succeed())
 
-		// Create two GitRepos for runner specific tests
 		repo1 = &renovatev1beta1.GitRepo{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "repo-1",
 				Namespace: instance.Namespace,
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+				},
 			},
-			Spec: renovatev1beta1.GitRepoSpec{
-				Name: "test/repo-1",
-			},
+			Spec: renovatev1beta1.GitRepoSpec{Name: "test/repo-1"},
 		}
 		repo2 = &renovatev1beta1.GitRepo{
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "repo-2",
 				Namespace: instance.Namespace,
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+				},
 			},
-			Spec: renovatev1beta1.GitRepoSpec{
-				Name: "test/repo-2",
+			Spec: renovatev1beta1.GitRepoSpec{Name: "test/repo-2"},
+		}
+
+		repo3 = &renovatev1beta1.GitRepo{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "repo-ignored",
+				Namespace: instance.Namespace,
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "different-id",
+				},
 			},
+			Spec: renovatev1beta1.GitRepoSpec{Name: "test/repo-ignored"},
 		}
 
 		now = time.Date(2026, 2, 27, 15, 0, 0, 0, time.UTC)
@@ -103,7 +116,7 @@ var _ = Describe("ReconcileJob", func() {
 
 		fakeClient = fake.NewClientBuilder().
 			WithScheme(scheme).
-			WithObjects(instance, renovate, repo1, repo2).
+			WithObjects(instance, renovate, repo1, repo2, repo3).
 			WithStatusSubresource(instance).
 			Build()
 
@@ -165,21 +178,17 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
 			})
 
-			It("should create jobs for all repos and remove the runner annotation", func() {
+			It("should create jobs for matching repos and remove the runner annotation", func() {
 				_, err := reconciler.reconcileJob(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				// Verify Jobs Creation (1 for each repo)
 				jobList := &batchv1.JobList{}
 				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
 				Expect(jobList.Items).To(HaveLen(2))
 
-				// Verify Annotation Removal on Runner
 				updatedInstance := &renovatev1beta1.Runner{}
 				Expect(fakeClient.Get(ctx, reconciler.req.NamespacedName, updatedInstance)).To(Succeed())
 				Expect(updatedInstance.Annotations).NotTo(HaveKey("renovate.thegeeklab.de/operation"))
-
-				// Verify Status Update
 				Expect(updatedInstance.Status.LastScheduleTime).NotTo(BeNil())
 			})
 		})
@@ -199,9 +208,9 @@ var _ = Describe("ReconcileJob", func() {
 			It("should create a job ONLY for the triggered repo and remove its annotation", func() {
 				result, err := reconciler.reconcileJob(ctx)
 				Expect(err).NotTo(HaveOccurred())
+
 				Expect(result).To(Equal(&ctrl.Result{}))
 
-				// Verify Job Creation
 				jobList := &batchv1.JobList{}
 				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
 				Expect(jobList.Items).To(HaveLen(1))
@@ -210,13 +219,11 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(job.GenerateName).To(HavePrefix("repo-1-"))
 				Expect(job.Labels).To(Equal(expectedLabels("repo-1")))
 
-				// Verify Annotation Removal on Repo
 				updatedRepo := &renovatev1beta1.GitRepo{}
 				repoKey := types.NamespacedName{Name: repo1.Name, Namespace: repo1.Namespace}
 				Expect(fakeClient.Get(ctx, repoKey, updatedRepo)).To(Succeed())
 				Expect(updatedRepo.Annotations).NotTo(HaveKey("renovate.thegeeklab.de/operation"))
 
-				// Verify Runner Status is unaffected
 				updatedInstance := &renovatev1beta1.Runner{}
 				Expect(fakeClient.Get(ctx, reconciler.req.NamespacedName, updatedInstance)).To(Succeed())
 				Expect(updatedInstance.Status.LastScheduleTime).To(BeNil())
@@ -238,14 +245,13 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(fakeClient.Create(ctx, activeJob)).To(Succeed())
 			})
 
-			It("should skip the active repo but create a job for the other", func() {
+			It("should skip the active repo but create a job for the other matching repos", func() {
 				_, err := reconciler.reconcileJob(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
 				jobList := &batchv1.JobList{}
 				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
 
-				// 1 pre-existing active job + 1 new job for repo-2
 				Expect(jobList.Items).To(HaveLen(2))
 
 				newJobsFound := 0
@@ -264,7 +270,7 @@ var _ = Describe("ReconcileJob", func() {
 		})
 
 		Context("when job should run globally based on schedule", func() {
-			It("should create new jobs for all repos and update status", func() {
+			It("should create new jobs for all matching repos and update status", func() {
 				_, err := reconciler.reconcileJob(ctx)
 				Expect(err).NotTo(HaveOccurred())
 

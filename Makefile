@@ -174,7 +174,7 @@ run: manifests generate fmt vet ## Run a controller from your host.
 	@echo "Disabling cluster-side webhooks..."
 	$(KUBECTL) delete mutatingwebhookconfigurations renovate-operator-webhook-configuration --ignore-not-found
 	$(KUBECTL) delete validatingwebhookconfigurations renovate-operator-webhook-configuration --ignore-not-found
-	ENABLE_WEBHOOKS=false $(GO) run ./cmd/main.go
+	ENABLE_WEBHOOKS=false $(GO) run ./cmd/main.go -zap-log-level=debug
 
 .PHONY: docker-build
 docker-build: ## Build container image.

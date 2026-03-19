@@ -17,7 +17,7 @@ import (
 
 var _ = Describe("APIHandler", func() {
 	var (
-		client      client.Client
+		fakeClient  client.Client
 		handler     *APIHandler
 		scheme      *runtime.Scheme
 		testObjects []runtime.Object
@@ -70,8 +70,8 @@ var _ = Describe("APIHandler", func() {
 			},
 		}
 
-		client = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		handler = NewAPIHandler(client, nil)
+		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
+		handler = NewAPIHandler(fakeClient, nil)
 	})
 
 	Describe("NewAPIHandler", func() {
