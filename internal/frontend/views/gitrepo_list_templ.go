@@ -13,10 +13,12 @@ import "fmt"
 func getRepoClass(ready bool) string {
 	base := `relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm cursor-pointer focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-blue-400`
 
-	if ready {
+	switch ready {
+	case true:
 		return base + " border-l-4 border-l-green-500"
+	default:
+		return base + " border-l-4 border-l-red-500"
 	}
-	return base + " border-l-4 border-l-red-500"
 }
 
 func GitRepoList(repos []GitRepoInfo) templ.Component {
@@ -58,7 +60,7 @@ func GitRepoList(repos []GitRepoInfo) templ.Component {
 				var templ_7745c5c3_Var3 string
 				templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/gitrepo?namespace=%s&name=%s", r.Namespace, r.Name))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/gitrepo_list.templ`, Line: 19, Col: 79}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/gitrepo_list.templ`, Line: 21, Col: 79}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 				if templ_7745c5c3_Err != nil {
@@ -84,7 +86,7 @@ func GitRepoList(repos []GitRepoInfo) templ.Component {
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(r.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/gitrepo_list.templ`, Line: 28, Col: 69}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/gitrepo_list.templ`, Line: 30, Col: 69}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -97,7 +99,7 @@ func GitRepoList(repos []GitRepoInfo) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(r.CreatedAt.Format("Jan 02, 2006"))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/gitrepo_list.templ`, Line: 30, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/gitrepo_list.templ`, Line: 32, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 				if templ_7745c5c3_Err != nil {
