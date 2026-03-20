@@ -31,7 +31,7 @@ func RenovatorList(views []WebView) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"space-y-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"bg-white shadow mb-6 shrink-0\"><div class=\"mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center\"><h2 class=\"text-2xl font-bold tracking-tight text-gray-900\">Dashboard</h2></div></div><div class=\"mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12\"><div class=\"space-y-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -43,7 +43,7 @@ func RenovatorList(views []WebView) templ.Component {
 			var templ_7745c5c3_Var2 string
 			templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("{ open: $persist(false).as('renovator-%s') }", v.Name))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 9, Col: 80}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 15, Col: 81}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 			if templ_7745c5c3_Err != nil {
@@ -64,7 +64,7 @@ func RenovatorList(views []WebView) templ.Component {
 			var templ_7745c5c3_Var3 string
 			templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(v.Name)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 20, Col: 17}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 26, Col: 18}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 			if templ_7745c5c3_Err != nil {
@@ -77,7 +77,7 @@ func RenovatorList(views []WebView) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(v.Namespace)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 24, Col: 62}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 30, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 			if templ_7745c5c3_Err != nil {
@@ -90,7 +90,7 @@ func RenovatorList(views []WebView) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprint(v.GitRepoCount))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 32, Col: 37}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 38, Col: 38}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -103,7 +103,7 @@ func RenovatorList(views []WebView) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(v.RunnerName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 37, Col: 70}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 43, Col: 71}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
@@ -116,7 +116,7 @@ func RenovatorList(views []WebView) templ.Component {
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(v.DiscoveryName)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 41, Col: 73}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 47, Col: 74}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
@@ -129,7 +129,7 @@ func RenovatorList(views []WebView) templ.Component {
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(fmt.Sprintf("/gitrepos?namespace=%s&renovator=%s", v.Namespace, v.Renovator))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 48, Col: 91}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/renovator_list.templ`, Line: 54, Col: 92}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
@@ -148,7 +148,7 @@ func RenovatorList(views []WebView) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

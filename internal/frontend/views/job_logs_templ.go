@@ -57,7 +57,7 @@ func JobLogs(data JobLogData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"rounded-lg bg-gray-900 shadow-lg overflow-hidden flex flex-col mt-6 border border-gray-700\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" class=\"rounded-lg bg-gray-900 shadow-lg overflow-hidden flex flex-col border border-gray-700 w-full h-full\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -80,7 +80,7 @@ func JobLogs(data JobLogData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "><div class=\"flex items-center justify-between bg-gray-800 px-4 py-2 border-b border-gray-700\"><div class=\"flex items-center gap-3\"><span class=\"text-xs font-mono text-gray-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "><div class=\"flex items-center justify-between bg-gray-800 px-4 py-2 border-b border-gray-700 shrink-0\"><div class=\"flex items-center gap-3\"><span class=\"text-xs font-mono text-gray-400\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -108,12 +108,20 @@ func JobLogs(data JobLogData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if data.IsRunning {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<button type=\"button\" @click=\"autoscroll = !autoscroll; if(autoscroll) { $refs.scrollBox.scrollTop = $refs.scrollBox.scrollHeight }\" :class=\"autoscroll ? 'text-green-400' : 'text-gray-500 hover:text-gray-300'\" class=\"transition-colors flex items-center gap-1.5 text-xs font-medium focus:outline-none\" title=\"Toggle Auto-scroll\"><svg xmlns=\"http://www.w3.org/2000/svg\" fill=\"none\" viewBox=\"0 0 24 24\" stroke-width=\"2\" stroke=\"currentColor\" class=\"h-4 w-4\"><path stroke-linecap=\"round\" stroke-linejoin=\"round\" d=\"M19.5 13.5 12 21m0 0-7.5-7.5M12 21V3\"></path></svg> <span x-text=\"autoscroll ? 'Auto-scroll: ON' : 'Auto-scroll: OFF'\"></span></button> ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<button type=\"button\" @click=\"autoscroll = !autoscroll; if(autoscroll) { $refs.scrollBox.scrollTop = $refs.scrollBox.scrollHeight }\" :class=\"autoscroll ? 'text-green-400' : 'text-gray-500 hover:text-gray-300'\" class=\"transition-colors flex items-center gap-1.5 text-xs font-medium focus:outline-none\" title=\"Toggle Auto-scroll\">")
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = IconArrowDown("h-4 w-4").Render(ctx, templ_7745c5c3_Buffer)
+			if templ_7745c5c3_Err != nil {
+				return templ_7745c5c3_Err
+			}
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<span x-text=\"autoscroll ? 'Auto-scroll: ON' : 'Auto-scroll: OFF'\"></span></button> ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<button type=\"button\" onclick=\"document.getElementById('log-viewer').innerHTML = ''\" class=\"text-gray-400 hover:text-white transition-colors focus:outline-none\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<button type=\"button\" onclick=\"document.getElementById('log-viewer').innerHTML = ''\" class=\"text-gray-400 hover:text-white transition-colors focus:outline-none\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -121,25 +129,25 @@ func JobLogs(data JobLogData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "</button></div></div><div x-ref=\"scrollBox\" id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "</button></div></div><div x-ref=\"scrollBox\" id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var6 string
 		templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs("scroll-" + data.JobName)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/job_logs.templ`, Line: 52, Col: 32}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/job_logs.templ`, Line: 50, Col: 32}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "\" class=\"p-4 overflow-x-auto max-h-[500px] overflow-y-auto relative\" x-init=\"\n\t\t\t\tif (autoscroll) {\n\t\t\t\t\t$el.scrollTop = $el.scrollHeight;\n\t\t\t\t} else {\n\t\t\t\t\t$el.scrollTop = sessionStorage.getItem('log-scroll-' + $el.id) || 0;\n\t\t\t\t}\n\t\t\t\" @scroll.debounce.50ms=\"if (!autoscroll) sessionStorage.setItem('log-scroll-' + $el.id, $el.scrollTop)\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "\" class=\"p-4 overflow-x-auto overflow-y-auto relative flex-1\" x-init=\"\n\t\t\t\tif (autoscroll) {\n\t\t\t\t\t$el.scrollTop = $el.scrollHeight;\n\t\t\t\t} else {\n\t\t\t\t\t$el.scrollTop = sessionStorage.getItem('log-scroll-' + $el.id) || 0;\n\t\t\t\t}\n\t\t\t\" @scroll.debounce.50ms=\"if (!autoscroll) sessionStorage.setItem('log-scroll-' + $el.id, $el.scrollTop)\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		if data.Error != "" {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<div class=\"flex flex-col items-center justify-center py-8 text-gray-500\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<div class=\"flex flex-col items-center justify-center py-8 text-gray-500 h-full\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -147,43 +155,43 @@ func JobLogs(data JobLogData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "<p class=\"text-sm font-mono text-center px-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<p class=\"text-sm font-mono text-center px-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var7 string
 			templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(data.Error)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/job_logs.templ`, Line: 66, Col: 63}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/job_logs.templ`, Line: 64, Col: 63}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</p></div>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "</p></div>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<pre class=\"text-xs font-mono text-gray-300 whitespace-pre-wrap break-all leading-relaxed\"><code>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "<pre class=\"text-xs font-mono text-gray-300 whitespace-pre-wrap break-all leading-relaxed\"><code>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var8 string
 			templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(data.Content)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/job_logs.templ`, Line: 72, Col: 25}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `internal/frontend/views/job_logs.templ`, Line: 70, Col: 25}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 18, "</code></pre>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</code></pre>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 19, "</div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 20, "</div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
