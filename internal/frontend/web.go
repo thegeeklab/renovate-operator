@@ -14,19 +14,28 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+type FrontendAssets struct {
+	Styles  []string
+	Scripts []string
+}
+
 type WebHandler struct {
 	client      client.Client
 	dataFactory *DataFactory
 	logManager  *logstore.Manager
 	Broker      *SSEBroker
+	assets      FrontendAssets
 }
 
-func NewWebHandler(client client.Client, logManager *logstore.Manager, broker *SSEBroker) *WebHandler {
+func NewWebHandler(
+	client client.Client, logManager *logstore.Manager, broker *SSEBroker, assets FrontendAssets,
+) *WebHandler {
 	return &WebHandler{
 		client:      client,
 		dataFactory: NewDataFactory(client),
 		logManager:  logManager,
 		Broker:      broker,
+		assets:      assets,
 	}
 }
 
@@ -46,7 +55,7 @@ func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, component te
 	if isHxRequest && !isHxBoosted {
 		_ = component.Render(r.Context(), w)
 	} else {
-		_ = views.Layout(component).Render(r.Context(), w)
+		_ = views.Layout(h.assets.Styles, h.assets.Scripts, component).Render(r.Context(), w)
 	}
 }
 

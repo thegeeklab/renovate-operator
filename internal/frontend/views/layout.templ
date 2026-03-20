@@ -1,28 +1,23 @@
 package views
 
-templ Layout(content templ.Component) {
+templ Layout(styles []string, scripts []string, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang="en" class="h-full bg-gray-100">
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Renovate Operator Dashboard</title>
-			<script src="https://cdn.tailwindcss.com"></script>
-			<script src="https://unpkg.com/htmx.org@2.0.4"></script>
-			<script src="https://unpkg.com/htmx-ext-sse@2.2.2/sse.js"></script>
-			<script defer src="https://cdn.jsdelivr.net/npm/@alpinejs/persist@3.13.3/dist/cdn.min.js"></script>
-			<script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.13.3/dist/cdn.min.js"></script>
 			<style>
-				details > summary {
-					list-style: none;
-				}
-				details > summary::-webkit-details-marker {
-					display: none;
-				}
-				details[open] summary ~ * {
-					animation: sweep 0.5s ease-in-out;
+				[x-cloak] {
+					display: none !important;
 				}
 			</style>
+			for _, style := range styles {
+				<link rel="stylesheet" href={ style }/>
+			}
+			for _, script := range scripts {
+				<script type="module" src={ script }></script>
+			}
 		</head>
 		<body class="h-full flex flex-col" hx-boost="true" hx-ext="sse" sse-connect="/events">
 			<nav class="bg-gray-800 shrink-0">

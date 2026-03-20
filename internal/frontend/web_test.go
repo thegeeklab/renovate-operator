@@ -33,6 +33,7 @@ var _ = Describe("WebHandler", func() {
 		logManager  *logstore.Manager
 		mockStore   *logstorte_mocks.Store
 		broker      *SSEBroker
+		dummyAssets FrontendAssets
 		renovator   types.UID = "test-uid-123"
 	)
 
@@ -109,8 +110,13 @@ var _ = Describe("WebHandler", func() {
 		logManager = logstore.NewManager(fakeClientset, mockStore)
 		broker = NewSSEBroker()
 
+		dummyAssets = FrontendAssets{
+			Scripts: []string{"/static/assets/main-123.js"},
+			Styles:  []string{"/static/assets/main-123.css"},
+		}
+
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		handler = NewWebHandler(fakeClient, logManager, broker)
+		handler = NewWebHandler(fakeClient, logManager, broker, dummyAssets)
 	})
 
 	AfterEach(func() {
@@ -123,6 +129,7 @@ var _ = Describe("WebHandler", func() {
 			Expect(handler).NotTo(BeNil())
 			Expect(handler.logManager).NotTo(BeNil())
 			Expect(handler.Broker).To(Equal(broker))
+			Expect(handler.assets).To(Equal(dummyAssets))
 		})
 	})
 

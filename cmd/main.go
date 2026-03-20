@@ -337,8 +337,12 @@ func main() {
 
 	// Setup web frontend server if enabled
 	if frontendAddr != "0" {
+		frontendConfig := frontend.DefaultServerConfig()
+		frontendConfig.Addr = frontendAddr
+		frontendConfig.DevMode = os.Getenv("NODE_ENV") == "development"
+
 		frontendServer := frontend.NewServer(
-			frontend.ServerConfig{Addr: frontendAddr},
+			frontendConfig,
 			mgr.GetClient(),
 			logManager,
 			sseBroker,

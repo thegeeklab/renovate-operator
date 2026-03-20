@@ -62,7 +62,9 @@
     "joblogs",
     "Sprintf",
     "Heroicon",
-    "evenodd"
+    "evenodd",
+    "vite",
+    "alpinejs"
   ],
   "ignorePaths": [
     ".woodpecker",

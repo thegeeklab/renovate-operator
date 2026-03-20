@@ -12,6 +12,7 @@ templ RenovatorList(views []WebView) {
 		<div class="space-y-4">
 			for _, v := range views {
 				<details
+					x-cloak
 					x-data={ fmt.Sprintf("{ open: $persist(false).as('renovator-%s') }", v.Name) }
 					:open="open"
 					@toggle="open = $el.open"

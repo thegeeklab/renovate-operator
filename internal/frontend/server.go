@@ -2,8 +2,11 @@ package frontend
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
+	"os"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -14,34 +17,44 @@ import (
 
 var frontendLog = logf.Log.WithName("frontend")
 
-// ServerConfig holds configuration for the HTTP server.
+var (
+	errAssetManifest    = errors.New("could not read asset manifest")
+	errMainEntryMissing = errors.New("main entry point not found in asset manifest")
+)
+
 type ServerConfig struct {
 	Addr         string
 	ReadTimeout  time.Duration
 	WriteTimeout time.Duration
 	IdleTimeout  time.Duration
+	DevMode      bool
 }
 
-// Default timeouts for the HTTP server.
 const (
 	DefaultReadTimeout  = 10 * time.Second
 	DefaultWriteTimeout = 30 * time.Second
 	DefaultIdleTimeout  = 120 * time.Second
 )
 
-// DefaultServerConfig returns default server configuration.
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
 		Addr:         ":8080",
 		ReadTimeout:  DefaultReadTimeout,
 		WriteTimeout: DefaultWriteTimeout,
 		IdleTimeout:  DefaultIdleTimeout,
+		DevMode:      false,
 	}
 }
 
-// Server manages the HTTP server.
+// assetManifest is used internally to unmarshal the bundler's build output.
+type assetManifest map[string]struct {
+	File string   `json:"file"`
+	CSS  []string `json:"css"`
+}
+
 type Server struct {
 	config           ServerConfig
+	assets           FrontendAssets
 	router           *mux.Router
 	server           *http.Server
 	apiHandler       *APIHandler
@@ -50,21 +63,28 @@ type Server struct {
 
 // NewServer creates a new HTTP server instance.
 func NewServer(config ServerConfig, client client.Client, logManager *logstore.Manager, broker *SSEBroker) *Server {
-	apiHandler := NewAPIHandler(client, logManager)
-
-	dashboardHandler := NewWebHandler(client, logManager, broker)
-
-	router := mux.NewRouter()
-
 	s := &Server{
-		config:           config,
-		router:           router,
-		apiHandler:       apiHandler,
-		dashboardHandler: dashboardHandler,
+		config: config,
+		router: mux.NewRouter(),
 	}
 
-	apiHandler.RegisterRoutes(router)
-	dashboardHandler.RegisterRoutes(router)
+	if err := s.loadFrontendAssets(); err != nil {
+		frontendLog.Error(err, "Failed to load frontend assets (UI might be broken)")
+	} else {
+		frontendLog.Info("Frontend assets loaded", "devMode", s.config.DevMode)
+	}
+
+	s.apiHandler = NewAPIHandler(client, logManager)
+	s.dashboardHandler = NewWebHandler(client, logManager, broker, s.assets)
+
+	s.apiHandler.RegisterRoutes(s.router)
+	s.dashboardHandler.RegisterRoutes(s.router)
+
+	if !s.config.DevMode {
+		staticDir := "internal/frontend/static/dist"
+		fs := http.FileServer(http.Dir(staticDir))
+		s.router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
+	}
 
 	s.server = &http.Server{
 		Addr:         config.Addr,
@@ -75,6 +95,49 @@ func NewServer(config ServerConfig, client client.Client, logManager *logstore.M
 	}
 
 	return s
+}
+
+// loadFrontendAssets populates the server's FrontendAssets struct based on the configuration.
+func (s *Server) loadFrontendAssets() error {
+	if s.config.DevMode {
+		s.assets.Scripts = []string{
+			"http://localhost:5173/@vite/client",
+			"http://localhost:5173/internal/frontend/static/main.js",
+		}
+
+		s.assets.Styles = []string{
+			"http://localhost:5173/internal/frontend/static/style.css",
+		}
+
+		return nil
+	}
+
+	manifestPath := "internal/frontend/static/dist/.vite/manifest.json"
+
+	data, err := os.ReadFile(manifestPath)
+	if err != nil {
+		return fmt.Errorf("%w: %w", errAssetManifest, err)
+	}
+
+	var manifest assetManifest
+	if err := json.Unmarshal(data, &manifest); err != nil {
+		return err
+	}
+
+	entry, ok := manifest["internal/frontend/static/main.js"]
+	if !ok {
+		return errMainEntryMissing
+	}
+
+	s.assets.Scripts = []string{"/static/" + entry.File}
+
+	if len(entry.CSS) > 0 {
+		s.assets.Styles = []string{"/static/" + entry.CSS[0]}
+	} else {
+		s.assets.Styles = []string{}
+	}
+
+	return nil
 }
 
 // Start runs the HTTP server in a separate goroutine.
