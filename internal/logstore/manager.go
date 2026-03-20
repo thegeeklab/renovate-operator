@@ -17,8 +17,6 @@ import (
 var errPodNotFound = errors.New("no pods found for job")
 
 // Manager provides a unified interface for retrieving logs.
-// It transparently routes requests to the Kubernetes API for live logs
-// of running jobs, or to the persistent Store for archived logs.
 type Manager struct {
 	clientset kubernetes.Interface
 	store     Store
@@ -62,16 +60,12 @@ func (m *Manager) GetLogStream(
 			})
 			latestPod := podList.Items[len(podList.Items)-1]
 
-			req := m.clientset.CoreV1().Pods(namespace).GetLogs(latestPod.Name, &corev1.PodLogOptions{
-				Follow: true,
-			})
+			req := m.clientset.CoreV1().Pods(namespace).GetLogs(latestPod.Name, &corev1.PodLogOptions{})
 
 			stream, err := req.Stream(ctx)
 			if err == nil {
 				return stream, nil
 			}
-
-			return nil, fmt.Errorf("failed to stream live pod logs (pod may be initializing): %w", err)
 		}
 	}
 
@@ -93,7 +87,6 @@ func (m *Manager) ArchiveJob(ctx context.Context, namespace, jobName, component,
 		return fmt.Errorf("%w: %s", errPodNotFound, jobName)
 	}
 
-	// Sort to get the latest attempt in case K8s restarted the pod
 	sort.Slice(podList.Items, func(i, j int) bool {
 		return podList.Items[i].CreationTimestamp.Before(&podList.Items[j].CreationTimestamp)
 	})
@@ -112,7 +105,6 @@ func (m *Manager) ArchiveJob(ctx context.Context, namespace, jobName, component,
 	}
 	defer podLogs.Close()
 
-	// Pass the stream directly to the underlying persistent Store
 	if err := m.store.SaveLog(ctx, namespace, component, owner, jobName, podLogs); err != nil {
 		return fmt.Errorf("failed to save logs to persistent store: %w", err)
 	}

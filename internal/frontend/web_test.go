@@ -17,6 +17,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -32,6 +33,7 @@ var _ = Describe("WebHandler", func() {
 		logManager  *logstore.Manager
 		mockStore   *logstorte_mocks.Store
 		broker      *SSEBroker
+		renovator   types.UID = "test-uid-123"
 	)
 
 	BeforeEach(func() {
@@ -48,6 +50,7 @@ var _ = Describe("WebHandler", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "test-renovator",
 					Namespace:         "test-namespace",
+					UID:               renovator,
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
 				Status: renovatev1beta1.RenovatorStatus{
@@ -59,7 +62,7 @@ var _ = Describe("WebHandler", func() {
 					Name:      "test-repo",
 					Namespace: "test-namespace",
 					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelRenovator: string(renovator),
 					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
@@ -75,7 +78,7 @@ var _ = Describe("WebHandler", func() {
 					Name:      "test-runner",
 					Namespace: "test-namespace",
 					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelRenovator: string(renovator),
 					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
@@ -88,7 +91,7 @@ var _ = Describe("WebHandler", func() {
 					Name:      "test-discovery",
 					Namespace: "test-namespace",
 					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelRenovator: string(renovator),
 					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
@@ -132,6 +135,7 @@ var _ = Describe("WebHandler", func() {
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+			Expect(w.Body.String()).To(ContainSubstring("test-renovator"))
 		})
 
 		It("should return partial for HTMX requests", func() {

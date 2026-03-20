@@ -5,10 +5,12 @@ import "fmt"
 func getRepoClass(ready bool) string {
 	base := `relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm cursor-pointer focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-blue-400`
 
-	if ready {
+	switch ready {
+	case true:
 		return base + " border-l-4 border-l-green-500"
+	default:
+		return base + " border-l-4 border-l-red-500"
 	}
-	return base + " border-l-4 border-l-red-500"
 }
 
 templ GitRepoList(repos []GitRepoInfo) {

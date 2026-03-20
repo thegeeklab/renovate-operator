@@ -1,9 +1,27 @@
 package views
 
+import "fmt"
+
 templ JobLogs(data JobLogData) {
-	<div class="rounded-lg bg-gray-900 shadow-lg overflow-hidden flex flex-col mt-6 border border-gray-700">
+	<div
+		id={ "logs-" + data.JobName }
+		class="rounded-lg bg-gray-900 shadow-lg overflow-hidden flex flex-col mt-6 border border-gray-700"
+		if data.IsRunning {
+			hx-get={ fmt.Sprintf("/joblogs?namespace=%s&runner=%s&job=%s", data.Namespace, data.Runner, data.JobName) }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML"
+		}
+	>
 		<div class="flex items-center justify-between bg-gray-800 px-4 py-2 border-b border-gray-700">
-			<span class="text-xs font-mono text-gray-400">{ data.JobName }</span>
+			<div class="flex items-center gap-3">
+				<span class="text-xs font-mono text-gray-400">{ data.JobName }</span>
+				if data.IsRunning {
+					<span class="flex h-2 w-2 relative" title="Live Log Streaming">
+						<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+						<span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+					</span>
+				}
+			</div>
 			<button
 				type="button"
 				onclick="document.getElementById('log-viewer').innerHTML = ''"
@@ -12,7 +30,13 @@ templ JobLogs(data JobLogData) {
 				@IconXMark("h-5 w-5")
 			</button>
 		</div>
-		<div class="p-4 overflow-x-auto max-h-[500px] overflow-y-auto">
+		<div
+			class="p-4 overflow-x-auto max-h-[500px] overflow-y-auto"
+			if data.IsRunning {
+				x-data
+				x-init="$el.scrollTop = $el.scrollHeight"
+			}
+		>
 			if data.Error != "" {
 				<div class="flex flex-col items-center justify-center py-8 text-gray-500">
 					@IconInformationCircle("h-10 w-10 text-gray-600 mb-3")

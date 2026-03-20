@@ -9,6 +9,7 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/views"
 	"github.com/thegeeklab/renovate-operator/internal/logstore"
+	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -205,13 +206,26 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := views.JobLogData{
-		JobName: job,
+		JobName:   job,
+		Namespace: namespace,
+		Runner:    runner,
+	}
+
+	var k8sJob batchv1.Job
+	if err := h.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: job}, &k8sJob); err == nil {
+		if k8sJob.Status.CompletionTime == nil && k8sJob.Status.Failed == 0 {
+			data.IsRunning = true
+		}
 	}
 
 	stream, err := h.logManager.GetLogStream(ctx, namespace, "runner", runner, job)
 	if err != nil {
 		data.Error = "Logs are no longer available. They may have been purged by " +
 			"the background job or the Pod was deleted before archiving completed."
+
+		if data.IsRunning {
+			data.Content = "Waiting for logs to initialize..."
+		}
 	} else {
 		defer stream.Close()
 
@@ -223,6 +237,7 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 	w.Header().Set("Content-Type", "text/html")
 	_ = views.JobLogs(data).Render(r.Context(), w)
 }
