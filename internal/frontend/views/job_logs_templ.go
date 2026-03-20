@@ -121,7 +121,7 @@ func JobLogs(data JobLogData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<button type=\"button\" onclick=\"document.getElementById('log-viewer').innerHTML = ''\" class=\"text-gray-400 hover:text-white transition-colors focus:outline-none\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 12, "<button type=\"button\" @click=\"closeLogs()\" class=\"text-gray-400 hover:text-white transition-colors focus:outline-none\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

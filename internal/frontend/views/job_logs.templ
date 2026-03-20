@@ -39,7 +39,7 @@ templ JobLogs(data JobLogData) {
 				}
 				<button
 					type="button"
-					onclick="document.getElementById('log-viewer').innerHTML = ''"
+					@click="closeLogs()"
 					class="text-gray-400 hover:text-white transition-colors focus:outline-none"
 				>
 					@IconXMark("h-5 w-5")

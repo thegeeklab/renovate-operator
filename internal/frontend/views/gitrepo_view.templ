@@ -2,16 +2,16 @@ package views
 
 import "fmt"
 
-func getJobClass(status string) string {
-	base := `relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-4 py-3 shadow-sm cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 hover:border-blue-400`
+func getBaseJobClass(status string) string {
+	base := `relative flex items-center space-x-3 rounded-lg border px-4 py-3 shadow-sm cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 border-l-4 bg-white border-gray-300 hover:border-blue-400`
 
 	switch status {
 	case "Succeeded":
-		return base + " border-l-4 border-l-green-500"
+		return base + " border-l-green-500"
 	case "Running":
-		return base + " border-l-4 border-l-blue-500"
+		return base + " border-l-blue-500"
 	default:
-		return base + " border-l-4 border-l-red-500"
+		return base + " border-l-red-500"
 	}
 }
 
@@ -44,7 +44,7 @@ templ GitRepoView(data GitRepoViewData) {
 			<div class="border-b border-gray-200 pb-3 mb-6 shrink-0">
 				<h3 class="text-lg font-semibold leading-6 text-gray-900">Recent Jobs</h3>
 			</div>
-			<div class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
+			<div x-data="jobList()" class="grid grid-cols-1 lg:grid-cols-12 gap-6 flex-1 min-h-0">
 				<div
 					id="job-list-container"
 					class="lg:col-span-4 xl:col-span-3 flex flex-col h-full min-h-0"
@@ -59,10 +59,12 @@ templ GitRepoView(data GitRepoViewData) {
 						<div class="flex flex-col gap-3 overflow-y-auto pr-2 pb-4 flex-1">
 							for _, job := range data.Jobs {
 								<div
+									@click={ fmt.Sprintf("selectJob('%s', '%s', '%s')", job.Name, job.Namespace, job.Runner) }
 									hx-get={ fmt.Sprintf("/joblogs?namespace=%s&runner=%s&job=%s", job.Namespace, job.Runner, job.Name) }
 									hx-target="#log-viewer"
 									hx-swap="innerHTML show:#log-viewer:top"
-									class={ getJobClass(job.Status) }
+									class={ getBaseJobClass(job.Status) }
+									:class={ fmt.Sprintf("getSelectedClass('%s')", job.Name) }
 								>
 									<div class="min-w-0 flex-1">
 										<div class="focus:outline-none">
@@ -102,12 +104,20 @@ templ GitRepoView(data GitRepoViewData) {
 					}
 				</div>
 				<div class="lg:col-span-8 xl:col-span-9 flex flex-col h-full min-h-0">
-					<div id="log-viewer" class="h-full flex flex-col">
-						<div class="hidden lg:flex flex-col items-center justify-center h-full text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
-							@IconDocumentText("h-12 w-12 mb-3 text-gray-300")
-							<p class="text-sm">Select a job from the list to view its logs</p>
-						</div>
+					<div
+						x-cloak
+						x-show="!selectedJob"
+						class="hidden lg:flex flex-col items-center justify-center h-full text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50"
+					>
+						@IconDocumentText("h-12 w-12 mb-3 text-gray-300")
+						<p class="text-sm">Select a job from the list to view its logs</p>
 					</div>
+					<div
+						x-cloak
+						x-show="selectedJob"
+						id="log-viewer"
+						class="h-full flex flex-col"
+					></div>
 				</div>
 			</div>
 		</div>

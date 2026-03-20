@@ -9,6 +9,38 @@ import persist from "@alpinejs/persist";
 window.Alpine = Alpine;
 Alpine.plugin(persist);
 
+Alpine.data("jobList", function () {
+  return {
+    activeLogUrl: this.$persist(""),
+    selectedJob: this.$persist(""),
+
+    init() {
+      this.$nextTick(() => {
+        if (this.activeLogUrl && window.htmx) {
+          htmx.ajax("GET", this.activeLogUrl, { target: "#log-viewer" });
+        }
+      });
+
+      window.addEventListener("clear-selected-job", () => {
+        this.selectedJob = "";
+        this.activeLogUrl = "";
+      });
+    },
+
+    selectJob(name, namespace, runner) {
+      this.selectedJob = name;
+      this.activeLogUrl = `/joblogs?namespace=${namespace}&runner=${runner}&job=${name}`;
+    },
+
+    getSelectedClass(name) {
+      if (this.selectedJob === name) {
+        return "!border-blue-400 bg-gray-50";
+      }
+      return "";
+    },
+  };
+});
+
 Alpine.data("logViewer", function (jobName, isRunning) {
   return {
     autoscroll: this.$persist(false).as("autoscroll-" + jobName),
@@ -29,6 +61,11 @@ Alpine.data("logViewer", function (jobName, isRunning) {
           this.$refs.scrollBox.scrollTop = this.$refs.scrollBox.scrollHeight;
         });
       }
+    },
+
+    closeLogs() {
+      document.getElementById("log-viewer").innerHTML = "";
+      window.dispatchEvent(new CustomEvent("clear-selected-job"));
     },
   };
 });
