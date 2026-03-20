@@ -177,10 +177,13 @@ lint: yamlfmt-dry golangci-lint
 
 ##@ Build
 
-.PHONY: build
-build: manifests generate fmt vet frontend-build ## Build binaries and frontend assets.
+.PHONY: build-go
+build-go: ## Build the Go binaries.
 	$(GO) build -o bin/manager cmd/main.go
 	$(GO) build -o bin/discovery cmd/discovery/main.go
+
+.PHONY: build
+build: manifests generate fmt vet frontend-build build-go ## Build binaries and frontend assets.
 
 .PHONY: run
 run: manifests generate fmt vet ## Run a controller from your host. Use FRONTEND_DEV=true to start Vite dev server.
