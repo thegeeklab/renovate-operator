@@ -10,8 +10,7 @@ steps:
     image: docker.io/library/node:lts
     depends_on: []
     commands:
-      - npm install --quiet --no-progress
-      - npm run lint:js
+      - make frontend-deps eslint
     environment:
       FORCE_COLOR: "true"
 

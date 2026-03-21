@@ -69,7 +69,6 @@ deps:
 	$(GO) install $(YAMLFMT_PACKAGE)
 	$(GO) install $(GOTESTSUM_PACKAGE)
 	$(GO) install $(TEMPL_PACKAGE)
-	@$(MAKE) --no-print-directory frontend-deps
 
 .PHONY: frontend-deps
 frontend-deps: ## Install frontend dependencies.
