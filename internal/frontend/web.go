@@ -8,9 +8,9 @@ import (
 	"github.com/gorilla/mux"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/views"
-	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -22,18 +22,16 @@ type FrontendAssets struct {
 type WebHandler struct {
 	client      client.Client
 	dataFactory *DataFactory
-	logManager  *logstore.Manager
 	Broker      *SSEBroker
 	assets      FrontendAssets
 }
 
 func NewWebHandler(
-	client client.Client, logManager *logstore.Manager, broker *SSEBroker, assets FrontendAssets,
+	client client.Client, clientset kubernetes.Interface, broker *SSEBroker, assets FrontendAssets,
 ) *WebHandler {
 	return &WebHandler{
 		client:      client,
-		dataFactory: NewDataFactory(client),
-		logManager:  logManager,
+		dataFactory: NewDataFactory(client, clientset),
 		Broker:      broker,
 		assets:      assets,
 	}
@@ -227,20 +225,20 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	stream, err := h.logManager.GetLogStream(ctx, namespace, "runner", runner, job)
+	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
 	if err != nil {
-		data.Error = "Logs are no longer available. They may have been purged by " +
-			"the background job or the Pod was deleted before archiving completed."
+		data.Error = "Logs are no longer available. The pods may have been garbage collected by Kubernetes."
 
 		if data.IsRunning {
-			data.Content = "Waiting for logs to initialize..."
+			data.Error = ""
+			data.Content = "Waiting for pods to initialize..."
 		}
 	} else {
 		defer stream.Close()
 
 		content, ioErr := io.ReadAll(stream)
 		if ioErr != nil {
-			data.Error = "Failed to read log stream from storage."
+			data.Error = "Failed to read log stream from pod."
 		} else {
 			data.Content = string(content)
 		}

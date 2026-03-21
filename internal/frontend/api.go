@@ -6,7 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/thegeeklab/renovate-operator/internal/logstore"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -64,15 +64,13 @@ type JobInfo struct {
 type APIHandler struct {
 	client      client.Client
 	dataFactory *DataFactory
-	logManager  *logstore.Manager
 }
 
 // NewAPIHandler creates a new APIHandler.
-func NewAPIHandler(client client.Client, logManager *logstore.Manager) *APIHandler {
+func NewAPIHandler(client client.Client, clientset kubernetes.Interface) *APIHandler {
 	return &APIHandler{
 		client:      client,
-		dataFactory: NewDataFactory(client),
-		logManager:  logManager,
+		dataFactory: NewDataFactory(client, clientset),
 	}
 }
 

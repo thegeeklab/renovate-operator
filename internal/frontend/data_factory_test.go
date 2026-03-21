@@ -12,6 +12,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -103,7 +104,9 @@ var _ = Describe("DataFactory", func() {
 		}
 
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		dataFactory = NewDataFactory(fakeClient)
+		fakeClientset := kubernetesfake.NewClientset()
+
+		dataFactory = NewDataFactory(fakeClient, fakeClientset)
 	})
 
 	Describe("GetRenovators", func() {
@@ -176,6 +179,14 @@ var _ = Describe("DataFactory", func() {
 			jobs, err := dataFactory.GetJobsForRepo(context.Background(), "missing", opts)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(jobs).To(BeEmpty())
+		})
+	})
+
+	Describe("GetJobLogs", func() {
+		It("should return an error if no pods are found for the job", func() {
+			_, err := dataFactory.GetJobLogs(context.Background(), "test-namespace", "test-job-1")
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("no pods found for job: test-job-1"))
 		})
 	})
 })

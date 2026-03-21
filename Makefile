@@ -91,7 +91,7 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object paths="./..."
-	$(GO) run $(MOCKERY_PACKAGE)
+# 	$(GO) run $(MOCKERY_PACKAGE)
 	@$(MAKE) --no-print-directory templ
 	@$(MAKE) --no-print-directory yamlfmt
 

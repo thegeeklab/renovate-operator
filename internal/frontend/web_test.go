@@ -1,19 +1,14 @@
 package frontend
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/logstore"
-	logstorte_mocks "github.com/thegeeklab/renovate-operator/internal/logstore/mocks"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,16 +20,14 @@ import (
 
 var _ = Describe("WebHandler", func() {
 	var (
-		fakeClient  client.Client
-		handler     *WebHandler
-		scheme      *runtime.Scheme
-		testObjects []runtime.Object
-		tempLogDir  string
-		logManager  *logstore.Manager
-		mockStore   *logstorte_mocks.Store
-		broker      *SSEBroker
-		dummyAssets FrontendAssets
-		renovator   types.UID = "test-uid-123"
+		fakeClient    client.Client
+		fakeClientset *kubernetesfake.Clientset
+		handler       *WebHandler
+		scheme        *runtime.Scheme
+		testObjects   []runtime.Object
+		broker        *SSEBroker
+		dummyAssets   FrontendAssets
+		renovator     types.UID = "test-uid-123"
 	)
 
 	BeforeEach(func() {
@@ -102,12 +95,7 @@ var _ = Describe("WebHandler", func() {
 			},
 		}
 
-		tempLogDir, err = os.MkdirTemp("", "operator-web-test-*")
-		Expect(err).NotTo(HaveOccurred())
-
-		fakeClientset := kubernetesfake.NewClientset()
-		mockStore = logstorte_mocks.NewStore(GinkgoT())
-		logManager = logstore.NewManager(fakeClientset, mockStore)
+		fakeClientset = kubernetesfake.NewSimpleClientset()
 		broker = NewSSEBroker()
 
 		dummyAssets = FrontendAssets{
@@ -116,18 +104,13 @@ var _ = Describe("WebHandler", func() {
 		}
 
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		handler = NewWebHandler(fakeClient, logManager, broker, dummyAssets)
-	})
-
-	AfterEach(func() {
-		err := os.RemoveAll(tempLogDir)
-		Expect(err).NotTo(HaveOccurred())
+		handler = NewWebHandler(fakeClient, fakeClientset, broker, dummyAssets)
 	})
 
 	Describe("NewWebHandler", func() {
 		It("should create a new WebHandler", func() {
 			Expect(handler).NotTo(BeNil())
-			Expect(handler.logManager).NotTo(BeNil())
+			Expect(handler.dataFactory).NotTo(BeNil())
 			Expect(handler.Broker).To(Equal(broker))
 			Expect(handler.assets).To(Equal(dummyAssets))
 		})
@@ -249,9 +232,6 @@ var _ = Describe("WebHandler", func() {
 				nil,
 			)
 			w := httptest.NewRecorder()
-
-			mockStore.On("GetLog", mock.Anything, "test-namespace", "runner", "test-runner", "missing-job").
-				Return(nil, errors.New("log not found"))
 
 			handler.HandleJobLogs(w, req)
 

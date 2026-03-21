@@ -10,7 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
-	"github.com/thegeeklab/renovate-operator/internal/logstore"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -65,7 +65,7 @@ type Server struct {
 }
 
 // NewServer creates a new HTTP server instance.
-func NewServer(config ServerConfig, client client.Client, logManager *logstore.Manager, broker *SSEBroker) *Server {
+func NewServer(config ServerConfig, client client.Client, clientset kubernetes.Interface, broker *SSEBroker) *Server {
 	s := &Server{
 		config: config,
 		router: mux.NewRouter(),
@@ -77,8 +77,8 @@ func NewServer(config ServerConfig, client client.Client, logManager *logstore.M
 		frontendLog.Info("Frontend assets loaded", "devMode", s.config.DevMode)
 	}
 
-	s.apiHandler = NewAPIHandler(client, logManager)
-	s.dashboardHandler = NewWebHandler(client, logManager, broker, s.assets)
+	s.apiHandler = NewAPIHandler(client, clientset)
+	s.dashboardHandler = NewWebHandler(client, clientset, broker, s.assets)
 
 	s.apiHandler.RegisterRoutes(s.router)
 	s.dashboardHandler.RegisterRoutes(s.router)

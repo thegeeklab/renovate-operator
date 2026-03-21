@@ -9,10 +9,10 @@ import persist from "@alpinejs/persist";
 window.Alpine = Alpine;
 Alpine.plugin(persist);
 
-Alpine.data("jobList", function () {
+Alpine.data("jobList", function (repoId) {
   return {
-    activeLogUrl: this.$persist(""),
-    selectedJob: this.$persist(""),
+    activeLogUrl: this.$persist("").as("activeLogUrl-" + repoId),
+    selectedJob: this.$persist("").as("selectedJob-" + repoId),
 
     init() {
       this.$nextTick(() => {
@@ -64,7 +64,10 @@ Alpine.data("logViewer", function (jobName, isRunning) {
     },
 
     closeLogs() {
-      document.getElementById("log-viewer").innerHTML = "";
+      const logViewer = document.getElementById("log-viewer");
+      if (logViewer) {
+        logViewer.innerHTML = "";
+      }
       window.dispatchEvent(new CustomEvent("clear-selected-job"));
     },
   };
@@ -87,6 +90,10 @@ document.addEventListener("htmx:beforeSwap", (e) => {
 });
 
 document.addEventListener("htmx:afterSwap", (e) => {
+  if (!e.detail.target.id) {
+    return;
+  }
+
   const newScrollBox =
     document
       .getElementById(e.detail.target.id)
