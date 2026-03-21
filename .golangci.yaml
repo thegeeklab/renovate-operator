@@ -114,6 +114,7 @@ linters:
           - ireturn
         path: (_test\.go|test/.+\.go)
     paths:
+      - node_modules
       - third_party$
       - builtin$
       - examples$
