@@ -78,6 +78,7 @@
     ".vscode",
     "Makefile",
     "go.mod",
+    ".npmrc",
     // generated
     "go.sum",
     "renovate.json",

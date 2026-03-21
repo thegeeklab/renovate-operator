@@ -75,6 +75,10 @@ frontend-deps: ## Install frontend dependencies.
 	@echo "Installing frontend dependencies..."
 	npm install
 
+.PHONY: eslint
+eslint: ## Run eslint.
+	npm run lint
+
 .PHONY: frontend-build
 frontend-build: frontend-deps ## Build the frontend assets for production.
 	@echo "Building Vite assets for production..."
@@ -173,7 +177,7 @@ golangci-lint:
 	$(shell go env GOPATH)/bin/golangci-lint run
 
 .PHONY: lint
-lint: yamlfmt-dry golangci-lint
+lint: yamlfmt-dry golangci-lint eslint
 
 ##@ Build
 

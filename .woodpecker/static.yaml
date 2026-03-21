@@ -6,10 +6,19 @@ when:
       - ${CI_REPO_DEFAULT_BRANCH}
 
 steps:
-  - name: golangci-lint
-    image: docker.io/library/golang:1.26.1
+  - name: eslint
+    image: docker.io/library/node:lts
+    depends_on: []
     commands:
-      - make deps golangci-lint
+      - make frontend-deps eslint
+    environment:
+      FORCE_COLOR: "true"
+
+  - name: markdownlint
+    image: quay.io/thegeeklab/markdownlint-cli
+    depends_on: []
+    commands:
+      - markdownlint 'exampleSite/content/**/*.md' 'README.md' 'CONTRIBUTING.md'
 
   - name: yaml-lint
     image: docker.io/library/golang:1.26.1
@@ -20,3 +29,8 @@ steps:
     image: ghcr.io/streetsidesoftware/cspell
     commands:
       - cspell-cli lint . --gitignore --color
+
+  - name: golangci-lint
+    image: docker.io/library/golang:1.26.1
+    commands:
+      - make deps golangci-lint

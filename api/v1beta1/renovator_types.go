@@ -114,10 +114,7 @@ type RenovatorSpec struct {
 //
 //nolint:lll
 type RenovatorStatus struct {
-	Ready      bool               `json:"ready,omitempty"`
-	Failed     int                `json:"failed,omitempty"`
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
-	SpecHash   string             `json:"specHash,omitempty"`
 }
 
 // +kubebuilder:object:root=true

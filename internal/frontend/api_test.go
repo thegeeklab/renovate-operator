@@ -34,9 +34,6 @@ var _ = Describe("APIHandler", func() {
 					Name:      "test-renovator",
 					Namespace: "test-namespace",
 				},
-				Status: renovatev1beta1.RenovatorStatus{
-					Ready: true,
-				},
 			},
 			&renovatev1beta1.GitRepo{
 				ObjectMeta: metav1.ObjectMeta{
@@ -46,26 +43,17 @@ var _ = Describe("APIHandler", func() {
 				Spec: renovatev1beta1.GitRepoSpec{
 					WebhookID: "12345",
 				},
-				Status: renovatev1beta1.GitRepoStatus{
-					Ready: true,
-				},
 			},
 			&renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-runner",
 					Namespace: "test-namespace",
 				},
-				Status: renovatev1beta1.RunnerStatus{
-					Ready: true,
-				},
 			},
 			&renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-discovery",
 					Namespace: "test-namespace",
-				},
-				Status: renovatev1beta1.DiscoveryStatus{
-					Ready: true,
 				},
 			},
 		}

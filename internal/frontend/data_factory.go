@@ -78,7 +78,6 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 			Namespace: renovator.Namespace,
 			UID:       string(renovator.UID),
 			Schedule:  renovator.Spec.Schedule,
-			Ready:     renovator.Status.Ready,
 			CreatedAt: renovator.CreationTimestamp.Time,
 		})
 	}
@@ -114,7 +113,6 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 			Name:      gitrepo.Name,
 			Namespace: gitrepo.Namespace,
 			WebhookID: gitrepo.Spec.WebhookID,
-			Ready:     gitrepo.Status.Ready,
 			CreatedAt: gitrepo.CreationTimestamp.Time,
 		})
 	}
@@ -146,7 +144,6 @@ func (df *DataFactory) GetRunners(ctx context.Context, opts ...ListOptions) ([]R
 		result = append(result, RunnerInfo{
 			Name:      runner.Name,
 			Namespace: runner.Namespace,
-			Ready:     runner.Status.Ready,
 			CreatedAt: runner.CreationTimestamp.Time,
 		})
 	}
@@ -181,7 +178,6 @@ func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) 
 			Name:      discovery.Name,
 			Namespace: discovery.Namespace,
 			Schedule:  discovery.Spec.Schedule,
-			Ready:     discovery.Status.Ready,
 			CreatedAt: discovery.CreationTimestamp.Time,
 		})
 	}
