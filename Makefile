@@ -14,6 +14,9 @@ TEMPL_PACKAGE ?= github.com/a-h/templ/cmd/templ@latest
 # Image URL to use all building image targets
 IMG ?= docker.io/thegeeklab/renovate-operator:devel
 
+# Toggle for Vite dev server during 'make run'
+FRONTEND_DEV ?= false
+
 GO ?= go
 SOURCES ?= $(shell find . -name "*.go" -type f ! -path "*/mocks/*" ! -name "*_templ.go")
 
@@ -67,6 +70,16 @@ deps:
 	$(GO) install $(GOTESTSUM_PACKAGE)
 	$(GO) install $(TEMPL_PACKAGE)
 
+.PHONY: frontend-deps
+frontend-deps: ## Install frontend dependencies.
+	@echo "Installing frontend dependencies..."
+	npm install
+
+.PHONY: frontend-build
+frontend-build: frontend-deps ## Build the frontend assets for production.
+	@echo "Building Vite assets for production..."
+	npm run build
+
 .PHONY: manifests
 manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and CustomResourceDefinition objects.
 	$(CONTROLLER_GEN) rbac:roleName=manager-role crd webhook paths="./..." output:crd:artifacts:config=config/crd/bases
@@ -78,7 +91,7 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object paths="./..."
-	$(GO) run $(MOCKERY_PACKAGE)
+# 	$(GO) run $(MOCKERY_PACKAGE)
 	@$(MAKE) --no-print-directory templ
 	@$(MAKE) --no-print-directory yamlfmt
 
@@ -164,17 +177,27 @@ lint: yamlfmt-dry golangci-lint
 
 ##@ Build
 
-.PHONY: build
-build: manifests generate fmt vet ## Build binaries.
+.PHONY: build-go
+build-go: ## Build the Go binaries.
 	$(GO) build -o bin/manager cmd/main.go
 	$(GO) build -o bin/discovery cmd/discovery/main.go
 
+.PHONY: build
+build: manifests generate fmt vet frontend-build build-go ## Build binaries and frontend assets.
+
 .PHONY: run
-run: manifests generate fmt vet ## Run a controller from your host.
+run: manifests generate fmt vet ## Run a controller from your host. Use FRONTEND_DEV=true to start Vite dev server.
 	@echo "Disabling cluster-side webhooks..."
 	$(KUBECTL) delete mutatingwebhookconfigurations renovate-operator-webhook-configuration --ignore-not-found
 	$(KUBECTL) delete validatingwebhookconfigurations renovate-operator-webhook-configuration --ignore-not-found
+ifeq ($(FRONTEND_DEV),true)
+	@npm install
+	@npm run dev & VITE_PID=$$!; \
+	trap "kill $$VITE_PID 2>/dev/null" EXIT INT TERM; \
+	NODE_ENV=development ENABLE_WEBHOOKS=false $(GO) run ./cmd/main.go -zap-log-level=debug
+else
 	ENABLE_WEBHOOKS=false $(GO) run ./cmd/main.go -zap-log-level=debug
+endif
 
 .PHONY: docker-build
 docker-build: ## Build container image.

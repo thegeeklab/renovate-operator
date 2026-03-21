@@ -1,22 +1,18 @@
 package frontend
 
 import (
-	"errors"
 	"net/http"
 	"net/http/httptest"
-	"os"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
-	"github.com/stretchr/testify/mock"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/logstore"
-	logstorte_mocks "github.com/thegeeklab/renovate-operator/internal/logstore/mocks"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -24,14 +20,14 @@ import (
 
 var _ = Describe("WebHandler", func() {
 	var (
-		fakeClient  client.Client
-		handler     *WebHandler
-		scheme      *runtime.Scheme
-		testObjects []runtime.Object
-		tempLogDir  string
-		logManager  *logstore.Manager
-		mockStore   *logstorte_mocks.Store
-		broker      *SSEBroker
+		fakeClient    client.Client
+		fakeClientset *kubernetesfake.Clientset
+		handler       *WebHandler
+		scheme        *runtime.Scheme
+		testObjects   []runtime.Object
+		broker        *SSEBroker
+		dummyAssets   FrontendAssets
+		renovator     types.UID = "test-uid-123"
 	)
 
 	BeforeEach(func() {
@@ -48,6 +44,7 @@ var _ = Describe("WebHandler", func() {
 				ObjectMeta: metav1.ObjectMeta{
 					Name:              "test-renovator",
 					Namespace:         "test-namespace",
+					UID:               renovator,
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
 				Status: renovatev1beta1.RenovatorStatus{
@@ -59,7 +56,7 @@ var _ = Describe("WebHandler", func() {
 					Name:      "test-repo",
 					Namespace: "test-namespace",
 					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelRenovator: string(renovator),
 					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
@@ -75,7 +72,7 @@ var _ = Describe("WebHandler", func() {
 					Name:      "test-runner",
 					Namespace: "test-namespace",
 					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelRenovator: string(renovator),
 					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
@@ -88,7 +85,7 @@ var _ = Describe("WebHandler", func() {
 					Name:      "test-discovery",
 					Namespace: "test-namespace",
 					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelRenovator: string(renovator),
 					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
@@ -98,28 +95,24 @@ var _ = Describe("WebHandler", func() {
 			},
 		}
 
-		tempLogDir, err = os.MkdirTemp("", "operator-web-test-*")
-		Expect(err).NotTo(HaveOccurred())
-
-		fakeClientset := kubernetesfake.NewClientset()
-		mockStore = logstorte_mocks.NewStore(GinkgoT())
-		logManager = logstore.NewManager(fakeClientset, mockStore)
+		fakeClientset = kubernetesfake.NewSimpleClientset()
 		broker = NewSSEBroker()
 
-		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		handler = NewWebHandler(fakeClient, logManager, broker)
-	})
+		dummyAssets = FrontendAssets{
+			Scripts: []string{"/static/assets/main-123.js"},
+			Styles:  []string{"/static/assets/main-123.css"},
+		}
 
-	AfterEach(func() {
-		err := os.RemoveAll(tempLogDir)
-		Expect(err).NotTo(HaveOccurred())
+		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
+		handler = NewWebHandler(fakeClient, fakeClientset, broker, dummyAssets)
 	})
 
 	Describe("NewWebHandler", func() {
 		It("should create a new WebHandler", func() {
 			Expect(handler).NotTo(BeNil())
-			Expect(handler.logManager).NotTo(BeNil())
+			Expect(handler.dataFactory).NotTo(BeNil())
 			Expect(handler.Broker).To(Equal(broker))
+			Expect(handler.assets).To(Equal(dummyAssets))
 		})
 	})
 
@@ -132,6 +125,7 @@ var _ = Describe("WebHandler", func() {
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+			Expect(w.Body.String()).To(ContainSubstring("test-renovator"))
 		})
 
 		It("should return partial for HTMX requests", func() {
@@ -238,9 +232,6 @@ var _ = Describe("WebHandler", func() {
 				nil,
 			)
 			w := httptest.NewRecorder()
-
-			mockStore.On("GetLog", mock.Anything, "test-namespace", "runner", "test-runner", "missing-job").
-				Return(nil, errors.New("log not found"))
 
 			handler.HandleJobLogs(w, req)
 

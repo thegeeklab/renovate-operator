@@ -1,27 +1,63 @@
 package views
 
+import "fmt"
+
 templ JobLogs(data JobLogData) {
-	<div class="rounded-lg bg-gray-900 shadow-lg overflow-hidden flex flex-col mt-6 border border-gray-700">
-		<div class="flex items-center justify-between bg-gray-800 px-4 py-2 border-b border-gray-700">
-			<span class="text-xs font-mono text-gray-400">{ data.JobName }</span>
-			<button
-				type="button"
-				onclick="document.getElementById('log-viewer').innerHTML = ''"
-				class="text-gray-400 hover:text-white transition-colors"
-			>
-				@IconXMark("h-5 w-5")
-			</button>
+	<div
+		id={ "logs-" + data.JobName }
+		x-cloak
+		x-data={ fmt.Sprintf("logViewer('%s', %t)", data.JobName, data.IsRunning) }
+		class="rounded-lg bg-gray-900 shadow-lg overflow-hidden flex flex-col border border-gray-700 w-full h-full"
+		if data.IsRunning {
+			hx-get={ fmt.Sprintf("/joblogs?namespace=%s&runner=%s&job=%s", data.Namespace, data.Runner, data.JobName) }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML show:no-scroll"
+		}
+	>
+		<div class="flex items-center justify-between bg-gray-800 px-4 py-2 border-b border-gray-700 shrink-0">
+			<div class="flex items-center gap-3">
+				<span class="text-xs font-mono text-gray-400">{ data.JobName }</span>
+				if data.IsRunning {
+					<span class="flex h-2 w-2 relative" title="Live Log Streaming">
+						<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+						<span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+					</span>
+				}
+			</div>
+			<div class="flex items-center gap-4">
+				if data.IsRunning {
+					<button
+						type="button"
+						@click="toggleAutoscroll()"
+						:class="autoscroll ? 'text-green-400' : 'text-gray-500 hover:text-gray-300'"
+						class="transition-colors flex items-center gap-1.5 text-xs font-medium focus:outline-none"
+						title="Toggle Auto-scroll"
+					>
+						@IconArrowDown("h-4 w-4")
+						<span x-text="autoscroll ? 'Auto-scroll: ON' : 'Auto-scroll: OFF'"></span>
+					</button>
+				}
+				<button
+					type="button"
+					@click="closeLogs()"
+					class="text-gray-400 hover:text-white transition-colors focus:outline-none"
+				>
+					@IconXMark("h-5 w-5")
+				</button>
+			</div>
 		</div>
-		<div class="p-4 overflow-x-auto max-h-[500px] overflow-y-auto">
+		<div
+			x-ref="scrollBox"
+			id={ "scroll-" + data.JobName }
+			class="p-4 overflow-x-auto overflow-y-auto relative flex-1"
+		>
 			if data.Error != "" {
-				<div class="flex flex-col items-center justify-center py-8 text-gray-500">
+				<div class="flex flex-col items-center justify-center py-8 text-gray-500 h-full">
 					@IconInformationCircle("h-10 w-10 text-gray-600 mb-3")
 					<p class="text-sm font-mono text-center px-4">{ data.Error }</p>
 				</div>
 			} else {
-				<pre
-					class="text-xs font-mono text-gray-300 whitespace-pre-wrap break-all leading-relaxed"
-				>
+				<pre class="text-xs font-mono text-gray-300 whitespace-pre-wrap break-all leading-relaxed">
 					<code>{ data.Content }</code>
 				</pre>
 			}

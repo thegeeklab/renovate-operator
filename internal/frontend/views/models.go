@@ -33,7 +33,10 @@ type GitRepoViewData struct {
 }
 
 type JobLogData struct {
-	JobName string
-	Content string
-	Error   string
+	JobName   string
+	Namespace string
+	Runner    string
+	IsRunning bool
+	Content   string
+	Error     string
 }

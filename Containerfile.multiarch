@@ -1,4 +1,19 @@
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.1@sha256:c42e4d75186af6a44eb4159dcfac758ef1c05a7011a0052fe8a8df016d8e8fb9 AS build
+# ---------------------------------------------------------
+# 1. Frontend Build Stage
+# ---------------------------------------------------------
+FROM --platform=$BUILDPLATFORM docker.io/library/node:22-alpine AS frontend-build
+
+WORKDIR /workspace
+
+RUN apk add --no-cache make bash
+
+COPY . .
+RUN make frontend-build GO=true
+
+# ---------------------------------------------------------
+# 2. Go Build Stage
+# ---------------------------------------------------------
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.1@sha256:c42e4d75186af6a44eb4159dcfac758ef1c05a7011a0052fe8a8df016d8e8fb9 AS go-build
 
 ARG TARGETOS
 ARG TARGETARCH
@@ -6,19 +21,16 @@ ARG TARGETARCH
 ENV GOCACHE=/var/cache/go
 ENV GOMODCACHE=/var/cache/gomod
 
-ADD . /workspace
 WORKDIR /workspace
+COPY . .
 
-# Build
-# the GOARCH has not a default value to allow the binary be built according to the host where the command
-# was called. For example, if we call make docker-build in a local env which has the Apple Silicon M1 SO
-# the docker BUILDPLATFORM arg will be linux/arm64 when for Apple x86 it will be linux/amd64. Therefore,
-# by leaving it empty we can ensure that the container and binary shipped on it will have the same platform.
-RUN --mount=type=cache,target=/var/cache CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bin/manager cmd/main.go
-RUN --mount=type=cache,target=/var/cache CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} go build -a -o bin/discovery cmd/discovery/main.go
+RUN --mount=type=cache,target=/var/cache \
+    CGO_ENABLED=0 GOOS=${TARGETOS:-linux} GOARCH=${TARGETARCH} make build-go
 
-# Use distroless as minimal base image to package the manager binary
-# Refer to https://github.com/GoogleContainerTools/distroless for more details
+
+# ---------------------------------------------------------
+# 3. Final Runtime Stage
+# ---------------------------------------------------------
 FROM gcr.io/distroless/static:nonroot@sha256:e3f945647ffb95b5839c07038d64f9811adf17308b9121d8a2b87b6a22a80a39
 
 LABEL maintainer="Robert Kaussow <mail@thegeeklab.de>"
@@ -30,8 +42,12 @@ LABEL org.opencontainers.image.documentation="https://github.com/thegeeklab/reno
 
 WORKDIR /
 
-COPY --from=build /workspace/bin/manager .
-COPY --from=build /workspace/bin/discovery .
+# Copy binaries from the Go build stage
+COPY --from=go-build /workspace/bin/manager .
+COPY --from=go-build /workspace/bin/discovery .
+
+# Copy the built assets from the frontend build stage
+COPY --from=frontend-build /workspace/internal/frontend/static/dist ./internal/frontend/static/dist
 
 USER 65532:65532
 

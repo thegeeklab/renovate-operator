@@ -8,7 +8,6 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/component/runner"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
-	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -26,9 +25,8 @@ const ControllerName = "runner"
 // Reconciler reconciles a Runner object.
 type Reconciler struct {
 	client.Client
-	Scheme     *runtime.Scheme
-	LogManager *logstore.Manager
-	Broker     *frontend.SSEBroker
+	Scheme *runtime.Scheme
+	Broker *frontend.SSEBroker
 }
 
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
@@ -70,7 +68,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	runner, err := runner.NewReconciler(r.Client, r.Scheme, r.LogManager, r.Broker, rr, rc)
+	runner, err := runner.NewReconciler(r.Client, r.Scheme, r.Broker, rr, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

@@ -20,7 +20,6 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
 	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
-	"github.com/thegeeklab/renovate-operator/internal/logstore"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -45,8 +44,7 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	errWebhookTimeout   = errors.New("timeout waiting for webhook")
-	errUnknownFileStore = errors.New("unknown file store")
+	errWebhookTimeout = errors.New("timeout waiting for webhook")
 )
 
 const (
@@ -89,8 +87,6 @@ func main() {
 		tlsOpts              []func(*tls.Config)
 		watchNamespace       string
 		frontendAddr         string
-		logBackend           string
-		logBaseDir           string
 	)
 
 	flag.StringVar(&metricsAddr, "metrics-bind-address", "0", "The address the metrics endpoint binds to. "+
@@ -108,9 +104,6 @@ func main() {
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&watchNamespace, "watch-namespace", "", "The namespace the controller will watch.")
 	flag.StringVar(&frontendAddr, "frontend-bind-address", ":8082", "The address the web frontend endpoint binds to.")
-	flag.StringVar(&logBackend, "log-backend", "file", "The storage backend for logs (options: 'file', 's3')")
-	flag.StringVar(&logBaseDir, "log-base-dir", "/tmp/renovate-operator", "The directory to store job logs "+
-		"(used if log-backend=file)")
 
 	opts := zap.Options{
 		Development: false,
@@ -197,21 +190,6 @@ func main() {
 		os.Exit(1)
 	}
 
-	var backendStore logstore.Store
-
-	switch logBackend {
-	case "file":
-		backendStore = logstore.NewFileStore(logBaseDir)
-		setupLog.Info("Using local filesystem for log storage", "dir", logBaseDir)
-	case "s3":
-		setupLog.Error(fmt.Errorf("%w: %s", errUnknownFileStore, logBackend), "S3 log backend is not yet implemented")
-		os.Exit(1)
-	default:
-		setupLog.Error(fmt.Errorf("%w: %s", errUnknownFileStore, logBackend), "Invalid log backend specified")
-		os.Exit(1)
-	}
-
-	logManager := logstore.NewManager(clientset, backendStore)
 	sseBroker := frontend.NewSSEBroker()
 
 	setupFinished := make(chan struct{})
@@ -270,10 +248,9 @@ func main() {
 
 	// runner
 	if err = (&runner.Reconciler{
-		Client:     mgr.GetClient(),
-		Scheme:     mgr.GetScheme(),
-		LogManager: logManager,
-		Broker:     sseBroker,
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+		Broker: sseBroker,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", runner.ControllerName)
 		os.Exit(1)
@@ -337,10 +314,14 @@ func main() {
 
 	// Setup web frontend server if enabled
 	if frontendAddr != "0" {
+		frontendConfig := frontend.DefaultServerConfig()
+		frontendConfig.Addr = frontendAddr
+		frontendConfig.DevMode = os.Getenv("NODE_ENV") == "development"
+
 		frontendServer := frontend.NewServer(
-			frontend.ServerConfig{Addr: frontendAddr},
+			frontendConfig,
 			mgr.GetClient(),
-			logManager,
+			clientset,
 			sseBroker,
 		)
 

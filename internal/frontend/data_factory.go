@@ -2,13 +2,21 @@ package frontend
 
 import (
 	"context"
+	"errors"
+	"fmt"
+	"io"
 	"sort"
 	"time"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+var errPodNotFound = errors.New("no pods found for job")
 
 // ListOptions holds optional parameters for filtering and sorting data.
 type ListOptions struct {
@@ -20,13 +28,15 @@ type ListOptions struct {
 
 // DataFactory provides methods to fetch and transform data for both API and UI handlers.
 type DataFactory struct {
-	client client.Client
+	client    client.Client
+	clientset kubernetes.Interface
 }
 
 // NewDataFactory creates a new DataFactory instance.
-func NewDataFactory(client client.Client) *DataFactory {
+func NewDataFactory(client client.Client, clientset kubernetes.Interface) *DataFactory {
 	return &DataFactory{
-		client: client,
+		client:    client,
+		clientset: clientset,
 	}
 }
 
@@ -251,6 +261,38 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts
 	)
 
 	return result, nil
+}
+
+// GetJobLogs fetches the log stream from the most recent Pod created by the specified Job.
+func (df *DataFactory) GetJobLogs(ctx context.Context, namespace, jobName string) (io.ReadCloser, error) {
+	podList, err := df.clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
+		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
+	})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list pods for job %s: %w", jobName, err)
+	}
+
+	if len(podList.Items) == 0 {
+		return nil, fmt.Errorf("%w: %s", errPodNotFound, jobName)
+	}
+
+	// Sort to find the most recent pod
+	sort.Slice(podList.Items, func(i, j int) bool {
+		return podList.Items[i].CreationTimestamp.Before(&podList.Items[j].CreationTimestamp)
+	})
+	latestPod := podList.Items[len(podList.Items)-1]
+
+	// Request the log stream
+	req := df.clientset.CoreV1().Pods(namespace).GetLogs(latestPod.Name, &corev1.PodLogOptions{
+		// ⚡️ Removed Follow: true so io.ReadAll doesn't block forever
+	})
+
+	stream, err := req.Stream(ctx)
+	if err != nil {
+		return nil, fmt.Errorf("failed to open log stream for pod %s: %w", latestPod.Name, err)
+	}
+
+	return stream, nil
 }
 
 func getListOptions(opts []ListOptions) ListOptions {

@@ -8,24 +8,32 @@ import (
 	"github.com/gorilla/mux"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/views"
-	"github.com/thegeeklab/renovate-operator/internal/logstore"
+	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
+
+type FrontendAssets struct {
+	Styles  []string
+	Scripts []string
+}
 
 type WebHandler struct {
 	client      client.Client
 	dataFactory *DataFactory
-	logManager  *logstore.Manager
 	Broker      *SSEBroker
+	assets      FrontendAssets
 }
 
-func NewWebHandler(client client.Client, logManager *logstore.Manager, broker *SSEBroker) *WebHandler {
+func NewWebHandler(
+	client client.Client, clientset kubernetes.Interface, broker *SSEBroker, assets FrontendAssets,
+) *WebHandler {
 	return &WebHandler{
 		client:      client,
-		dataFactory: NewDataFactory(client),
-		logManager:  logManager,
+		dataFactory: NewDataFactory(client, clientset),
 		Broker:      broker,
+		assets:      assets,
 	}
 }
 
@@ -45,7 +53,7 @@ func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, component te
 	if isHxRequest && !isHxBoosted {
 		_ = component.Render(r.Context(), w)
 	} else {
-		_ = views.Layout(component).Render(r.Context(), w)
+		_ = views.Layout(h.assets.Styles, h.assets.Scripts, component).Render(r.Context(), w)
 	}
 }
 
@@ -205,24 +213,38 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := views.JobLogData{
-		JobName: job,
+		JobName:   job,
+		Namespace: namespace,
+		Runner:    runner,
 	}
 
-	stream, err := h.logManager.GetLogStream(ctx, namespace, "runner", runner, job)
+	var k8sJob batchv1.Job
+	if err := h.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: job}, &k8sJob); err == nil {
+		if k8sJob.Status.CompletionTime == nil && k8sJob.Status.Failed == 0 {
+			data.IsRunning = true
+		}
+	}
+
+	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
 	if err != nil {
-		data.Error = "Logs are no longer available. They may have been purged by " +
-			"the background job or the Pod was deleted before archiving completed."
+		data.Error = "Logs are no longer available. The pods may have been garbage collected by Kubernetes."
+
+		if data.IsRunning {
+			data.Error = ""
+			data.Content = "Waiting for pods to initialize..."
+		}
 	} else {
 		defer stream.Close()
 
 		content, ioErr := io.ReadAll(stream)
 		if ioErr != nil {
-			data.Error = "Failed to read log stream from storage."
+			data.Error = "Failed to read log stream from pod."
 		} else {
 			data.Content = string(content)
 		}
 	}
 
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
 	w.Header().Set("Content-Type", "text/html")
 	_ = views.JobLogs(data).Render(r.Context(), w)
 }
