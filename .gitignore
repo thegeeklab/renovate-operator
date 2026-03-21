@@ -6,6 +6,8 @@
 *.dylib
 bin/
 Dockerfile.cross
+node_modules/
+dist/
 
 # Test binary, built with `go test -c`
 *.test
@@ -21,7 +23,7 @@ go.work
 
 # editor and IDE paraphernalia
 .idea
-.vscode
+.env*
 *.swp
 *.swo
 *~
