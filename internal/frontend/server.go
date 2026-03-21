@@ -15,13 +15,20 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var frontendLog = logf.Log.WithName("frontend")
-
 var (
+	frontendLog = logf.Log.WithName("frontend")
+
 	errAssetManifest    = errors.New("could not read asset manifest")
 	errMainEntryMissing = errors.New("main entry point not found in asset manifest")
 )
 
+const (
+	DefaultReadTimeout  = 10 * time.Second
+	DefaultWriteTimeout = 30 * time.Second
+	DefaultIdleTimeout  = 120 * time.Second
+)
+
+// ServerConfig holds configuration for the HTTP server.
 type ServerConfig struct {
 	Addr         string
 	ReadTimeout  time.Duration
@@ -30,12 +37,13 @@ type ServerConfig struct {
 	DevMode      bool
 }
 
-const (
-	DefaultReadTimeout  = 10 * time.Second
-	DefaultWriteTimeout = 30 * time.Second
-	DefaultIdleTimeout  = 120 * time.Second
-)
+// assetManifest is used internally to unmarshal the bundler's build output.
+type assetManifest map[string]struct {
+	File string   `json:"file"`
+	CSS  []string `json:"css"`
+}
 
+// DefaultServerConfig returns default server configuration.
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
 		Addr:         ":8080",
@@ -46,12 +54,7 @@ func DefaultServerConfig() ServerConfig {
 	}
 }
 
-// assetManifest is used internally to unmarshal the bundler's build output.
-type assetManifest map[string]struct {
-	File string   `json:"file"`
-	CSS  []string `json:"css"`
-}
-
+// Server manages the HTTP server.
 type Server struct {
 	config           ServerConfig
 	assets           FrontendAssets
