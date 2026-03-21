@@ -41,7 +41,6 @@ var _ = Describe("DataFactory", func() {
 					Namespace:         "test-namespace",
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
-				Status: renovatev1beta1.RenovatorStatus{Ready: true},
 			},
 			&renovatev1beta1.GitRepo{
 				ObjectMeta: metav1.ObjectMeta{

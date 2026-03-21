@@ -47,9 +47,6 @@ var _ = Describe("WebHandler", func() {
 					UID:               renovator,
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
-				Status: renovatev1beta1.RenovatorStatus{
-					Ready: true,
-				},
 			},
 			&renovatev1beta1.GitRepo{
 				ObjectMeta: metav1.ObjectMeta{
@@ -63,9 +60,6 @@ var _ = Describe("WebHandler", func() {
 				Spec: renovatev1beta1.GitRepoSpec{
 					WebhookID: "12345",
 				},
-				Status: renovatev1beta1.GitRepoStatus{
-					Ready: true,
-				},
 			},
 			&renovatev1beta1.Runner{
 				ObjectMeta: metav1.ObjectMeta{
@@ -76,9 +70,6 @@ var _ = Describe("WebHandler", func() {
 					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
-				Status: renovatev1beta1.RunnerStatus{
-					Ready: true,
-				},
 			},
 			&renovatev1beta1.Discovery{
 				ObjectMeta: metav1.ObjectMeta{
@@ -88,9 +79,6 @@ var _ = Describe("WebHandler", func() {
 						renovatev1beta1.LabelRenovator: string(renovator),
 					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
-				},
-				Status: renovatev1beta1.DiscoveryStatus{
-					Ready: true,
 				},
 			},
 		}

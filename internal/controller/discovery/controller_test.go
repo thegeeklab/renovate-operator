@@ -78,9 +78,6 @@ var _ = Describe("Discovery Controller", func() {
 			dd := &DiscoveryCustomDefaulter{}
 			Expect(dd.Default(ctx, resource)).To(Succeed())
 			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
-
-			resource.Status.Ready = false
-			Expect(k8sClient.Status().Update(ctx, resource)).To(Succeed())
 		})
 
 		AfterEach(func() {

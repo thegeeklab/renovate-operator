@@ -168,7 +168,6 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		Name:      repo.Name,
 		Namespace: repo.Namespace,
 		WebhookID: repo.Spec.WebhookID,
-		Ready:     repo.Status.Ready,
 		CreatedAt: repo.CreationTimestamp.Time,
 	}
 

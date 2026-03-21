@@ -69,11 +69,16 @@ deps:
 	$(GO) install $(YAMLFMT_PACKAGE)
 	$(GO) install $(GOTESTSUM_PACKAGE)
 	$(GO) install $(TEMPL_PACKAGE)
+	@$(MAKE) --no-print-directory frontend-deps
 
 .PHONY: frontend-deps
 frontend-deps: ## Install frontend dependencies.
 	@echo "Installing frontend dependencies..."
 	npm install
+
+.PHONY: eslint
+eslint: ## Run eslint.
+	npm run lint
 
 .PHONY: frontend-build
 frontend-build: frontend-deps ## Build the frontend assets for production.
@@ -173,7 +178,7 @@ golangci-lint:
 	$(shell go env GOPATH)/bin/golangci-lint run
 
 .PHONY: lint
-lint: yamlfmt-dry golangci-lint
+lint: yamlfmt-dry golangci-lint eslint
 
 ##@ Build
 
