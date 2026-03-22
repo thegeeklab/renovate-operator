@@ -81,7 +81,6 @@ var _ = Describe("Renovator Controller", func() {
 		})
 
 		AfterEach(func() {
-			// Cleanup the resource instance after each test
 			resource := &renovatev1beta1.Renovator{}
 			rd := &RenovatorCustomDefaulter{}
 			Expect(rd.Default(ctx, resource)).To(Succeed())
@@ -106,10 +105,8 @@ var _ = Describe("Renovator Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(BeZero())
 
-			// Verify the resource was reconciled successfully
 			resource := &renovatev1beta1.Renovator{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
-			// Note: Status.Ready might not be set immediately, so we just verify no error occurred
 		})
 
 		It("should handle non-existent resource gracefully", func() {
@@ -134,7 +131,7 @@ var _ = Describe("Renovator Controller", func() {
 
 		It("should handle errors from renovator component", func() {
 			By("Testing error handling when dependent resources are missing")
-			// Create a mock client that returns NotFound for dependent resources
+
 			mockClient := &mockErrorClient{
 				Client: k8sClient,
 			}
@@ -144,7 +141,6 @@ var _ = Describe("Renovator Controller", func() {
 				Scheme: k8sClient.Scheme(),
 			}
 
-			// The mock client returns NotFound for dependent resources, which should be handled gracefully
 			result, err := errorReconciler.Reconcile(ctx, reconcile.Request{
 				NamespacedName: typeNamespacedName,
 			})
@@ -154,10 +150,7 @@ var _ = Describe("Renovator Controller", func() {
 
 		It("should verify resource cleanup in AfterEach", func() {
 			By("Verifying resource cleanup")
-			// This test verifies that resources are properly cleaned up after each test
-			// We'll create an additional resource and verify it gets cleaned up
 
-			// Create an additional test resource
 			additionalResource := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "additional-test-resource",
@@ -186,19 +179,16 @@ var _ = Describe("Renovator Controller", func() {
 			additionalResource.Spec.Schedule = "0 0 * * *"
 			Expect(k8sClient.Create(ctx, additionalResource)).To(Succeed())
 
-			// Verify the resource was created
 			createdResource := &renovatev1beta1.Renovator{}
 			additionalName := types.NamespacedName{Name: "additional-test-resource", Namespace: "default"}
 			Expect(k8sClient.Get(ctx, additionalName, createdResource)).To(Succeed())
 
-			// Clean up the additional resource manually since it's not handled by AfterEach
 			Expect(k8sClient.Delete(ctx, createdResource)).To(Succeed())
 		})
 
 		It("should prevent double reconciliation when annotation is removed", func() {
 			By("Testing that annotation removal doesn't trigger re-reconciliation")
 
-			// Create a Renovator with operation annotation
 			rr := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-no-double-reconcile",
@@ -225,12 +215,10 @@ var _ = Describe("Renovator Controller", func() {
 				},
 			}
 
-			// Apply defaults
 			webhook := &RenovatorCustomDefaulter{}
 			Expect(webhook.Default(ctx, rr)).To(Succeed())
 			rr.Spec.Schedule = "0 0 * * *"
 
-			// Create the Renovator resource
 			doubleReconcileTestName := types.NamespacedName{
 				Name:      "test-no-double-reconcile",
 				Namespace: "default",
@@ -238,7 +226,6 @@ var _ = Describe("Renovator Controller", func() {
 
 			Expect(k8sClient.Create(ctx, rr)).To(Succeed())
 
-			// First reconciliation - should process the annotation
 			controllerReconciler := &Reconciler{
 				Client: k8sClient,
 				Scheme: k8sClient.Scheme(),
@@ -250,7 +237,6 @@ var _ = Describe("Renovator Controller", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result1.RequeueAfter).To(BeZero())
 
-			// Verify the annotation was removed from the Renovator
 			updatedRenovator := &renovatev1beta1.Renovator{}
 			Expect(k8sClient.Get(ctx, doubleReconcileTestName, updatedRenovator)).To(Succeed())
 
@@ -281,13 +267,11 @@ var _ = Describe("Renovator Controller", func() {
 				!renovator.HasRenovatorOperationDiscover(oldRenovator.Annotations)
 			Expect(shouldTrigger).To(BeFalse())
 
-			// Clean up
 			Expect(k8sClient.Delete(ctx, rr)).To(Succeed())
 		})
 	})
 })
 
-// mockErrorClient is a mock client that returns errors for testing.
 type mockErrorClient struct {
 	client.Client
 }

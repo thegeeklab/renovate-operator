@@ -1576,6 +1576,7 @@ rules:
       - ""
     resources:
       - configmaps
+      - secrets
       - serviceaccounts
     verbs:
       - create
@@ -2030,7 +2031,6 @@ spec:
             - --leader-elect
             - --health-probe-bind-address=:8081
             - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
-            - --log-base-dir=/tmp/runner-logs
           command:
             - /manager
             - -zap-devel

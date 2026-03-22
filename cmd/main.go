@@ -17,6 +17,7 @@ import (
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
+	"github.com/thegeeklab/renovate-operator/internal/controller/gitrepo"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
 	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
@@ -57,9 +58,9 @@ const (
 
 // Namespace Scoped
 //nolint:lll
-// +kubebuilder:rbac:groups="coordination.k8s.io",namespace=system,resources=leases,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",namespace=system,resources=events,verbs=create;patch
-// +kubebuilder:rbac:groups="",namespace=system,resources=secrets,verbs=create;delete;get;update;patch;list;watch
+// +kubebuilder:rbac:groups=coordination.k8s.io,namespace=system,resources=leases,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,namespace=system,resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups=core,namespace=system,resources=secrets,verbs=create;delete;get;update;patch;list;watch
 
 // Cluster Scoped
 //nolint:lll
@@ -253,6 +254,15 @@ func main() {
 		Broker: sseBroker,
 	}).SetupWithManager(mgr); err != nil {
 		setupLog.Error(err, "Unable to create controller", "controller", runner.ControllerName)
+		os.Exit(1)
+	}
+
+	// gitrepo
+	if err = (&gitrepo.Reconciler{
+		Client: mgr.GetClient(),
+		Scheme: mgr.GetScheme(),
+	}).SetupWithManager(mgr); err != nil {
+		setupLog.Error(err, "Unable to create controller", "controller", gitrepo.ControllerName)
 		os.Exit(1)
 	}
 

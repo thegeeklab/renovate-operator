@@ -41,7 +41,6 @@ func NewReconciler(
 func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
-	// Define the reconciliation order
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
 		r.reconcileRole,
 		r.reconcileRoleBinding,
@@ -50,7 +49,6 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		r.reconcileGitRepos,
 	}
 
-	// Execute each reconciliation step
 	for _, reconcileFunc := range reconcileFuncs {
 		res, err := reconcileFunc(ctx)
 		if err != nil {

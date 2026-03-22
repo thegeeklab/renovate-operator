@@ -209,7 +209,6 @@ var _ = Describe("Discovery Controller", func() {
 	})
 })
 
-// mockErrorClient is a mock client that returns errors for testing.
 type mockErrorClient struct {
 	client.Client
 }
