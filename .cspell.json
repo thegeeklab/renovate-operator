@@ -64,7 +64,8 @@
     "Heroicon",
     "evenodd",
     "vite",
-    "alpinejs"
+    "alpinejs",
+    "finalizer"
   ],
   "ignorePaths": [
     ".woodpecker",

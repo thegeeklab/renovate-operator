@@ -24,6 +24,8 @@ const (
 	// OperationRenovate is the value used to trigger immediate renovate run.
 	OperationRenovate = "renovate"
 
+	FinalizerGitRepoWebhook = "renovate.thegeeklab.de/webhook-cleanup"
+
 	// ValueTrue represents the string boolean "true" for labels and annotations.
 	ValueTrue = "true"
 	// ValueFalse represents the string boolean "false" for labels and annotations.

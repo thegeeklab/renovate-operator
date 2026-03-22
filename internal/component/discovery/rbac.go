@@ -36,23 +36,19 @@ func (r *Reconciler) reconcileRole(ctx context.Context) (*ctrl.Result, error) {
 }
 
 func (r *Reconciler) updateRole(role *rbacv1.Role) error {
-	// Apply least privilege principle
 	role.Rules = []rbacv1.PolicyRule{
 		{
-			// Allow reading the renovator instance
 			APIGroups:     []string{renovatev1beta1.GroupVersion.Group},
 			Resources:     []string{renovatev1beta1.ResourceRenovators.String()},
 			ResourceNames: []string{r.instance.Name},
 			Verbs:         []string{"get"},
 		},
 		{
-			// Allow reading discoveries
 			APIGroups: []string{renovatev1beta1.GroupVersion.Group},
 			Resources: []string{renovatev1beta1.ResourceDiscoveries.String()},
 			Verbs:     []string{"get", "list"},
 		},
 		{
-			// Allow managing configmaps
 			APIGroups: []string{corev1.SchemeGroupVersion.Group},
 			Resources: []string{corev1.ResourceConfigMaps.String()},
 			Verbs:     []string{"get", "list", "create", "update", "patch", "delete"},
