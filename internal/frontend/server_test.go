@@ -46,13 +46,19 @@ var _ = Describe("Server", func() {
 		})
 	})
 
-	Describe("Start and Stop", func() {
-		It("should start and stop the server", func() {
+	Describe("Start and Shutdown", func() {
+		It("should start and gracefully shut down the server when context is cancelled", func() {
 			config.Addr = "127.0.0.1:18082"
 			server = NewServer(config, fakeClient, nil, broker)
 
-			err := server.Start()
-			Expect(err).NotTo(HaveOccurred())
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			errChan := make(chan error, 1)
+
+			go func() {
+				errChan <- server.Start(ctx)
+			}()
 
 			time.Sleep(100 * time.Millisecond)
 
@@ -61,11 +67,13 @@ var _ = Describe("Server", func() {
 				defer resp.Body.Close()
 			}
 
-			ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-			defer cancel()
-
-			err = server.Stop(ctx)
 			Expect(err).NotTo(HaveOccurred())
+
+			cancel()
+
+			var startErr error
+			Eventually(errChan, 3*time.Second).Should(Receive(&startErr))
+			Expect(startErr).NotTo(HaveOccurred())
 		})
 	})
 

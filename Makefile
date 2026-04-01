@@ -12,10 +12,13 @@ MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
 TEMPL_PACKAGE ?= github.com/a-h/templ/cmd/templ@latest
 
 # Image URL to use all building image targets
-IMG ?= docker.io/thegeeklab/renovate-operator:devel
+IMG ?= docker.io/thegeeklab/renovate-operator:latest
 
 # Toggle for Vite dev server during 'make run'
 FRONTEND_DEV ?= false
+
+# Kind Cluster Name
+KIND_CLUSTER ?= renovate-operator
 
 GO ?= go
 SOURCES ?= $(shell find . -name "*.go" -type f ! -path "*/mocks/*" ! -name "*_templ.go")
@@ -136,15 +139,18 @@ test: setup-envtest ## Run tests without setup.
 test-full: manifests generate fmt vet setup-envtest test ## Run tests with full setup.
 
 .PHONY: kind-create
-kind-create: ## Create a Kind cluster from hack/kind.yaml.
+kind-create: cloud-provider-kind ## Create a Kind cluster and start cloud-provider-kind.
 	$(call check-kind-installed)
-	@kind get clusters | grep -q renovate-operator || { \
+	@kind get clusters | grep -q $(KIND_CLUSTER) || { \
 		echo "Creating Kind cluster..."; \
-		kind create cluster --config hack/kind.yaml --name $(KIND_CLUSTER) || { \
-			echo "Failed to create Kind cluster."; \
-			exit 1; \
-		}; \
+		kind create cluster --config hack/kind.yaml --name $(KIND_CLUSTER) || exit 1; \
 	}
+	@if [ ! -f $(LOCALBIN)/cp-kind.pid ] || ! kill -0 $$(cat $(LOCALBIN)/cp-kind.pid) 2>/dev/null; then \
+		echo "Starting cloud-provider-kind in background..."; \
+		nohup sudo $(CLOUD_PROVIDER_KIND) --enable-lb-port-mapping > $(LOCALBIN)/cp-kind.log 2>&1 & echo $$! > $(LOCALBIN)/cp-kind.pid; \
+	else \
+		echo "cloud-provider-kind is already running."; \
+	fi
 
 .PHONY: kind-load
 kind-load: ## Load the manager image into the Kind cluster.
@@ -153,19 +159,18 @@ kind-load: ## Load the manager image into the Kind cluster.
 	kind load docker-image ${IMG} --name $(KIND_CLUSTER)
 
 .PHONY: kind-delete
-kind-delete: ## Delete the Kind cluster.
+kind-delete: ## Delete the Kind cluster and stop cloud-provider-kind.
 	$(call check-kind-installed)
 	@kind get clusters | grep -q $(KIND_CLUSTER) && { \
 		echo "Deleting Kind cluster..."; \
-		kind delete cluster --name $(KIND_CLUSTER) || { \
-			echo "Failed to delete Kind cluster."; \
-			exit 1; \
-		}; \
+		kind delete cluster --name $(KIND_CLUSTER) || exit 1; \
 	} || echo "No Kind cluster named $(KIND_CLUSTER) exists."
+	@if [ -f $(LOCALBIN)/cp-kind.pid ]; then \
+		echo "Stopping cloud-provider-kind..."; \
+		kill $$(cat $(LOCALBIN)/cp-kind.pid) 2>/dev/null || true; \
+		rm -f $(LOCALBIN)/cp-kind.pid; \
+	fi
 
-# The default setup assumes Kind is pre-installed and builds/loads the Manager Docker image locally.
-# Prometheus is installed by default; skip with:
-# - PROMETHEUS_INSTALL_SKIP=true
 .PHONY: test-e2e
 test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
 	$(call check-kind-installed)
@@ -234,12 +239,12 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build config/default | $(KUBECTL) apply -f -
+	$(KUSTOMIZE) build --enable-helm config/dev | $(KUBECTL) apply -f -
 	@$(MAKE) --no-print-directory yamlfmt
 
 .PHONY: undeploy
 undeploy: kustomize ## Undeploy controller from the K8s cluster specified in ~/.kube/config. Call with IGNORE_NOT_FOUND=true to ignore resource not found errors during deletion.
-	$(KUSTOMIZE) build config/default | $(KUBECTL) delete --ignore-not-found=$(IGNORE_NOT_FOUND) -f -
+	$(KUSTOMIZE) build config/dev | $(KUBECTL) delete --ignore-not-found=$(IGNORE_NOT_FOUND) -f -
 
 ##@ Dependencies
 
@@ -254,14 +259,16 @@ KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
 GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+CLOUD_PROVIDER_KIND = $(LOCALBIN)/cloud-provider-kind
 
 ## Tool Versions
-KUSTOMIZE_VERSION ?= v5.5.0
+KUSTOMIZE_VERSION ?= v5.8.1
 CONTROLLER_TOOLS_VERSION ?= v0.17.1
 #ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
 #ENVTEST_K8S_VERSION is the version of Kubernetes to use for setting up ENVTEST binaries (i.e. 1.31)
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
+CLOUD_PROVIDER_KIND_VERSION ?= latest
 
 .PHONY: kustomize
 kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
@@ -290,6 +297,11 @@ $(ENVTEST): $(LOCALBIN)
 golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
 $(GOLANGCI_LINT): $(LOCALBIN)
 	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_PACKAGE_VERSION))
+
+.PHONY: cloud-provider-kind
+cloud-provider-kind: $(CLOUD_PROVIDER_KIND) ## Download cloud-provider-kind locally if necessary.
+$(CLOUD_PROVIDER_KIND): $(LOCALBIN)
+	$(call go-install-tool,$(CLOUD_PROVIDER_KIND),sigs.k8s.io/cloud-provider-kind,$(CLOUD_PROVIDER_KIND_VERSION))
 
 # go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
 # $1 - target path with name of binary

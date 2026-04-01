@@ -14,12 +14,13 @@ var (
 	ErrMissingSignature = errors.New("missing X-Gitea-Signature header")
 )
 
-type Processor struct{}
+type Receiver struct{}
 
-func NewProcessor() *Processor {
-	return &Processor{}
+func NewReceiver() *Receiver {
+	return &Receiver{}
 }
 
+//nolint:tagliatelle // Gitea API uses snake_case
 type pushPayload struct {
 	Ref        string `json:"ref"`
 	Repository struct {
@@ -27,7 +28,7 @@ type pushPayload struct {
 	} `json:"repository"`
 }
 
-func (p *Processor) Validate(req *http.Request, secretToken, body []byte) error {
+func (p *Receiver) Validate(req *http.Request, secretToken, body []byte) error {
 	signature := req.Header.Get("X-Gitea-Signature")
 	if signature == "" {
 		return ErrMissingSignature
@@ -44,7 +45,7 @@ func (p *Processor) Validate(req *http.Request, secretToken, body []byte) error 
 	return nil
 }
 
-func (p *Processor) Parse(req *http.Request, body []byte) (bool, error) {
+func (p *Receiver) Parse(req *http.Request, body []byte) (bool, error) {
 	event := req.Header.Get("X-Gitea-Event")
 	if event != "push" {
 		return false, nil

@@ -133,32 +133,38 @@ func (s *Server) loadFrontendAssets() error {
 	}
 
 	s.assets.Scripts = []string{"/static/" + entry.File}
+	s.assets.Styles = []string{}
 
 	if len(entry.CSS) > 0 {
 		s.assets.Styles = []string{"/static/" + entry.CSS[0]}
-	} else {
-		s.assets.Styles = []string{}
 	}
 
 	return nil
 }
 
 // Start runs the HTTP server in a separate goroutine.
-func (s *Server) Start() error {
-	go func() {
-		frontendLog.Info("Starting HTTP server", "address", s.config.Addr)
+func (s *Server) Start(ctx context.Context) error {
+	const shutdownTimeout = 5 * time.Second
 
-		if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
-			frontendLog.Error(err, "HTTP server error")
+	frontendLog.Info("Starting Frontend server", "address", s.config.Addr)
+
+	go func() {
+		<-ctx.Done()
+		frontendLog.Info("Shutting down Frontend server")
+
+		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
+		defer cancel()
+
+		if err := s.server.Shutdown(shutdownCtx); err != nil {
+			frontendLog.Error(err, "Frontend server shutdown error")
 		}
 	}()
 
+	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+		frontendLog.Error(err, "Frontend server error")
+
+		return err
+	}
+
 	return nil
-}
-
-// Stop gracefully shuts down the HTTP server.
-func (s *Server) Stop(ctx context.Context) error {
-	frontendLog.Info("Shutting down HTTP server")
-
-	return s.server.Shutdown(ctx)
 }

@@ -48,6 +48,7 @@ linters:
     - makezero
     - misspell
     - mnd
+    - modernize
     - musttag
     - nakedret
     - nestif

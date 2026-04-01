@@ -25,8 +25,9 @@ var _ = Describe("GitRepo Controller", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		reconciler = &Reconciler{
-			Client: k8sClient,
-			Scheme: k8sClient.Scheme(),
+			Client:      k8sClient,
+			Scheme:      k8sClient.Scheme(),
+			ExternalURL: "https://renovate.example.com",
 		}
 	})
 
@@ -101,8 +102,6 @@ var _ = Describe("GitRepo Controller", func() {
 
 		It("should resolve RenovateConfig via labels and attempt reconciliation", func() {
 			result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
-			// Expect an error because the Secret for the Token is missing in this mocked environment,
-			// which proves the component reconciler was successfully invoked.
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to fetch secret for provider token"))
 			Expect(result).To(Equal(reconcile.Result{}))

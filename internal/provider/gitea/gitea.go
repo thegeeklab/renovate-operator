@@ -83,7 +83,7 @@ func (p *Provider) EnsureWebhook(ctx context.Context, repoName, webhookURL, secr
 				"secret":       secret,
 			},
 			Events: desiredEvents,
-			Active: gitea.OptionalBool(true),
+			Active: new(true),
 		}
 
 		_, err := p.client.EditRepoHook(owner, repo, existingHook.ID, editOpts)
