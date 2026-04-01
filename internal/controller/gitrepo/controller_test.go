@@ -119,6 +119,29 @@ var _ = Describe("GitRepo Controller", func() {
 		Expect(result).To(Equal(reconcile.Result{}))
 	})
 
+	It("should handle a GitRepo with no matching RenovateConfig gracefully", func() {
+		unlabeledRepo := &renovatev1beta1.GitRepo{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "unlabeled-repo",
+				Namespace: "default",
+			},
+			Spec: renovatev1beta1.GitRepoSpec{
+				Name: "org/repo",
+			},
+		}
+		Expect(k8sClient.Create(ctx, unlabeledRepo)).To(Succeed())
+
+		defer func() {
+			_ = k8sClient.Delete(ctx, unlabeledRepo)
+		}()
+
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{
+			NamespacedName: types.NamespacedName{Name: "unlabeled-repo", Namespace: "default"},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+	})
+
 	It("should handle missing GitRepo resource gracefully", func() {
 		nonExistentName := types.NamespacedName{
 			Name:      "non-existent-repo",

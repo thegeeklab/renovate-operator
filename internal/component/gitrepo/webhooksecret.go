@@ -6,6 +6,8 @@ import (
 	"encoding/hex"
 	"fmt"
 
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -22,10 +24,14 @@ func (r *Reconciler) reconcileWebhookSecret(ctx context.Context) (*ctrl.Result, 
 		return &ctrl.Result{}, nil
 	}
 
-	secretName := fmt.Sprintf("%s-webhook-secret", r.instance.Name)
+	secretName, err := k8s.DeterministicSubdomainName(r.instance.Name, "-webhook-secret")
+	if err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to generate webhook secret name: %w", err)
+	}
+
 	webhookSecret := &corev1.Secret{}
 
-	err := r.Get(ctx, client.ObjectKey{Name: secretName, Namespace: r.instance.Namespace}, webhookSecret)
+	err = r.Get(ctx, client.ObjectKey{Name: secretName, Namespace: r.instance.Namespace}, webhookSecret)
 	if err == nil {
 		return &ctrl.Result{}, nil
 	}
@@ -63,7 +69,7 @@ func (r *Reconciler) reconcileWebhookSecret(ctx context.Context) (*ctrl.Result, 
 // updateSecret configures the secret spec for the webhook.
 func (r *Reconciler) updateSecret(secret *corev1.Secret, token string) {
 	secret.Data = map[string][]byte{
-		"secret": []byte(token),
+		renovatev1beta1.WebhookSecretDataKey: []byte(token),
 	}
 }
 

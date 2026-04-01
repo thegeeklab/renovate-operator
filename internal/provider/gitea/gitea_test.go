@@ -69,7 +69,7 @@ var _ = Describe("Gitea Provider", func() {
 
 			var err error
 
-			provider, err = NewProvider(mockServer.URL, "dummy-token")
+			provider, err = NewProvider(ctx, mockServer.URL, "dummy-token")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(provider).NotTo(BeNil())
 			Expect(provider.client).NotTo(BeNil())

@@ -2,6 +2,7 @@ package gitrepo
 
 import (
 	"context"
+	"errors"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/gitrepo"
@@ -45,6 +46,12 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, gr)
 	if err != nil {
+		if errors.Is(err, controller.ErrNoRenovateConfigFound) {
+			log.V(1).Info("No RenovateConfig found for GitRepo, skipping", "object", req.NamespacedName)
+
+			return ctrl.Result{}, nil
+		}
+
 		return ctrl.Result{}, err
 	}
 
@@ -88,15 +95,16 @@ func (r *Reconciler) resolveRenovateConfig(
 	}
 
 	configList := &renovatev1beta1.RenovateConfigList{}
-	if err := r.List(ctx, configList, client.InNamespace(namespace)); err != nil {
+	if err := r.List(ctx, configList,
+		client.InNamespace(namespace),
+		client.MatchingLabels{renovatev1beta1.LabelRenovator: renovator},
+	); err != nil {
 		return client.ObjectKey{}, err
 	}
 
-	for _, config := range configList.Items {
-		if config.Labels != nil && config.Labels[renovatev1beta1.LabelRenovator] == renovator {
-			return client.ObjectKey{Namespace: namespace, Name: config.Name}, nil
-		}
+	if len(configList.Items) == 0 {
+		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
 	}
 
-	return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+	return client.ObjectKey{Namespace: namespace, Name: configList.Items[0].Name}, nil
 }

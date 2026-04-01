@@ -12,7 +12,7 @@ import (
 // reconcileGitRepo manages the finalizer for the GitRepo resource.
 func (r *Reconciler) reconcileGitRepo(ctx context.Context) (*ctrl.Result, error) {
 	if !r.instance.DeletionTimestamp.IsZero() {
-		if r.instance.Spec.WebhookID == "" &&
+		if r.instance.Status.WebhookID == "" &&
 			controllerutil.ContainsFinalizer(r.instance, renovatev1beta1.FinalizerGitRepoWebhook) {
 			_, err := k8s.CreateOrUpdate(ctx, r.Client, r.instance, r.renovate, func() error {
 				controllerutil.RemoveFinalizer(r.instance, renovatev1beta1.FinalizerGitRepoWebhook)

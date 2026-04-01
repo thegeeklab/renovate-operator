@@ -11,13 +11,13 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/internal/provider/mocks"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
 var _ = Describe("GitRepo Component - Webhook Logic", func() {
@@ -65,13 +65,14 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			},
 		}
 
-		secretName = fmt.Sprintf("%s-webhook-secret", instance.Name)
+		secretName, _ = k8s.DeterministicSubdomainName(instance.Name, "-webhook-secret")
 		externalURL = "https://renovate.example.com"
 		expectedWebhookURL = fmt.Sprintf("%s/hooks/%s/%s", externalURL, instance.Namespace, instance.Name)
 
 		fakeClient = fake.NewClientBuilder().
 			WithScheme(scheme).
 			WithObjects(instance).
+			WithStatusSubresource(&renovatev1beta1.GitRepo{}).
 			Build()
 
 		var err error
@@ -100,13 +101,13 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 						Namespace: instance.Namespace,
 					},
 					Data: map[string][]byte{
-						"secret": []byte("test-secret-value"),
+						renovatev1beta1.WebhookSecretDataKey: []byte("test-secret-value"),
 					},
 				}
 				Expect(fakeClient.Create(ctx, webhookSecret)).To(Succeed())
 			})
 
-			It("should successfully ensure webhook and update the instance WebhookID", func() {
+			It("should successfully ensure webhook and update the instance WebhookID in status", func() {
 				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", expectedWebhookURL, "test-secret-value").
 					Return("mock-id-123", nil).
 					Once()
@@ -116,13 +117,13 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 				updated := &renovatev1beta1.GitRepo{}
 				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
-				Expect(updated.Spec.WebhookID).To(Equal("mock-id-123"))
+				Expect(updated.Status.WebhookID).To(Equal("mock-id-123"))
 			})
 
 			It("should not update the instance if the WebhookID is already correct", func() {
-				instance.Spec.WebhookID = "mock-id-123"
-				Expect(controllerutil.SetControllerReference(renovate, instance, scheme)).To(Succeed())
-				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+				instance.Status.WebhookID = "mock-id-123"
+				Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
 				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", expectedWebhookURL, "test-secret-value").
 					Return("mock-id-123", nil).
@@ -140,8 +141,9 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			})
 
 			It("should update the instance if the WebhookID changed on the provider (manual deletion recovery)", func() {
-				instance.Spec.WebhookID = "old-id-999"
-				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+				instance.Status.WebhookID = "old-id-999"
+				Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
 				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", expectedWebhookURL, "test-secret-value").
 					Return("new-id-124", nil).
@@ -152,7 +154,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 				updated := &renovatev1beta1.GitRepo{}
 				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
-				Expect(updated.Spec.WebhookID).To(Equal("new-id-124"))
+				Expect(updated.Status.WebhookID).To(Equal("new-id-124"))
 			})
 		})
 
@@ -181,15 +183,20 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 			updated := &renovatev1beta1.GitRepo{}
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
-			Expect(updated.Spec.WebhookID).To(BeEmpty())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
 		})
 	})
 
 	Describe("deleteWebhook", func() {
-		It("should successfully delete webhook and clear the WebhookID", func() {
-			controllerutil.AddFinalizer(instance, renovatev1beta1.FinalizerGitRepoWebhook)
-			instance.Spec.WebhookID = "mock-id-123"
+		It("should successfully delete webhook and clear the WebhookID in status", func() {
+			instance.Status.WebhookID = "mock-id-123"
+			instance.Finalizers = append(instance.Finalizers, renovatev1beta1.FinalizerGitRepoWebhook)
 			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+
+			instance.Status.WebhookID = "mock-id-123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
 
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
@@ -203,21 +210,23 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 			updated := &renovatev1beta1.GitRepo{}
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
-			Expect(updated.Spec.WebhookID).To(BeEmpty())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
 		})
 
 		It("should return early if the WebhookID is empty", func() {
-			instance.Spec.WebhookID = ""
-			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
-
 			_, err := reconciler.deleteWebhook(ctx)
 			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should clear the WebhookID gracefully if the provider is not implemented", func() {
-			controllerutil.AddFinalizer(instance, renovatev1beta1.FinalizerGitRepoWebhook)
-			instance.Spec.WebhookID = "123"
+			instance.Status.WebhookID = "123"
+			instance.Finalizers = append(instance.Finalizers, renovatev1beta1.FinalizerGitRepoWebhook)
 			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+
+			instance.Status.WebhookID = "123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
 
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
@@ -233,7 +242,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 			updated := &renovatev1beta1.GitRepo{}
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
-			Expect(updated.Spec.WebhookID).To(BeEmpty())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
 		})
 	})
 })
