@@ -2,7 +2,6 @@ package containers
 
 import (
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 )
 
 // ContainerMutator defines a function type for mutating container configurations.
@@ -107,7 +106,7 @@ func WithConfigMapVolume(name, configMapName string) VolumeMutator {
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				ConfigMap: &corev1.ConfigMapVolumeSource{
-					DefaultMode: ptr.To(corev1.ConfigMapVolumeSourceDefaultMode),
+					DefaultMode: new(corev1.ConfigMapVolumeSourceDefaultMode),
 					LocalObjectReference: corev1.LocalObjectReference{
 						Name: configMapName,
 					},
@@ -124,7 +123,7 @@ func WithSecretVolume(name, secretName string) VolumeMutator {
 			Name: name,
 			VolumeSource: corev1.VolumeSource{
 				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: ptr.To(corev1.SecretVolumeSourceDefaultMode),
+					DefaultMode: new(corev1.SecretVolumeSourceDefaultMode),
 					SecretName:  secretName,
 				},
 			},

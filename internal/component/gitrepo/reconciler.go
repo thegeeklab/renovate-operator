@@ -17,7 +17,7 @@ import (
 
 const DummyWebhookURL = "http://renovate-webhook.renovate-system.svc.cluster.local/webhook"
 
-type ProviderFactory func(
+type Provider func(
 	ctx context.Context,
 	c client.Client,
 	instance *renovatev1beta1.GitRepo,
@@ -26,26 +26,29 @@ type ProviderFactory func(
 
 type Reconciler struct {
 	client.Client
-	scheme          *runtime.Scheme
-	req             ctrl.Request
-	instance        *renovatev1beta1.GitRepo
-	renovate        *renovatev1beta1.RenovateConfig
-	ProviderFactory ProviderFactory
+	scheme      *runtime.Scheme
+	req         ctrl.Request
+	externalURL string
+	instance    *renovatev1beta1.GitRepo
+	renovate    *renovatev1beta1.RenovateConfig
+	provider    Provider
 }
 
 func NewReconciler(
 	c client.Client,
 	scheme *runtime.Scheme,
+	externalURL string,
 	instance *renovatev1beta1.GitRepo,
 	renovate *renovatev1beta1.RenovateConfig,
 ) (*Reconciler, error) {
 	return &Reconciler{
-		Client:          c,
-		scheme:          scheme,
-		req:             ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
-		instance:        instance,
-		renovate:        renovate,
-		ProviderFactory: defaultProviderFactory,
+		Client:      c,
+		scheme:      scheme,
+		externalURL: externalURL,
+		req:         ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
+		instance:    instance,
+		renovate:    renovate,
+		provider:    defaultProviderFactory,
 	}, nil
 }
 

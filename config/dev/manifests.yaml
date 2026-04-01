@@ -1,0 +1,23 @@
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/name: renovate-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: renovate-operator-receiver-service
+  namespace: renovate-system
+spec:
+  ports:
+    - name: receiver
+      port: 8083
+      protocol: TCP
+      targetPort: 8083
+  selector:
+    control-plane: controller-manager
+    app.kubernetes.io/name: renovate-operator
+---
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gitea

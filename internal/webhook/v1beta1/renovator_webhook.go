@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -57,7 +56,7 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 	}
 
 	if renovator.Spec.Suspend == nil {
-		renovator.Spec.Suspend = ptr.To(false)
+		renovator.Spec.Suspend = new(false)
 	}
 
 	if renovator.Spec.Schedule == "" {
@@ -65,15 +64,15 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 	}
 
 	if renovator.Spec.SuccessLimit == nil {
-		renovator.Spec.SuccessLimit = ptr.To(renovatev1beta1.DefaultSuccessLimit)
+		renovator.Spec.SuccessLimit = new(renovatev1beta1.DefaultSuccessLimit)
 	}
 
 	if renovator.Spec.FailedLimit == nil {
-		renovator.Spec.FailedLimit = ptr.To(renovatev1beta1.DefaultFailedLimit)
+		renovator.Spec.FailedLimit = new(renovatev1beta1.DefaultFailedLimit)
 	}
 
 	if renovator.Spec.BackoffLimit == nil {
-		renovator.Spec.BackoffLimit = ptr.To(renovatev1beta1.DefaultBackoffLimit)
+		renovator.Spec.BackoffLimit = new(renovatev1beta1.DefaultBackoffLimit)
 	}
 
 	// RenovateConfig spec

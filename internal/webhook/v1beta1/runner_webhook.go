@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -62,7 +61,7 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 	}
 
 	if runner.Spec.Suspend == nil {
-		runner.Spec.Suspend = ptr.To(false)
+		runner.Spec.Suspend = new(false)
 	}
 
 	if runner.Spec.Schedule == "" {
@@ -70,15 +69,15 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 	}
 
 	if runner.Spec.SuccessLimit == nil {
-		runner.Spec.SuccessLimit = ptr.To(renovatev1beta1.DefaultSuccessLimit)
+		runner.Spec.SuccessLimit = new(renovatev1beta1.DefaultSuccessLimit)
 	}
 
 	if runner.Spec.FailedLimit == nil {
-		runner.Spec.FailedLimit = ptr.To(renovatev1beta1.DefaultFailedLimit)
+		runner.Spec.FailedLimit = new(renovatev1beta1.DefaultFailedLimit)
 	}
 
 	if runner.Spec.BackoffLimit == nil {
-		runner.Spec.BackoffLimit = ptr.To(renovatev1beta1.DefaultBackoffLimit)
+		runner.Spec.BackoffLimit = new(renovatev1beta1.DefaultBackoffLimit)
 	}
 
 	return nil

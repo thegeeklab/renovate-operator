@@ -1972,6 +1972,24 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: renovate-operator
+  name: renovate-operator-frontend-service
+  namespace: renovate-system
+spec:
+  ports:
+    - name: frontend
+      port: 8082
+      protocol: TCP
+      targetPort: 8082
+  selector:
+    app.kubernetes.io/name: renovate-operator
+    control-plane: controller-manager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: renovate-operator
     control-plane: controller-manager
   name: renovate-operator-metrics-service
   namespace: renovate-system
@@ -2031,6 +2049,7 @@ spec:
             - --leader-elect
             - --health-probe-bind-address=:8081
             - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+            - --frontend-bind-address=:8082
           command:
             - /manager
             - -zap-devel
@@ -2050,6 +2069,9 @@ spec:
           ports:
             - containerPort: 9443
               name: webhook-server
+              protocol: TCP
+            - containerPort: 8082
+              name: frontend
               protocol: TCP
           readinessProbe:
             httpGet:

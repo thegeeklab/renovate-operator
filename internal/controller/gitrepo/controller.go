@@ -18,7 +18,8 @@ const ControllerName = "gitrepo"
 // Reconciler reconciles a GitRepo object.
 type Reconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme      *runtime.Scheme
+	ExternalURL string
 }
 
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos,verbs=get;list;watch;create;update;patch;delete
@@ -56,7 +57,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	gitrepoReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, gr, rc)
+	gitrepoReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, gr, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}

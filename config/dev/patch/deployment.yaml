@@ -1,0 +1,17 @@
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: renovate-operator-controller-manager
+  namespace: renovate-system
+spec:
+  template:
+    spec:
+      containers:
+        - name: manager
+          args:
+            - "--receiver-bind-address=:8083"
+            - "--external-url=http://renovate-operator-receiver-service.renovate-system.svc.cluster.local:8083"
+          ports:
+            - containerPort: 8083
+              name: receiver

@@ -22,14 +22,16 @@ import (
 
 var _ = Describe("GitRepo Component - Webhook Logic", func() {
 	var (
-		ctx        context.Context
-		scheme     *runtime.Scheme
-		fakeClient client.Client
-		instance   *renovatev1beta1.GitRepo
-		renovate   *renovatev1beta1.RenovateConfig
-		reconciler *Reconciler
-		mockMgr    *mocks.WebhookManager
-		secretName string
+		ctx                context.Context
+		scheme             *runtime.Scheme
+		fakeClient         client.Client
+		instance           *renovatev1beta1.GitRepo
+		renovate           *renovatev1beta1.RenovateConfig
+		reconciler         *Reconciler
+		mockMgr            *mocks.WebhookManager
+		secretName         string
+		externalURL        string
+		expectedWebhookURL string
 	)
 
 	BeforeEach(func() {
@@ -54,6 +56,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			ObjectMeta: metav1.ObjectMeta{
 				Name:      "test-config",
 				Namespace: "default",
+				UID:       "test-renovate-uid-123",
 			},
 			Spec: renovatev1beta1.RenovateConfigSpec{
 				Platform: renovatev1beta1.PlatformSpec{
@@ -63,6 +66,8 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 		}
 
 		secretName = fmt.Sprintf("%s-webhook-secret", instance.Name)
+		externalURL = "https://renovate.example.com"
+		expectedWebhookURL = fmt.Sprintf("%s/hooks/%s/%s", externalURL, instance.Namespace, instance.Name)
 
 		fakeClient = fake.NewClientBuilder().
 			WithScheme(scheme).
@@ -71,11 +76,11 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 		var err error
 
-		reconciler, err = NewReconciler(fakeClient, scheme, instance, renovate)
+		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, instance, renovate)
 		Expect(err).NotTo(HaveOccurred())
 
 		mockMgr = mocks.NewWebhookManager(GinkgoT())
-		reconciler.ProviderFactory = func(
+		reconciler.provider = func(
 			context.Context, client.Client, *renovatev1beta1.GitRepo, *renovatev1beta1.RenovateConfig,
 		) (provider.WebhookManager, error) {
 			return mockMgr, nil
@@ -102,7 +107,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			})
 
 			It("should successfully ensure webhook and update the instance WebhookID", func() {
-				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", DummyWebhookURL, "test-secret-value").
+				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", expectedWebhookURL, "test-secret-value").
 					Return("mock-id-123", nil).
 					Once()
 
@@ -116,9 +121,10 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 			It("should not update the instance if the WebhookID is already correct", func() {
 				instance.Spec.WebhookID = "mock-id-123"
+				Expect(controllerutil.SetControllerReference(renovate, instance, scheme)).To(Succeed())
 				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
 
-				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", DummyWebhookURL, "test-secret-value").
+				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", expectedWebhookURL, "test-secret-value").
 					Return("mock-id-123", nil).
 					Once()
 
@@ -137,7 +143,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 				instance.Spec.WebhookID = "old-id-999"
 				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
 
-				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", DummyWebhookURL, "test-secret-value").
+				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", expectedWebhookURL, "test-secret-value").
 					Return("new-id-124", nil).
 					Once()
 
@@ -157,7 +163,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 		})
 
 		It("should return safely without error if the provider is not implemented", func() {
-			reconciler.ProviderFactory = func(
+			reconciler.provider = func(
 				context.Context, client.Client, *renovatev1beta1.GitRepo, *renovatev1beta1.RenovateConfig,
 			) (provider.WebhookManager, error) {
 				return nil, provider.ErrNotImplemented
@@ -165,6 +171,17 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 			_, err := reconciler.createWebhook(ctx)
 			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return early without creating webhook if externalURL is empty", func() {
+			reconciler.externalURL = ""
+
+			_, err := reconciler.createWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Spec.WebhookID).To(BeEmpty())
 		})
 	})
 
@@ -205,7 +222,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
-			reconciler.ProviderFactory = func(
+			reconciler.provider = func(
 				context.Context, client.Client, *renovatev1beta1.GitRepo, *renovatev1beta1.RenovateConfig,
 			) (provider.WebhookManager, error) {
 				return nil, provider.ErrNotImplemented

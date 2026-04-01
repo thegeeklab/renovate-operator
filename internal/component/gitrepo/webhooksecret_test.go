@@ -52,7 +52,8 @@ var _ = Describe("GitRepo Component - Webhook Secret Logic", func() {
 
 		var err error
 
-		reconciler, err = NewReconciler(fakeClient, scheme, instance, &renovatev1beta1.RenovateConfig{})
+		externalURL := "https://renovate.example.com"
+		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, instance, &renovatev1beta1.RenovateConfig{})
 		Expect(err).NotTo(HaveOccurred())
 	})
 

@@ -13,7 +13,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -70,8 +69,8 @@ var _ = Describe("Renovate Job Library", func() {
 			jobSpec := &batchv1.JobSpec{}
 			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
 
-			Expect(jobSpec.CompletionMode).To(Equal(ptr.To(batchv1.NonIndexedCompletion)))
-			Expect(jobSpec.Parallelism).To(Equal(ptr.To(int32(1))))
+			Expect(jobSpec.CompletionMode).To(Equal(new(batchv1.NonIndexedCompletion)))
+			Expect(jobSpec.Parallelism).To(Equal(new(int32(1))))
 			Expect(jobSpec.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 			Expect(jobSpec.Template.Spec.Volumes).To(HaveLen(2))
 			Expect(jobSpec.Template.Spec.Containers).To(HaveLen(1))

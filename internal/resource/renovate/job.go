@@ -7,7 +7,6 @@ import (
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
@@ -48,8 +47,8 @@ func DefaultJobSpec(
 	}
 
 	// Construct the Job Spec from the Config
-	spec.CompletionMode = ptr.To(batchv1.NonIndexedCompletion)
-	spec.Parallelism = ptr.To(int32(1))
+	spec.CompletionMode = new(batchv1.NonIndexedCompletion)
+	spec.Parallelism = new(int32(1))
 	spec.BackoffLimit = cfg.BackoffLimit
 	spec.TTLSecondsAfterFinished = cfg.TTLSecondsAfterFinished
 

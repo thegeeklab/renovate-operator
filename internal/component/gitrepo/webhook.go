@@ -4,8 +4,10 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"strings"
 
 	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -23,7 +25,13 @@ func (r *Reconciler) reconcileWebhook(ctx context.Context) (*ctrl.Result, error)
 func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	webhookManager, err := r.ProviderFactory(ctx, r.Client, r.instance, r.renovate)
+	if r.externalURL == "" {
+		log.V(1).Info("External URL is not configured, skipping webhook creation")
+
+		return &ctrl.Result{}, nil
+	}
+
+	webhookManager, err := r.provider(ctx, r.Client, r.instance, r.renovate)
 	if err != nil {
 		if errors.Is(err, provider.ErrNotImplemented) {
 			log.V(1).Info("Webhook management not implemented for this provider", "platform", r.renovate.Spec.Platform.Type)
@@ -45,27 +53,28 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 
 	secretString := string(webhookSecret.Data["secret"])
 
-	webhookID, err := webhookManager.EnsureWebhook(ctx, r.instance.Spec.Name, DummyWebhookURL, secretString)
+	baseURL := strings.TrimRight(r.externalURL, "/")
+	webhookURL := fmt.Sprintf("%s/hooks/%s/%s", baseURL, r.instance.Namespace, r.instance.Name)
+
+	webhookID, err := webhookManager.EnsureWebhook(ctx, r.instance.Spec.Name, webhookURL, secretString)
 	if err != nil {
 		log.Error(err, "Failed to ensure webhook")
 
 		return &ctrl.Result{}, err
 	}
 
-	if r.instance.Spec.WebhookID != webhookID {
-		log.Info("Webhook ID changed or created, updating resource", "oldID", r.instance.Spec.WebhookID, "newID", webhookID)
-		r.instance.Spec.WebhookID = webhookID
-
-		if err := r.Update(ctx, r.instance); err != nil {
-			return &ctrl.Result{}, err
+	_, err = k8s.CreateOrUpdate(ctx, r.Client, r.instance, r.renovate, func() error {
+		if r.instance.Spec.WebhookID != webhookID {
+			log.Info("Webhook ID changed or created, updating resource", "oldID", r.instance.Spec.WebhookID, "newID", webhookID)
+			r.instance.Spec.WebhookID = webhookID
+		} else {
+			log.V(1).Info("Webhook already correctly configured", "webhookID", webhookID)
 		}
 
-		log.Info("Successfully configured webhook", "webhookID", webhookID)
-	} else {
-		log.V(1).Info("Webhook already correctly configured", "webhookID", webhookID)
-	}
+		return nil
+	})
 
-	return &ctrl.Result{}, nil
+	return &ctrl.Result{}, err
 }
 
 func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
@@ -75,7 +84,7 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, nil
 	}
 
-	webhookManager, err := r.ProviderFactory(ctx, r.Client, r.instance, r.renovate)
+	webhookManager, err := r.provider(ctx, r.Client, r.instance, r.renovate)
 	if err != nil {
 		if !errors.Is(err, provider.ErrNotImplemented) {
 			log.Error(err, "Failed to initialize provider for cleanup")
@@ -94,10 +103,11 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 		log.Info("Successfully deleted webhook from remote")
 	}
 
-	r.instance.Spec.WebhookID = ""
-	if err := r.Update(ctx, r.instance); err != nil {
-		return &ctrl.Result{}, err
-	}
+	_, err = k8s.CreateOrUpdate(ctx, r.Client, r.instance, r.renovate, func() error {
+		r.instance.Spec.WebhookID = ""
 
-	return &ctrl.Result{}, nil
+		return nil
+	})
+
+	return &ctrl.Result{}, err
 }
