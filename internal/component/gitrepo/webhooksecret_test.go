@@ -66,8 +66,8 @@ var _ = Describe("GitRepo Component - Webhook Secret Logic", func() {
 			Expect(fakeClient.Get(ctx, secretKey, secret)).To(Succeed())
 
 			// 32 byte random -> 64 char hex string
-			Expect(secret.Data).To(HaveKey("secret"))
-			Expect(string(secret.Data["secret"])).To(HaveLen(64))
+			Expect(secret.Data).To(HaveKey(renovatev1beta1.WebhookSecretDataKey))
+			Expect(string(secret.Data[renovatev1beta1.WebhookSecretDataKey])).To(HaveLen(64))
 
 			Expect(secret.OwnerReferences).To(HaveLen(1))
 			Expect(secret.OwnerReferences[0].Name).To(Equal(instance.Name))
@@ -82,7 +82,7 @@ var _ = Describe("GitRepo Component - Webhook Secret Logic", func() {
 					Namespace: secretKey.Namespace,
 				},
 				Data: map[string][]byte{
-					"secret": []byte(existingToken),
+					renovatev1beta1.WebhookSecretDataKey: []byte(existingToken),
 				},
 			}
 			Expect(fakeClient.Create(ctx, existingSecret)).To(Succeed())
@@ -92,7 +92,7 @@ var _ = Describe("GitRepo Component - Webhook Secret Logic", func() {
 
 			secret := &corev1.Secret{}
 			Expect(fakeClient.Get(ctx, secretKey, secret)).To(Succeed())
-			Expect(string(secret.Data["secret"])).To(Equal(existingToken))
+			Expect(string(secret.Data[renovatev1beta1.WebhookSecretDataKey])).To(Equal(existingToken))
 		})
 
 		It("should return early if the resource is being deleted", func() {

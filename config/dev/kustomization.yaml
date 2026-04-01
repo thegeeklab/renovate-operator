@@ -14,6 +14,7 @@ helmCharts:
     namespace: gitea
     valuesInline:
       gitea:
+        # Default credentials for local Kind cluster development only. Do not use in production.
         admin:
           username: "gitea_admin"
           password: "password"

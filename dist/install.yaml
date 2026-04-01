@@ -220,8 +220,6 @@ spec:
                   type: string
                 name:
                   type: string
-                webhookId:
-                  type: string
               required:
                 - name
               type: object
@@ -283,6 +281,11 @@ spec:
                       - type
                     type: object
                   type: array
+                webhookId:
+                  description: |-
+                    WebhookID is the ID of the webhook registered on the remote Git provider.
+                    This field is managed by the operator and should not be set manually.
+                  type: string
               type: object
           type: object
       served: true

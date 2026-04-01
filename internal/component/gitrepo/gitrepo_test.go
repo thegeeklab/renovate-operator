@@ -59,6 +59,7 @@ var _ = Describe("GitRepo Component - Finalizer Logic", func() {
 		fakeClient = fake.NewClientBuilder().
 			WithScheme(scheme).
 			WithObjects(instance).
+			WithStatusSubresource(&renovatev1beta1.GitRepo{}).
 			Build()
 
 		var err error
@@ -79,7 +80,6 @@ var _ = Describe("GitRepo Component - Finalizer Logic", func() {
 
 		It("should remove the finalizer if the resource is being deleted and the webhook is detached", func() {
 			controllerutil.AddFinalizer(instance, renovatev1beta1.FinalizerGitRepoWebhook)
-			instance.Spec.WebhookID = ""
 			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
 
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
@@ -96,8 +96,10 @@ var _ = Describe("GitRepo Component - Finalizer Logic", func() {
 
 		It("should NOT remove the finalizer if the resource is being deleted but the webhook is still attached", func() {
 			controllerutil.AddFinalizer(instance, renovatev1beta1.FinalizerGitRepoWebhook)
-			instance.Spec.WebhookID = "12345"
 			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			instance.Status.WebhookID = "12345"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
 
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
 

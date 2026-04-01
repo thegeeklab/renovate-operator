@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"strings"
 
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -44,14 +45,17 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, err
 	}
 
-	secretName := fmt.Sprintf("%s-webhook-secret", r.instance.Name)
+	secretName, err := k8s.DeterministicSubdomainName(r.instance.Name, "-webhook-secret")
+	if err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to generate webhook secret name: %w", err)
+	}
 
 	webhookSecret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{Name: secretName, Namespace: r.instance.Namespace}, webhookSecret); err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to get webhook secret: %w", err)
 	}
 
-	secretString := string(webhookSecret.Data["secret"])
+	secretString := string(webhookSecret.Data[renovatev1beta1.WebhookSecretDataKey])
 
 	baseURL := strings.TrimRight(r.externalURL, "/")
 	webhookURL := fmt.Sprintf("%s/hooks/%s/%s", baseURL, r.instance.Namespace, r.instance.Name)
@@ -63,24 +67,28 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, err
 	}
 
-	_, err = k8s.CreateOrUpdate(ctx, r.Client, r.instance, r.renovate, func() error {
-		if r.instance.Spec.WebhookID != webhookID {
-			log.Info("Webhook ID changed or created, updating resource", "oldID", r.instance.Spec.WebhookID, "newID", webhookID)
-			r.instance.Spec.WebhookID = webhookID
-		} else {
-			log.V(1).Info("Webhook already correctly configured", "webhookID", webhookID)
-		}
+	if r.instance.Status.WebhookID == webhookID {
+		log.V(1).Info("Webhook already correctly configured", "webhookID", webhookID)
 
-		return nil
-	})
+		return &ctrl.Result{}, nil
+	}
 
-	return &ctrl.Result{}, err
+	log.Info("Webhook ID changed or created, updating status", "oldID", r.instance.Status.WebhookID, "newID", webhookID)
+
+	patch := client.MergeFrom(r.instance.DeepCopy())
+	r.instance.Status.WebhookID = webhookID
+
+	if err := r.Status().Patch(ctx, r.instance, patch); err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to patch webhook ID in status: %w", err)
+	}
+
+	return &ctrl.Result{}, nil
 }
 
 func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	if r.instance.Spec.WebhookID == "" {
+	if r.instance.Status.WebhookID == "" {
 		return &ctrl.Result{}, nil
 	}
 
@@ -94,7 +102,7 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 
 		log.V(1).Info("Webhook management not implemented for this provider, skipping cleanup")
 	} else {
-		if err := webhookManager.DeleteWebhook(ctx, r.instance.Spec.Name, r.instance.Spec.WebhookID); err != nil {
+		if err := webhookManager.DeleteWebhook(ctx, r.instance.Spec.Name, r.instance.Status.WebhookID); err != nil {
 			log.Error(err, "Failed to delete webhook from remote")
 
 			return &ctrl.Result{}, err
@@ -103,11 +111,12 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 		log.Info("Successfully deleted webhook from remote")
 	}
 
-	_, err = k8s.CreateOrUpdate(ctx, r.Client, r.instance, r.renovate, func() error {
-		r.instance.Spec.WebhookID = ""
+	patch := client.MergeFrom(r.instance.DeepCopy())
+	r.instance.Status.WebhookID = ""
 
-		return nil
-	})
+	if err := r.Status().Patch(ctx, r.instance, patch); err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to clear webhook ID in status: %w", err)
+	}
 
-	return &ctrl.Result{}, err
+	return &ctrl.Result{}, nil
 }

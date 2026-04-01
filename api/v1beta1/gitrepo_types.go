@@ -10,9 +10,6 @@ type GitRepoSpec struct {
 
 	//+kubebuilder:validation:Optional
 	ConfigRef string `json:"configRef,omitempty"`
-
-	// +kubebuilder:validation:Optional
-	WebhookID string `json:"webhookId,omitempty"`
 }
 
 // GitRepoStatus defines the observed state of GitRepo.
@@ -20,6 +17,11 @@ type GitRepoSpec struct {
 //nolint:lll
 type GitRepoStatus struct {
 	Conditions []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+
+	// WebhookID is the ID of the webhook registered on the remote Git provider.
+	// This field is managed by the operator and should not be set manually.
+	// +kubebuilder:validation:Optional
+	WebhookID string `json:"webhookId,omitempty"`
 }
 
 // +kubebuilder:object:root=true

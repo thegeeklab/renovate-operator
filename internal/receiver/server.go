@@ -19,10 +19,20 @@ import (
 
 var receiverLog = logf.Log.WithName("receiver-server")
 
+// ReceiverFactory is a function that creates a new Receiver for a specific platform.
+type ReceiverFactory func() Receiver
+
+var receiverFactories = map[renovatev1beta1.PlatformType]ReceiverFactory{
+	renovatev1beta1.PlatformType_GITEA: func() Receiver { return gitea.NewReceiver() },
+}
+
 const (
 	DefaultReadTimeout  = 10 * time.Second
 	DefaultWriteTimeout = 30 * time.Second
 	DefaultIdleTimeout  = 120 * time.Second
+
+	// maxWebhookBodyBytes caps the webhook request body to protect against memory exhaustion.
+	maxWebhookBodyBytes = 1 << 20 // 1 MiB
 )
 
 type ServerConfig struct {
@@ -101,13 +111,15 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 	namespace := vars["namespace"]
 	name := vars["name"]
 
+	r.Body = http.MaxBytesReader(w, r.Body, maxWebhookBodyBytes)
+	defer r.Body.Close()
+
 	body, err := io.ReadAll(r.Body)
 	if err != nil {
 		http.Error(w, "Failed to read request body", http.StatusBadRequest)
 
 		return
 	}
-	defer r.Body.Close()
 
 	secretName := fmt.Sprintf("%s-webhook-secret", name)
 
@@ -119,7 +131,7 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretToken := webhookSecret.Data["secret"]
+	secretToken := webhookSecret.Data[renovatev1beta1.WebhookSecretDataKey]
 
 	repo := &renovatev1beta1.GitRepo{}
 	if err := s.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, repo); err != nil {
@@ -155,17 +167,15 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 
 	config := &configList.Items[0]
 
-	var platformReceiver Receiver
-
-	switch config.Spec.Platform.Type {
-	case "gitea":
-		platformReceiver = gitea.NewReceiver()
-	default:
+	factory, ok := receiverFactories[config.Spec.Platform.Type]
+	if !ok {
 		receiverLog.Info("Webhook verification not implemented for platform", "platform", config.Spec.Platform.Type)
 		http.Error(w, "Platform verification not implemented", http.StatusNotImplemented)
 
 		return
 	}
+
+	platformReceiver := factory()
 
 	if err := platformReceiver.Validate(r, secretToken, body); err != nil {
 		receiverLog.Error(err, "Webhook validation failed", "namespace", namespace, "name", name)

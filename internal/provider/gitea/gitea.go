@@ -21,10 +21,15 @@ type Provider struct {
 	client *gitea.Client
 }
 
-func NewProvider(endpoint, token string) (*Provider, error) {
+// NewProvider initializes a new Gitea provider.
+// Note: The context passed here is bound to the client instance by the Gitea SDK.
+// It is important that a new Provider (and thus a new gitea.Client) is instantiated
+// for every reconciliation loop. Do not cache the Provider or Client, as subsequent
+// reconciles would fail with "context canceled" errors.
+func NewProvider(ctx context.Context, endpoint, token string) (*Provider, error) {
 	cleanEndpoint := sanitizeEndpoint(endpoint)
 
-	client, err := gitea.NewClient(cleanEndpoint, gitea.SetToken(token))
+	client, err := gitea.NewClient(cleanEndpoint, gitea.SetContext(ctx), gitea.SetToken(token))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gitea client: %w", err)
 	}
@@ -128,8 +133,12 @@ func (p *Provider) DeleteWebhook(ctx context.Context, repoName, webhookID string
 		return fmt.Errorf("invalid webhook ID format: %w", err)
 	}
 
-	_, err = p.client.DeleteRepoHook(owner, repo, id)
+	resp, err := p.client.DeleteRepoHook(owner, repo, id)
 	if err != nil {
+		if resp != nil && resp.StatusCode == 404 {
+			return nil
+		}
+
 		return fmt.Errorf("failed to delete webhook %s: %w", webhookID, err)
 	}
 

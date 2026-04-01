@@ -15,8 +15,6 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-const DummyWebhookURL = "http://renovate-webhook.renovate-system.svc.cluster.local/webhook"
-
 type Provider func(
 	ctx context.Context,
 	c client.Client,
@@ -102,5 +100,5 @@ func defaultProviderFactory(
 
 	token := string(secret.Data[renovate.Spec.Platform.Token.SecretKeyRef.Key])
 
-	return gitea.NewProvider(renovate.Spec.Platform.Endpoint, token)
+	return gitea.NewProvider(ctx, renovate.Spec.Platform.Endpoint, token)
 }
