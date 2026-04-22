@@ -1,7 +1,7 @@
 # ---------------------------------------------------------
 # 1. Frontend Build Stage
 # ---------------------------------------------------------
-FROM --platform=$BUILDPLATFORM docker.io/library/node:24-alpine@sha256:01743339035a5c3c11a373cd7c83aeab6ed1457b55da6a69e014a95ac4e4700b AS frontend-build
+FROM --platform=$BUILDPLATFORM docker.io/library/node:24-alpine@sha256:d1b3b4da11eefd5941e7f0b9cf17783fc99d9c6fc34884a665f40a06dbdfc94f AS frontend-build
 
 WORKDIR /workspace
 
@@ -13,7 +13,7 @@ RUN make frontend-build GO=true
 # ---------------------------------------------------------
 # 2. Go Build Stage
 # ---------------------------------------------------------
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.2@sha256:f7159064a17ccc65d0e10e342ae8783026182704bf4af8f6df8d5ba9af2be2fd AS go-build
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.2@sha256:1e598ea5752ae26c093b746fd73c5095af97d6f2d679c43e83e0eac484a33dc3 AS go-build
 
 ARG TARGETOS
 ARG TARGETARCH
