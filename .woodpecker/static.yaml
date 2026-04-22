@@ -21,7 +21,7 @@ steps:
       - markdownlint 'exampleSite/content/**/*.md' 'README.md' 'CONTRIBUTING.md'
 
   - name: yaml-lint
-    image: docker.io/library/golang:1.26.1
+    image: docker.io/library/golang:1.26.2
     commands:
       - make deps yamlfmt-lint
 
@@ -31,6 +31,6 @@ steps:
       - cspell-cli lint . --gitignore --color
 
   - name: golangci-lint
-    image: docker.io/library/golang:1.26.1
+    image: docker.io/library/golang:1.26.2
     commands:
       - make deps golangci-lint
