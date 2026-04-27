@@ -73,21 +73,32 @@ func SanitizeName(name string) (string, error) {
 	return name, nil
 }
 
-// DeterministicName generates a valid Kubernetes name bounded by the 63-character limit.
+// DeterministicName generates a valid Kubernetes name bounded by the 63-character limit (DNS-1035).
 // If the combined length exceeds 63 characters, it safely truncates the base name
 // and injects a hash of the original base name to prevent duplicate name collisions.
 func DeterministicName(baseName, suffix string) (string, error) {
+	return deterministicNameWithLimit(baseName, suffix, DNS1035LabelMaxLength)
+}
+
+// DeterministicSubdomainName generates a valid Kubernetes name bounded by the 253-character limit (DNS-1123).
+// If the combined length exceeds 253 characters, it safely truncates the base name
+// and injects a hash of the original base name to prevent duplicate name collisions.
+func DeterministicSubdomainName(baseName, suffix string) (string, error) {
+	return deterministicNameWithLimit(baseName, suffix, DNS1123MaxLength)
+}
+
+func deterministicNameWithLimit(baseName, suffix string, maxLength int) (string, error) {
 	sanitizedBase, err := SanitizeName(baseName)
 	if err != nil {
 		return "", err
 	}
 
 	// If it fits perfectly, just concatenate and return
-	if len(sanitizedBase)+len(suffix) <= DNS1035LabelMaxLength {
+	if len(sanitizedBase)+len(suffix) <= maxLength {
 		return fmt.Sprintf("%s%s", sanitizedBase, suffix), nil
 	}
 
-	// If it exceeds 63 characters, we must truncate and add a hash to avoid collisions.
+	// If it exceeds the limit, we must truncate and add a hash to avoid collisions.
 	// We use the original baseName for the hash to maximize uniqueness before sanitization.
 	h := fnv.New32a()
 	h.Write([]byte(baseName))

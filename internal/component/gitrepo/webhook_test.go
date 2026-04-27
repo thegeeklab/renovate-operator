@@ -1,0 +1,248 @@
+package gitrepo
+
+import (
+	"context"
+	"fmt"
+
+	. "github.com/onsi/ginkgo/v2"
+	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
+
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/internal/provider/mocks"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
+	corev1 "k8s.io/api/core/v1"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
+	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/client/fake"
+)
+
+var _ = Describe("GitRepo Component - Webhook Logic", func() {
+	var (
+		ctx                context.Context
+		scheme             *runtime.Scheme
+		fakeClient         client.Client
+		instance           *renovatev1beta1.GitRepo
+		renovate           *renovatev1beta1.RenovateConfig
+		reconciler         *Reconciler
+		mockMgr            *mocks.WebhookManager
+		secretName         string
+		externalURL        string
+		expectedWebhookURL string
+	)
+
+	BeforeEach(func() {
+		ctx = context.Background()
+		scheme = runtime.NewScheme()
+		Expect(clientgoscheme.AddToScheme(scheme)).To(Succeed())
+		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
+		Expect(corev1.AddToScheme(scheme)).To(Succeed())
+
+		instance = &renovatev1beta1.GitRepo{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-repo",
+				Namespace: "default",
+				UID:       "test-uid-123",
+			},
+			Spec: renovatev1beta1.GitRepoSpec{
+				Name: "org/repo",
+			},
+		}
+
+		renovate = &renovatev1beta1.RenovateConfig{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "test-config",
+				Namespace: "default",
+				UID:       "test-renovate-uid-123",
+			},
+			Spec: renovatev1beta1.RenovateConfigSpec{
+				Platform: renovatev1beta1.PlatformSpec{
+					Type: "gitea",
+				},
+			},
+		}
+
+		secretName, _ = k8s.DeterministicSubdomainName(instance.Name, "-webhook-secret")
+		externalURL = "https://renovate.example.com"
+		expectedWebhookURL = fmt.Sprintf("%s/hooks/%s/%s", externalURL, instance.Namespace, instance.Name)
+
+		fakeClient = fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(instance).
+			WithStatusSubresource(&renovatev1beta1.GitRepo{}).
+			Build()
+
+		var err error
+
+		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, instance, renovate)
+		Expect(err).NotTo(HaveOccurred())
+
+		mockMgr = mocks.NewWebhookManager(GinkgoT())
+		reconciler.provider = func(
+			context.Context, client.Client, *renovatev1beta1.GitRepo, *renovatev1beta1.RenovateConfig,
+		) (provider.WebhookManager, error) {
+			return mockMgr, nil
+		}
+	})
+
+	AfterEach(func() {
+		mockMgr.AssertExpectations(GinkgoT())
+	})
+
+	Describe("createWebhook", func() {
+		Context("when the secret exists", func() {
+			BeforeEach(func() {
+				webhookSecret := &corev1.Secret{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      secretName,
+						Namespace: instance.Namespace,
+					},
+					Data: map[string][]byte{
+						renovatev1beta1.WebhookSecretDataKey: []byte("test-secret-value"),
+					},
+				}
+				Expect(fakeClient.Create(ctx, webhookSecret)).To(Succeed())
+			})
+
+			It("should successfully ensure webhook and update the instance WebhookID in status", func() {
+				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", expectedWebhookURL, "test-secret-value").
+					Return("mock-id-123", nil).
+					Once()
+
+				_, err := reconciler.createWebhook(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				updated := &renovatev1beta1.GitRepo{}
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+				Expect(updated.Status.WebhookID).To(Equal("mock-id-123"))
+			})
+
+			It("should not update the instance if the WebhookID is already correct", func() {
+				instance.Status.WebhookID = "mock-id-123"
+				Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", expectedWebhookURL, "test-secret-value").
+					Return("mock-id-123", nil).
+					Once()
+
+				before := &renovatev1beta1.GitRepo{}
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), before)).To(Succeed())
+
+				_, err := reconciler.createWebhook(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				after := &renovatev1beta1.GitRepo{}
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), after)).To(Succeed())
+				Expect(after.ResourceVersion).To(Equal(before.ResourceVersion))
+			})
+
+			It("should update the instance if the WebhookID changed on the provider (manual deletion recovery)", func() {
+				instance.Status.WebhookID = "old-id-999"
+				Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", expectedWebhookURL, "test-secret-value").
+					Return("new-id-124", nil).
+					Once()
+
+				_, err := reconciler.createWebhook(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				updated := &renovatev1beta1.GitRepo{}
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+				Expect(updated.Status.WebhookID).To(Equal("new-id-124"))
+			})
+		})
+
+		It("should fail if the webhook secret is missing", func() {
+			_, err := reconciler.createWebhook(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to get webhook secret"))
+		})
+
+		It("should return safely without error if the provider is not implemented", func() {
+			reconciler.provider = func(
+				context.Context, client.Client, *renovatev1beta1.GitRepo, *renovatev1beta1.RenovateConfig,
+			) (provider.WebhookManager, error) {
+				return nil, provider.ErrNotImplemented
+			}
+
+			_, err := reconciler.createWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should return early without creating webhook if externalURL is empty", func() {
+			reconciler.externalURL = ""
+
+			_, err := reconciler.createWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
+		})
+	})
+
+	Describe("deleteWebhook", func() {
+		It("should successfully delete webhook and clear the WebhookID in status", func() {
+			instance.Status.WebhookID = "mock-id-123"
+			instance.Finalizers = append(instance.Finalizers, renovatev1beta1.FinalizerGitRepoWebhook)
+			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+
+			instance.Status.WebhookID = "mock-id-123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			mockMgr.On("DeleteWebhook", mock.Anything, "org/repo", "mock-id-123").
+				Return(nil).
+				Once()
+
+			_, err := reconciler.deleteWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
+		})
+
+		It("should return early if the WebhookID is empty", func() {
+			_, err := reconciler.deleteWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should clear the WebhookID gracefully if the provider is not implemented", func() {
+			instance.Status.WebhookID = "123"
+			instance.Finalizers = append(instance.Finalizers, renovatev1beta1.FinalizerGitRepoWebhook)
+			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+
+			instance.Status.WebhookID = "123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			reconciler.provider = func(
+				context.Context, client.Client, *renovatev1beta1.GitRepo, *renovatev1beta1.RenovateConfig,
+			) (provider.WebhookManager, error) {
+				return nil, provider.ErrNotImplemented
+			}
+
+			_, err := reconciler.deleteWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
+		})
+	})
+})

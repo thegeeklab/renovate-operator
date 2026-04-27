@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/utils/ptr"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -250,7 +249,7 @@ var _ = Describe("Renovator Runner", func() {
 				},
 				Spec: renovatev1beta1.RunnerSpec{
 					JobSpec: renovatev1beta1.JobSpec{
-						TTLSecondsAfterFinished: ptr.To(int32(3600)),
+						TTLSecondsAfterFinished: new(int32(3600)),
 						Schedule:                "*/10 * * * *",
 					},
 				},
@@ -261,7 +260,7 @@ var _ = Describe("Renovator Runner", func() {
 			renovator := &renovatev1beta1.Renovator{
 				Spec: renovatev1beta1.RenovatorSpec{
 					JobSpec: renovatev1beta1.JobSpec{
-						TTLSecondsAfterFinished: ptr.To(int32(1800)),
+						TTLSecondsAfterFinished: new(int32(1800)),
 						Schedule:                "*/5 * * * *",
 					},
 					Runner: renovatev1beta1.RunnerSpec{},
@@ -274,7 +273,7 @@ var _ = Describe("Renovator Runner", func() {
 			err = reconciler.updateRunner(existingRunner)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(ptr.To(int32(1800))))
+			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(new(int32(1800))))
 			Expect(existingRunner.Spec.Schedule).To(Equal("*/5 * * * *"))
 		})
 
@@ -282,11 +281,11 @@ var _ = Describe("Renovator Runner", func() {
 			renovator := &renovatev1beta1.Renovator{
 				Spec: renovatev1beta1.RenovatorSpec{
 					JobSpec: renovatev1beta1.JobSpec{
-						TTLSecondsAfterFinished: ptr.To(int32(1800)),
+						TTLSecondsAfterFinished: new(int32(1800)),
 					},
 					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
-							TTLSecondsAfterFinished: ptr.To(int32(600)),
+							TTLSecondsAfterFinished: new(int32(600)),
 						},
 					},
 				},
@@ -298,7 +297,7 @@ var _ = Describe("Renovator Runner", func() {
 			err = reconciler.updateRunner(existingRunner)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(ptr.To(int32(600))))
+			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(new(int32(600))))
 		})
 
 		It("should successfully unset properties if they are removed from the parent Renovator", func() {
@@ -311,7 +310,7 @@ var _ = Describe("Renovator Runner", func() {
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
-			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(ptr.To(int32(3600))))
+			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(new(int32(3600))))
 
 			err = reconciler.updateRunner(existingRunner)
 			Expect(err).NotTo(HaveOccurred())

@@ -1,0 +1,43 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../default
+  - manifests.yaml
+
+helmCharts:
+  - name: gitea
+    repo: https://dl.gitea.com/charts/
+    version: 12.5.0
+    releaseName: gitea
+    namespace: gitea
+    valuesInline:
+      gitea:
+        # Default credentials for local Kind cluster development only. Do not use in production.
+        admin:
+          username: "gitea_admin"
+          password: "password"
+        config:
+          database:
+            DB_TYPE: sqlite3
+      service:
+        http:
+          type: LoadBalancer
+          port: 3000
+      test:
+        enabled: false
+      persistence:
+        enabled: true
+        create: true
+        mount: true
+        claimName: gitea-shared-storage
+        size: 10Gi
+      postgresql-ha:
+        enabled: false
+      valkey-cluster:
+        enabled: false
+
+patches:
+  - path: patch/deployment.yaml
+  - path: patch/frontend.yaml

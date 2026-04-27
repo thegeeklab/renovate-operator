@@ -40,7 +40,7 @@ var _ = Describe("APIHandler", func() {
 					Name:      "test-repo",
 					Namespace: "test-namespace",
 				},
-				Spec: renovatev1beta1.GitRepoSpec{
+				Status: renovatev1beta1.GitRepoStatus{
 					WebhookID: "12345",
 				},
 			},

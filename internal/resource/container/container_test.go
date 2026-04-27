@@ -6,7 +6,6 @@ import (
 
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	"k8s.io/utils/ptr"
 )
 
 var _ = Describe("Container Template", func() {
@@ -101,8 +100,8 @@ var _ = Describe("Container Template", func() {
 	Describe("WithSecurityContext", func() {
 		It("should set security context", func() {
 			securityContext := &corev1.SecurityContext{
-				RunAsNonRoot: ptr.To(true),
-				RunAsUser:    ptr.To(int64(1000)),
+				RunAsNonRoot: new(true),
+				RunAsUser:    new(int64(1000)),
 			}
 
 			container := ContainerTemplate(

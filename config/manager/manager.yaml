@@ -49,12 +49,15 @@ spec:
             - --leader-elect
             - --health-probe-bind-address=:8081
             - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
-            - --log-base-dir=/tmp/runner-logs
+            - --frontend-bind-address=:8082
           image: docker.io/thegeeklab/renovate-operator:devel
           name: manager
           ports:
             - containerPort: 9443
               name: webhook-server
+              protocol: TCP
+            - containerPort: 8082
+              name: frontend
               protocol: TCP
           env:
             - name: POD_NAMESPACE

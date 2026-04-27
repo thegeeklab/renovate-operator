@@ -91,7 +91,6 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 
-	// Create init container for repository discovery
 	initContainer := containers.ContainerTemplate(
 		"renovate-init",
 		r.renovate.Spec.Image,
@@ -123,7 +122,6 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 		}),
 	)
 
-	// Apply default job spec with init container
 	renovate.DefaultJobSpec(
 		&job.Spec,
 		r.renovate,
@@ -133,7 +131,6 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 		renovate.WithInitContainer(initContainer),
 	)
 
-	// Configure main container for discovery
 	job.Spec.Template.Spec.Containers = []corev1.Container{
 		containers.ContainerTemplate(
 			"renovate-discovery",
@@ -163,6 +160,5 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 		),
 	}
 
-	// Set service account for job execution
 	job.Spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
 }

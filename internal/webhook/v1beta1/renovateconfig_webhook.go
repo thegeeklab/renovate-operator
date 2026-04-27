@@ -6,7 +6,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -53,7 +52,7 @@ func (d *RenovateConfigCustomDefaulter) Default(ctx context.Context, renovate *r
 	}
 
 	if renovate.Spec.Onboarding == nil {
-		renovate.Spec.Onboarding = ptr.To(true)
+		renovate.Spec.Onboarding = new(true)
 	}
 
 	if renovate.Spec.PrHourlyLimit == 0 {

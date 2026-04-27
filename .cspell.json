@@ -64,7 +64,8 @@
     "Heroicon",
     "evenodd",
     "vite",
-    "alpinejs"
+    "alpinejs",
+    "finalizer"
   ],
   "ignorePaths": [
     ".woodpecker",
@@ -79,6 +80,7 @@
     "Makefile",
     "go.mod",
     ".npmrc",
+    "**/fixtures/**/*",
     // generated
     "go.sum",
     "renovate.json",

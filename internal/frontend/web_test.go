@@ -57,7 +57,7 @@ var _ = Describe("WebHandler", func() {
 					},
 					CreationTimestamp: metav1.NewTime(time.Now()),
 				},
-				Spec: renovatev1beta1.GitRepoSpec{
+				Status: renovatev1beta1.GitRepoStatus{
 					WebhookID: "12345",
 				},
 			},

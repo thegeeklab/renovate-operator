@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -62,7 +61,7 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 	}
 
 	if discovery.Spec.Suspend == nil {
-		discovery.Spec.Suspend = ptr.To(false)
+		discovery.Spec.Suspend = new(false)
 	}
 
 	if discovery.Spec.Schedule == "" {
@@ -70,15 +69,15 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 	}
 
 	if discovery.Spec.SuccessLimit == nil {
-		discovery.Spec.SuccessLimit = ptr.To(renovatev1beta1.DefaultSuccessLimit)
+		discovery.Spec.SuccessLimit = new(renovatev1beta1.DefaultSuccessLimit)
 	}
 
 	if discovery.Spec.FailedLimit == nil {
-		discovery.Spec.FailedLimit = ptr.To(renovatev1beta1.DefaultFailedLimit)
+		discovery.Spec.FailedLimit = new(renovatev1beta1.DefaultFailedLimit)
 	}
 
 	if discovery.Spec.BackoffLimit == nil {
-		discovery.Spec.BackoffLimit = ptr.To(renovatev1beta1.DefaultBackoffLimit)
+		discovery.Spec.BackoffLimit = new(renovatev1beta1.DefaultBackoffLimit)
 	}
 
 	return nil

@@ -220,8 +220,6 @@ spec:
                   type: string
                 name:
                   type: string
-                webhookId:
-                  type: string
               required:
                 - name
               type: object
@@ -283,6 +281,11 @@ spec:
                       - type
                     type: object
                   type: array
+                webhookId:
+                  description: |-
+                    WebhookID is the ID of the webhook registered on the remote Git provider.
+                    This field is managed by the operator and should not be set manually.
+                  type: string
               type: object
           type: object
       served: true
@@ -1576,6 +1579,7 @@ rules:
       - ""
     resources:
       - configmaps
+      - secrets
       - serviceaccounts
     verbs:
       - create
@@ -1971,6 +1975,24 @@ metadata:
   labels:
     app.kubernetes.io/managed-by: kustomize
     app.kubernetes.io/name: renovate-operator
+  name: renovate-operator-frontend-service
+  namespace: renovate-system
+spec:
+  ports:
+    - name: frontend
+      port: 8082
+      protocol: TCP
+      targetPort: 8082
+  selector:
+    app.kubernetes.io/name: renovate-operator
+    control-plane: controller-manager
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app.kubernetes.io/managed-by: kustomize
+    app.kubernetes.io/name: renovate-operator
     control-plane: controller-manager
   name: renovate-operator-metrics-service
   namespace: renovate-system
@@ -2030,7 +2052,7 @@ spec:
             - --leader-elect
             - --health-probe-bind-address=:8081
             - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
-            - --log-base-dir=/tmp/runner-logs
+            - --frontend-bind-address=:8082
           command:
             - /manager
             - -zap-devel
@@ -2050,6 +2072,9 @@ spec:
           ports:
             - containerPort: 9443
               name: webhook-server
+              protocol: TCP
+            - containerPort: 8082
+              name: frontend
               protocol: TCP
           readinessProbe:
             httpGet:
