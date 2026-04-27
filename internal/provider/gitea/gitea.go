@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"net/http"
 	"strconv"
 	"strings"
 
@@ -135,7 +136,7 @@ func (p *Provider) DeleteWebhook(ctx context.Context, repoName, webhookID string
 
 	resp, err := p.client.DeleteRepoHook(owner, repo, id)
 	if err != nil {
-		if resp != nil && resp.StatusCode == 404 {
+		if resp != nil && resp.StatusCode == http.StatusNotFound {
 			return nil
 		}
 
