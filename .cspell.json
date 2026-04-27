@@ -80,6 +80,7 @@
     "Makefile",
     "go.mod",
     ".npmrc",
+    "**/fixtures/**/*",
     // generated
     "go.sum",
     "renovate.json",
