@@ -71,7 +71,7 @@ var _ = Describe("Renovate Job Library", func() {
 			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
 
 			Expect(jobSpec.CompletionMode).To(Equal(ptr.To(batchv1.NonIndexedCompletion)))
-			Expect(jobSpec.Parallelism).To(Equal(ptr.To(int32(1))))
+			Expect(jobSpec.Parallelism).To(Equal(new(int32(1))))
 			Expect(jobSpec.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 			Expect(jobSpec.Template.Spec.Volumes).To(HaveLen(2))
 			Expect(jobSpec.Template.Spec.Containers).To(HaveLen(1))

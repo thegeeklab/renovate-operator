@@ -105,7 +105,6 @@ var _ = Describe("GitRepo Reconciliation", func() {
 		})
 
 		It("should handle errors when listing ConfigMaps", func() {
-			// Create a new fake client that simulates an error
 			mockClient := &mockErrorClient{}
 			reconciler := &Reconciler{Client: mockClient, scheme: scheme, instance: instance}
 
@@ -117,7 +116,6 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			cm := createDiscoveryCM("test-config", []string{"repo1"})
 			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
 
-			// Simulate an error by using a mock client that will fail during creation
 			mockClient := &mockErrorClient{}
 			reconciler := &Reconciler{Client: mockClient, scheme: scheme, instance: instance}
 
@@ -129,7 +127,6 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			cm := createDiscoveryCM("test-config", []string{"repo1"})
 			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
 
-			// Simulate an error by using a mock client that will fail during pruning
 			mockClient := &mockErrorClient{}
 			reconciler := &Reconciler{Client: mockClient, scheme: scheme, instance: instance}
 
@@ -228,7 +225,6 @@ var _ = Describe("GitRepo Reconciliation", func() {
 		})
 
 		It("should handle errors when listing existing GitRepos", func() {
-			// Create a mock client that simulates an error
 			mockClient := &mockErrorClient{}
 			reconciler := &Reconciler{Client: mockClient, scheme: scheme, instance: instance}
 
@@ -241,7 +237,6 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			Expect(controllerutil.SetControllerReference(instance, orphan, scheme)).To(Succeed())
 			Expect(fakeClient.Create(ctx, orphan)).To(Succeed())
 
-			// Simulate an error by using a mock client that will fail during deletion
 			mockClient := &mockErrorClient{}
 			reconciler := &Reconciler{Client: mockClient, scheme: scheme, instance: instance}
 
@@ -255,7 +250,6 @@ var _ = Describe("GitRepo Reconciliation", func() {
 	})
 })
 
-// mockErrorClient simulates a client that returns errors for testing purposes.
 type mockErrorClient struct {
 	client.Client
 }

@@ -112,7 +112,7 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 		result = append(result, GitRepoInfo{
 			Name:      gitrepo.Name,
 			Namespace: gitrepo.Namespace,
-			WebhookID: gitrepo.Spec.WebhookID,
+			WebhookID: gitrepo.Status.WebhookID,
 			CreatedAt: gitrepo.CreationTimestamp.Time,
 		})
 	}

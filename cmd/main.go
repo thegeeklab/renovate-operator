@@ -57,9 +57,9 @@ const (
 
 // Namespace Scoped
 //nolint:lll
-// +kubebuilder:rbac:groups="coordination.k8s.io",namespace=system,resources=leases,verbs=get;list;watch;create;update;patch;delete
-// +kubebuilder:rbac:groups="",namespace=system,resources=events,verbs=create;patch
-// +kubebuilder:rbac:groups="",namespace=system,resources=secrets,verbs=create;delete;get;update;patch;list;watch
+// +kubebuilder:rbac:groups=coordination.k8s.io,namespace=system,resources=leases,verbs=get;list;watch;create;update;patch;delete
+// +kubebuilder:rbac:groups=core,namespace=system,resources=events,verbs=create;patch
+// +kubebuilder:rbac:groups=core,namespace=system,resources=secrets,verbs=create;delete;get;update;patch;list;watch
 
 // Cluster Scoped
 //nolint:lll

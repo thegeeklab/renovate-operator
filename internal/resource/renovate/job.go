@@ -49,7 +49,7 @@ func DefaultJobSpec(
 
 	// Construct the Job Spec from the Config
 	spec.CompletionMode = ptr.To(batchv1.NonIndexedCompletion)
-	spec.Parallelism = ptr.To(int32(1))
+	spec.Parallelism = new(int32(1))
 	spec.BackoffLimit = cfg.BackoffLimit
 	spec.TTLSecondsAfterFinished = cfg.TTLSecondsAfterFinished
 

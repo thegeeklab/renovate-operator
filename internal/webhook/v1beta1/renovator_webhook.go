@@ -57,7 +57,7 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 	}
 
 	if renovator.Spec.Suspend == nil {
-		renovator.Spec.Suspend = ptr.To(false)
+		renovator.Spec.Suspend = new(false)
 	}
 
 	if renovator.Spec.Schedule == "" {

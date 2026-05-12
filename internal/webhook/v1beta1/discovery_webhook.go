@@ -62,7 +62,7 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 	}
 
 	if discovery.Spec.Suspend == nil {
-		discovery.Spec.Suspend = ptr.To(false)
+		discovery.Spec.Suspend = new(false)
 	}
 
 	if discovery.Spec.Schedule == "" {
