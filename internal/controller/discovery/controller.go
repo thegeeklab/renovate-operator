@@ -110,7 +110,8 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 				GenericFunc: func(_ event.GenericEvent) bool { return false },
 			},
 		))).
-		Watches(&renovatev1beta1.RenovateConfig{},
+		Watches(
+			&renovatev1beta1.RenovateConfig{},
 			handler.EnqueueRequestsFromMapFunc(r.mapConfigToDiscovery),
 			builder.WithPredicates(predicate.Funcs{
 				UpdateFunc: func(e event.UpdateEvent) bool {

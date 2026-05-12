@@ -241,7 +241,7 @@ func (m *Manager) deleteOldJobs(ctx context.Context, jobs []batchv1.Job, limit i
 	deleteCount := len(jobs) - limit
 	policy := metav1.DeletePropagationBackground
 
-	for i := 0; i < deleteCount; i++ {
+	for i := range deleteCount {
 		if err := m.Delete(ctx, &jobs[i], &client.DeleteOptions{PropagationPolicy: &policy}); err != nil {
 			if client.IgnoreNotFound(err) != nil {
 				return err

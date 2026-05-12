@@ -62,7 +62,7 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 	}
 
 	if runner.Spec.Suspend == nil {
-		runner.Spec.Suspend = ptr.To(false)
+		runner.Spec.Suspend = new(false)
 	}
 
 	if runner.Spec.Schedule == "" {
