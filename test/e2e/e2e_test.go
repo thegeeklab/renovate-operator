@@ -150,7 +150,8 @@ var _ = Describe("Manager", Ordered, func() {
 					`{{ .metadata.name }}{{ "\n" }}` +
 					`{{ end }}` +
 					`{{ end }}`
-				cmd := exec.CommandContext(context.Background(), "kubectl", "get",
+				cmd := exec.CommandContext(
+					context.Background(), "kubectl", "get",
 					"pods", "-l", "control-plane=controller-manager",
 					"-o", "go-template="+template,
 					"-n", namespace,
@@ -165,7 +166,8 @@ var _ = Describe("Manager", Ordered, func() {
 				g.Expect(controllerPodName).To(ContainSubstring("controller-manager"))
 
 				// Validate the pod's status
-				cmd = exec.CommandContext(context.Background(), "kubectl", "get",
+				cmd = exec.CommandContext(
+					context.Background(), "kubectl", "get",
 					"pods", controllerPodName, "-o", "jsonpath={.status.phase}",
 					"-n", namespace,
 				)
@@ -179,7 +181,8 @@ var _ = Describe("Manager", Ordered, func() {
 		It("should ensure the metrics endpoint is serving metrics", func() {
 			By("creating a ClusterRoleBinding for the service account to allow access to metrics")
 
-			cmd := exec.CommandContext(context.Background(), "kubectl", "create", "clusterrolebinding", metricsRoleBindingName,
+			cmd := exec.CommandContext(
+				context.Background(), "kubectl", "create", "clusterrolebinding", metricsRoleBindingName,
 				"--clusterrole=renovate-operator-metrics-reader",
 				fmt.Sprintf("--serviceaccount=%s:%s", namespace, serviceAccountName),
 			)

@@ -86,7 +86,8 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 		result = []RenovatorInfo{}
 	}
 
-	sortItems(result, opt,
+	sortItems(
+		result, opt,
 		func(i RenovatorInfo) string { return i.Name },
 		func(i RenovatorInfo) time.Time { return i.CreatedAt },
 	)
@@ -121,7 +122,8 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 		result = []GitRepoInfo{}
 	}
 
-	sortItems(result, opt,
+	sortItems(
+		result, opt,
 		func(i GitRepoInfo) string { return i.Name },
 		func(i GitRepoInfo) time.Time { return i.CreatedAt },
 	)
@@ -152,7 +154,8 @@ func (df *DataFactory) GetRunners(ctx context.Context, opts ...ListOptions) ([]R
 		result = []RunnerInfo{}
 	}
 
-	sortItems(result, opt,
+	sortItems(
+		result, opt,
 		func(i RunnerInfo) string { return i.Name },
 		func(i RunnerInfo) time.Time { return i.CreatedAt },
 	)
@@ -186,7 +189,8 @@ func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) 
 		result = []DiscoveryInfo{}
 	}
 
-	sortItems(result, opt,
+	sortItems(
+		result, opt,
 		func(i DiscoveryInfo) string { return i.Name },
 		func(i DiscoveryInfo) time.Time { return i.CreatedAt },
 	)
@@ -251,7 +255,8 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts
 		opt.Order = "desc"
 	}
 
-	sortItems(result, opt,
+	sortItems(
+		result, opt,
 		func(i JobInfo) string { return i.Name },
 		func(i JobInfo) time.Time { return i.CreatedAt },
 	)

@@ -269,7 +269,7 @@ func main() {
 	}
 
 	if os.Getenv("ENABLE_WEBHOOKS") != "false" {
-		if err := mgr.Add(manager.RunnableFunc((func(ctx context.Context) error {
+		if err := mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 			if webhookCertRotation {
 				setupLog.Info("Waiting for certificates to be ready before registering webhook")
 				<-setupFinished
@@ -306,7 +306,7 @@ func main() {
 			}
 
 			return nil
-		}))); err != nil {
+		})); err != nil {
 			setupLog.Error(err, "Unable to register webhook setup hook")
 			os.Exit(1)
 		}

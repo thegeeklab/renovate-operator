@@ -132,7 +132,8 @@ func GetActiveJobs(
 ) ([]batchv1.Job, error) {
 	jobList := &batchv1.JobList{}
 
-	err := c.List(ctx, jobList,
+	err := c.List(
+		ctx, jobList,
 		client.InNamespace(namespace),
 		client.MatchingLabels(labels),
 	)

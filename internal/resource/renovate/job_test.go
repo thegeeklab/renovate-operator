@@ -77,13 +77,15 @@ var _ = Describe("Renovate Job Library", func() {
 			Expect(jobSpec.Template.Spec.Containers).To(HaveLen(1))
 		})
 
-		DescribeTable("Functional Options",
+		DescribeTable(
+			"Functional Options",
 			func(opts []renovate.JobOption, validator func(*batchv1.JobSpec)) {
 				jobSpec := &batchv1.JobSpec{}
 				renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM, opts...)
 				validator(jobSpec)
 			},
-			Entry("WithRepository",
+			Entry(
+				"WithRepository",
 				[]renovate.JobOption{renovate.WithRepository("org/repo")},
 				func(spec *batchv1.JobSpec) {
 					env := spec.Template.Spec.Containers[0].Env
@@ -91,21 +93,24 @@ var _ = Describe("Renovate Job Library", func() {
 					Expect(env).To(ContainElement(HaveField("Value", "org/repo")))
 				},
 			),
-			Entry("WithInitContainer",
+			Entry(
+				"WithInitContainer",
 				[]renovate.JobOption{renovate.WithInitContainer(corev1.Container{Name: "init", Image: "busybox"})},
 				func(spec *batchv1.JobSpec) {
 					Expect(spec.Template.Spec.InitContainers).To(HaveLen(1))
 					Expect(spec.Template.Spec.InitContainers[0].Name).To(Equal("init"))
 				},
 			),
-			Entry("WithExtraVolumes",
+			Entry(
+				"WithExtraVolumes",
 				[]renovate.JobOption{renovate.WithExtraVolumes(containers.WithEmptyDirVolume("extra"))},
 				func(spec *batchv1.JobSpec) {
 					Expect(spec.Template.Spec.Volumes).To(HaveLen(3))
 					Expect(spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "extra")))
 				},
 			),
-			Entry("WithExtraEnv",
+			Entry(
+				"WithExtraEnv",
 				[]renovate.JobOption{renovate.WithExtraEnv([]corev1.EnvVar{{Name: "FOO", Value: "BAR"}})},
 				func(spec *batchv1.JobSpec) {
 					env := spec.Template.Spec.Containers[0].Env
@@ -113,7 +118,8 @@ var _ = Describe("Renovate Job Library", func() {
 					Expect(env).To(ContainElement(HaveField("Value", "BAR")))
 				},
 			),
-			Entry("Multiple Options Combined",
+			Entry(
+				"Multiple Options Combined",
 				[]renovate.JobOption{
 					renovate.WithRepository("org/repo"),
 					renovate.WithExtraEnv([]corev1.EnvVar{{Name: "A", Value: "B"}}),
@@ -141,7 +147,8 @@ var _ = Describe("Renovate Job Library", func() {
 			labels = map[string]string{"app": "renovate-test"}
 		})
 
-		DescribeTable("GetActiveJobs",
+		DescribeTable(
+			"GetActiveJobs",
 			func(jobs []*batchv1.Job, expectedCount int) {
 				objs := make([]client.Object, len(jobs))
 				for i, j := range jobs {

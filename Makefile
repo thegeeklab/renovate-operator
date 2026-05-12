@@ -4,12 +4,14 @@ GOFUMPT_PACKAGE_VERSION := v0.10.0
 YAMLFMT_PACKAGE_VERSION := v0.21.0
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_PACKAGE_VERSION := v2.11.4
+# renovate: datasource=go depName=github.com/a-h/templ
+TEMPL_PACKAGE_VERSION := v0.3.1001
 
 GOFUMPT_PACKAGE ?= mvdan.cc/gofumpt@$(GOFUMPT_PACKAGE_VERSION)
 YAMLFMT_PACKAGE ?= github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_PACKAGE_VERSION)
 GOTESTSUM_PACKAGE ?= gotest.tools/gotestsum@latest
 MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
-TEMPL_PACKAGE ?= github.com/a-h/templ/cmd/templ@latest
+TEMPL_PACKAGE ?= github.com/a-h/templ/cmd/templ@$(TEMPL_PACKAGE_VERSION)
 
 # Image URL to use all building image targets
 IMG ?= docker.io/thegeeklab/renovate-operator:devel
