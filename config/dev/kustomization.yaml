@@ -55,7 +55,7 @@ helmCharts:
               /usr/bin/entrypoint &
               until curl --output /dev/null --silent --head --fail http://localhost:4001; do printf '.'; sleep 1; done
               if [ ! -f /data/INIT ]; then
-                export GITEA_TOKEN=$(su-exec git gitea admin user generate-access-token -u renovate --scopes write:organization,write:repository,write:admin,write:user --raw)
+                export GITEA_TOKEN=$(su-exec git gitea admin user generate-access-token -u renovate --scopes write:organization,write:repository,write:admin,write:user,write:issue --raw)
                 GITEA_OAUTH_APP=$(curl -s -X 'POST' 'http://localhost:4001/api/v1/user/applications/oauth2' \
                   -H 'accept: application/json' -H 'Content-Type: application/json' -H "Authorization: token ${GITEA_TOKEN}" \
                   -d '{ "name": "renovate-operator", "confidential_client": true, "redirect_uris": [ "http://renovate-operator-receiver-service.renovate-system.svc.cluster.local:8083/oauth/callback" ] }')

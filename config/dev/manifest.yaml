@@ -13,6 +13,7 @@ metadata:
   name: renovate-operator-frontend-service
   namespace: renovate-system
 spec:
+  type: LoadBalancer
   ports:
     - name: frontend
       port: 8082
