@@ -1,0 +1,116 @@
+---
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+  - ../default
+  - manifest.yaml
+
+helmCharts:
+  - name: gitea
+    repo: https://dl.gitea.com/charts/
+    version: 12.5.0
+    releaseName: gitea
+    namespace: gitea
+    valuesInline:
+      image:
+        registry: "docker.io"
+        repository: gitea/gitea
+        tag: 1.25
+        rootless: false
+      gitea:
+        # Default credentials for local Kind cluster development only. Do not use in production.
+        admin:
+          username: "renovate"
+          password: "password"
+        config:
+          database:
+            DB_TYPE: sqlite3
+      service:
+        http:
+          type: LoadBalancer
+          port: 4001
+      strategy:
+        type: Recreate
+      test:
+        enabled: false
+      persistence:
+        enabled: true
+        create: true
+        mount: true
+        claimName: gitea-shared-storage
+        size: 10Gi
+      postgresql-ha:
+        enabled: false
+      valkey-cluster:
+        enabled: false
+      postExtraInitContainers:
+        - name: bootstrap
+          image: docker.io/gitea/gitea:1.25
+          command:
+            - /bin/bash
+            - -c
+            - |
+              apk add --no-cache jq curl su-exec
+              /usr/bin/entrypoint &
+              until curl --output /dev/null --silent --head --fail http://localhost:4001; do printf '.'; sleep 1; done
+              if [ ! -f /data/INIT ]; then
+                export GITEA_TOKEN=$(su-exec git gitea admin user generate-access-token -u renovate --scopes write:organization,write:repository,write:admin,write:user --raw)
+                GITEA_OAUTH_APP=$(curl -s -X 'POST' 'http://localhost:4001/api/v1/user/applications/oauth2' \
+                  -H 'accept: application/json' -H 'Content-Type: application/json' -H "Authorization: token ${GITEA_TOKEN}" \
+                  -d '{ "name": "renovate-operator", "confidential_client": true, "redirect_uris": [ "http://renovate-operator-receiver-service.renovate-system.svc.cluster.local:8083/oauth/callback" ] }')
+                curl -s -X 'POST' \
+                  'http://localhost:4001/api/v1/orgs' \
+                  -H 'accept: application/json' \
+                  -H 'Content-Type: application/json' \
+                  -H "Authorization: token ${GITEA_TOKEN}" \
+                  -d '{ "username": "testorg", "visibility": "public" }'
+                curl -s -X 'POST' \
+                  'http://localhost:4001/api/v1/repos/migrate' \
+                  -H 'accept: application/json' \
+                  -H 'Content-Type: application/json' \
+                  -H "Authorization: token ${GITEA_TOKEN}" \
+                  -d '{ "clone_addr": "https://github.com/renovate-bot/renovate.git", "uid": 1, "repo_name": "renovate-test", "repo_owner": "testorg", "private": false }'
+                echo $GITEA_OAUTH_APP | jq -r .client_id > /data/client_id
+                echo $GITEA_OAUTH_APP | jq -r .client_secret > /data/client_secret
+                echo $GITEA_TOKEN > /data/gitea_token
+                touch /data/INIT
+              fi
+              echo -e "\n--- GITEA CLIENT ID ---\n$(cat /data/client_id)"
+              echo -e "\n--- GITEA CLIENT SECRET ---\n$(cat /data/client_secret)"
+              echo -e "\n--- GITEA TOKEN ---\n$(cat /data/gitea_token)"
+          env:
+            - name: USER_UID
+              value: "1000"
+            - name: USER_GID
+              value: "1000"
+            - name: GITEA__server__DOMAIN
+              value: "gitea-http.gitea.svc.cluster.local"
+            - name: GITEA__server__ROOT_URL
+              value: "http://gitea-http.gitea.svc.cluster.local:4001"
+            - name: GITEA__webhook__ALLOWED_HOST_LIST
+              value: "*"
+            - name: GITEA__security__INSTALL_LOCK
+              value: "true"
+            - name: GITEA__security__INTERNAL_TOKEN
+              value: "123456"
+            - name: GITEA__repository__DEFAULT_PRIVATE
+              value: "public"
+            - name: GITEA__repository__DEFAULT_PUSH_CREATE_PRIVATE
+              value: "false"
+            - name: GITEA__repository__ENABLE_PUSH_CREATE_USER
+              value: "true"
+            - name: GITEA__repository__ENABLE_PUSH_CREATE_ORG
+              value: "true"
+            - name: GITEA__log__logger_0x2E_router_0x2E_MODE
+              value: ""
+            - name: GITEA__server__LANDING_PAGE
+              value: explore
+          volumeMounts:
+            - name: data
+              mountPath: /data
+          workingDir: /data
+
+patches:
+  - path: patch/deployment.yaml
+  - path: patch/frontend.yaml
