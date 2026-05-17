@@ -113,4 +113,3 @@ helmCharts:
 
 patches:
   - path: patch/deployment.yaml
-  - path: patch/frontend.yaml

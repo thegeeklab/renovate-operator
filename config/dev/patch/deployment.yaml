@@ -15,8 +15,8 @@ spec:
             - --health-probe-bind-address=:8081
             - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
             - --frontend-bind-address=:8082
-            - "--receiver-bind-address=:8083"
-            - "--external-url=http://renovate-operator-receiver-service.renovate-system.svc.cluster.local:8083"
+            - --receiver-bind-address=:8083
+            - --external-url=http://renovate-operator-receiver-service.renovate-system.svc.cluster.local:8083
           ports:
             - containerPort: 8083
               name: receiver
