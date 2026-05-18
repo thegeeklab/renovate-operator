@@ -24,6 +24,13 @@ const (
 	// OperationRenovate is the value used to trigger immediate renovate run.
 	OperationRenovate = "renovate"
 
+	// FinalizerGitRepoWebhook is the finalizer added to GitRepo resources to ensure
+	// remote webhooks are cleaned up before the resource is deleted.
+	FinalizerGitRepoWebhook = "renovate.thegeeklab.de/webhook-cleanup"
+
+	// WebhookSecretDataKey is the key used in the webhook Secret to store the validation token.
+	WebhookSecretDataKey = "secret"
+
 	// ValueTrue represents the string boolean "true" for labels and annotations.
 	ValueTrue = "true"
 	// ValueFalse represents the string boolean "false" for labels and annotations.

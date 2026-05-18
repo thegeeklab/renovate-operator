@@ -6,6 +6,7 @@
 *.dylib
 bin/
 Dockerfile.cross
+config/dev/charts/
 /node_modules/
 /internal/frontend/static/dist
 

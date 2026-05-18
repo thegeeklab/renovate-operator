@@ -34,14 +34,14 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, fmt.Errorf("failed to evaluate schedule: %w", err)
 	}
 
-	if decision.Trigger == scheduler.TriggerSuspended {
-		log.V(1).Info("Runner is suspended: suppressing scheduled run")
-	}
-
 	// Process all GitRepo resources
 	triggeredAny, err := r.processGitRepos(ctx, decision.ShouldRun, runnerLabels)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to process GitRepos: %w", err)
+	}
+
+	if decision.Trigger == scheduler.TriggerSuspended && !triggeredAny {
+		log.V(1).Info("Runner is suspended: suppressing scheduled run")
 	}
 
 	if decision.ShouldRun {
