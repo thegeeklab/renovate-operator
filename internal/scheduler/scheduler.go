@@ -77,8 +77,12 @@ func (m *Manager) Evaluate(obj Schedulable, checkManualTrigger func(map[string]s
 	isScheduleDue := lastRun.IsZero() || now.After(nextRun)
 	isSuspended := obj.GetSuspend()
 
-	if isSuspended && isScheduleDue && !hasAnnotation {
-		return DecisionResult{ShouldRun: false, NextRun: nextRun, Trigger: TriggerSuspended}, nil
+	if isSuspended && !hasAnnotation {
+		if isScheduleDue {
+			return DecisionResult{ShouldRun: false, NextRun: nextRun, Trigger: TriggerSuspended}, nil
+		}
+
+		return DecisionResult{ShouldRun: false, NextRun: nextRun, Trigger: TriggerWait}, nil
 	}
 
 	if hasAnnotation {
