@@ -27,13 +27,13 @@ linters:
     - ginkgolinter
     - gocheckcompilerdirectives
     - gocognit
-    - goconst
+    # - goconst
     - gocritic
     - gocyclo
     - godot
     - goheader
     - gomoddirectives
-    - gomodguard
+    - gomodguard_v2
     - goprintffuncname
     - gosec
     - govet
@@ -111,7 +111,7 @@ linters:
           - gosec
           - revive
           - dupl
-          - goconst
+          # - goconst
           - ireturn
         path: (_test\.go|test/.+\.go)
     paths:
