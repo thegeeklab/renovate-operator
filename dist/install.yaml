@@ -343,6 +343,11 @@ spec:
                     - lookup
                     - full
                   type: string
+                failOnConfigValidationError:
+                  description: |-
+                    FailOnConfigValidationError controls whether Renovate should exit with a non-zero exit code
+                    when configuration validation errors occur. When true, jobs will fail on config errors.
+                  type: boolean
                 githubToken:
                   description: EnvVarSource represents a source for the value of an EnvVar.
                   properties:
@@ -852,6 +857,11 @@ spec:
                         - lookup
                         - full
                       type: string
+                    failOnConfigValidationError:
+                      description: |-
+                        FailOnConfigValidationError controls whether Renovate should exit with a non-zero exit code
+                        when configuration validation errors occur. When true, jobs will fail on config errors.
+                      type: boolean
                     githubToken:
                       description: EnvVarSource represents a source for the value of an EnvVar.
                       properties:
