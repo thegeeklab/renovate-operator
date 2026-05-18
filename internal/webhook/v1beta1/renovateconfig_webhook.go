@@ -67,5 +67,9 @@ func (d *RenovateConfigCustomDefaulter) Default(ctx context.Context, renovate *r
 		renovate.Spec.ImagePullPolicy = corev1.PullIfNotPresent
 	}
 
+	if renovate.Spec.FailOnConfigValidationError == nil {
+		renovate.Spec.FailOnConfigValidationError = new(false)
+	}
+
 	return nil
 }

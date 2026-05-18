@@ -18,7 +18,7 @@ const ConfigMapSuffix = "renovate-conf"
 type RenovateConfig struct {
 	Onboarding    bool                         `json:"onboarding"`
 	PrHourlyLimit int                          `json:"prHourlyLimit"`
-	DryRun        renovatev1beta1.DryRun       `json:"dryRun"`
+	DryRun        renovatev1beta1.DryRun       `json:"dryRun,omitempty"`
 	Platform      renovatev1beta1.PlatformType `json:"platform"`
 	Endpoint      string                       `json:"endpoint"`
 	AddLabels     []string                     `json:"addLabels,omitempty"`

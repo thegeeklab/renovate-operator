@@ -25,6 +25,11 @@ type RenovateConfigSpec struct {
 
 	// +kubebuilder:validation:Optional
 	GithubToken *corev1.EnvVarSource `json:"githubToken,omitempty"`
+
+	// FailOnConfigValidationError controls whether Renovate should exit with a non-zero exit code
+	// when configuration validation errors occur. When true, jobs will fail on config errors.
+	// +kubebuilder:validation:Optional
+	FailOnConfigValidationError *bool `json:"failOnConfigValidationError,omitempty"`
 }
 
 // RenovateConfigStatus defines the observed state of RenovateConfig.

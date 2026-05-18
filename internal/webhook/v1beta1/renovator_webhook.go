@@ -85,5 +85,9 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 		renovator.Spec.Renovate.ImagePullPolicy = corev1.PullIfNotPresent
 	}
 
+	if renovator.Spec.Renovate.FailOnConfigValidationError == nil {
+		renovator.Spec.Renovate.FailOnConfigValidationError = new(false)
+	}
+
 	return nil
 }

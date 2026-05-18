@@ -45,6 +45,14 @@ func DefaultEnvVars(renovate *renovatev1beta1.RenovateConfigSpec) []corev1.EnvVa
 			ValueFrom: &renovate.Platform.Token,
 		},
 	}
+
+	if renovate.FailOnConfigValidationError != nil && *renovate.FailOnConfigValidationError {
+		containerVars = append(containerVars, corev1.EnvVar{
+			Name:  "RENOVATE_CONFIG_VALIDATION_ERROR",
+			Value: "true",
+		})
+	}
+
 	if renovate.GithubToken != nil {
 		containerVars = append(containerVars, corev1.EnvVar{
 			Name:      "GITHUB_COM_TOKEN",
