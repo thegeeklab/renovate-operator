@@ -149,7 +149,8 @@ kind-create: cloud-provider-kind ## Create a Kind cluster and start cloud-provid
 	}
 	@if [ ! -f $(LOCALBIN)/cp-kind.pid ] || ! kill -0 $$(cat $(LOCALBIN)/cp-kind.pid) 2>/dev/null; then \
 		echo "Starting cloud-provider-kind in background..."; \
-		nohup sudo $(CLOUD_PROVIDER_KIND) --enable-lb-port-mapping > $(LOCALBIN)/cp-kind.log 2>&1 & echo $$! > $(LOCALBIN)/cp-kind.pid; \
+		sudo -v; \
+		sudo nohup $(CLOUD_PROVIDER_KIND) --enable-lb-port-mapping > $(LOCALBIN)/cp-kind.log 2>&1 & echo $$! > $(LOCALBIN)/cp-kind.pid; \
 	else \
 		echo "cloud-provider-kind is already running."; \
 	fi
