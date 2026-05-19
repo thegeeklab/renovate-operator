@@ -1,4 +1,11 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["github>thegeeklab/renovate-presets:golang"]
+  "extends": ["github>thegeeklab/renovate-presets:golang"],
+  "packageRules": [
+    {
+      "groupName": "kubernetes packages",
+      "matchDatasources": ["go"],
+      "matchPackageNames": ["/^k8s.io/", "sigs.k8s.io/controller-runtime"]
+    }
+  ]
 }
