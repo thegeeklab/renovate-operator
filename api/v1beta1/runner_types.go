@@ -46,10 +46,6 @@ type RunnerList struct {
 	Items           []Runner `json:"items"`
 }
 
-func init() {
-	SchemeBuilder.Register(&Runner{}, &RunnerList{})
-}
-
 // GetSchedule returns the cron schedule string.
 func (r *Runner) GetSchedule() string {
 	return r.Spec.Schedule

@@ -59,7 +59,3 @@ type RenovateConfigList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []RenovateConfig `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&RenovateConfig{}, &RenovateConfigList{})
-}

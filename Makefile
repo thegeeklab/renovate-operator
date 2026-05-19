@@ -137,8 +137,8 @@ vet: ## Run go vet against code.
 test: setup-envtest ## Run tests without setup.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(shell go env GOPATH)/bin/gotestsum $(GOTEST_FLAGS) $$($(GO) list ./... | grep -v /e2e) $(GINKGO_FLAGS)
 
-.PHONY: test-full
-test-full: manifests generate fmt vet setup-envtest test ## Run tests with full setup.
+.PHONY: test-ci
+test-ci: manifests generate fmt vet setup-envtest test ## Run tests with full setup.
 
 .PHONY: kind-create
 kind-create: cloud-provider-kind ## Create a Kind cluster and start cloud-provider-kind.
