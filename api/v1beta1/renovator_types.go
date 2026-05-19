@@ -137,7 +137,3 @@ type RenovatorList struct {
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Renovator `json:"items"`
 }
-
-func init() {
-	SchemeBuilder.Register(&Renovator{}, &RenovatorList{})
-}

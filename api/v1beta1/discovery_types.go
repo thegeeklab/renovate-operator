@@ -1,6 +1,8 @@
 package v1beta1
 
-import metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+import (
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
 
 // DiscoverySpec defines the desired state of Discovery.
 type DiscoverySpec struct {
@@ -46,10 +48,6 @@ type DiscoveryList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Discovery `json:"items"`
-}
-
-func init() {
-	SchemeBuilder.Register(&Discovery{}, &DiscoveryList{})
 }
 
 // GetSchedule returns the cron schedule string.
