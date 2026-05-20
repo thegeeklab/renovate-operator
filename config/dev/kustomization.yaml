@@ -16,7 +16,6 @@ helmCharts:
       image:
         registry: "docker.io"
         repository: gitea/gitea
-        tag: 1.25
         rootless: false
       gitea:
         # Default credentials for local Kind cluster development only. Do not use in production.
@@ -46,7 +45,7 @@ helmCharts:
         enabled: false
       postExtraInitContainers:
         - name: bootstrap
-          image: docker.io/gitea/gitea:1.25
+          image: docker.io/gitea/gitea:latest
           command:
             - /bin/bash
             - -c
