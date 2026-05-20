@@ -10,6 +10,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -75,10 +76,21 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 
 	log.Info("Webhook ID changed or created, updating status", "oldID", r.instance.Status.WebhookID, "newID", webhookID)
 
+	if r.instance.Annotations == nil {
+		r.instance.Annotations = make(map[string]string)
+	}
+
+	annotationPatch := client.MergeFrom(r.instance.DeepCopy())
+	r.instance.Annotations[renovatev1beta1.RenovatorOperation] = renovatev1beta1.OperationRenovate
+
+	if err := r.Patch(ctx, r.instance, annotationPatch); err != nil && !api_errors.IsNotFound(err) {
+		return &ctrl.Result{}, fmt.Errorf("failed to add operation annotation: %w", err)
+	}
+
 	patch := client.MergeFrom(r.instance.DeepCopy())
 	r.instance.Status.WebhookID = webhookID
 
-	if err := r.Status().Patch(ctx, r.instance, patch); err != nil {
+	if err := r.Status().Patch(ctx, r.instance, patch); err != nil && !api_errors.IsNotFound(err) {
 		return &ctrl.Result{}, fmt.Errorf("failed to patch webhook ID in status: %w", err)
 	}
 
@@ -114,7 +126,7 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 	patch := client.MergeFrom(r.instance.DeepCopy())
 	r.instance.Status.WebhookID = ""
 
-	if err := r.Status().Patch(ctx, r.instance, patch); err != nil {
+	if err := r.Status().Patch(ctx, r.instance, patch); err != nil && !api_errors.IsNotFound(err) {
 		return &ctrl.Result{}, fmt.Errorf("failed to clear webhook ID in status: %w", err)
 	}
 
