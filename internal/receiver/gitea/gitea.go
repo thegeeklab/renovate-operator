@@ -75,6 +75,7 @@ func (p *Receiver) parsePushEvent(body []byte) (bool, error) {
 	}
 
 	expectedRef := "refs/heads/" + payload.Repository.DefaultBranch
+
 	return payload.Ref == expectedRef, nil
 }
 
