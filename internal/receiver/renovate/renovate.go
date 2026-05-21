@@ -1,10 +1,10 @@
-package gitea
+package renovate
 
 import (
 	"strings"
 )
 
-func isRenovateContent(description string) bool {
+func IsRenovateContent(description string) bool {
 	if description == "" {
 		return false
 	}
@@ -36,7 +36,7 @@ func isRenovateContent(description string) bool {
 	return false
 }
 
-func hasCheckboxBeenChecked(current string) bool {
+func HasCheckboxBeenChecked(current string) bool {
 	if current == "" {
 		return false
 	}
@@ -45,10 +45,10 @@ func hasCheckboxBeenChecked(current string) bool {
 		strings.Contains(current, "- [X]")
 }
 
-func verifyRenovateDescriptionChange(current string) bool {
-	if !isRenovateContent(current) {
+func VerifyRenovateDescriptionChange(current string) bool {
+	if !IsRenovateContent(current) {
 		return false
 	}
 
-	return hasCheckboxBeenChecked(current)
+	return HasCheckboxBeenChecked(current)
 }

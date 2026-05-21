@@ -38,6 +38,15 @@ func NewProvider(ctx context.Context, endpoint, token string) (*Provider, error)
 	return &Provider{client: client}, nil
 }
 
+func (p *Provider) GetIdentity() (string, error) {
+	user, _, err := p.client.GetMyUserInfo()
+	if err != nil {
+		return "", err
+	}
+
+	return user.UserName, nil
+}
+
 func (p *Provider) EnsureWebhook(ctx context.Context, repoName, webhookURL, secret string) (string, error) {
 	owner, repo, err := parseRepoName(repoName)
 	if err != nil {

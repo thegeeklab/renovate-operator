@@ -1,4 +1,4 @@
-package gitea
+package renovate
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestReceiverGitea(t *testing.T) {
+func TestReceiverRenovate(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Gitea Receiver Suite")
+	RunSpecs(t, "Renovate Receiver Suite")
 }

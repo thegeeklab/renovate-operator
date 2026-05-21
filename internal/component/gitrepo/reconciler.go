@@ -6,21 +6,11 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
-	"github.com/thegeeklab/renovate-operator/internal/provider/gitea"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
-	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/apimachinery/pkg/types"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
-
-type Provider func(
-	ctx context.Context,
-	c client.Client,
-	instance *renovatev1beta1.GitRepo,
-	renovate *renovatev1beta1.RenovateConfig,
-) (provider.WebhookManager, error)
 
 type Reconciler struct {
 	client.Client
@@ -29,7 +19,7 @@ type Reconciler struct {
 	externalURL string
 	instance    *renovatev1beta1.GitRepo
 	renovate    *renovatev1beta1.RenovateConfig
-	provider    Provider
+	provider    provider.ProviderFactory
 }
 
 func NewReconciler(
@@ -46,7 +36,7 @@ func NewReconciler(
 		req:         ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
 		instance:    instance,
 		renovate:    renovate,
-		provider:    defaultProviderFactory,
+		provider:    provider.DefaultProviderFactory,
 	}, nil
 }
 
@@ -78,27 +68,4 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	}
 
 	return results.ToResult(), nil
-}
-
-//nolint:ireturn
-func defaultProviderFactory(
-	ctx context.Context, c client.Client, instance *renovatev1beta1.GitRepo, renovate *renovatev1beta1.RenovateConfig,
-) (provider.WebhookManager, error) {
-	if renovate.Spec.Platform.Type != "gitea" {
-		return nil, provider.ErrNotImplemented
-	}
-
-	secret := &corev1.Secret{}
-	secretKey := types.NamespacedName{
-		Namespace: instance.Namespace,
-		Name:      renovate.Spec.Platform.Token.SecretKeyRef.Name,
-	}
-
-	if err := c.Get(ctx, secretKey, secret); err != nil {
-		return nil, fmt.Errorf("failed to fetch secret for provider token: %w", err)
-	}
-
-	token := string(secret.Data[renovate.Spec.Platform.Token.SecretKeyRef.Key])
-
-	return gitea.NewProvider(ctx, renovate.Spec.Platform.Endpoint, token)
 }

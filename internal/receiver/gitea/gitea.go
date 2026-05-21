@@ -8,13 +8,12 @@ import (
 	"errors"
 	"net/http"
 
-	"code.gitea.io/sdk/gitea"
+	"github.com/thegeeklab/renovate-operator/internal/receiver/renovate"
 )
 
 var (
-	ErrInvalidSignature       = errors.New("invalid webhook signature")
-	ErrMissingSignature       = errors.New("missing X-Gitea-Signature header")
-	ErrMissingEndpointOrToken = errors.New("missing endpoint or token for identification")
+	ErrInvalidSignature = errors.New("invalid webhook signature")
+	ErrMissingSignature = errors.New("missing X-Gitea-Signature header")
 )
 
 type Receiver struct{}
@@ -24,42 +23,28 @@ func NewReceiver() *Receiver {
 }
 
 //nolint:tagliatelle // Gitea API uses snake_case
+type pushRepository struct {
+	DefaultBranch string `json:"default_branch"`
+}
+
 type pushPayload struct {
-	Ref        string `json:"ref"`
-	Repository struct {
-		DefaultBranch string `json:"default_branch"`
-	} `json:"repository"`
+	Ref        string         `json:"ref"`
+	Repository pushRepository `json:"repository"`
+}
+
+type pullRequestUser struct {
+	Login string `json:"login"`
+}
+
+type pullRequest struct {
+	Description string          `json:"body"`
+	User        pullRequestUser `json:"user"`
 }
 
 //nolint:tagliatelle // Gitea API uses snake_case
 type pullRequestPayload struct {
-	PullRequest struct {
-		Number      int    `json:"number"`
-		State       string `json:"state"`
-		Title       string `json:"title"`
-		Description string `json:"body"`
-		User        struct {
-			Login string `json:"login"`
-		} `json:"user"`
-	} `json:"pull_request"`
-}
-
-func (p *Receiver) GetAllowedUsers(endpoint, token string) ([]string, error) {
-	if endpoint == "" || token == "" {
-		return nil, ErrMissingEndpointOrToken
-	}
-
-	client, err := gitea.NewClient(endpoint, gitea.SetToken(token))
-	if err != nil {
-		return nil, err
-	}
-
-	user, _, err := client.GetMyUserInfo()
-	if err != nil {
-		return nil, err
-	}
-
-	return []string{user.UserName}, nil
+	Action      string      `json:"action"`
+	PullRequest pullRequest `json:"pull_request"`
 }
 
 func (p *Receiver) Validate(req *http.Request, secretToken, body []byte) error {
@@ -109,7 +94,11 @@ func (p *Receiver) parsePullRequestEvent(body []byte) (bool, string, error) {
 		return false, "", err
 	}
 
-	if !verifyRenovateDescriptionChange(payload.PullRequest.Description) {
+	if payload.Action != "edited" {
+		return false, "", nil
+	}
+
+	if !renovate.VerifyRenovateDescriptionChange(payload.PullRequest.Description) {
 		return false, "", nil
 	}
 

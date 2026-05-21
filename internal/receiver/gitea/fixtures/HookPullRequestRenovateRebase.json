@@ -1,5 +1,5 @@
 {
-  "action": "opened",
+  "action": "edited",
   "pull_request": {
     "id": 4,
     "number": 4,

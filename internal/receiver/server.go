@@ -6,11 +6,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"slices"
 	"time"
 
 	"github.com/gorilla/mux"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -23,6 +23,7 @@ var receiverLog = logf.Log.WithName("receiver-server")
 var (
 	ErrPlatformTokenSecretNotConfigured = errors.New("platform token secret not configured")
 	ErrTokenKeyNotFoundInSecret         = errors.New("token key not found in secret")
+	ErrPlatformTokenSecretFetchFailed   = errors.New("failed to fetch platform token secret")
 )
 
 // ReceiverFactory is a function that creates a new Receiver for a specific platform.
@@ -58,17 +59,19 @@ func DefaultServerConfig() ServerConfig {
 }
 
 type Server struct {
-	config ServerConfig
-	client client.Client
-	router *mux.Router
-	server *http.Server
+	config   ServerConfig
+	client   client.Client
+	router   *mux.Router
+	server   *http.Server
+	provider provider.ProviderFactory
 }
 
 func NewServer(config ServerConfig, k8sClient client.Client) *Server {
 	s := &Server{
-		config: config,
-		client: k8sClient,
-		router: mux.NewRouter(),
+		config:   config,
+		client:   k8sClient,
+		router:   mux.NewRouter(),
+		provider: provider.DefaultProviderFactory,
 	}
 
 	s.router.HandleFunc("/hooks/{namespace}/{name}", s.handleIncomingWebhook).Methods("POST")
@@ -173,14 +176,6 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 
 	config := &configList.Items[0]
 
-	platformToken, err := s.resolvePlatformToken(ctx, namespace, &config.Spec.Platform)
-	if err != nil {
-		receiverLog.Error(err, "Failed to resolve platform token", "namespace", namespace, "name", name)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
-
-		return
-	}
-
 	factory, ok := receiverFactories[config.Spec.Platform.Type]
 	if !ok {
 		receiverLog.Info("Webhook verification not implemented for platform", "platform", config.Spec.Platform.Type)
@@ -206,20 +201,45 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	users, err := platformReceiver.GetAllowedUsers(config.Spec.Platform.Endpoint, platformToken)
-	if err != nil {
-		receiverLog.Error(err, "Failed to get allowed users", "namespace", namespace, "name", name)
-		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+	if webhookUser != "" {
+		platformToken, err := s.resolvePlatformToken(ctx, namespace, &config.Spec.Platform)
+		if err != nil {
+			receiverLog.Error(err, "Failed to resolve platform token", "namespace", namespace, "name", name)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 
-		return
-	}
+			return
+		}
 
-	if len(users) > 0 && !slices.Contains(users, webhookUser) {
-		receiverLog.Info("Webhook user not in allowed list", "user", webhookUser)
-		w.WriteHeader(http.StatusAccepted)
-		_, _ = w.Write([]byte(`{"status":"accepted"}`))
+		providerManager, err := s.provider(
+			ctx,
+			provider.PlatformConfig{
+				Type:     string(config.Spec.Platform.Type),
+				Endpoint: config.Spec.Platform.Endpoint,
+				Token:    platformToken,
+			},
+		)
+		if err != nil {
+			receiverLog.Error(err, "Failed to create platform provider", "namespace", namespace, "name", name)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 
-		return
+			return
+		}
+
+		allowedUser, err := providerManager.GetIdentity()
+		if err != nil {
+			receiverLog.Error(err, "Failed to get allowed user identity", "namespace", namespace, "name", name)
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+
+			return
+		}
+
+		if webhookUser != allowedUser {
+			receiverLog.Info("Webhook user does not match expected identity", "user", webhookUser)
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte(`{"status":"accepted"}`))
+
+			return
+		}
 	}
 
 	if shouldTrigger {
@@ -261,7 +281,7 @@ func (s *Server) resolvePlatformToken(
 		Namespace: namespace,
 		Name:      platform.Token.SecretKeyRef.Name,
 	}, secret); err != nil {
-		return "", fmt.Errorf("failed to fetch platform token secret: %w", err)
+		return "", ErrPlatformTokenSecretFetchFailed
 	}
 
 	token, ok := secret.Data[platform.Token.SecretKeyRef.Key]
