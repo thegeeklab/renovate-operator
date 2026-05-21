@@ -1,0 +1,65 @@
+{
+  "action": "opened",
+  "pull_request": {
+    "id": 1,
+    "number": 1,
+    "user": {
+      "id": 1,
+      "login": "renovate[bot]",
+      "full_name": "",
+      "email": "renovate[bot]@users.noreply.github.com",
+      "avatar_url": "https://gitea.golang.org/avatar/renovate[bot]"
+    },
+    "title": "Update dependency golangci/golangci-lint to v1.60",
+    "body": "## Detected Dependencies\r\n\r\n<!--renovate-debug:Dependency Dashboard-->\\r\\n\\r\\n- [x] golangci/golangci-lint\\r\\n- [x] go\\r\\n- [x] golangci/golangci-lint-action\\r\\n- [ ] goreleaser/goreleaser-action\\r\\n- [ ] actions/checkout\\r\\n- [ ] actions/setup-go\\r\\n- [ ] github/codeql-action/upload-sarif",
+    "url": "http://gitea.golang.org/gordon/hello-world/pulls/1",
+    "html_url": "http://gitea.golang.org/gordon/hello-world/pulls/1",
+    "state": "open",
+    "labels": [
+      {
+        "id": 1,
+        "name": "dependencies",
+        "color": "primary"
+      },
+      {
+        "id": 2,
+        "name": "renovate",
+        "color": "green"
+      }
+    ],
+    "created_at": "2026-05-20T10:00:00Z",
+    "updated_at": "2026-05-21T08:00:00Z"
+  },
+  "repository": {
+    "id": 1,
+    "name": "hello-world",
+    "full_name": "gordon/hello-world",
+    "html_url": "http://gitea.golang.org/gordon/hello-world",
+    "ssh_url": "git@gitea.golang.org:gordon/hello-world.git",
+    "clone_url": "http://gitea.golang.org/gordon/hello-world.git",
+    "default_branch": "main",
+    "description": "A hello world repository",
+    "website": "",
+    "watchers": 1,
+    "owner": {
+      "id": 1,
+      "login": "gordon",
+      "full_name": "Gordon the Gopher",
+      "email": "gordon@golang.org",
+      "avatar_url": "https://gitea.golang.org/avatar/gordon"
+    },
+    "private": true,
+    "permissions": {
+      "admin": true,
+      "push": true,
+      "pull": true
+    }
+  },
+  "sender": {
+    "id": 2,
+    "login": "renovate[bot]",
+    "full_name": "",
+    "email": "renovate[bot]@users.noreply.github.com",
+    "avatar_url": "https://gitea.golang.org/avatar/renovate[bot]"
+  }
+}

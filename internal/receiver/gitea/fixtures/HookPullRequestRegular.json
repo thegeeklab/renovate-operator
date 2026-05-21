@@ -1,0 +1,60 @@
+{
+  "action": "opened",
+  "pull_request": {
+    "id": 3,
+    "number": 3,
+    "user": {
+      "id": 3,
+      "login": "contributor",
+      "full_name": "Jane Contributor",
+      "email": "jane@example.com",
+      "avatar_url": "https://gitea.golang.org/avatar/jane"
+    },
+    "title": "Add new feature",
+    "body": "This PR adds a new feature to the application.\r\n\r\n## Changes\r\n\r\n- Added new endpoint\r\n- Updated tests\r\n- Documentation updated",
+    "url": "http://gitea.golang.org/gordon/hello-world/pulls/3",
+    "html_url": "http://gitea.golang.org/gordon/hello-world/pulls/3",
+    "state": "open",
+    "labels": [
+      {
+        "id": 3,
+        "name": "enhancement",
+        "color": "blue"
+      }
+    ],
+    "created_at": "2026-05-18T10:00:00Z",
+    "updated_at": "2026-05-18T10:00:00Z"
+  },
+  "repository": {
+    "id": 1,
+    "name": "hello-world",
+    "full_name": "gordon/hello-world",
+    "html_url": "http://gitea.golang.org/gordon/hello-world",
+    "ssh_url": "git@gitea.golang.org:gordon/hello-world.git",
+    "clone_url": "http://gitea.golang.org/gordon/hello-world.git",
+    "default_branch": "main",
+    "description": "A hello world repository",
+    "website": "",
+    "watchers": 1,
+    "owner": {
+      "id": 1,
+      "login": "gordon",
+      "full_name": "Gordon the Gopher",
+      "email": "gordon@golang.org",
+      "avatar_url": "https://gitea.golang.org/avatar/gordon"
+    },
+    "private": true,
+    "permissions": {
+      "admin": true,
+      "push": true,
+      "pull": true
+    }
+  },
+  "sender": {
+    "id": 3,
+    "login": "contributor",
+    "full_name": "Jane Contributor",
+    "email": "jane@example.com",
+    "avatar_url": "https://gitea.golang.org/avatar/jane"
+  }
+}

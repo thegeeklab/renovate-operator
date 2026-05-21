@@ -16,3 +16,23 @@ var HookPushBranch string
 //
 //go:embed HookTag.json
 var HookTag string
+
+// HookPullRequestRenovateChecked is a sample Gitea pull_request hook with renovate content and checked checkboxes.
+//
+//go:embed HookPullRequestRenovateChecked.json
+var HookPullRequestRenovateChecked string
+
+// HookPullRequestRenovateUnchecked is a sample Gitea pull_request hook with renovate content but unchecked checkboxes.
+//
+//go:embed HookPullRequestRenovateUnchecked.json
+var HookPullRequestRenovateUnchecked string
+
+// HookPullRequestRegular is a sample Gitea pull_request hook with regular PR content (no renovate markers).
+//
+//go:embed HookPullRequestRegular.json
+var HookPullRequestRegular string
+
+// HookPullRequestRenovateRebase is a sample Gitea pull_request hook with renovate rebase checkbox (unchecked).
+//
+//go:embed HookPullRequestRenovateRebase.json
+var HookPullRequestRenovateRebase string

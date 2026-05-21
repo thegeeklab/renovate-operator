@@ -28,6 +28,16 @@ type pushPayload struct {
 	} `json:"repository"`
 }
 
+//nolint:tagliatelle // Gitea API uses snake_case
+type pullRequestPayload struct {
+	PullRequest struct {
+		Number      int    `json:"number"`
+		State       string `json:"state"`
+		Title       string `json:"title"`
+		Description string `json:"body"`
+	} `json:"pull_request"`
+}
+
 func (p *Receiver) Validate(req *http.Request, secretToken, body []byte) error {
 	signature := req.Header.Get("X-Gitea-Signature")
 	if signature == "" {
@@ -47,19 +57,28 @@ func (p *Receiver) Validate(req *http.Request, secretToken, body []byte) error {
 
 func (p *Receiver) Parse(req *http.Request, body []byte) (bool, error) {
 	event := req.Header.Get("X-Gitea-Event")
-	if event != "push" {
-		return false, nil
+	if event == "push" {
+		var payload pushPayload
+		if err := json.Unmarshal(body, &payload); err != nil {
+			return false, err
+		}
+
+		expectedRef := "refs/heads/" + payload.Repository.DefaultBranch
+		if payload.Ref != expectedRef {
+			return false, nil
+		}
+
+		return true, nil
 	}
 
-	var payload pushPayload
-	if err := json.Unmarshal(body, &payload); err != nil {
-		return false, err
+	if event == "pull_request" {
+		var payload pullRequestPayload
+		if err := json.Unmarshal(body, &payload); err != nil {
+			return false, err
+		}
+
+		return verifyRenovateDescriptionChange(payload.PullRequest.Description), nil
 	}
 
-	expectedRef := "refs/heads/" + payload.Repository.DefaultBranch
-	if payload.Ref != expectedRef {
-		return false, nil
-	}
-
-	return true, nil
+	return false, nil
 }
