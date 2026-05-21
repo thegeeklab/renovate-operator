@@ -6,6 +6,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"slices"
 	"time"
 
 	"github.com/gorilla/mux"
@@ -18,6 +19,11 @@ import (
 )
 
 var receiverLog = logf.Log.WithName("receiver-server")
+
+var (
+	ErrPlatformTokenSecretNotConfigured = errors.New("platform token secret not configured")
+	ErrTokenKeyNotFoundInSecret         = errors.New("token key not found in secret")
+)
 
 // ReceiverFactory is a function that creates a new Receiver for a specific platform.
 type ReceiverFactory func() Receiver
@@ -167,6 +173,14 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 
 	config := &configList.Items[0]
 
+	platformToken, err := s.resolvePlatformToken(ctx, namespace, &config.Spec.Platform)
+	if err != nil {
+		receiverLog.Error(err, "Failed to resolve platform token", "namespace", namespace, "name", name)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+
+		return
+	}
+
 	factory, ok := receiverFactories[config.Spec.Platform.Type]
 	if !ok {
 		receiverLog.Info("Webhook verification not implemented for platform", "platform", config.Spec.Platform.Type)
@@ -184,10 +198,26 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shouldTrigger, err := platformReceiver.Parse(r, body)
+	shouldTrigger, webhookUser, err := platformReceiver.Parse(r, body)
 	if err != nil {
 		receiverLog.Error(err, "Failed to parse webhook event")
 		http.Error(w, "Bad Request", http.StatusBadRequest)
+
+		return
+	}
+
+	users, err := platformReceiver.GetAllowedUsers(config.Spec.Platform.Endpoint, platformToken)
+	if err != nil {
+		receiverLog.Error(err, "Failed to get allowed users", "namespace", namespace, "name", name)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+
+		return
+	}
+
+	if len(users) > 0 && !slices.Contains(users, webhookUser) {
+		receiverLog.Info("Webhook user not in allowed list", "user", webhookUser)
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"status":"accepted"}`))
 
 		return
 	}
@@ -215,4 +245,29 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 
 	w.WriteHeader(http.StatusAccepted)
 	_, _ = w.Write([]byte(`{"status":"accepted"}`))
+}
+
+func (s *Server) resolvePlatformToken(
+	ctx context.Context,
+	namespace string,
+	platform *renovatev1beta1.PlatformSpec,
+) (string, error) {
+	if platform.Token.SecretKeyRef == nil {
+		return "", ErrPlatformTokenSecretNotConfigured
+	}
+
+	secret := &corev1.Secret{}
+	if err := s.client.Get(ctx, types.NamespacedName{
+		Namespace: namespace,
+		Name:      platform.Token.SecretKeyRef.Name,
+	}, secret); err != nil {
+		return "", fmt.Errorf("failed to fetch platform token secret: %w", err)
+	}
+
+	token, ok := secret.Data[platform.Token.SecretKeyRef.Key]
+	if !ok {
+		return "", ErrTokenKeyNotFoundInSecret
+	}
+
+	return string(token), nil
 }

@@ -67,7 +67,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "push")
 
-			shouldTrigger, err := Receiver.Parse(req, body)
+			shouldTrigger, _, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(shouldTrigger).To(BeTrue())
 		})
@@ -78,7 +78,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "push")
 
-			shouldTrigger, err := Receiver.Parse(req, body)
+			shouldTrigger, _, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(shouldTrigger).To(BeFalse())
 		})
@@ -89,7 +89,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "push")
 
-			shouldTrigger, err := Receiver.Parse(req, body)
+			shouldTrigger, _, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(shouldTrigger).To(BeFalse())
 		})
@@ -100,7 +100,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "issue")
 
-			shouldTrigger, err := Receiver.Parse(req, body)
+			shouldTrigger, _, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(shouldTrigger).To(BeFalse())
 		})
@@ -111,7 +111,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "push")
 
-			shouldTrigger, err := Receiver.Parse(req, body)
+			shouldTrigger, _, err := Receiver.Parse(req, body)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("invalid character"))
@@ -124,7 +124,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "push")
 
-			shouldTrigger, err := Receiver.Parse(req, body)
+			shouldTrigger, _, err := Receiver.Parse(req, body)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unexpected end of JSON input"))
@@ -137,7 +137,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "pull_request")
 
-			shouldTrigger, err := Receiver.Parse(req, body)
+			shouldTrigger, _, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(shouldTrigger).To(BeTrue())
 		})
@@ -148,7 +148,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "pull_request")
 
-			shouldTrigger, err := Receiver.Parse(req, body)
+			shouldTrigger, _, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(shouldTrigger).To(BeFalse())
 		})
@@ -159,7 +159,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "pull_request")
 
-			shouldTrigger, err := Receiver.Parse(req, body)
+			shouldTrigger, _, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(shouldTrigger).To(BeFalse())
 		})
@@ -170,7 +170,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "pull_request")
 
-			shouldTrigger, err := Receiver.Parse(req, body)
+			shouldTrigger, _, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(shouldTrigger).To(BeFalse())
 		})

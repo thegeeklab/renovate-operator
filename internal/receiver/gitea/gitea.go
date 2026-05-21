@@ -7,11 +7,14 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+
+	"code.gitea.io/sdk/gitea"
 )
 
 var (
-	ErrInvalidSignature = errors.New("invalid webhook signature")
-	ErrMissingSignature = errors.New("missing X-Gitea-Signature header")
+	ErrInvalidSignature       = errors.New("invalid webhook signature")
+	ErrMissingSignature       = errors.New("missing X-Gitea-Signature header")
+	ErrMissingEndpointOrToken = errors.New("missing endpoint or token for identification")
 )
 
 type Receiver struct{}
@@ -35,7 +38,28 @@ type pullRequestPayload struct {
 		State       string `json:"state"`
 		Title       string `json:"title"`
 		Description string `json:"body"`
+		User        struct {
+			Login string `json:"login"`
+		} `json:"user"`
 	} `json:"pull_request"`
+}
+
+func (p *Receiver) GetAllowedUsers(endpoint, token string) ([]string, error) {
+	if endpoint == "" || token == "" {
+		return nil, ErrMissingEndpointOrToken
+	}
+
+	client, err := gitea.NewClient(endpoint, gitea.SetToken(token))
+	if err != nil {
+		return nil, err
+	}
+
+	user, _, err := client.GetMyUserInfo()
+	if err != nil {
+		return nil, err
+	}
+
+	return []string{user.UserName}, nil
 }
 
 func (p *Receiver) Validate(req *http.Request, secretToken, body []byte) error {
@@ -55,7 +79,7 @@ func (p *Receiver) Validate(req *http.Request, secretToken, body []byte) error {
 	return nil
 }
 
-func (p *Receiver) Parse(req *http.Request, body []byte) (bool, error) {
+func (p *Receiver) Parse(req *http.Request, body []byte) (bool, string, error) {
 	event := req.Header.Get("X-Gitea-Event")
 
 	switch event {
@@ -64,26 +88,30 @@ func (p *Receiver) Parse(req *http.Request, body []byte) (bool, error) {
 	case "pull_request":
 		return p.parsePullRequestEvent(body)
 	default:
-		return false, nil
+		return false, "", nil
 	}
 }
 
-func (p *Receiver) parsePushEvent(body []byte) (bool, error) {
+func (p *Receiver) parsePushEvent(body []byte) (bool, string, error) {
 	var payload pushPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return false, err
+		return false, "", err
 	}
 
 	expectedRef := "refs/heads/" + payload.Repository.DefaultBranch
 
-	return payload.Ref == expectedRef, nil
+	return payload.Ref == expectedRef, "", nil
 }
 
-func (p *Receiver) parsePullRequestEvent(body []byte) (bool, error) {
+func (p *Receiver) parsePullRequestEvent(body []byte) (bool, string, error) {
 	var payload pullRequestPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return false, err
+		return false, "", err
 	}
 
-	return verifyRenovateDescriptionChange(payload.PullRequest.Description), nil
+	if !verifyRenovateDescriptionChange(payload.PullRequest.Description) {
+		return false, "", nil
+	}
+
+	return true, payload.PullRequest.User.Login, nil
 }
