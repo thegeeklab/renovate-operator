@@ -57,28 +57,32 @@ func (p *Receiver) Validate(req *http.Request, secretToken, body []byte) error {
 
 func (p *Receiver) Parse(req *http.Request, body []byte) (bool, error) {
 	event := req.Header.Get("X-Gitea-Event")
-	if event == "push" {
-		var payload pushPayload
-		if err := json.Unmarshal(body, &payload); err != nil {
-			return false, err
-		}
 
-		expectedRef := "refs/heads/" + payload.Repository.DefaultBranch
-		if payload.Ref != expectedRef {
-			return false, nil
-		}
+	switch event {
+	case "push":
+		return p.parsePushEvent(body)
+	case "pull_request":
+		return p.parsePullRequestEvent(body)
+	default:
+		return false, nil
+	}
+}
 
-		return true, nil
+func (p *Receiver) parsePushEvent(body []byte) (bool, error) {
+	var payload pushPayload
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return false, err
 	}
 
-	if event == "pull_request" {
-		var payload pullRequestPayload
-		if err := json.Unmarshal(body, &payload); err != nil {
-			return false, err
-		}
+	expectedRef := "refs/heads/" + payload.Repository.DefaultBranch
+	return payload.Ref == expectedRef, nil
+}
 
-		return verifyRenovateDescriptionChange(payload.PullRequest.Description), nil
+func (p *Receiver) parsePullRequestEvent(body []byte) (bool, error) {
+	var payload pullRequestPayload
+	if err := json.Unmarshal(body, &payload); err != nil {
+		return false, err
 	}
 
-	return false, nil
+	return verifyRenovateDescriptionChange(payload.PullRequest.Description), nil
 }
