@@ -18,7 +18,6 @@ helmCharts:
         repository: gitea/gitea
         rootless: false
       gitea:
-        # Default credentials for local Kind cluster development only. Do not use in production.
         admin:
           username: "renovate"
           password: "password"
@@ -28,7 +27,7 @@ helmCharts:
       service:
         http:
           type: LoadBalancer
-          port: 4001
+          port: 3000
       strategy:
         type: Recreate
       test:
@@ -52,32 +51,46 @@ helmCharts:
             - |
               apk add --no-cache jq curl su-exec
               /usr/bin/entrypoint &
-              until curl --output /dev/null --silent --head --fail http://localhost:4001; do printf '.'; sleep 1; done
-              if [ ! -f /data/INIT ]; then
+              until curl --output /dev/null --silent --head --fail http://localhost:3000; do printf '.'; sleep 1; done
+
+              if [ ! -f /data/gitea/INIT ]; then
+                echo "Performing first-time initialization..."
                 export GITEA_TOKEN=$(su-exec git gitea admin user generate-access-token -u renovate --scopes write:organization,write:repository,write:admin,write:user,write:issue --raw)
-                GITEA_OAUTH_APP=$(curl -s -X 'POST' 'http://localhost:4001/api/v1/user/applications/oauth2' \
+                GITEA_OAUTH_APP=$(curl -s -X 'POST' 'http://localhost:3000/api/v1/user/applications/oauth2' \
                   -H 'accept: application/json' -H 'Content-Type: application/json' -H "Authorization: token ${GITEA_TOKEN}" \
                   -d '{ "name": "renovate-operator", "confidential_client": true, "redirect_uris": [ "http://renovate-operator-receiver-service.renovate-system.svc.cluster.local:8083/oauth/callback" ] }')
                 curl -s -X 'POST' \
-                  'http://localhost:4001/api/v1/orgs' \
+                  'http://localhost:3000/api/v1/orgs' \
                   -H 'accept: application/json' \
                   -H 'Content-Type: application/json' \
                   -H "Authorization: token ${GITEA_TOKEN}" \
                   -d '{ "username": "testorg", "visibility": "public" }'
-                curl -s -X 'POST' \
-                  'http://localhost:4001/api/v1/repos/migrate' \
-                  -H 'accept: application/json' \
-                  -H 'Content-Type: application/json' \
-                  -H "Authorization: token ${GITEA_TOKEN}" \
-                  -d '{ "clone_addr": "https://github.com/renovate-bot/renovate.git", "uid": 1, "repo_name": "renovate-test", "repo_owner": "testorg", "private": false }'
-                echo $GITEA_OAUTH_APP | jq -r .client_id > /data/client_id
-                echo $GITEA_OAUTH_APP | jq -r .client_secret > /data/client_secret
-                echo $GITEA_TOKEN > /data/gitea_token
-                touch /data/INIT
+                echo $GITEA_OAUTH_APP | jq -r .client_id > /data/gitea/client_id
+                echo $GITEA_OAUTH_APP | jq -r .client_secret > /data/gitea/client_secret
+                echo $GITEA_TOKEN > /data/gitea/gitea_token
+                touch /data/gitea/INIT
+              else
+                export GITEA_TOKEN=$(cat /data/gitea/gitea_token)
               fi
-              echo -e "\n--- GITEA CLIENT ID ---\n$(cat /data/client_id)"
-              echo -e "\n--- GITEA CLIENT SECRET ---\n$(cat /data/client_secret)"
-              echo -e "\n--- GITEA TOKEN ---\n$(cat /data/gitea_token)"
+
+              REPOS=( "12260" "27806" )
+              for repo in "${REPOS[@]}"; do
+                echo "Checking for repository testorg/$repo..."
+                http_code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/api/v1/repos/testorg/$repo" -H "Authorization: token ${GITEA_TOKEN}")
+                echo "Repository check for testorg/$repo returned http code: $http_code"
+                if [ $http_code -ne 200 ]; then
+                  response_code=$(curl -s -w "%{http_code}" -o /dev/null -X 'POST' 'http://localhost:3000/api/v1/repos/migrate' \
+                    -H 'accept: application/json' \
+                    -H 'Content-Type: application/json' \
+                    -H "Authorization: token ${GITEA_TOKEN}" \
+                    -d "{ \"clone_addr\": \"https://github.com/renovate-reproductions/$repo.git\", \"repo_name\": \"$repo\", \"repo_owner\": \"testorg\", \"private\": false }")
+                  echo "Migration request for testorg/$repo returned http code: $response_code"
+                fi
+              done
+
+              echo -e "\n--- GITEA CLIENT ID ---\n$(cat /data/gitea/client_id)"
+              echo -e "\n--- GITEA CLIENT SECRET ---\n$(cat /data/gitea/client_secret)"
+              echo -e "\n--- GITEA TOKEN ---\n$(cat /data/gitea/gitea_token)"
           env:
             - name: USER_UID
               value: "1000"
@@ -86,7 +99,7 @@ helmCharts:
             - name: GITEA__server__DOMAIN
               value: "gitea-http.gitea.svc.cluster.local"
             - name: GITEA__server__ROOT_URL
-              value: "http://gitea-http.gitea.svc.cluster.local:4001"
+              value: "http://gitea-http.gitea.svc.cluster.local:3000"
             - name: GITEA__webhook__ALLOWED_HOST_LIST
               value: "*"
             - name: GITEA__security__INSTALL_LOCK
@@ -105,6 +118,8 @@ helmCharts:
               value: ""
             - name: GITEA__server__LANDING_PAGE
               value: explore
+            - name: GITEA__actions__ENABLED
+              value: "false"
           volumeMounts:
             - name: data
               mountPath: /data
