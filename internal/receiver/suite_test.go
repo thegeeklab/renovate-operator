@@ -1,4 +1,4 @@
-package gitea
+package receiver_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestReceiverGitea(t *testing.T) {
+func TestReceiver(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Gitea Receiver Suite")
+	RunSpecs(t, "Receiver Suite")
 }

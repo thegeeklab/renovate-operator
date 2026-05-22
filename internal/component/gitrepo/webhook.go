@@ -33,10 +33,24 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, nil
 	}
 
-	webhookManager, err := r.provider(ctx, r.Client, r.instance, r.renovate)
+	secret := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
+		Namespace: r.instance.Namespace,
+	}, secret); err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to get platform token secret: %w", err)
+	}
+
+	platformConfig := provider.PlatformConfig{
+		Type:     string(r.renovate.Spec.Platform.Type),
+		Endpoint: r.renovate.Spec.Platform.Endpoint,
+		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
+	}
+
+	providerManager, err := r.providerFactory(ctx, platformConfig)
 	if err != nil {
 		if errors.Is(err, provider.ErrNotImplemented) {
-			log.V(1).Info("Webhook management not implemented for this provider", "platform", r.renovate.Spec.Platform.Type)
+			log.V(1).Info("Provider not implemented", "platform", r.renovate.Spec.Platform.Type)
 
 			return &ctrl.Result{}, nil
 		}
@@ -61,7 +75,7 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 	baseURL := strings.TrimRight(r.externalURL, "/")
 	webhookURL := fmt.Sprintf("%s/hooks/%s/%s", baseURL, r.instance.Namespace, r.instance.Name)
 
-	webhookID, err := webhookManager.EnsureWebhook(ctx, r.instance.Spec.Name, webhookURL, secretString)
+	webhookID, err := providerManager.EnsureWebhook(ctx, r.instance.Spec.Name, webhookURL, secretString)
 	if err != nil {
 		log.Error(err, "Failed to ensure webhook")
 
@@ -104,7 +118,21 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, nil
 	}
 
-	webhookManager, err := r.provider(ctx, r.Client, r.instance, r.renovate)
+	secret := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
+		Namespace: r.instance.Namespace,
+	}, secret); err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to get platform token secret: %w", err)
+	}
+
+	platformConfig := provider.PlatformConfig{
+		Type:     string(r.renovate.Spec.Platform.Type),
+		Endpoint: r.renovate.Spec.Platform.Endpoint,
+		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
+	}
+
+	providerManager, err := r.providerFactory(ctx, platformConfig)
 	if err != nil {
 		if !errors.Is(err, provider.ErrNotImplemented) {
 			log.Error(err, "Failed to initialize provider for cleanup")
@@ -112,9 +140,9 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 			return &ctrl.Result{}, err
 		}
 
-		log.V(1).Info("Webhook management not implemented for this provider, skipping cleanup")
+		log.V(1).Info("Provider not implemented, skipping cleanup")
 	} else {
-		if err := webhookManager.DeleteWebhook(ctx, r.instance.Spec.Name, r.instance.Status.WebhookID); err != nil {
+		if err := providerManager.DeleteWebhook(ctx, r.instance.Spec.Name, r.instance.Status.WebhookID); err != nil {
 			log.Error(err, "Failed to delete webhook from remote")
 
 			return &ctrl.Result{}, err

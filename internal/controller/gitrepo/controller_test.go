@@ -103,7 +103,7 @@ var _ = Describe("GitRepo Controller", func() {
 		It("should resolve RenovateConfig via labels and attempt reconciliation", func() {
 			result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("failed to fetch secret for provider token"))
+			Expect(err.Error()).To(ContainSubstring("failed to get platform token secret"))
 			Expect(result).To(Equal(reconcile.Result{}))
 		})
 	})

@@ -28,7 +28,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 		instance           *renovatev1beta1.GitRepo
 		renovate           *renovatev1beta1.RenovateConfig
 		reconciler         *Reconciler
-		mockMgr            *mocks.WebhookManager
+		mockMgr            *mocks.ProviderManager
 		secretName         string
 		externalURL        string
 		expectedWebhookURL string
@@ -61,6 +61,14 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Spec: renovatev1beta1.RenovateConfigSpec{
 				Platform: renovatev1beta1.PlatformSpec{
 					Type: "gitea",
+					Token: corev1.EnvVarSource{
+						SecretKeyRef: &corev1.SecretKeySelector{
+							Key: "token",
+							LocalObjectReference: corev1.LocalObjectReference{
+								Name: "token-secret",
+							},
+						},
+					},
 				},
 			},
 		}
@@ -75,15 +83,26 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			WithStatusSubresource(&renovatev1beta1.GitRepo{}).
 			Build()
 
+		tokenSecret := &corev1.Secret{
+			ObjectMeta: metav1.ObjectMeta{
+				Name:      "token-secret",
+				Namespace: instance.Namespace,
+			},
+			Data: map[string][]byte{
+				"token": []byte("test-token"),
+			},
+		}
+		Expect(fakeClient.Create(ctx, tokenSecret)).To(Succeed())
+
 		var err error
 
 		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, instance, renovate)
 		Expect(err).NotTo(HaveOccurred())
 
-		mockMgr = mocks.NewWebhookManager(GinkgoT())
-		reconciler.provider = func(
-			context.Context, client.Client, *renovatev1beta1.GitRepo, *renovatev1beta1.RenovateConfig,
-		) (provider.WebhookManager, error) {
+		mockMgr = mocks.NewProviderManager(GinkgoT())
+		reconciler.providerFactory = func(
+			context.Context, provider.PlatformConfig,
+		) (provider.ProviderManager, error) {
 			return mockMgr, nil
 		}
 	})
@@ -164,10 +183,18 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(err.Error()).To(ContainSubstring("failed to get webhook secret"))
 		})
 
+		It("should fail if the platform token secret is missing", func() {
+			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "token-secret", Namespace: instance.Namespace}}
+			Expect(fakeClient.Delete(ctx, secret)).To(Succeed())
+			_, err := reconciler.createWebhook(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to get platform token secret"))
+		})
+
 		It("should return safely without error if the provider is not implemented", func() {
-			reconciler.provider = func(
-				context.Context, client.Client, *renovatev1beta1.GitRepo, *renovatev1beta1.RenovateConfig,
-			) (provider.WebhookManager, error) {
+			reconciler.providerFactory = func(
+				context.Context, provider.PlatformConfig,
+			) (provider.ProviderManager, error) {
 				return nil, provider.ErrNotImplemented
 			}
 
@@ -231,9 +258,9 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
-			reconciler.provider = func(
-				context.Context, client.Client, *renovatev1beta1.GitRepo, *renovatev1beta1.RenovateConfig,
-			) (provider.WebhookManager, error) {
+			reconciler.providerFactory = func(
+				context.Context, provider.PlatformConfig,
+			) (provider.ProviderManager, error) {
 				return nil, provider.ErrNotImplemented
 			}
 

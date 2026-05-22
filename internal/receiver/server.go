@@ -10,7 +10,7 @@ import (
 
 	"github.com/gorilla/mux"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea"
+	"github.com/thegeeklab/renovate-operator/internal/provider"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -19,12 +19,17 @@ import (
 
 var receiverLog = logf.Log.WithName("receiver-server")
 
-// ReceiverFactory is a function that creates a new Receiver for a specific platform.
-type ReceiverFactory func() Receiver
+var (
+	ErrPlatformTokenSecretNotConfigured = errors.New("platform token secret not configured")
+	ErrTokenKeyNotFoundInSecret         = errors.New("token key not found in secret")
+	ErrPlatformTokenSecretFetchFailed   = errors.New("failed to fetch platform token secret")
+	ErrGitRepoInvalid                   = errors.New("GitRepo invalid")
+	ErrRenovateConfigNotFound           = errors.New("RenovateConfig not found")
+	ErrWebhookSecretKeyNotFound         = errors.New("webhook secret key not found in secret")
+)
 
-var receiverFactories = map[renovatev1beta1.PlatformType]ReceiverFactory{
-	renovatev1beta1.PlatformType_GITEA: func() Receiver { return gitea.NewReceiver() },
-}
+// ReceiverFactory creates a Receiver for a given platform type.
+type ReceiverFactory func(platformType renovatev1beta1.PlatformType) Receiver
 
 const (
 	DefaultReadTimeout  = 10 * time.Second
@@ -56,13 +61,19 @@ type Server struct {
 	client client.Client
 	router *mux.Router
 	server *http.Server
+
+	providerFactory provider.ProviderFactory
+	receiverFactory ReceiverFactory
 }
 
-func NewServer(config ServerConfig, k8sClient client.Client) *Server {
+func NewServer(config ServerConfig, k8sClient client.Client, receiverFactory ReceiverFactory) *Server {
 	s := &Server{
 		config: config,
 		client: k8sClient,
 		router: mux.NewRouter(),
+
+		providerFactory: provider.DefaultProviderFactory,
+		receiverFactory: receiverFactory,
 	}
 
 	s.router.HandleFunc("/hooks/{namespace}/{name}", s.handleIncomingWebhook).Methods("POST")
@@ -121,17 +132,13 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	secretName := fmt.Sprintf("%s-webhook-secret", name)
-
-	webhookSecret := &corev1.Secret{}
-	if err := s.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: secretName}, webhookSecret); err != nil {
+	secretToken, err := s.resolveWebhookSecret(ctx, namespace, name)
+	if err != nil {
 		receiverLog.Error(err, "Failed to find webhook secret")
 		http.Error(w, "Webhook secret not found", http.StatusNotFound)
 
 		return
 	}
-
-	secretToken := webhookSecret.Data[renovatev1beta1.WebhookSecretDataKey]
 
 	repo := &renovatev1beta1.GitRepo{}
 	if err := s.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: name}, repo); err != nil {
@@ -140,42 +147,28 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	renovatorID, ok := repo.Labels[renovatev1beta1.LabelRenovator]
-	if !ok {
-		receiverLog.Info("GitRepo is missing renovator label", "namespace", namespace, "name", name)
-		http.Error(w, "GitRepo invalid", http.StatusInternalServerError)
-
-		return
-	}
-
-	configList := &renovatev1beta1.RenovateConfigList{}
-	if err := s.client.List(ctx, configList, client.InNamespace(namespace), client.MatchingLabels{
-		renovatev1beta1.LabelRenovator: renovatorID,
-	}); err != nil {
-		receiverLog.Error(err, "Failed to list RenovateConfigs")
+	config, err := s.resolveRenovateConfig(ctx, namespace, name, repo)
+	if err != nil {
+		receiverLog.Error(err, "Failed to resolve RenovateConfig for GitRepo")
 		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 
 		return
 	}
 
-	if len(configList.Items) == 0 {
-		receiverLog.Info("No RenovateConfig found for GitRepo", "namespace", namespace, "name", name)
-		http.Error(w, "RenovateConfig not found", http.StatusInternalServerError)
+	if s.receiverFactory == nil {
+		receiverLog.Info("No receiver factory configured")
+		http.Error(w, "Receiver not configured", http.StatusNotImplemented)
 
 		return
 	}
 
-	config := &configList.Items[0]
-
-	factory, ok := receiverFactories[config.Spec.Platform.Type]
-	if !ok {
+	platformReceiver := s.receiverFactory(config.Spec.Platform.Type)
+	if platformReceiver == nil {
 		receiverLog.Info("Webhook verification not implemented for platform", "platform", config.Spec.Platform.Type)
 		http.Error(w, "Platform verification not implemented", http.StatusNotImplemented)
 
 		return
 	}
-
-	platformReceiver := factory()
 
 	if err := platformReceiver.Validate(r, secretToken, body); err != nil {
 		receiverLog.Error(err, "Webhook validation failed", "namespace", namespace, "name", name)
@@ -184,7 +177,7 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	shouldTrigger, err := platformReceiver.Parse(r, body)
+	result, err := platformReceiver.Parse(r, body)
 	if err != nil {
 		receiverLog.Error(err, "Failed to parse webhook event")
 		http.Error(w, "Bad Request", http.StatusBadRequest)
@@ -192,27 +185,160 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if shouldTrigger {
-		patch := client.MergeFrom(repo.DeepCopy())
+	if !result.ShouldTrigger {
+		receiverLog.Info("Webhook processed, no trigger required", "namespace", namespace, "name", name)
+		w.WriteHeader(http.StatusAccepted)
+		_, _ = w.Write([]byte(`{"status":"accepted"}`))
 
-		if repo.Annotations == nil {
-			repo.Annotations = make(map[string]string)
-		}
+		return
+	}
 
-		repo.Annotations[renovatev1beta1.RenovatorOperation] = renovatev1beta1.OperationRenovate
-
-		if err := s.client.Patch(ctx, repo, patch); err != nil {
-			receiverLog.Error(err, "Failed to apply trigger annotation")
-			http.Error(w, "Failed to trigger run", http.StatusInternalServerError)
+	if result.RequireUserCheck {
+		allowed, err := s.verifyWebhookUser(ctx, namespace, name, config, result.User)
+		if err != nil {
+			receiverLog.Error(err, "Failed to verify webhook user status")
+			http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 
 			return
 		}
 
-		receiverLog.Info("Renovate run triggered successfully", "namespace", namespace, "name", name)
-	} else {
-		receiverLog.Info("Webhook processed, no trigger required", "namespace", namespace, "name", name)
+		if !allowed {
+			w.WriteHeader(http.StatusAccepted)
+			_, _ = w.Write([]byte(`{"status":"accepted"}`))
+
+			return
+		}
 	}
+
+	patch := client.MergeFrom(repo.DeepCopy())
+
+	if repo.Annotations == nil {
+		repo.Annotations = make(map[string]string)
+	}
+
+	repo.Annotations[renovatev1beta1.RenovatorOperation] = renovatev1beta1.OperationRenovate
+
+	if err := s.client.Patch(ctx, repo, patch); err != nil {
+		receiverLog.Error(err, "Failed to apply trigger annotation")
+		http.Error(w, "Failed to trigger run", http.StatusInternalServerError)
+
+		return
+	}
+
+	receiverLog.Info("Renovate run triggered successfully", "namespace", namespace, "name", name)
 
 	w.WriteHeader(http.StatusAccepted)
 	_, _ = w.Write([]byte(`{"status":"accepted"}`))
+}
+
+func (s *Server) resolveWebhookSecret(ctx context.Context, namespace, name string) ([]byte, error) {
+	secretName := fmt.Sprintf("%s-webhook-secret", name)
+	webhookSecret := &corev1.Secret{}
+
+	if err := s.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: secretName}, webhookSecret); err != nil {
+		return nil, err
+	}
+
+	token, ok := webhookSecret.Data[renovatev1beta1.WebhookSecretDataKey]
+	if !ok {
+		return nil, fmt.Errorf("%w: %q", ErrWebhookSecretKeyNotFound, secretName)
+	}
+
+	return token, nil
+}
+
+func (s *Server) resolveRenovateConfig(
+	ctx context.Context,
+	namespace, name string,
+	repo *renovatev1beta1.GitRepo,
+) (*renovatev1beta1.RenovateConfig, error) {
+	renovatorID, ok := repo.Labels[renovatev1beta1.LabelRenovator]
+	if !ok {
+		receiverLog.Info("GitRepo is missing renovator label", "namespace", namespace, "name", name)
+
+		return nil, ErrGitRepoInvalid
+	}
+
+	configList := &renovatev1beta1.RenovateConfigList{}
+	if err := s.client.List(ctx, configList, client.InNamespace(namespace), client.MatchingLabels{
+		renovatev1beta1.LabelRenovator: renovatorID,
+	}); err != nil {
+		return nil, err
+	}
+
+	if len(configList.Items) == 0 {
+		receiverLog.Info("No RenovateConfig found for GitRepo", "namespace", namespace, "name", name)
+
+		return nil, ErrRenovateConfigNotFound
+	}
+
+	return &configList.Items[0], nil
+}
+
+func (s *Server) verifyWebhookUser(
+	ctx context.Context,
+	namespace, name string,
+	config *renovatev1beta1.RenovateConfig,
+	webhookUser string,
+) (bool, error) {
+	platformToken, err := s.resolvePlatformToken(ctx, namespace, &config.Spec.Platform)
+	if err != nil {
+		receiverLog.Error(err, "Failed to resolve platform token", "namespace", namespace, "name", name)
+
+		return false, err
+	}
+
+	providerManager, err := s.providerFactory(
+		ctx,
+		provider.PlatformConfig{
+			Type:     string(config.Spec.Platform.Type),
+			Endpoint: config.Spec.Platform.Endpoint,
+			Token:    platformToken,
+		},
+	)
+	if err != nil {
+		receiverLog.Error(err, "Failed to create platform provider", "namespace", namespace, "name", name)
+
+		return false, err
+	}
+
+	allowedUser, err := providerManager.GetIdentity()
+	if err != nil {
+		receiverLog.Error(err, "Failed to get allowed user identity", "namespace", namespace, "name", name)
+
+		return false, err
+	}
+
+	if webhookUser != allowedUser {
+		receiverLog.Info("Webhook user does not match expected identity", "user", webhookUser)
+
+		return false, nil
+	}
+
+	return true, nil
+}
+
+func (s *Server) resolvePlatformToken(
+	ctx context.Context,
+	namespace string,
+	platform *renovatev1beta1.PlatformSpec,
+) (string, error) {
+	if platform.Token.SecretKeyRef == nil {
+		return "", ErrPlatformTokenSecretNotConfigured
+	}
+
+	secret := &corev1.Secret{}
+	if err := s.client.Get(ctx, types.NamespacedName{
+		Namespace: namespace,
+		Name:      platform.Token.SecretKeyRef.Name,
+	}, secret); err != nil {
+		return "", fmt.Errorf("%w: %w", ErrPlatformTokenSecretFetchFailed, err)
+	}
+
+	token, ok := secret.Data[platform.Token.SecretKeyRef.Key]
+	if !ok {
+		return "", ErrTokenKeyNotFoundInSecret
+	}
+
+	return string(token), nil
 }
