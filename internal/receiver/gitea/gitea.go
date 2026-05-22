@@ -8,6 +8,7 @@ import (
 	"errors"
 	"net/http"
 
+	"github.com/thegeeklab/renovate-operator/internal/receiver/parse"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/renovate"
 )
 
@@ -64,7 +65,7 @@ func (p *Receiver) Validate(req *http.Request, secretToken, body []byte) error {
 	return nil
 }
 
-func (p *Receiver) Parse(req *http.Request, body []byte) (bool, string, error) {
+func (p *Receiver) Parse(req *http.Request, body []byte) (parse.Result, error) {
 	event := req.Header.Get("X-Gitea-Event")
 
 	switch event {
@@ -73,34 +74,38 @@ func (p *Receiver) Parse(req *http.Request, body []byte) (bool, string, error) {
 	case "pull_request":
 		return p.parsePullRequestEvent(body)
 	default:
-		return false, "", nil
+		return parse.Result{}, nil
 	}
 }
 
-func (p *Receiver) parsePushEvent(body []byte) (bool, string, error) {
+func (p *Receiver) parsePushEvent(body []byte) (parse.Result, error) {
 	var payload pushPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return false, "", err
+		return parse.Result{}, err
 	}
 
 	expectedRef := "refs/heads/" + payload.Repository.DefaultBranch
 
-	return payload.Ref == expectedRef, "", nil
+	return parse.Result{ShouldTrigger: payload.Ref == expectedRef}, nil
 }
 
-func (p *Receiver) parsePullRequestEvent(body []byte) (bool, string, error) {
+func (p *Receiver) parsePullRequestEvent(body []byte) (parse.Result, error) {
 	var payload pullRequestPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
-		return false, "", err
+		return parse.Result{}, err
 	}
 
 	if payload.Action != "edited" {
-		return false, "", nil
+		return parse.Result{}, nil
 	}
 
 	if !renovate.VerifyRenovateDescriptionChange(payload.PullRequest.Description) {
-		return false, "", nil
+		return parse.Result{}, nil
 	}
 
-	return true, payload.PullRequest.User.Login, nil
+	return parse.Result{
+		ShouldTrigger:    true,
+		RequireUserCheck: true,
+		User:             payload.PullRequest.User.Login,
+	}, nil
 }

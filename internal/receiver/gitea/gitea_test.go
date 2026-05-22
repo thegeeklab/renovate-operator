@@ -12,6 +12,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea/fixtures"
+	"github.com/thegeeklab/renovate-operator/internal/receiver/parse"
 )
 
 func generateValidSignature(secret, body []byte) string {
@@ -67,9 +68,9 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "push")
 
-			shouldTrigger, _, err := Receiver.Parse(req, body)
+			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(shouldTrigger).To(BeTrue())
+			Expect(result).To(Equal(parse.Result{ShouldTrigger: true}))
 		})
 
 		It("should NOT trigger a run for a push to a non-default branch", func() {
@@ -78,9 +79,9 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "push")
 
-			shouldTrigger, _, err := Receiver.Parse(req, body)
+			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(shouldTrigger).To(BeFalse())
+			Expect(result).To(Equal(parse.Result{}))
 		})
 
 		It("should NOT trigger a run for a tag event", func() {
@@ -89,9 +90,9 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "push")
 
-			shouldTrigger, _, err := Receiver.Parse(req, body)
+			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(shouldTrigger).To(BeFalse())
+			Expect(result).To(Equal(parse.Result{}))
 		})
 
 		It("should NOT trigger a run for a non-push event type", func() {
@@ -100,9 +101,9 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "issue")
 
-			shouldTrigger, _, err := Receiver.Parse(req, body)
+			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(shouldTrigger).To(BeFalse())
+			Expect(result).To(Equal(parse.Result{}))
 		})
 
 		It("should return an error if the JSON payload is malformed", func() {
@@ -111,11 +112,11 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "push")
 
-			shouldTrigger, _, err := Receiver.Parse(req, body)
+			result, err := Receiver.Parse(req, body)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("invalid character"))
-			Expect(shouldTrigger).To(BeFalse())
+			Expect(result.ShouldTrigger).To(BeFalse())
 		})
 
 		It("should return an error if the body is empty", func() {
@@ -124,11 +125,11 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "push")
 
-			shouldTrigger, _, err := Receiver.Parse(req, body)
+			result, err := Receiver.Parse(req, body)
 
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("unexpected end of JSON input"))
-			Expect(shouldTrigger).To(BeFalse())
+			Expect(result.ShouldTrigger).To(BeFalse())
 		})
 
 		It("should trigger a run for renovate PR with checked checkbox", func() {
@@ -137,9 +138,11 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "pull_request")
 
-			shouldTrigger, _, err := Receiver.Parse(req, body)
+			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(shouldTrigger).To(BeTrue())
+			Expect(result.ShouldTrigger).To(BeTrue())
+			Expect(result.RequireUserCheck).To(BeTrue())
+			Expect(result.User).NotTo(BeEmpty())
 		})
 
 		It("should NOT trigger a run for renovate PR with unchecked checkboxes", func() {
@@ -148,9 +151,9 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "pull_request")
 
-			shouldTrigger, _, err := Receiver.Parse(req, body)
+			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(shouldTrigger).To(BeFalse())
+			Expect(result).To(Equal(parse.Result{}))
 		})
 
 		It("should NOT trigger a run for regular PR without renovate markers", func() {
@@ -159,9 +162,9 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "pull_request")
 
-			shouldTrigger, _, err := Receiver.Parse(req, body)
+			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(shouldTrigger).To(BeFalse())
+			Expect(result).To(Equal(parse.Result{}))
 		})
 
 		It("should NOT trigger a run for renovate PR with unchecked rebase checkbox", func() {
@@ -170,9 +173,9 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
 			req.Header.Set("X-Gitea-Event", "pull_request")
 
-			shouldTrigger, _, err := Receiver.Parse(req, body)
+			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(shouldTrigger).To(BeFalse())
+			Expect(result).To(Equal(parse.Result{}))
 		})
 	})
 })

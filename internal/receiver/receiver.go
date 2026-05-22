@@ -1,6 +1,10 @@
 package receiver
 
-import "net/http"
+import (
+	"net/http"
+
+	"github.com/thegeeklab/renovate-operator/internal/receiver/parse"
+)
 
 // Receiver defines how a specific Git platform validates and parses incoming webhooks.
 type Receiver interface {
@@ -10,6 +14,8 @@ type Receiver interface {
 
 	// Parse parses the payload and headers to determine if
 	// this specific event should trigger a Renovate run.
-	// Returns (shouldTrigger, webhookUser, error).
-	Parse(req *http.Request, body []byte) (bool, string, error)
+	// Implementations must set RequireUserCheck to true whenever the trigger
+	// originates from a user-editable payload (e.g. a pull_request edit), so
+	// the server enforces bot-identity verification before allowing the run.
+	Parse(req *http.Request, body []byte) (parse.Result, error)
 }

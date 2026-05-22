@@ -9,7 +9,8 @@ import (
 
 var ErrNotImplemented = errors.New("provider not implemented")
 
-// Manager defines the interface for managing remote Git provider webhooks.
+// ProviderManager defines the interface for interacting with a remote Git provider:
+// managing repository webhooks and resolving the identity associated with the configured token.
 type ProviderManager interface {
 	// GetIdentity returns the identity of the user associated with the provided token.
 	GetIdentity() (string, error)
