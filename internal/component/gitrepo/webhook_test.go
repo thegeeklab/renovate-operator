@@ -100,7 +100,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 		Expect(err).NotTo(HaveOccurred())
 
 		mockMgr = mocks.NewProviderManager(GinkgoT())
-		reconciler.provider = func(
+		reconciler.providerFactory = func(
 			context.Context, provider.PlatformConfig,
 		) (provider.ProviderManager, error) {
 			return mockMgr, nil
@@ -192,7 +192,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 		})
 
 		It("should return safely without error if the provider is not implemented", func() {
-			reconciler.provider = func(
+			reconciler.providerFactory = func(
 				context.Context, provider.PlatformConfig,
 			) (provider.ProviderManager, error) {
 				return nil, provider.ErrNotImplemented
@@ -258,7 +258,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
-			reconciler.provider = func(
+			reconciler.providerFactory = func(
 				context.Context, provider.PlatformConfig,
 			) (provider.ProviderManager, error) {
 				return nil, provider.ErrNotImplemented

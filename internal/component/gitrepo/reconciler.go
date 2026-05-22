@@ -14,12 +14,12 @@ import (
 
 type Reconciler struct {
 	client.Client
-	scheme      *runtime.Scheme
-	req         ctrl.Request
-	externalURL string
-	instance    *renovatev1beta1.GitRepo
-	renovate    *renovatev1beta1.RenovateConfig
-	provider    provider.ProviderFactory
+	scheme          *runtime.Scheme
+	req             ctrl.Request
+	externalURL     string
+	instance        *renovatev1beta1.GitRepo
+	renovate        *renovatev1beta1.RenovateConfig
+	providerFactory provider.ProviderFactory
 }
 
 func NewReconciler(
@@ -30,13 +30,13 @@ func NewReconciler(
 	renovate *renovatev1beta1.RenovateConfig,
 ) (*Reconciler, error) {
 	return &Reconciler{
-		Client:      c,
-		scheme:      scheme,
-		externalURL: externalURL,
-		req:         ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
-		instance:    instance,
-		renovate:    renovate,
-		provider:    provider.DefaultProviderFactory,
+		Client:          c,
+		scheme:          scheme,
+		externalURL:     externalURL,
+		req:             ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
+		instance:        instance,
+		renovate:        renovate,
+		providerFactory: provider.DefaultProviderFactory,
 	}, nil
 }
 

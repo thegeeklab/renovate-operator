@@ -1,8 +1,11 @@
-package renovate
+package receiver
 
 import (
+	"regexp"
 	"strings"
 )
+
+var checkboxCheckedRegex = regexp.MustCompile(`(?m)^[\s]*- \[[xX]\]`)
 
 func IsRenovateContent(description string) bool {
 	if description == "" {
@@ -41,11 +44,10 @@ func HasCheckboxBeenChecked(current string) bool {
 		return false
 	}
 
-	return strings.Contains(current, "- [x]") ||
-		strings.Contains(current, "- [X]")
+	return checkboxCheckedRegex.MatchString(current)
 }
 
-func VerifyRenovateDescriptionChange(current string) bool {
+func IsRenovateCheckboxChecked(current string) bool {
 	if !IsRenovateContent(current) {
 		return false
 	}

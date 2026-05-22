@@ -11,7 +11,6 @@ import (
 	"github.com/gorilla/mux"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
-	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -26,14 +25,11 @@ var (
 	ErrPlatformTokenSecretFetchFailed   = errors.New("failed to fetch platform token secret")
 	ErrGitRepoInvalid                   = errors.New("GitRepo invalid")
 	ErrRenovateConfigNotFound           = errors.New("RenovateConfig not found")
+	ErrWebhookSecretKeyNotFound         = errors.New("webhook secret key not found in secret")
 )
 
-// ReceiverFactory is a function that creates a new Receiver for a specific platform.
-type ReceiverFactory func() Receiver
-
-var receiverFactories = map[renovatev1beta1.PlatformType]ReceiverFactory{
-	renovatev1beta1.PlatformType_GITEA: func() Receiver { return gitea.NewReceiver() },
-}
+// ReceiverFactory creates a Receiver for a given platform type.
+type ReceiverFactory func(platformType renovatev1beta1.PlatformType) Receiver
 
 const (
 	DefaultReadTimeout  = 10 * time.Second
@@ -61,19 +57,23 @@ func DefaultServerConfig() ServerConfig {
 }
 
 type Server struct {
-	config   ServerConfig
-	client   client.Client
-	router   *mux.Router
-	server   *http.Server
-	provider provider.ProviderFactory
+	config ServerConfig
+	client client.Client
+	router *mux.Router
+	server *http.Server
+
+	providerFactory provider.ProviderFactory
+	receiverFactory ReceiverFactory
 }
 
-func NewServer(config ServerConfig, k8sClient client.Client) *Server {
+func NewServer(config ServerConfig, k8sClient client.Client, receiverFactory ReceiverFactory) *Server {
 	s := &Server{
-		config:   config,
-		client:   k8sClient,
-		router:   mux.NewRouter(),
-		provider: provider.DefaultProviderFactory,
+		config: config,
+		client: k8sClient,
+		router: mux.NewRouter(),
+
+		providerFactory: provider.DefaultProviderFactory,
+		receiverFactory: receiverFactory,
 	}
 
 	s.router.HandleFunc("/hooks/{namespace}/{name}", s.handleIncomingWebhook).Methods("POST")
@@ -150,20 +150,25 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 	config, err := s.resolveRenovateConfig(ctx, namespace, name, repo)
 	if err != nil {
 		receiverLog.Error(err, "Failed to resolve RenovateConfig for GitRepo")
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 
 		return
 	}
 
-	factory, ok := receiverFactories[config.Spec.Platform.Type]
-	if !ok {
+	if s.receiverFactory == nil {
+		receiverLog.Info("No receiver factory configured")
+		http.Error(w, "Receiver not configured", http.StatusNotImplemented)
+
+		return
+	}
+
+	platformReceiver := s.receiverFactory(config.Spec.Platform.Type)
+	if platformReceiver == nil {
 		receiverLog.Info("Webhook verification not implemented for platform", "platform", config.Spec.Platform.Type)
 		http.Error(w, "Platform verification not implemented", http.StatusNotImplemented)
 
 		return
 	}
-
-	platformReceiver := factory()
 
 	if err := platformReceiver.Validate(r, secretToken, body); err != nil {
 		receiverLog.Error(err, "Webhook validation failed", "namespace", namespace, "name", name)
@@ -234,7 +239,12 @@ func (s *Server) resolveWebhookSecret(ctx context.Context, namespace, name strin
 		return nil, err
 	}
 
-	return webhookSecret.Data[renovatev1beta1.WebhookSecretDataKey], nil
+	token, ok := webhookSecret.Data[renovatev1beta1.WebhookSecretDataKey]
+	if !ok {
+		return nil, fmt.Errorf("%w: %q", ErrWebhookSecretKeyNotFound, secretName)
+	}
+
+	return token, nil
 }
 
 func (s *Server) resolveRenovateConfig(
@@ -278,7 +288,7 @@ func (s *Server) verifyWebhookUser(
 		return false, err
 	}
 
-	providerManager, err := s.provider(
+	providerManager, err := s.providerFactory(
 		ctx,
 		provider.PlatformConfig{
 			Type:     string(config.Spec.Platform.Type),

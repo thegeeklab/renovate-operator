@@ -47,7 +47,7 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
 	}
 
-	providerManager, err := r.provider(ctx, platformConfig)
+	providerManager, err := r.providerFactory(ctx, platformConfig)
 	if err != nil {
 		if errors.Is(err, provider.ErrNotImplemented) {
 			log.V(1).Info("Provider not implemented", "platform", r.renovate.Spec.Platform.Type)
@@ -132,7 +132,7 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
 	}
 
-	providerManager, err := r.provider(ctx, platformConfig)
+	providerManager, err := r.providerFactory(ctx, platformConfig)
 	if err != nil {
 		if !errors.Is(err, provider.ErrNotImplemented) {
 			log.Error(err, "Failed to initialize provider for cleanup")

@@ -22,6 +22,7 @@ import (
 	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
 	"github.com/thegeeklab/renovate-operator/internal/receiver"
+	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -351,7 +352,6 @@ func setupWebhooks(mgr manager.Manager, cfg Config) error {
 		} else {
 			setupLog.Info("Skipping cert rotation, setting up webhook")
 
-			// Modern os.ErrNotExist check
 			if _, err := os.Stat(fmt.Sprintf("%s/tls.crt", cfg.WebhookCertPath)); errors.Is(err, os.ErrNotExist) {
 				return fmt.Errorf("certificate file does not exist"+
 					" while certificate rotation is disabled at path %s/tls.crt: %w", cfg.WebhookCertPath, err)
@@ -402,7 +402,6 @@ func setupHTTPServers(
 		}
 	}
 
-	// Setup event receiver server if enabled
 	if cfg.ReceiverAddr != "0" {
 		if cfg.ExternalURL == "" {
 			err := fmt.Errorf("%w: --external-url", errFlagRequired)
@@ -422,6 +421,7 @@ func setupHTTPServers(
 		receiverServer := receiver.NewServer(
 			receiverConfig,
 			mgr.GetClient(),
+			buildReceiverFactory(),
 		)
 
 		setupLog.Info("Adding HTTP server to manager", "server", "receiver", "addr", cfg.ReceiverAddr)
@@ -434,7 +434,7 @@ func setupHTTPServers(
 	return nil
 }
 
-// WatchedNamespaces get the list of additional watched namespaces.
+// watchedNamespaces get the list of additional watched namespaces.
 // The result is a list of namespaces specified in the WATCHED_NAMESPACE where
 // each namespace is separated by comma.
 func watchedNamespaces(namespaces string) []string {
@@ -489,4 +489,17 @@ func waitForWebhooks(c client.Reader, webhooks []rotator.WebhookInfo) error {
 	}
 
 	return nil
+}
+
+// buildReceiverFactory returns a factory function that creates the appropriate
+// webhook Receiver implementation based on the platform type.
+func buildReceiverFactory() receiver.ReceiverFactory {
+	return func(platformType renovatev1beta1.PlatformType) receiver.Receiver {
+		switch platformType {
+		case renovatev1beta1.PlatformType_GITEA:
+			return gitea.NewReceiver()
+		default:
+			return nil
+		}
+	}
 }

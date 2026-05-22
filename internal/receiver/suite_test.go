@@ -1,4 +1,4 @@
-package renovate
+package receiver_test
 
 import (
 	"testing"
@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/gomega"
 )
 
-func TestReceiverRenovate(t *testing.T) {
+func TestReceiver(t *testing.T) {
 	RegisterFailHandler(Fail)
-	RunSpecs(t, "Renovate Receiver Suite")
+	RunSpecs(t, "Receiver Suite")
 }

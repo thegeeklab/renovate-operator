@@ -1,0 +1,53 @@
+{
+  "action": "closed",
+  "issue": {
+    "id": 4,
+    "number": 4,
+    "user": {
+      "id": 1,
+      "login": "renovate[bot]",
+      "full_name": "",
+      "email": "renovate[bot]@users.noreply.github.com",
+      "avatar_url": "https://gitea.golang.org/avatar/renovate[bot]"
+    },
+    "title": "Dependency Dashboard",
+    "body": "This issue lists Renovate updates and detected dependencies.\n\n## Rebase/Retry\n\nClick on a checkbox below to rebase/retry:\n\n - [x] <!-- rebase-branch=renovate/golangci-lint-1.x -->Update dependency golangci/golangci-lint to v1.63\n\n## Detected Dependencies\n\n| Manager | File | Detected deps |\n|---|---|---|\n| gomod | go.mod | golang 1.21 |\n\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0My4xODUuMSJ9-->",
+    "url": "http://gitea.golang.org/gordon/hello-world/issues/4",
+    "html_url": "http://gitea.golang.org/gordon/hello-world/issues/4",
+    "state": "closed",
+    "created_at": "2026-05-22T10:00:00Z",
+    "updated_at": "2026-05-22T11:00:00Z"
+  },
+  "repository": {
+    "id": 1,
+    "name": "hello-world",
+    "full_name": "gordon/hello-world",
+    "html_url": "http://gitea.golang.org/gordon/hello-world",
+    "ssh_url": "git@gitea.golang.org:gordon/hello-world.git",
+    "clone_url": "http://gitea.golang.org/gordon/hello-world.git",
+    "default_branch": "main",
+    "description": "A hello world repository",
+    "website": "",
+    "watchers": 1,
+    "owner": {
+      "id": 1,
+      "login": "gordon",
+      "full_name": "Gordon the Gopher",
+      "email": "gordon@golang.org",
+      "avatar_url": "https://gitea.golang.org/avatar/gordon"
+    },
+    "private": true,
+    "permissions": {
+      "admin": true,
+      "push": true,
+      "pull": true
+    }
+  },
+  "sender": {
+    "id": 2,
+    "login": "renovate[bot]",
+    "full_name": "",
+    "email": "renovate[bot]@users.noreply.github.com",
+    "avatar_url": "https://gitea.golang.org/avatar/renovate[bot]"
+  }
+}

@@ -62,7 +62,7 @@ func (p *Provider) EnsureWebhook(ctx context.Context, repoName, webhookURL, secr
 		return "", errMissingAdmin
 	}
 
-	desiredEvents := []string{"push", "pull_request"}
+	desiredEvents := []string{"push", "pull_request", "issues"}
 
 	var existingHook *gitea.Hook
 

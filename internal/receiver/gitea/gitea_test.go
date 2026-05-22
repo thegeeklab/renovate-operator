@@ -11,8 +11,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
+	"github.com/thegeeklab/renovate-operator/internal/receiver"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea/fixtures"
-	"github.com/thegeeklab/renovate-operator/internal/receiver/parse"
 )
 
 func generateValidSignature(secret, body []byte) string {
@@ -70,7 +70,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 
 			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(parse.Result{ShouldTrigger: true}))
+			Expect(result).To(Equal(receiver.ParseResult{ShouldTrigger: true}))
 		})
 
 		It("should NOT trigger a run for a push to a non-default branch", func() {
@@ -81,7 +81,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 
 			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(parse.Result{}))
+			Expect(result).To(Equal(receiver.ParseResult{}))
 		})
 
 		It("should NOT trigger a run for a tag event", func() {
@@ -92,7 +92,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 
 			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(parse.Result{}))
+			Expect(result).To(Equal(receiver.ParseResult{}))
 		})
 
 		It("should NOT trigger a run for a non-push event type", func() {
@@ -103,7 +103,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 
 			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(parse.Result{}))
+			Expect(result).To(Equal(receiver.ParseResult{}))
 		})
 
 		It("should return an error if the JSON payload is malformed", func() {
@@ -153,7 +153,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 
 			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(parse.Result{}))
+			Expect(result).To(Equal(receiver.ParseResult{}))
 		})
 
 		It("should NOT trigger a run for regular PR without renovate markers", func() {
@@ -164,7 +164,7 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 
 			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(parse.Result{}))
+			Expect(result).To(Equal(receiver.ParseResult{}))
 		})
 
 		It("should NOT trigger a run for renovate PR with unchecked rebase checkbox", func() {
@@ -175,7 +175,75 @@ var _ = Describe("Gitea Webhook Receiver", func() {
 
 			result, err := Receiver.Parse(req, body)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(result).To(Equal(parse.Result{}))
+			Expect(result).To(Equal(receiver.ParseResult{}))
+		})
+
+		It("should trigger a run for a Renovate dependency dashboard issue with a checked checkbox", func() {
+			body := []byte(fixtures.HookIssueRenovateChecked)
+
+			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+			req.Header.Set("X-Gitea-Event", "issues")
+
+			result, err := Receiver.Parse(req, body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result.ShouldTrigger).To(BeTrue())
+			Expect(result.RequireUserCheck).To(BeTrue())
+			Expect(result.User).NotTo(BeEmpty())
+		})
+
+		It("should NOT trigger a run for a Renovate dependency dashboard issue with unchecked checkboxes", func() {
+			body := []byte(fixtures.HookIssueRenovateUnchecked)
+
+			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+			req.Header.Set("X-Gitea-Event", "issues")
+
+			result, err := Receiver.Parse(req, body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(receiver.ParseResult{}))
+		})
+
+		It("should NOT trigger a run for pull_request with action 'opened'", func() {
+			body := []byte(fixtures.HookPullRequestRenovateOpened)
+
+			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+			req.Header.Set("X-Gitea-Event", "pull_request")
+
+			result, err := Receiver.Parse(req, body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(receiver.ParseResult{}))
+		})
+
+		It("should NOT trigger a run for pull_request with action 'closed'", func() {
+			body := []byte(fixtures.HookPullRequestRenovateClosed)
+
+			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+			req.Header.Set("X-Gitea-Event", "pull_request")
+
+			result, err := Receiver.Parse(req, body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(receiver.ParseResult{}))
+		})
+
+		It("should NOT trigger a run for issues with action 'opened'", func() {
+			body := []byte(fixtures.HookIssueRenovateOpened)
+
+			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+			req.Header.Set("X-Gitea-Event", "issues")
+
+			result, err := Receiver.Parse(req, body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(receiver.ParseResult{}))
+		})
+
+		It("should NOT trigger a run for issues with action 'closed'", func() {
+			body := []byte(fixtures.HookIssueRenovateClosed)
+
+			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+			req.Header.Set("X-Gitea-Event", "issues")
+
+			result, err := Receiver.Parse(req, body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(receiver.ParseResult{}))
 		})
 	})
 })
