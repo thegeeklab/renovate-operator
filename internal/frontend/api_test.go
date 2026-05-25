@@ -141,6 +141,17 @@ var _ = Describe("APIHandler", func() {
 				Expect(w.Header().Get("Content-Type")).To(Equal("application/json"))
 				Expect(w.Body.String()).To(ContainSubstring("test-repo"))
 			})
+
+			It("should include lastRenovateAt and lastRenovateStatus fields", func() {
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/gitrepos", nil)
+				w := httptest.NewRecorder()
+
+				handler.getGitRepos(w, req)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Body.String()).To(ContainSubstring("lastRenovateAt"))
+				Expect(w.Body.String()).To(ContainSubstring("lastRenovateStatus"))
+			})
 		})
 
 		Describe("getRunners", func() {

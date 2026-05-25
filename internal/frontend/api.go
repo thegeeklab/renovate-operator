@@ -17,7 +17,6 @@ type RenovatorInfo struct {
 	Namespace string    `json:"namespace"`
 	UID       string    `json:"uid"`
 	Schedule  string    `json:"schedule"`
-	Ready     bool      `json:"ready"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -30,17 +29,17 @@ type RenovatorDetails struct {
 }
 
 type GitRepoInfo struct {
-	Name      string    `json:"name"`
-	Namespace string    `json:"namespace"`
-	WebhookID string    `json:"webhookId"`
-	Ready     bool      `json:"ready"`
-	CreatedAt time.Time `json:"createdAt"`
+	Name               string    `json:"name"`
+	Namespace          string    `json:"namespace"`
+	WebhookID          string    `json:"webhookId"`
+	LastRenovateAt     time.Time `json:"lastRenovateAt"`
+	LastRenovateStatus string    `json:"lastRenovateStatus"`
+	CreatedAt          time.Time `json:"createdAt"`
 }
 
 type RunnerInfo struct {
 	Name      string    `json:"name"`
 	Namespace string    `json:"namespace"`
-	Ready     bool      `json:"ready"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -48,7 +47,6 @@ type DiscoveryInfo struct {
 	Name      string    `json:"name"`
 	Namespace string    `json:"namespace"`
 	Schedule  string    `json:"schedule"`
-	Ready     bool      `json:"ready"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 

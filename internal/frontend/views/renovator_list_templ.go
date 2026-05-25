@@ -134,7 +134,7 @@ func RenovatorList(views []WebView) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" hx-trigger=\"revealed once, sse:repo-updated\" hx-swap=\"innerHTML\"><div class=\"flex justify-center py-4\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "\" hx-trigger=\"revealed once, sse:job-updated\" hx-swap=\"innerHTML\"><div class=\"flex justify-center py-4\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

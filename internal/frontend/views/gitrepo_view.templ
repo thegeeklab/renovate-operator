@@ -1,6 +1,10 @@
 package views
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/dustin/go-humanize"
+)
 
 func getBaseJobClass(status string) string {
 	base := `relative flex items-center space-x-3 rounded-lg border px-4 py-3 shadow-sm cursor-pointer transition-colors focus-within:ring-2 focus-within:ring-indigo-500 focus-within:ring-offset-2 border-l-4 bg-white border-gray-300 hover:border-blue-400`
@@ -31,7 +35,7 @@ templ GitRepoView(data GitRepoViewData) {
 						hx-get="/"
 						hx-push-url="true"
 						hx-target="#dashboard-content"
-						class="inline-flex items-center text-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 gap-1"
+						class="inline-flex items-center text-center rounded-md bg-white px-3 py-2 text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 hover:bg-gray-50 gap-1 cursor-pointer"
 					>
 						@IconArrowLeft("h-5 w-5 text-gray-500")
 						<span class="hidden sm:inline">Back to Dashboard</span>
@@ -70,8 +74,13 @@ templ GitRepoView(data GitRepoViewData) {
 										<div class="focus:outline-none">
 											<span class="absolute inset-0" aria-hidden="true"></span>
 											<p class="text-sm font-medium text-gray-900 truncate">{ job.Name }</p>
-											<p class="truncate text-xs text-gray-500">
-												{ job.CreatedAt.Format("Jan 02, 2006 15:04") }
+											<p class="text-xs text-gray-500">
+												<span class="group/created relative z-10">
+													<span class="truncate">{ humanize.Time(job.CreatedAt) }</span>
+													<span class="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 opacity-0 transition-opacity group-hover/created:opacity-100">
+														{ job.CreatedAt.Format("Jan 02, 2006 15:04") }
+													</span>
+												</span>
 											</p>
 										</div>
 									</div>

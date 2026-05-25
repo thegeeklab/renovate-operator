@@ -50,8 +50,6 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 		if err := r.scheduler.CompleteRun(ctx, r.instance, renovator.RemoveRenovatorOperation); err != nil {
 			return &ctrl.Result{}, fmt.Errorf("failed to complete run: %w", err)
 		}
-	} else if triggeredAny {
-		return &ctrl.Result{}, nil
 	}
 
 	nextDecision, err := r.scheduler.Evaluate(r.instance, renovator.HasRenovatorOperationRenovate)
@@ -93,12 +91,16 @@ func (r *Reconciler) processGitRepos(
 	}
 
 	for _, repo := range gitRepos.Items {
-		runnerLabels := make(map[string]string)
-		maps.Copy(runnerLabels, labels)
-		runnerLabels[renovatev1beta1.LabelGitRepo] = repo.Name
+		repoLabels := make(map[string]string, len(labels)+1)
+		maps.Copy(repoLabels, labels)
+		repoLabels[renovatev1beta1.LabelGitRepo] = repo.Name
+
+		if err := r.updateJobStatus(ctx, &repo, repoLabels); err != nil {
+			log.Error(err, "Failed to update job status", "repo", repo.Name)
+		}
 
 		if err := r.scheduler.PruneJobs(
-			ctx, repo.Namespace, runnerLabels, r.instance.GetSuccessLimit(), r.instance.GetFailedLimit(),
+			ctx, repo.Namespace, repoLabels, r.instance.GetSuccessLimit(), r.instance.GetFailedLimit(),
 		); err != nil {
 			log.Error(err, "Failed to clean up old jobs", "repo", repo.Name)
 		}
@@ -108,18 +110,7 @@ func (r *Reconciler) processGitRepos(
 			continue
 		}
 
-		triggeredAny = true
-
-		job := &batchv1.Job{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: repo.Name + "-",
-				Namespace:    repo.Namespace,
-				Labels:       runnerLabels,
-			},
-		}
-		r.updateJob(job, &repo, runnerLabels)
-
-		created, err := r.scheduler.EnsureJob(ctx, r.instance, job, runnerLabels)
+		created, err := r.ensureRepoJob(ctx, &repo, repoLabels)
 		if err != nil {
 			log.Error(err, "Failed to ensure job", "repo", repo.Name)
 
@@ -132,7 +123,7 @@ func (r *Reconciler) processGitRepos(
 			continue
 		}
 
-		log.Info("Renovate job created", "job", job.Name, "repo", repo.Spec.Name)
+		triggeredAny = true
 
 		if hasRepoAnnotation {
 			patch := client.MergeFrom(repo.DeepCopy())
@@ -145,6 +136,40 @@ func (r *Reconciler) processGitRepos(
 	}
 
 	return triggeredAny, nil
+}
+
+// ensureRepoJob creates a renovate job for the given repository when none is
+// active. Status conditions are managed centrally by updateJobStatus.
+func (r *Reconciler) ensureRepoJob(
+	ctx context.Context, repo *renovatev1beta1.GitRepo, repoLabels map[string]string,
+) (bool, error) {
+	log := logf.FromContext(ctx)
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: repo.Name + "-",
+			Namespace:    repo.Namespace,
+			Labels:       repoLabels,
+		},
+	}
+	r.updateJob(job, repo, repoLabels)
+
+	created, err := r.scheduler.EnsureJob(ctx, r.instance, job, repoLabels)
+	if err != nil {
+		return false, err
+	}
+
+	if !created {
+		return false, nil
+	}
+
+	log.Info("Renovate job created", "job", job.Name, "repo", repo.Spec.Name)
+
+	if err := r.updateJobStatus(ctx, repo, repoLabels); err != nil {
+		return true, fmt.Errorf("failed to update job status condition: %w", err)
+	}
+
+	return true, nil
 }
 
 // updateJob configures the job spec for a GitRepo.
@@ -163,4 +188,82 @@ func (r *Reconciler) updateJob(job *batchv1.Job, repo *renovatev1beta1.GitRepo, 
 
 	// Configure job execution details
 	job.Spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
+}
+
+// updateJobStatus checks for jobs and updates the GitRepo's status conditions
+// and LastRenovateTime based on the most recent job state.
+func (r *Reconciler) updateJobStatus(
+	ctx context.Context, repo *renovatev1beta1.GitRepo, labels map[string]string,
+) error {
+	var jobList batchv1.JobList
+
+	if err := r.List(ctx, &jobList, client.InNamespace(repo.Namespace), client.MatchingLabels(labels)); err != nil {
+		return fmt.Errorf("failed to list jobs: %w", err)
+	}
+
+	var (
+		latestFinishedJob *batchv1.Job
+		hasActiveJob      bool
+	)
+
+	for i := range jobList.Items {
+		job := &jobList.Items[i]
+
+		if !scheduler.IsJobFinished(job) {
+			hasActiveJob = true
+
+			continue
+		}
+
+		if latestFinishedJob == nil || job.CreationTimestamp.After(latestFinishedJob.CreationTimestamp.Time) {
+			latestFinishedJob = job
+		}
+	}
+
+	patch := client.MergeFrom(repo.DeepCopy())
+
+	if hasActiveJob {
+		repo.SetCondition(
+			renovatev1beta1.GitRepoConditionRenovateRunning,
+			metav1.ConditionTrue,
+			"JobActive", "Renovate job is running",
+		)
+	} else {
+		repo.SetCondition(
+			renovatev1beta1.GitRepoConditionRenovateRunning,
+			metav1.ConditionFalse,
+			"NoJobActive", "No renovate job is running",
+		)
+	}
+
+	if latestFinishedJob != nil {
+		switch {
+		case latestFinishedJob.Status.Succeeded > 0:
+			repo.SetCondition(
+				renovatev1beta1.GitRepoConditionRenovateCompleted,
+				metav1.ConditionTrue,
+				"JobSucceeded", "Renovate job completed successfully",
+			)
+			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
+			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
+		case latestFinishedJob.Status.Failed > 0:
+			repo.SetCondition(
+				renovatev1beta1.GitRepoConditionRenovateFailed,
+				metav1.ConditionTrue,
+				"JobFailed", "Renovate job failed",
+			)
+			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
+			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
+		default:
+			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
+			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
+			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
+		}
+	}
+
+	if err := r.Status().Patch(ctx, repo, patch); err != nil {
+		return fmt.Errorf("failed to patch job status: %w", err)
+	}
+
+	return nil
 }
