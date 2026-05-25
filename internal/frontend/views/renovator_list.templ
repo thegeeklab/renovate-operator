@@ -53,7 +53,7 @@ templ RenovatorList(views []WebView) {
 					<div class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6">
 						<div
 							hx-get={ fmt.Sprintf("/gitrepos?namespace=%s&renovator=%s", v.Namespace, v.Renovator) }
-							hx-trigger="revealed once, sse:repo-updated"
+							hx-trigger="revealed once, sse:job-updated"
 							hx-swap="innerHTML"
 						>
 							<div class="flex justify-center py-4">

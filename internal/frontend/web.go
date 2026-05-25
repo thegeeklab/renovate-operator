@@ -134,11 +134,12 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 	var viewRepos []views.GitRepoInfo
 	for _, repo := range repos {
 		viewRepos = append(viewRepos, views.GitRepoInfo{
-			Name:      repo.Name,
-			Namespace: repo.Namespace,
-			WebhookID: repo.WebhookID,
-			Ready:     repo.Ready,
-			CreatedAt: repo.CreatedAt,
+			Name:               repo.Name,
+			Namespace:          repo.Namespace,
+			WebhookID:          repo.WebhookID,
+			LastRenovateAt:     repo.LastRenovateAt,
+			LastRenovateStatus: repo.LastRenovateStatus,
+			CreatedAt:          repo.CreatedAt,
 		})
 	}
 
@@ -169,6 +170,10 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		Namespace: repo.Namespace,
 		WebhookID: repo.Status.WebhookID,
 		CreatedAt: repo.CreationTimestamp.Time,
+	}
+
+	if repo.Status.LastRenovateTime != nil {
+		repoInfo.LastRenovateAt = repo.Status.LastRenovateTime.Time
 	}
 
 	jobs, err := h.dataFactory.GetJobsForRepo(ctx, name, opts)

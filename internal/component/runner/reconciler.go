@@ -49,10 +49,6 @@ func NewReconciler(
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
-	if r.broker != nil {
-		r.broker.Broadcast("job-updated", "refresh")
-	}
-
 	results := &reconciler.Results{}
 
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
@@ -66,6 +62,10 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		}
 
 		results.Collect(result)
+	}
+
+	if r.broker != nil {
+		r.broker.Broadcast("job-updated", "refresh")
 	}
 
 	return results.ToResult(), nil

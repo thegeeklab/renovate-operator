@@ -201,6 +201,15 @@ var _ = Describe("WebHandler", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
 		})
+
+		It("should return not found for non-existent repo", func() {
+			req := httptest.NewRequest(http.MethodGet, "/gitrepo?namespace=test-namespace&name=nonexistent", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleGitRepoView(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
+		})
 	})
 
 	Describe("HandleJobLogs", func() {

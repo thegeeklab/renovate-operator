@@ -138,6 +138,61 @@ var _ = Describe("DataFactory", func() {
 			Expect(repos).To(HaveLen(1))
 			Expect(repos[0].Name).To(Equal("test-repo-b"))
 		})
+
+		It("should populate LastRenovateAt from GitRepo status when completed", func() {
+			jobTime := time.Now().Add(-2 * time.Hour)
+			completedTime := time.Now().Add(-1 * time.Hour)
+			repoWithStatus := &renovatev1beta1.GitRepo{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "repo-with-lastrun",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+					},
+					CreationTimestamp: metav1.NewTime(jobTime),
+				},
+				Status: renovatev1beta1.GitRepoStatus{
+					LastRenovateTime: &metav1.Time{Time: jobTime},
+					Conditions: []metav1.Condition{
+						{
+							Type:               renovatev1beta1.GitRepoConditionRenovateCompleted,
+							Status:             metav1.ConditionTrue,
+							LastTransitionTime: metav1.NewTime(completedTime),
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(context.Background(), repoWithStatus)).To(Succeed())
+
+			repos, err := dataFactory.GetGitRepos(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			var foundRepo *GitRepoInfo
+
+			for i := range repos {
+				if repos[i].Name == "repo-with-lastrun" {
+					foundRepo = &repos[i]
+
+					break
+				}
+			}
+
+			Expect(foundRepo).NotTo(BeNil())
+			Expect(foundRepo.LastRenovateAt.IsZero()).To(BeFalse())
+			Expect(foundRepo.LastRenovateAt.Unix()).To(BeNumerically("~", completedTime.Unix(), 2))
+			Expect(foundRepo.LastRenovateStatus).To(Equal("Succeeded"))
+		})
+
+		It("should return empty LastRenovateAt when no jobs exist", func() {
+			repos, err := dataFactory.GetGitRepos(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, repo := range repos {
+				if repo.Name != "repo-with-lastrun" {
+					Expect(repo.LastRenovateAt.IsZero()).To(BeTrue())
+				}
+			}
+		})
 	})
 
 	Describe("GetRunners", func() {

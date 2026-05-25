@@ -281,6 +281,13 @@ spec:
                       - type
                     type: object
                   type: array
+                lastRenovateTime:
+                  description: |-
+                    LastRenovateTime is the creation timestamp of the most recently completed
+                    renovate job for this GitRepo.
+                    This field is managed by the operator and should not be set manually.
+                  format: date-time
+                  type: string
                 webhookId:
                   description: |-
                     WebhookID is the ID of the webhook registered on the remote Git provider.

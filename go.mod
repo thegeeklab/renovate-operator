@@ -5,6 +5,7 @@ go 1.26.3
 require (
 	code.gitea.io/sdk/gitea v0.25.1
 	github.com/a-h/templ v0.3.1020
+	github.com/dustin/go-humanize v1.0.1
 	github.com/gorilla/mux v1.8.1
 	github.com/netresearch/go-cron v0.14.0
 	github.com/onsi/ginkgo/v2 v2.29.0

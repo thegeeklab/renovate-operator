@@ -96,8 +96,6 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 }
 
 // GetGitRepos fetches GitRepo resources with optional filtering.
-//
-//nolint:dupl
 func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]GitRepoInfo, error) {
 	opt := getListOptions(opts)
 	listOpts := buildListOptions(opt)
@@ -110,11 +108,15 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 	var result []GitRepoInfo
 
 	for _, gitrepo := range list.Items {
+		lastStatus, lastTime := getRenovateStatusFromConditions(&gitrepo)
+
 		result = append(result, GitRepoInfo{
-			Name:      gitrepo.Name,
-			Namespace: gitrepo.Namespace,
-			WebhookID: gitrepo.Status.WebhookID,
-			CreatedAt: gitrepo.CreationTimestamp.Time,
+			Name:               gitrepo.Name,
+			Namespace:          gitrepo.Namespace,
+			WebhookID:          gitrepo.Status.WebhookID,
+			LastRenovateAt:     lastTime,
+			LastRenovateStatus: lastStatus,
+			CreatedAt:          gitrepo.CreationTimestamp.Time,
 		})
 	}
 
@@ -129,6 +131,31 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 	)
 
 	return result, nil
+}
+
+func getRenovateStatusFromConditions(repo *renovatev1beta1.GitRepo) (string, time.Time) {
+	runningCond := repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning)
+	completedCond := repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
+	failedCond := repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
+
+	var lastTime time.Time
+	if repo.Status.LastRenovateTime != nil {
+		lastTime = repo.Status.LastRenovateTime.Time
+	}
+
+	if runningCond != nil && runningCond.Status == metav1.ConditionTrue {
+		return "Running", runningCond.LastTransitionTime.Time
+	}
+
+	if completedCond != nil && completedCond.Status == metav1.ConditionTrue {
+		return "Succeeded", lastTime
+	}
+
+	if failedCond != nil && failedCond.Status == metav1.ConditionTrue {
+		return "Failed", lastTime
+	}
+
+	return "Unknown", lastTime
 }
 
 // GetRunners fetches Runner resources with optional filtering.
@@ -164,8 +191,6 @@ func (df *DataFactory) GetRunners(ctx context.Context, opts ...ListOptions) ([]R
 }
 
 // GetDiscoveries fetches Discovery resources with optional filtering.
-//
-//nolint:dupl
 func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) ([]DiscoveryInfo, error) {
 	opt := getListOptions(opts)
 	listOpts := buildListOptions(opt)

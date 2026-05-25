@@ -12,11 +12,12 @@ type WebView struct {
 }
 
 type GitRepoInfo struct {
-	Name      string
-	Namespace string
-	WebhookID string
-	Ready     bool
-	CreatedAt time.Time
+	Name               string
+	Namespace          string
+	WebhookID          string
+	LastRenovateAt     time.Time
+	LastRenovateStatus string
+	CreatedAt          time.Time
 }
 
 type JobInfo struct {
