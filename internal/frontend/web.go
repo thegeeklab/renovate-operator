@@ -172,9 +172,7 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		CreatedAt: repo.CreationTimestamp.Time,
 	}
 
-	if repo.Status.LastRenovateTime != nil {
-		repoInfo.LastRenovateAt = repo.Status.LastRenovateTime.Time
-	}
+	repoInfo.LastRenovateStatus, repoInfo.LastRenovateAt = getRenovateStatusFromConditions(&repo)
 
 	jobs, err := h.dataFactory.GetJobsForRepo(ctx, name, opts)
 	if err != nil {
