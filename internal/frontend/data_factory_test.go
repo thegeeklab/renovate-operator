@@ -179,7 +179,7 @@ var _ = Describe("DataFactory", func() {
 
 			Expect(foundRepo).NotTo(BeNil())
 			Expect(foundRepo.LastRenovateAt.IsZero()).To(BeFalse())
-			Expect(foundRepo.LastRenovateAt.Unix()).To(BeNumerically("~", completedTime.Unix(), 2))
+			Expect(foundRepo.LastRenovateAt.Unix()).To(BeNumerically("~", jobTime.Unix(), 2))
 			Expect(foundRepo.LastRenovateStatus).To(Equal("Succeeded"))
 		})
 

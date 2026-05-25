@@ -100,9 +100,9 @@ func (g *GitRepo) SetCondition(
 }
 
 func (g *GitRepo) GetCondition(conditionType string) *metav1.Condition {
-	for _, cond := range g.Status.Conditions {
-		if cond.Type == conditionType {
-			return &cond
+	for i := range g.Status.Conditions {
+		if g.Status.Conditions[i].Type == conditionType {
+			return &g.Status.Conditions[i]
 		}
 	}
 

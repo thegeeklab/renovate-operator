@@ -250,7 +250,8 @@ func (r *Reconciler) updateJobStatus(
 	}
 
 	if latestFinishedJob != nil {
-		if latestFinishedJob.Status.Succeeded > 0 {
+		switch {
+		case latestFinishedJob.Status.Succeeded > 0:
 			repo.SetCondition(
 				renovatev1beta1.GitRepoConditionRenovateCompleted,
 				metav1.ConditionTrue,
@@ -258,13 +259,17 @@ func (r *Reconciler) updateJobStatus(
 			)
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
 			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
-		} else if latestFinishedJob.Status.Failed > 0 {
+		case latestFinishedJob.Status.Failed > 0:
 			repo.SetCondition(
 				renovatev1beta1.GitRepoConditionRenovateFailed,
 				metav1.ConditionTrue,
 				"JobFailed", "Renovate job failed", now,
 			)
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
+			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
+		default:
+			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
+			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
 			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
 		}
 	}

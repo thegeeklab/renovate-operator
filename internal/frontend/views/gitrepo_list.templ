@@ -44,9 +44,9 @@ templ GitRepoList(repos []GitRepoInfo) {
 									</span>
 								</span>
 								if !r.LastRenovateAt.IsZero() {
-									<span class="group/lastrun relative z-10">
+									<span class="group/last-run relative z-10">
 										Last run: { humanize.Time(r.LastRenovateAt) }
-										<span class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 opacity-0 transition-opacity group-hover/lastrun:opacity-100">
+										<span class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 opacity-0 transition-opacity group-hover/last-run:opacity-100">
 											{ r.LastRenovateAt.Format("Jan 02, 2006 15:04") }
 										</span>
 									</span>

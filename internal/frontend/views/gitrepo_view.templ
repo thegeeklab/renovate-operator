@@ -75,9 +75,9 @@ templ GitRepoView(data GitRepoViewData) {
 											<span class="absolute inset-0" aria-hidden="true"></span>
 											<p class="text-sm font-medium text-gray-900 truncate">{ job.Name }</p>
 											<p class="text-xs text-gray-500">
-												<span class="group/jobdate relative z-10">
+												<span class="group/created relative z-10">
 													<span class="truncate">{ humanize.Time(job.CreatedAt) }</span>
-													<span class="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 opacity-0 transition-opacity group-hover/jobdate:opacity-100">
+													<span class="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 opacity-0 transition-opacity group-hover/created:opacity-100">
 														{ job.CreatedAt.Format("Jan 02, 2006 15:04") }
 													</span>
 												</span>
