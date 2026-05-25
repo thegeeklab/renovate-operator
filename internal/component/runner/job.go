@@ -139,7 +139,7 @@ func (r *Reconciler) processGitRepos(
 }
 
 // ensureRepoJob creates a renovate job for the given repository when none is
-// active and updates the GitRepo status to reflect the new run.
+// active. Status conditions are managed centrally by updateJobStatus.
 func (r *Reconciler) ensureRepoJob(
 	ctx context.Context, repo *renovatev1beta1.GitRepo, repoLabels map[string]string,
 ) (bool, error) {
@@ -165,18 +165,8 @@ func (r *Reconciler) ensureRepoJob(
 
 	log.Info("Renovate job created", "job", job.Name, "repo", repo.Spec.Name)
 
-	patch := client.MergeFrom(repo.DeepCopy())
-	now := metav1.Now()
-	repo.SetCondition(
-		renovatev1beta1.GitRepoConditionRenovateRunning,
-		metav1.ConditionTrue,
-		"JobCreated", "Renovate job is running", now,
-	)
-	repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
-	repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
-
-	if err := r.Status().Patch(ctx, repo, patch); err != nil {
-		log.Error(err, "Failed to update job status condition", "repo", repo.Name)
+	if err := r.updateJobStatus(ctx, repo, repoLabels); err != nil {
+		return true, fmt.Errorf("failed to update job status condition: %w", err)
 	}
 
 	return true, nil
@@ -220,9 +210,7 @@ func (r *Reconciler) updateJobStatus(
 		job := &jobList.Items[i]
 
 		if !scheduler.IsJobFinished(job) {
-			if job.Status.Active > 0 {
-				hasActiveJob = true
-			}
+			hasActiveJob = true
 
 			continue
 		}
@@ -233,19 +221,18 @@ func (r *Reconciler) updateJobStatus(
 	}
 
 	patch := client.MergeFrom(repo.DeepCopy())
-	now := metav1.Now()
 
 	if hasActiveJob {
 		repo.SetCondition(
 			renovatev1beta1.GitRepoConditionRenovateRunning,
 			metav1.ConditionTrue,
-			"JobActive", "Renovate job is running", now,
+			"JobActive", "Renovate job is running",
 		)
 	} else {
 		repo.SetCondition(
 			renovatev1beta1.GitRepoConditionRenovateRunning,
 			metav1.ConditionFalse,
-			"NoJobActive", "No renovate job is running", now,
+			"NoJobActive", "No renovate job is running",
 		)
 	}
 
@@ -255,7 +242,7 @@ func (r *Reconciler) updateJobStatus(
 			repo.SetCondition(
 				renovatev1beta1.GitRepoConditionRenovateCompleted,
 				metav1.ConditionTrue,
-				"JobSucceeded", "Renovate job completed successfully", now,
+				"JobSucceeded", "Renovate job completed successfully",
 			)
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
 			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
@@ -263,7 +250,7 @@ func (r *Reconciler) updateJobStatus(
 			repo.SetCondition(
 				renovatev1beta1.GitRepoConditionRenovateFailed,
 				metav1.ConditionTrue,
-				"JobFailed", "Renovate job failed", now,
+				"JobFailed", "Renovate job failed",
 			)
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
 			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)

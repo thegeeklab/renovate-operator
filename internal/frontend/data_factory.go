@@ -134,28 +134,39 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 }
 
 func getRenovateStatusFromConditions(repo *renovatev1beta1.GitRepo) (string, time.Time) {
-	runningCond := repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning)
-	completedCond := repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
-	failedCond := repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
-
 	var lastTime time.Time
 	if repo.Status.LastRenovateTime != nil {
 		lastTime = repo.Status.LastRenovateTime.Time
 	}
 
-	if runningCond != nil && runningCond.Status == metav1.ConditionTrue {
-		return "Running", runningCond.LastTransitionTime.Time
+	statusByType := map[string]string{
+		renovatev1beta1.GitRepoConditionRenovateRunning:   "Running",
+		renovatev1beta1.GitRepoConditionRenovateCompleted: "Succeeded",
+		renovatev1beta1.GitRepoConditionRenovateFailed:    "Failed",
 	}
 
-	if completedCond != nil && completedCond.Status == metav1.ConditionTrue {
-		return "Succeeded", lastTime
+	var (
+		activeStatus     string
+		activeTransition time.Time
+	)
+
+	for condType, label := range statusByType {
+		cond := repo.GetCondition(condType)
+		if cond == nil || cond.Status != metav1.ConditionTrue {
+			continue
+		}
+
+		if activeStatus == "" || cond.LastTransitionTime.After(activeTransition) {
+			activeStatus = label
+			activeTransition = cond.LastTransitionTime.Time
+		}
 	}
 
-	if failedCond != nil && failedCond.Status == metav1.ConditionTrue {
-		return "Failed", lastTime
+	if activeStatus == "" {
+		return "Unknown", lastTime
 	}
 
-	return "Unknown", lastTime
+	return activeStatus, lastTime
 }
 
 // GetRunners fetches Runner resources with optional filtering.

@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	api_meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -73,50 +74,20 @@ func (g *GitRepo) SetCondition(
 	conditionType string,
 	status metav1.ConditionStatus,
 	reason, message string,
-	now metav1.Time,
 ) {
-	for i, cond := range g.Status.Conditions {
-		if cond.Type == conditionType {
-			if cond.Status != status {
-				g.Status.Conditions[i].Status = status
-				g.Status.Conditions[i].LastTransitionTime = now
-			}
-
-			g.Status.Conditions[i].Reason = reason
-			g.Status.Conditions[i].Message = message
-
-			return
-		}
-	}
-
-	g.Status.Conditions = append(g.Status.Conditions, metav1.Condition{
+	api_meta.SetStatusCondition(&g.Status.Conditions, metav1.Condition{
 		Type:               conditionType,
 		Status:             status,
 		Reason:             reason,
 		Message:            message,
-		LastTransitionTime: now,
 		ObservedGeneration: g.Generation,
 	})
 }
 
 func (g *GitRepo) GetCondition(conditionType string) *metav1.Condition {
-	for i := range g.Status.Conditions {
-		if g.Status.Conditions[i].Type == conditionType {
-			return &g.Status.Conditions[i]
-		}
-	}
-
-	return nil
+	return api_meta.FindStatusCondition(g.Status.Conditions, conditionType)
 }
 
 func (g *GitRepo) RemoveCondition(conditionType string) {
-	var newConditions []metav1.Condition
-
-	for _, cond := range g.Status.Conditions {
-		if cond.Type != conditionType {
-			newConditions = append(newConditions, cond)
-		}
-	}
-
-	g.Status.Conditions = newConditions
+	api_meta.RemoveStatusCondition(&g.Status.Conditions, conditionType)
 }

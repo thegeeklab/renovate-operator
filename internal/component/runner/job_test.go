@@ -117,7 +117,7 @@ var _ = Describe("ReconcileJob", func() {
 		fakeClient = fake.NewClientBuilder().
 			WithScheme(scheme).
 			WithObjects(instance, renovate, repo1, repo2, repo3).
-			WithStatusSubresource(instance).
+			WithStatusSubresource(instance, repo1, repo2, repo3).
 			Build()
 
 		reconciler = &Reconciler{
