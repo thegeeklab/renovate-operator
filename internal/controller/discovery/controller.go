@@ -59,13 +59,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, rd)
 	if err != nil {
-		r.EventRecorder.Eventf(
-			rd, nil,
-			renovatev1beta1.EventTypeWarning,
-			renovatev1beta1.EventReasonConfigResolutionFailed,
-			renovatev1beta1.EventActionReconciling,
-			"%s", err.Error(),
-		)
+		controller.RecordError(ctx, r.Client, rd, r.EventRecorder, renovatev1beta1.ReasonConfigResolutionFailed, err)
 
 		return ctrl.Result{}, err
 	}
@@ -73,13 +67,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	rc := &renovatev1beta1.RenovateConfig{}
 	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
-			r.EventRecorder.Eventf(
-				rd, nil,
-				renovatev1beta1.EventTypeWarning,
-				renovatev1beta1.EventReasonConfigNotFound,
-				renovatev1beta1.EventActionReconciling,
-				"RenovateConfig not found",
-			)
+			controller.RecordError(ctx, r.Client, rd, r.EventRecorder, renovatev1beta1.ReasonConfigNotFound,
+				controller.ErrRenovateConfigNotFound)
 
 			return ctrl.Result{}, nil
 		}
@@ -87,28 +76,30 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	discoveryReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, r.EventRecorder, rd, rc)
+	discoveryReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc)
 	if err != nil {
+		controller.RecordError(ctx, r.Client, rd, r.EventRecorder, renovatev1beta1.ReasonReconcileError, err)
+
 		return ctrl.Result{}, err
 	}
 
 	res, err := discoveryReconciler.Reconcile(ctx)
 	if err != nil {
-		r.EventRecorder.Eventf(
-			rd, nil,
+		controller.RecordEvent(
+			r.EventRecorder, rd,
 			renovatev1beta1.EventTypeWarning,
-			renovatev1beta1.EventReasonReconcileError,
+			renovatev1beta1.ReasonReconcileError,
 			renovatev1beta1.EventActionReconciling,
-			"%s", err.Error(),
+			err.Error(),
 		)
 
 		return controller.HandleReconcileResult(res, err)
 	}
 
-	r.EventRecorder.Eventf(
-		rd, nil,
+	controller.RecordEvent(
+		r.EventRecorder, rd,
 		renovatev1beta1.EventTypeNormal,
-		renovatev1beta1.EventReasonReconciled,
+		renovatev1beta1.ReasonReconciled,
 		renovatev1beta1.EventActionReconciling,
 		"Discovery reconciled successfully",
 	)
@@ -197,7 +188,7 @@ func (r *Reconciler) resolveRenovateConfig(
 
 	renovator, ok := rd.Labels[renovatev1beta1.LabelRenovator]
 	if !ok {
-		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+		return client.ObjectKey{}, controller.ErrRenovateConfigNotFound
 	}
 
 	configList := &renovatev1beta1.RenovateConfigList{}
@@ -211,7 +202,7 @@ func (r *Reconciler) resolveRenovateConfig(
 		}
 	}
 
-	return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+	return client.ObjectKey{}, controller.ErrRenovateConfigNotFound
 }
 
 // discoveryConfigRefIndexFn returns the config reference for indexing.

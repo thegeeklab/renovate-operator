@@ -10,7 +10,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
-	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -20,7 +19,6 @@ var _ = Describe("Renovator Runner", func() {
 		ctx        context.Context
 		scheme     *runtime.Scheme
 		fakeClient client.Client
-		recorder   *events.FakeRecorder
 	)
 
 	BeforeEach(func() {
@@ -29,7 +27,6 @@ var _ = Describe("Renovator Runner", func() {
 		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
 		Expect(corev1.SchemeBuilder.AddToScheme(scheme)).To(Succeed())
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).Build()
-		recorder = events.NewFakeRecorder(10)
 	})
 
 	Describe("Annotation Forwarding", func() {
@@ -51,7 +48,7 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			reconciler, err := NewReconciler(ctx, fakeClient, scheme, recorder, renovator)
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
 			runner := &renovatev1beta1.Runner{
@@ -84,7 +81,7 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			reconciler, err := NewReconciler(ctx, fakeClient, scheme, recorder, renovator)
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
 			runner := &renovatev1beta1.Runner{
@@ -118,7 +115,7 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			reconciler, err := NewReconciler(ctx, fakeClient, scheme, recorder, renovator)
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
 			runner := &renovatev1beta1.Runner{
@@ -165,7 +162,7 @@ var _ = Describe("Renovator Runner", func() {
 				WithStatusSubresource(&renovatev1beta1.Renovator{}).
 				Build()
 
-			reconciler, err := NewReconciler(ctx, fakeClient, scheme, recorder, renovator)
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
 			_, err = reconciler.Reconcile(ctx)
@@ -193,7 +190,7 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			reconciler, err := NewReconciler(ctx, fakeClient, scheme, recorder, renovator)
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
 			runner := &renovatev1beta1.Runner{
@@ -226,7 +223,7 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			reconciler, err := NewReconciler(ctx, fakeClient, scheme, recorder, renovator)
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
 			runner := &renovatev1beta1.Runner{
@@ -274,7 +271,7 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			reconciler, err := NewReconciler(ctx, fakeClient, scheme, recorder, renovator)
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = reconciler.updateRunner(existingRunner)
@@ -298,7 +295,7 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			reconciler, err := NewReconciler(ctx, fakeClient, scheme, recorder, renovator)
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
 			err = reconciler.updateRunner(existingRunner)
@@ -314,7 +311,7 @@ var _ = Describe("Renovator Runner", func() {
 				},
 			}
 
-			reconciler, err := NewReconciler(ctx, fakeClient, scheme, recorder, renovator)
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(new(int32(3600))))

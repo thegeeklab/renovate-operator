@@ -49,23 +49,20 @@ const (
 	ComponentDiscovery = "discovery"
 	ComponentRunner    = "runner"
 
-	// Event reason constants.
-	ReasonReconcileSuccess = "ReconcileSuccess"
-	ReasonReconcileError   = "ReconcileError"
-
 	// Event type constants.
 	EventTypeNormal  = "Normal"
 	EventTypeWarning = "Warning"
 
 	// Condition type constants.
-	ConditionReady          = "Ready"
-	ConditionReconcileError = "ReconcileError"
+	ConditionReady       = "Ready"
+	ConditionReconciling = "Reconciling"
 
-	// Event reason constants.
-	EventReasonConfigResolutionFailed = "ConfigResolutionFailed"
-	EventReasonConfigNotFound         = "ConfigNotFound"
-	EventReasonReconcileError         = "ReconcileError"
-	EventReasonReconciled             = "Reconciled"
+	// Reason constants.
+	ReasonConfigResolutionFailed = "ConfigResolutionFailed"
+	ReasonConfigNotFound         = "ConfigNotFound"
+	ReasonReconcileSuccess       = "ReconcileSuccess"
+	ReasonReconcileError         = "ReconcileError"
+	ReasonReconciled             = "Reconciled"
 
 	// Event action constants.
 	EventActionReconciling = "Reconciling"

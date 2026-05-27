@@ -12,7 +12,6 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
-	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 )
@@ -22,7 +21,6 @@ var _ = Describe("GitRepo Component - Webhook Secret Logic", func() {
 		ctx        context.Context
 		scheme     *runtime.Scheme
 		fakeClient client.Client
-		recorder   *events.FakeRecorder
 		instance   *renovatev1beta1.GitRepo
 		reconciler *Reconciler
 		secretKey  client.ObjectKey
@@ -52,12 +50,10 @@ var _ = Describe("GitRepo Component - Webhook Secret Logic", func() {
 			WithObjects(instance).
 			Build()
 
-		recorder = events.NewFakeRecorder(10)
-
 		var err error
 
 		externalURL := "https://renovate.example.com"
-		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, recorder, instance,
+		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, instance,
 			&renovatev1beta1.RenovateConfig{})
 		Expect(err).NotTo(HaveOccurred())
 	})

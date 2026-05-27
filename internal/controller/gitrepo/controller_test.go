@@ -112,7 +112,7 @@ var _ = Describe("GitRepo Controller", func() {
 
 	It("should handle missing RenovateConfig resource gracefully", func() {
 		mockClient := &mockErrorClient{Client: k8sClient}
-		errorReconciler := &Reconciler{Client: mockClient, Scheme: k8sClient.Scheme()}
+		errorReconciler := &Reconciler{Client: mockClient, Scheme: k8sClient.Scheme(), EventRecorder: &events.FakeRecorder{}}
 
 		result, err := errorReconciler.Reconcile(ctx, reconcile.Request{
 			NamespacedName: types.NamespacedName{Name: "missing-config-repo", Namespace: "default"},
