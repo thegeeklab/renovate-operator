@@ -39,8 +39,6 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
@@ -62,7 +60,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	res, err := renovatorReconciler.Reconcile(ctx)
 	if err != nil {
-		r.EventRecorder.Eventf(rr, nil,
+		r.EventRecorder.Eventf(
+			rr, nil,
 			renovatev1beta1.EventTypeWarning,
 			renovatev1beta1.EventReasonReconcileError,
 			renovatev1beta1.EventActionReconciling,
@@ -72,7 +71,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return controller.HandleReconcileResult(res, err)
 	}
 
-	r.EventRecorder.Eventf(rr, nil,
+	r.EventRecorder.Eventf(
+		rr, nil,
 		renovatev1beta1.EventTypeNormal,
 		renovatev1beta1.EventReasonReconciled,
 		renovatev1beta1.EventActionReconciling,

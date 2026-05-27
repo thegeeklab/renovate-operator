@@ -31,8 +31,6 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
@@ -50,7 +48,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if err != nil {
 		if errors.Is(err, controller.ErrNoRenovateConfigFound) {
 			log.V(1).Info("No RenovateConfig found for GitRepo, skipping", "object", req.NamespacedName)
-			r.EventRecorder.Eventf(gr, nil,
+			r.EventRecorder.Eventf(
+				gr, nil,
 				renovatev1beta1.EventTypeWarning,
 				renovatev1beta1.EventReasonConfigNotFound,
 				renovatev1beta1.EventActionReconciling,
@@ -60,7 +59,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			return ctrl.Result{}, nil
 		}
 
-		r.EventRecorder.Eventf(gr, nil,
+		r.EventRecorder.Eventf(
+			gr, nil,
 			renovatev1beta1.EventTypeWarning,
 			renovatev1beta1.EventReasonConfigResolutionFailed,
 			renovatev1beta1.EventActionReconciling,
@@ -73,7 +73,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	rc := &renovatev1beta1.RenovateConfig{}
 	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
-			r.EventRecorder.Eventf(gr, nil,
+			r.EventRecorder.Eventf(
+				gr, nil,
 				renovatev1beta1.EventTypeWarning,
 				renovatev1beta1.EventReasonConfigNotFound,
 				renovatev1beta1.EventActionReconciling,
@@ -93,7 +94,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	res, err := gitrepoReconciler.Reconcile(ctx)
 	if err != nil {
-		r.EventRecorder.Eventf(gr, nil,
+		r.EventRecorder.Eventf(
+			gr, nil,
 			renovatev1beta1.EventTypeWarning,
 			renovatev1beta1.EventReasonReconcileError,
 			renovatev1beta1.EventActionReconciling,
@@ -103,7 +105,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return controller.HandleReconcileResult(res, err)
 	}
 
-	r.EventRecorder.Eventf(gr, nil,
+	r.EventRecorder.Eventf(
+		gr, nil,
 		renovatev1beta1.EventTypeNormal,
 		renovatev1beta1.EventReasonReconciled,
 		renovatev1beta1.EventActionReconciling,

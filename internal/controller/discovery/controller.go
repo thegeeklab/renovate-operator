@@ -59,7 +59,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, rd)
 	if err != nil {
-		r.EventRecorder.Eventf(rd, nil,
+		r.EventRecorder.Eventf(
+			rd, nil,
 			renovatev1beta1.EventTypeWarning,
 			renovatev1beta1.EventReasonConfigResolutionFailed,
 			renovatev1beta1.EventActionReconciling,
@@ -72,7 +73,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	rc := &renovatev1beta1.RenovateConfig{}
 	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
-			r.EventRecorder.Eventf(rd, nil,
+			r.EventRecorder.Eventf(
+				rd, nil,
 				renovatev1beta1.EventTypeWarning,
 				renovatev1beta1.EventReasonConfigNotFound,
 				renovatev1beta1.EventActionReconciling,
@@ -92,7 +94,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	res, err := discoveryReconciler.Reconcile(ctx)
 	if err != nil {
-		r.EventRecorder.Eventf(rd, nil,
+		r.EventRecorder.Eventf(
+			rd, nil,
 			renovatev1beta1.EventTypeWarning,
 			renovatev1beta1.EventReasonReconcileError,
 			renovatev1beta1.EventActionReconciling,
@@ -102,7 +105,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return controller.HandleReconcileResult(res, err)
 	}
 
-	r.EventRecorder.Eventf(rd, nil,
+	r.EventRecorder.Eventf(
+		rd, nil,
 		renovatev1beta1.EventTypeNormal,
 		renovatev1beta1.EventReasonReconciled,
 		renovatev1beta1.EventActionReconciling,
