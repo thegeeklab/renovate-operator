@@ -6,7 +6,6 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -33,10 +32,13 @@ func NewReconciler(
 	}, nil
 }
 
+// Reconcile runs the Renovator component reconciliation pipeline. Status
+// management (conditions, events and the status patch) is owned by the
+// top-level controller; this function only mutates spec-driven children, the
+// operation annotation and returns the aggregate result.
 func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
-	// Define the reconciliation order
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
 		r.reconcileRenovateConfig,
 		r.reconcileRenovateConfigMap,
@@ -59,47 +61,17 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 
 	result := results.ToResult()
 
-	if statusErr := r.recordStatus(ctx, reconcileErr); statusErr != nil {
-		ctrl.LoggerFrom(ctx).Error(statusErr, "failed to update status")
-	}
-
-	// Cleanup annotation if reconciliation failed or finished successfully
-	// Only remove the annotation if it exists to avoid nil map issues
+	// Cleanup operation annotation when the work driven by it is finished
+	// (either successfully or because it failed terminally). Only patch when
+	// the annotation is actually present to avoid no-op writes.
 	if (reconcileErr != nil || result.RequeueAfter == 0) && HasRenovatorOperation(r.instance.Annotations) {
 		patch := client.MergeFrom(r.instance.DeepCopy())
 		r.instance.Annotations = RemoveRenovatorOperation(r.instance.Annotations)
 
 		if err := r.Patch(ctx, r.instance, patch); err != nil {
-			return &ctrl.Result{}, fmt.Errorf("failed to remove operation annotation: %w", err)
+			return result, fmt.Errorf("remove operation annotation: %w", err)
 		}
 	}
 
 	return result, reconcileErr
-}
-
-func (r *Reconciler) recordStatus(ctx context.Context, reconcileErr error) error {
-	if reconcileErr != nil {
-		r.instance.SetCondition(
-			renovatev1beta1.ConditionReconciling,
-			metav1.ConditionTrue,
-			renovatev1beta1.ReasonReconcileError,
-			reconcileErr.Error(),
-		)
-		r.instance.SetCondition(
-			renovatev1beta1.ConditionReady,
-			metav1.ConditionFalse,
-			renovatev1beta1.ReasonReconcileError,
-			reconcileErr.Error(),
-		)
-	} else {
-		r.instance.SetCondition(
-			renovatev1beta1.ConditionReady,
-			metav1.ConditionTrue,
-			renovatev1beta1.ReasonReconcileSuccess,
-			"Renovator reconciled successfully",
-		)
-		r.instance.RemoveCondition(renovatev1beta1.ConditionReconciling)
-	}
-
-	return r.Client.Status().Update(ctx, r.instance)
 }

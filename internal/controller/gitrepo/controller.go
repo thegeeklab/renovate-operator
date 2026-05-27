@@ -44,62 +44,54 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, gr)
+	original := gr.DeepCopy()
+
+	outcome := r.reconcile(ctx, gr)
+	controller.FinalizeStatus(ctx, r.Client, r.EventRecorder, original, gr, outcome,
+		controller.FinalizeStatusOptions{SuccessMessage: "GitRepo reconciled successfully"})
+
+	return controller.HandleReconcileResult(outcome.Result, outcome.Err)
+}
+
+// reconcile runs the GitRepo reconciliation pipeline.
+func (r *Reconciler) reconcile(
+	ctx context.Context, gr *renovatev1beta1.GitRepo,
+) controller.Outcome {
+	log := logf.FromContext(ctx)
+
+	rcKey, err := r.resolveRenovateConfig(ctx, gr.Namespace, gr)
 	if err != nil {
 		if errors.Is(err, controller.ErrRenovateConfigNotFound) {
-			log.V(1).Info("No RenovateConfig found for GitRepo, skipping", "object", req.NamespacedName)
-			controller.RecordError(ctx, r.Client, gr, r.EventRecorder, renovatev1beta1.ReasonConfigNotFound,
-				controller.ErrRenovateConfigNotFound)
+			log.V(1).Info("No RenovateConfig found for GitRepo, skipping",
+				"object", client.ObjectKeyFromObject(gr))
+			controller.MarkNotReady(gr, renovatev1beta1.ReasonConfigNotFound, err.Error())
 
-			return ctrl.Result{}, nil
+			return controller.Outcome{Result: &ctrl.Result{}, Terminal: true}
 		}
 
-		controller.RecordError(ctx, r.Client, gr, r.EventRecorder, renovatev1beta1.ReasonConfigResolutionFailed, err)
-
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
-	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
+	if err := r.Get(ctx, rcKey, rc); err != nil {
 		if api_errors.IsNotFound(err) {
-			controller.RecordError(ctx, r.Client, gr, r.EventRecorder, renovatev1beta1.ReasonConfigNotFound,
-				controller.ErrRenovateConfigNotFound)
+			controller.MarkNotReady(gr, renovatev1beta1.ReasonConfigNotFound,
+				controller.ErrRenovateConfigNotFound.Error())
 
-			return ctrl.Result{}, nil
+			return controller.Outcome{Result: &ctrl.Result{}, Terminal: true}
 		}
 
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	gitrepoReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, gr, rc)
+	componentReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, gr, rc)
 	if err != nil {
-		controller.RecordError(ctx, r.Client, gr, r.EventRecorder, renovatev1beta1.ReasonReconcileError, err)
-
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	res, err := gitrepoReconciler.Reconcile(ctx)
-	if err != nil {
-		controller.RecordEvent(
-			r.EventRecorder, gr,
-			renovatev1beta1.EventTypeWarning,
-			renovatev1beta1.ReasonReconcileError,
-			renovatev1beta1.EventActionReconciling,
-			err.Error(),
-		)
+	res, err := componentReconciler.Reconcile(ctx)
 
-		return controller.HandleReconcileResult(res, err)
-	}
-
-	controller.RecordEvent(
-		r.EventRecorder, gr,
-		renovatev1beta1.EventTypeNormal,
-		renovatev1beta1.ReasonReconciled,
-		renovatev1beta1.EventActionReconciling,
-		"GitRepo reconciled successfully",
-	)
-
-	return *res, nil
+	return controller.Outcome{Result: res, Err: err}
 }
 
 // SetupWithManager sets up the controller with the Manager.

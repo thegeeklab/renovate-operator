@@ -44,7 +44,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
 	rr := &renovatev1beta1.Renovator{}
-
 	if err := r.Get(ctx, req.NamespacedName, rr); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -53,35 +52,27 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	renovatorReconciler, err := renovator.NewReconciler(ctx, r.Client, r.Scheme, rr)
-	if err != nil {
-		controller.RecordError(ctx, r.Client, rr, r.EventRecorder, renovatev1beta1.ReasonReconcileError, err)
+	original := rr.DeepCopy()
 
-		return ctrl.Result{}, err
+	outcome := r.reconcile(ctx, rr)
+	controller.FinalizeStatus(ctx, r.Client, r.EventRecorder, original, rr, outcome,
+		controller.FinalizeStatusOptions{SuccessMessage: "Renovator reconciled successfully"})
+
+	return controller.HandleReconcileResult(outcome.Result, outcome.Err)
+}
+
+// reconcile runs the Renovator reconciliation pipeline.
+func (r *Reconciler) reconcile(
+	ctx context.Context, rr *renovatev1beta1.Renovator,
+) controller.Outcome {
+	componentReconciler, err := renovator.NewReconciler(ctx, r.Client, r.Scheme, rr)
+	if err != nil {
+		return controller.Outcome{Err: err}
 	}
 
-	res, err := renovatorReconciler.Reconcile(ctx)
-	if err != nil {
-		controller.RecordEvent(
-			r.EventRecorder, rr,
-			renovatev1beta1.EventTypeWarning,
-			renovatev1beta1.ReasonReconcileError,
-			renovatev1beta1.EventActionReconciling,
-			err.Error(),
-		)
+	res, err := componentReconciler.Reconcile(ctx)
 
-		return controller.HandleReconcileResult(res, err)
-	}
-
-	controller.RecordEvent(
-		r.EventRecorder, rr,
-		renovatev1beta1.EventTypeNormal,
-		renovatev1beta1.ReasonReconciled,
-		renovatev1beta1.EventActionReconciling,
-		"Renovator reconciled successfully",
-	)
-
-	return *res, nil
+	return controller.Outcome{Result: res, Err: err}
 }
 
 // SetupWithManager sets up the controller with the Manager.

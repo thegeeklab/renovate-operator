@@ -57,54 +57,46 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, rd)
-	if err != nil {
-		controller.RecordError(ctx, r.Client, rd, r.EventRecorder, renovatev1beta1.ReasonConfigResolutionFailed, err)
+	original := rd.DeepCopy()
 
-		return ctrl.Result{}, err
+	outcome := r.reconcile(ctx, rd)
+	controller.FinalizeStatus(ctx, r.Client, r.EventRecorder, original, rd, outcome,
+		controller.FinalizeStatusOptions{SuccessMessage: "Discovery reconciled successfully"})
+
+	return controller.HandleReconcileResult(outcome.Result, outcome.Err)
+}
+
+// reconcile runs the Discovery reconciliation pipeline.
+func (r *Reconciler) reconcile(
+	ctx context.Context, rd *renovatev1beta1.Discovery,
+) controller.Outcome {
+	rcKey, err := r.resolveRenovateConfig(ctx, rd.Namespace, rd)
+	if err != nil {
+		controller.MarkNotReady(rd, renovatev1beta1.ReasonConfigResolutionFailed, err.Error())
+
+		return controller.Outcome{Err: err}
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
-	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
+	if err := r.Get(ctx, rcKey, rc); err != nil {
 		if api_errors.IsNotFound(err) {
-			controller.RecordError(ctx, r.Client, rd, r.EventRecorder, renovatev1beta1.ReasonConfigNotFound,
-				controller.ErrRenovateConfigNotFound)
+			controller.MarkNotReady(rd, renovatev1beta1.ReasonConfigNotFound,
+				controller.ErrRenovateConfigNotFound.Error())
 
-			return ctrl.Result{}, nil
+			return controller.Outcome{Result: &ctrl.Result{}, Terminal: true}
 		}
 
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	discoveryReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc)
+	componentReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc)
 	if err != nil {
-		controller.RecordError(ctx, r.Client, rd, r.EventRecorder, renovatev1beta1.ReasonReconcileError, err)
-
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	res, err := discoveryReconciler.Reconcile(ctx)
-	if err != nil {
-		controller.RecordEvent(
-			r.EventRecorder, rd,
-			renovatev1beta1.EventTypeWarning,
-			renovatev1beta1.ReasonReconcileError,
-			renovatev1beta1.EventActionReconciling,
-			err.Error(),
-		)
+	res, err := componentReconciler.Reconcile(ctx)
 
-		return controller.HandleReconcileResult(res, err)
-	}
-
-	controller.RecordEvent(
-		r.EventRecorder, rd,
-		renovatev1beta1.EventTypeNormal,
-		renovatev1beta1.ReasonReconciled,
-		renovatev1beta1.EventActionReconciling,
-		"Discovery reconciled successfully",
-	)
-
-	return *res, nil
+	return controller.Outcome{Result: res, Err: err}
 }
 
 // SetupWithManager sets up the controller with the Manager.

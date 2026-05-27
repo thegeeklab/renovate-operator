@@ -8,7 +8,6 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/utils/clock"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -49,6 +48,10 @@ func NewReconciler(
 	}, nil
 }
 
+// Reconcile runs the Runner component reconciliation pipeline. Status
+// management (conditions, events and the status patch) is owned by the
+// top-level controller; this function only mutates spec-driven children and
+// returns the aggregate result.
 func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
@@ -69,40 +72,9 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		results.Collect(result)
 	}
 
-	if statusErr := r.recordStatus(ctx, reconcileErr); statusErr != nil {
-		ctrl.LoggerFrom(ctx).Error(statusErr, "failed to update status")
-	}
-
 	if r.broker != nil {
 		r.broker.Broadcast("job-updated", "refresh")
 	}
 
 	return results.ToResult(), reconcileErr
-}
-
-func (r *Reconciler) recordStatus(ctx context.Context, reconcileErr error) error {
-	if reconcileErr != nil {
-		r.instance.SetCondition(
-			renovatev1beta1.ConditionReconciling,
-			metav1.ConditionTrue,
-			renovatev1beta1.ReasonReconcileError,
-			reconcileErr.Error(),
-		)
-		r.instance.SetCondition(
-			renovatev1beta1.ConditionReady,
-			metav1.ConditionFalse,
-			renovatev1beta1.ReasonReconcileError,
-			reconcileErr.Error(),
-		)
-	} else {
-		r.instance.SetCondition(
-			renovatev1beta1.ConditionReady,
-			metav1.ConditionTrue,
-			renovatev1beta1.ReasonReconcileSuccess,
-			"Runner reconciled successfully",
-		)
-		r.instance.RemoveCondition(renovatev1beta1.ConditionReconciling)
-	}
-
-	return r.Client.Status().Update(ctx, r.instance)
 }

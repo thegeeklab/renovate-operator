@@ -54,54 +54,46 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, rr)
-	if err != nil {
-		controller.RecordError(ctx, r.Client, rr, r.EventRecorder, renovatev1beta1.ReasonConfigResolutionFailed, err)
+	original := rr.DeepCopy()
 
-		return ctrl.Result{}, err
+	outcome := r.reconcile(ctx, rr)
+	controller.FinalizeStatus(ctx, r.Client, r.EventRecorder, original, rr, outcome,
+		controller.FinalizeStatusOptions{SuccessMessage: "Runner reconciled successfully"})
+
+	return controller.HandleReconcileResult(outcome.Result, outcome.Err)
+}
+
+// reconcile runs the Runner reconciliation pipeline.
+func (r *Reconciler) reconcile(
+	ctx context.Context, rr *renovatev1beta1.Runner,
+) controller.Outcome {
+	rcKey, err := r.resolveRenovateConfig(ctx, rr.Namespace, rr)
+	if err != nil {
+		controller.MarkNotReady(rr, renovatev1beta1.ReasonConfigResolutionFailed, err.Error())
+
+		return controller.Outcome{Err: err}
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
-	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
+	if err := r.Get(ctx, rcKey, rc); err != nil {
 		if api_errors.IsNotFound(err) {
-			controller.RecordError(ctx, r.Client, rr, r.EventRecorder, renovatev1beta1.ReasonConfigNotFound,
-				controller.ErrRenovateConfigNotFound)
+			controller.MarkNotReady(rr, renovatev1beta1.ReasonConfigNotFound,
+				controller.ErrRenovateConfigNotFound.Error())
 
-			return ctrl.Result{}, nil
+			return controller.Outcome{Result: &ctrl.Result{}, Terminal: true}
 		}
 
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	runnerReconciler, err := runner.NewReconciler(r.Client, r.Scheme, r.Broker, rr, rc)
+	componentReconciler, err := runner.NewReconciler(r.Client, r.Scheme, r.Broker, rr, rc)
 	if err != nil {
-		controller.RecordError(ctx, r.Client, rr, r.EventRecorder, renovatev1beta1.ReasonReconcileError, err)
-
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	res, err := runnerReconciler.Reconcile(ctx)
-	if err != nil {
-		controller.RecordEvent(
-			r.EventRecorder, rr,
-			renovatev1beta1.EventTypeWarning,
-			renovatev1beta1.ReasonReconcileError,
-			renovatev1beta1.EventActionReconciling,
-			err.Error(),
-		)
+	res, err := componentReconciler.Reconcile(ctx)
 
-		return controller.HandleReconcileResult(res, err)
-	}
-
-	controller.RecordEvent(
-		r.EventRecorder, rr,
-		renovatev1beta1.EventTypeNormal,
-		renovatev1beta1.ReasonReconciled,
-		renovatev1beta1.EventActionReconciling,
-		"Runner reconciled successfully",
-	)
-
-	return *res, nil
+	return controller.Outcome{Result: res, Err: err}
 }
 
 // SetupWithManager sets up the controller with the Manager.
