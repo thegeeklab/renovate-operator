@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,7 +26,8 @@ const ControllerName = "discovery"
 // Reconciler reconciles a Renovator object.
 type Reconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme        *runtime.Scheme
+	EventRecorder events.EventRecorder
 }
 
 //nolint:lll
@@ -37,13 +39,11 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries,verbs=get;list;watch
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries/status,verbs=get
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
@@ -59,33 +59,63 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, rd)
 	if err != nil {
+		r.EventRecorder.Eventf(rd, nil,
+			renovatev1beta1.EventTypeWarning,
+			renovatev1beta1.EventReasonConfigResolutionFailed,
+			renovatev1beta1.EventActionReconciling,
+			"%s", err.Error(),
+		)
+
 		return ctrl.Result{}, err
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
 	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
+			r.EventRecorder.Eventf(rd, nil,
+				renovatev1beta1.EventTypeWarning,
+				renovatev1beta1.EventReasonConfigNotFound,
+				renovatev1beta1.EventActionReconciling,
+				"RenovateConfig not found",
+			)
+
 			return ctrl.Result{}, nil
 		}
 
 		return ctrl.Result{}, err
 	}
 
-	discovery, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc)
+	discoveryReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, r.EventRecorder, rd, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	res, err := discovery.Reconcile(ctx)
+	res, err := discoveryReconciler.Reconcile(ctx)
 	if err != nil {
+		r.EventRecorder.Eventf(rd, nil,
+			renovatev1beta1.EventTypeWarning,
+			renovatev1beta1.EventReasonReconcileError,
+			renovatev1beta1.EventActionReconciling,
+			"%s", err.Error(),
+		)
+
 		return controller.HandleReconcileResult(res, err)
 	}
+
+	r.EventRecorder.Eventf(rd, nil,
+		renovatev1beta1.EventTypeNormal,
+		renovatev1beta1.EventReasonReconciled,
+		renovatev1beta1.EventActionReconciling,
+		"Discovery reconciled successfully",
+	)
 
 	return *res, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.EventRecorder = mgr.GetEventRecorder(ControllerName)
+
 	const configRefIndexKey = ".spec.configRef"
 
 	if err := mgr.GetFieldIndexer().IndexField(

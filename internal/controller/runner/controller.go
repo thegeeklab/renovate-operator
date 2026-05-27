@@ -11,6 +11,7 @@ import (
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,8 +26,9 @@ const ControllerName = "runner"
 // Reconciler reconciles a Runner object.
 type Reconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
-	Broker *frontend.SSEBroker
+	Scheme        *runtime.Scheme
+	Broker        *frontend.SSEBroker
+	EventRecorder events.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
@@ -36,11 +38,9 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=core,resources=pods/log,verbs=get;list;watch
 
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners,verbs=get;list;watch
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners/status,verbs=get
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=runners/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos,verbs=get;list;watch
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
@@ -56,33 +56,63 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 
 	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, rr)
 	if err != nil {
+		r.EventRecorder.Eventf(rr, nil,
+			renovatev1beta1.EventTypeWarning,
+			renovatev1beta1.EventReasonConfigResolutionFailed,
+			renovatev1beta1.EventActionReconciling,
+			"%s", err.Error(),
+		)
+
 		return ctrl.Result{}, err
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
 	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
+			r.EventRecorder.Eventf(rr, nil,
+				renovatev1beta1.EventTypeWarning,
+				renovatev1beta1.EventReasonConfigNotFound,
+				renovatev1beta1.EventActionReconciling,
+				"RenovateConfig not found",
+			)
+
 			return ctrl.Result{}, nil
 		}
 
 		return ctrl.Result{}, err
 	}
 
-	runner, err := runner.NewReconciler(r.Client, r.Scheme, r.Broker, rr, rc)
+	runnerReconciler, err := runner.NewReconciler(r.Client, r.Scheme, r.Broker, r.EventRecorder, rr, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	res, err := runner.Reconcile(ctx)
+	res, err := runnerReconciler.Reconcile(ctx)
 	if err != nil {
+		r.EventRecorder.Eventf(rr, nil,
+			renovatev1beta1.EventTypeWarning,
+			renovatev1beta1.EventReasonReconcileError,
+			renovatev1beta1.EventActionReconciling,
+			"%s", err.Error(),
+		)
+
 		return controller.HandleReconcileResult(res, err)
 	}
+
+	r.EventRecorder.Eventf(rr, nil,
+		renovatev1beta1.EventTypeNormal,
+		renovatev1beta1.EventReasonReconciled,
+		renovatev1beta1.EventActionReconciling,
+		"Runner reconciled successfully",
+	)
 
 	return *res, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.EventRecorder = mgr.GetEventRecorder(ControllerName)
+
 	const configRefIndexKey = ".spec.configRef"
 
 	if err := mgr.GetFieldIndexer().IndexField(

@@ -12,6 +12,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -22,6 +23,7 @@ var _ = Describe("GitRepo Component - Finalizer Logic", func() {
 		ctx        context.Context
 		scheme     *runtime.Scheme
 		fakeClient client.Client
+		recorder   *events.FakeRecorder
 		instance   *renovatev1beta1.GitRepo
 		renovate   *renovatev1beta1.RenovateConfig
 		reconciler *Reconciler
@@ -62,9 +64,11 @@ var _ = Describe("GitRepo Component - Finalizer Logic", func() {
 			WithStatusSubresource(&renovatev1beta1.GitRepo{}).
 			Build()
 
+		recorder = events.NewFakeRecorder(10)
+
 		var err error
 
-		reconciler, err = NewReconciler(fakeClient, scheme, "https://renovate.example.com", instance, renovate)
+		reconciler, err = NewReconciler(fakeClient, scheme, "https://renovate.example.com", recorder, instance, renovate)
 		Expect(err).NotTo(HaveOccurred())
 	})
 

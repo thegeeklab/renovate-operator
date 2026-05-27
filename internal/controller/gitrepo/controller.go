@@ -9,6 +9,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,8 +20,9 @@ const ControllerName = "gitrepo"
 // Reconciler reconciles a GitRepo object.
 type Reconciler struct {
 	client.Client
-	Scheme      *runtime.Scheme
-	ExternalURL string
+	Scheme        *runtime.Scheme
+	ExternalURL   string
+	EventRecorder events.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos,verbs=get;list;watch;create;update;patch;delete
@@ -48,9 +50,22 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	if err != nil {
 		if errors.Is(err, controller.ErrNoRenovateConfigFound) {
 			log.V(1).Info("No RenovateConfig found for GitRepo, skipping", "object", req.NamespacedName)
+			r.EventRecorder.Eventf(gr, nil,
+				renovatev1beta1.EventTypeWarning,
+				renovatev1beta1.EventReasonConfigNotFound,
+				renovatev1beta1.EventActionReconciling,
+				"No RenovateConfig found",
+			)
 
 			return ctrl.Result{}, nil
 		}
+
+		r.EventRecorder.Eventf(gr, nil,
+			renovatev1beta1.EventTypeWarning,
+			renovatev1beta1.EventReasonConfigResolutionFailed,
+			renovatev1beta1.EventActionReconciling,
+			"%s", err.Error(),
+		)
 
 		return ctrl.Result{}, err
 	}
@@ -58,27 +73,50 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	rc := &renovatev1beta1.RenovateConfig{}
 	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
 		if api_errors.IsNotFound(err) {
+			r.EventRecorder.Eventf(gr, nil,
+				renovatev1beta1.EventTypeWarning,
+				renovatev1beta1.EventReasonConfigNotFound,
+				renovatev1beta1.EventActionReconciling,
+				"RenovateConfig not found",
+			)
+
 			return ctrl.Result{}, nil
 		}
 
 		return ctrl.Result{}, err
 	}
 
-	gitrepoReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, gr, rc)
+	gitrepoReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, r.EventRecorder, gr, rc)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
 	res, err := gitrepoReconciler.Reconcile(ctx)
 	if err != nil {
+		r.EventRecorder.Eventf(gr, nil,
+			renovatev1beta1.EventTypeWarning,
+			renovatev1beta1.EventReasonReconcileError,
+			renovatev1beta1.EventActionReconciling,
+			"%s", err.Error(),
+		)
+
 		return controller.HandleReconcileResult(res, err)
 	}
+
+	r.EventRecorder.Eventf(gr, nil,
+		renovatev1beta1.EventTypeNormal,
+		renovatev1beta1.EventReasonReconciled,
+		renovatev1beta1.EventActionReconciling,
+		"GitRepo reconciled successfully",
+	)
 
 	return *res, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.EventRecorder = mgr.GetEventRecorder(ControllerName)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.GitRepo{}).
 		Named(ControllerName).

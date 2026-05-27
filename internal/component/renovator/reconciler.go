@@ -7,25 +7,32 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 type Reconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
-	req      ctrl.Request
-	instance *renovatev1beta1.Renovator
+	Scheme        *runtime.Scheme
+	EventRecorder events.EventRecorder
+	req           ctrl.Request
+	instance      *renovatev1beta1.Renovator
 }
 
 func NewReconciler(
-	_ context.Context, c client.Client, scheme *runtime.Scheme, instance *renovatev1beta1.Renovator,
+	_ context.Context,
+	c client.Client,
+	scheme *runtime.Scheme,
+	recorder events.EventRecorder,
+	instance *renovatev1beta1.Renovator,
 ) (*Reconciler, error) {
 	return &Reconciler{
-		Client:   c,
-		Scheme:   scheme,
-		req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
-		instance: instance,
+		Client:        c,
+		Scheme:        scheme,
+		EventRecorder: recorder,
+		req:           ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
+		instance:      instance,
 	}, nil
 }
 
@@ -54,6 +61,25 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	}
 
 	result := results.ToResult()
+
+	conditionType := renovatev1beta1.ConditionReady
+	reason := renovatev1beta1.ReasonReconcileSuccess
+	message := "Renovator reconciled successfully"
+	eventType := renovatev1beta1.EventTypeNormal
+
+	if reconcileErr != nil {
+		conditionType = renovatev1beta1.ConditionReconcileError
+		reason = renovatev1beta1.ReasonReconcileError
+		message = reconcileErr.Error()
+		eventType = renovatev1beta1.EventTypeWarning
+	}
+
+	r.instance.SetCondition(conditionType, "True", reason, message)
+	r.EventRecorder.Eventf(r.instance, nil, eventType, reason, reason, "%s", message)
+
+	if err := r.Client.Status().Update(ctx, r.instance); err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to update status: %w", err)
+	}
 
 	// Cleanup annotation if reconciliation failed or finished successfully
 	// Only remove the annotation if it exists to avoid nil map issues

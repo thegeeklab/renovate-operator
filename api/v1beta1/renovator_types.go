@@ -2,7 +2,14 @@ package v1beta1
 
 import (
 	corev1 "k8s.io/api/core/v1"
+	api_meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	RenovatorConditionDiscoveryReady      = "DiscoveryReady"
+	RenovatorConditionRunnerReady         = "RunnerReady"
+	RenovatorConditionRenovateConfigReady = "RenovateConfigReady"
 )
 
 // +kubebuilder:validation:Enum=github;gitea
@@ -136,4 +143,26 @@ type RenovatorList struct {
 	metav1.TypeMeta `json:",inline"`
 	metav1.ListMeta `json:"metadata,omitempty"`
 	Items           []Renovator `json:"items"`
+}
+
+func (r *Renovator) SetCondition(
+	conditionType string,
+	status metav1.ConditionStatus,
+	reason, message string,
+) {
+	api_meta.SetStatusCondition(&r.Status.Conditions, metav1.Condition{
+		Type:               conditionType,
+		Status:             status,
+		Reason:             reason,
+		Message:            message,
+		ObservedGeneration: r.Generation,
+	})
+}
+
+func (r *Renovator) GetCondition(conditionType string) *metav1.Condition {
+	return api_meta.FindStatusCondition(r.Status.Conditions, conditionType)
+}
+
+func (r *Renovator) RemoveCondition(conditionType string) {
+	api_meta.RemoveStatusCondition(&r.Status.Conditions, conditionType)
 }

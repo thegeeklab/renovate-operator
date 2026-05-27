@@ -8,6 +8,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -20,7 +21,8 @@ const ControllerName = "renovator"
 // Reconciler reconciles a Renovator object.
 type Reconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme        *runtime.Scheme
+	EventRecorder events.EventRecorder
 }
 
 //nolint:lll
@@ -53,21 +55,37 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	renovator, err := renovator.NewReconciler(ctx, r.Client, r.Scheme, rr)
+	renovatorReconciler, err := renovator.NewReconciler(ctx, r.Client, r.Scheme, r.EventRecorder, rr)
 	if err != nil {
 		return ctrl.Result{}, err
 	}
 
-	res, err := renovator.Reconcile(ctx)
+	res, err := renovatorReconciler.Reconcile(ctx)
 	if err != nil {
+		r.EventRecorder.Eventf(rr, nil,
+			renovatev1beta1.EventTypeWarning,
+			renovatev1beta1.EventReasonReconcileError,
+			renovatev1beta1.EventActionReconciling,
+			"%s", err.Error(),
+		)
+
 		return controller.HandleReconcileResult(res, err)
 	}
+
+	r.EventRecorder.Eventf(rr, nil,
+		renovatev1beta1.EventTypeNormal,
+		renovatev1beta1.EventReasonReconciled,
+		renovatev1beta1.EventActionReconciling,
+		"Renovator reconciled successfully",
+	)
 
 	return *res, nil
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.EventRecorder = mgr.GetEventRecorder(ControllerName)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Renovator{}).
 		WithEventFilter(predicate.Or(
