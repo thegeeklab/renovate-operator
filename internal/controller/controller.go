@@ -81,7 +81,7 @@ func Eventf(
 	recorder events.EventRecorder,
 	obj runtime.Object,
 	event, reason, action, note string,
-	args ...interface{},
+	args ...any,
 ) {
 	if recorder == nil || obj == nil {
 		return
@@ -103,9 +103,7 @@ func HandleReconcileResult(res *ctrl.Result, err error) (ctrl.Result, error) {
 }
 
 // Outcome captures the result of a reconciliation pass. The Terminal flag
-// signals that the reconciler has already chosen a final Ready condition
-// (e.g. Ready=False with reason ConfigNotFound) and the finalizer should not
-// overwrite it with Ready=True.
+// signals that the reconciler has already chosen a final Ready condition.
 type Outcome struct {
 	Result   *ctrl.Result
 	Err      error

@@ -37,10 +37,6 @@ func NewReconciler(
 	}, nil
 }
 
-// Reconcile runs the Discovery component reconciliation pipeline. Status
-// management (conditions, events and the status patch) is owned by the
-// top-level controller; this function only mutates spec-driven children and
-// returns the aggregate result.
 func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
