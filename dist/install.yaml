@@ -1642,6 +1642,14 @@ rules:
       - update
       - watch
   - apiGroups:
+      - events.k8s.io
+    resources:
+      - events
+    verbs:
+      - create
+      - patch
+      - update
+  - apiGroups:
       - rbac.authorization.k8s.io
     resources:
       - rolebindings
