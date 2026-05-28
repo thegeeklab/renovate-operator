@@ -41,10 +41,10 @@ func NewReconciler(
 		Client:    c,
 		scheme:    scheme,
 		scheduler: scheduler.NewManager(c, scheme, clock.RealClock{}),
+		broker:    broker,
 		req:       ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
 		instance:  instance,
 		renovate:  renovate,
-		broker:    broker,
 	}, nil
 }
 
@@ -55,10 +55,14 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		r.reconcileJob,
 	}
 
+	var reconcileErr error
+
 	for _, reconcileFunc := range reconcileFuncs {
 		result, err := reconcileFunc(ctx)
 		if err != nil {
-			return result, err
+			reconcileErr = err
+
+			break
 		}
 
 		results.Collect(result)
@@ -68,5 +72,5 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		r.broker.Broadcast("job-updated", "refresh")
 	}
 
-	return results.ToResult(), nil
+	return results.ToResult(), reconcileErr
 }

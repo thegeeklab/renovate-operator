@@ -13,17 +13,20 @@ import (
 
 type Reconciler struct {
 	client.Client
-	Scheme   *runtime.Scheme
+	scheme   *runtime.Scheme
 	req      ctrl.Request
 	instance *renovatev1beta1.Renovator
 }
 
 func NewReconciler(
-	_ context.Context, c client.Client, scheme *runtime.Scheme, instance *renovatev1beta1.Renovator,
+	_ context.Context,
+	c client.Client,
+	scheme *runtime.Scheme,
+	instance *renovatev1beta1.Renovator,
 ) (*Reconciler, error) {
 	return &Reconciler{
 		Client:   c,
-		Scheme:   scheme,
+		scheme:   scheme,
 		req:      ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
 		instance: instance,
 	}, nil
@@ -32,7 +35,6 @@ func NewReconciler(
 func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
-	// Define the reconciliation order
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
 		r.reconcileRenovateConfig,
 		r.reconcileRenovateConfigMap,
@@ -55,14 +57,15 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 
 	result := results.ToResult()
 
-	// Cleanup annotation if reconciliation failed or finished successfully
-	// Only remove the annotation if it exists to avoid nil map issues
+	// Cleanup operation annotation when the work driven by it is finished
+	// (either successfully or because it failed terminally). Only patch when
+	// the annotation is actually present to avoid no-op writes.
 	if (reconcileErr != nil || result.RequeueAfter == 0) && HasRenovatorOperation(r.instance.Annotations) {
 		patch := client.MergeFrom(r.instance.DeepCopy())
 		r.instance.Annotations = RemoveRenovatorOperation(r.instance.Annotations)
 
 		if err := r.Patch(ctx, r.instance, patch); err != nil {
-			return &ctrl.Result{}, fmt.Errorf("failed to remove operation annotation: %w", err)
+			return result, fmt.Errorf("remove operation annotation: %w", err)
 		}
 	}
 

@@ -156,7 +156,11 @@ var _ = Describe("Renovator Discovery", func() {
 				},
 			}
 
-			Expect(fakeClient.Create(ctx, renovator)).To(Succeed())
+			fakeClient = fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(renovator).
+				WithStatusSubresource(&renovatev1beta1.Renovator{}).
+				Build()
 
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
 			Expect(err).NotTo(HaveOccurred())

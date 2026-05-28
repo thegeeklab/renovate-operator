@@ -11,6 +11,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -25,7 +26,8 @@ const ControllerName = "discovery"
 // Reconciler reconciles a Renovator object.
 type Reconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme        *runtime.Scheme
+	EventRecorder events.EventRecorder
 }
 
 //nolint:lll
@@ -37,13 +39,11 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=rbac.authorization.k8s.io,resources=rolebindings,verbs=get;list;watch;create;update;patch;delete
 
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries,verbs=get;list;watch
-// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries/status,verbs=get
+// +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=discoveries/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos,verbs=get;list;watch;create;update;patch;delete
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
@@ -57,35 +57,52 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, rd)
+	original := rd.DeepCopy()
+
+	outcome := r.reconcile(ctx, rd)
+	controller.FinalizeStatus(ctx, r.Client, r.EventRecorder, original, rd, outcome,
+		controller.FinalizeStatusOptions{SuccessMessage: "Discovery reconciled successfully"})
+
+	return controller.HandleReconcileResult(outcome.Result, outcome.Err)
+}
+
+// reconcile runs the Discovery reconciliation pipeline.
+func (r *Reconciler) reconcile(
+	ctx context.Context, rd *renovatev1beta1.Discovery,
+) controller.Outcome {
+	rcKey, err := r.resolveRenovateConfig(ctx, rd.Namespace, rd)
 	if err != nil {
-		return ctrl.Result{}, err
+		controller.MarkNotReady(rd, renovatev1beta1.ReasonConfigResolutionFailed, err.Error())
+
+		return controller.Outcome{Err: err}
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
-	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
+	if err := r.Get(ctx, rcKey, rc); err != nil {
 		if api_errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
+			controller.MarkNotReady(rd, renovatev1beta1.ReasonConfigNotFound,
+				controller.ErrRenovateConfigNotFound.Error())
+
+			return controller.Outcome{Result: &ctrl.Result{}, Terminal: true}
 		}
 
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	discovery, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc)
+	componentReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc)
 	if err != nil {
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	res, err := discovery.Reconcile(ctx)
-	if err != nil {
-		return controller.HandleReconcileResult(res, err)
-	}
+	res, err := componentReconciler.Reconcile(ctx)
 
-	return *res, nil
+	return controller.Outcome{Result: res, Err: err}
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.EventRecorder = mgr.GetEventRecorder(ControllerName)
+
 	const configRefIndexKey = ".spec.configRef"
 
 	if err := mgr.GetFieldIndexer().IndexField(
@@ -163,7 +180,7 @@ func (r *Reconciler) resolveRenovateConfig(
 
 	renovator, ok := rd.Labels[renovatev1beta1.LabelRenovator]
 	if !ok {
-		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+		return client.ObjectKey{}, controller.ErrRenovateConfigNotFound
 	}
 
 	configList := &renovatev1beta1.RenovateConfigList{}
@@ -177,7 +194,7 @@ func (r *Reconciler) resolveRenovateConfig(
 		}
 	}
 
-	return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+	return client.ObjectKey{}, controller.ErrRenovateConfigNotFound
 }
 
 // discoveryConfigRefIndexFn returns the config reference for indexing.

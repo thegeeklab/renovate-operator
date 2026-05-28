@@ -11,6 +11,7 @@ import (
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
@@ -25,9 +26,10 @@ var _ = Describe("GitRepo Controller", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 		reconciler = &Reconciler{
-			Client:      k8sClient,
-			Scheme:      k8sClient.Scheme(),
-			ExternalURL: "https://renovate.example.com",
+			Client:        k8sClient,
+			Scheme:        k8sClient.Scheme(),
+			ExternalURL:   "https://renovate.example.com",
+			EventRecorder: &events.FakeRecorder{},
 		}
 	})
 
@@ -110,7 +112,7 @@ var _ = Describe("GitRepo Controller", func() {
 
 	It("should handle missing RenovateConfig resource gracefully", func() {
 		mockClient := &mockErrorClient{Client: k8sClient}
-		errorReconciler := &Reconciler{Client: mockClient, Scheme: k8sClient.Scheme()}
+		errorReconciler := &Reconciler{Client: mockClient, Scheme: k8sClient.Scheme(), EventRecorder: &events.FakeRecorder{}}
 
 		result, err := errorReconciler.Reconcile(ctx, reconcile.Request{
 			NamespacedName: types.NamespacedName{Name: "missing-config-repo", Namespace: "default"},

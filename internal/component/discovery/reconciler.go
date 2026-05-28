@@ -2,7 +2,6 @@ package discovery
 
 import (
 	"context"
-	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
@@ -52,7 +51,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	for _, reconcileFunc := range reconcileFuncs {
 		res, err := reconcileFunc(ctx)
 		if err != nil {
-			return &ctrl.Result{}, fmt.Errorf("reconciliation failed: %w", err)
+			return results.ToResult(), err
 		}
 
 		results.Collect(res)

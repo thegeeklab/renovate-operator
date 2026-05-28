@@ -8,6 +8,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/event"
@@ -20,7 +21,8 @@ const ControllerName = "renovator"
 // Reconciler reconciles a Renovator object.
 type Reconciler struct {
 	client.Client
-	Scheme *runtime.Scheme
+	Scheme        *runtime.Scheme
+	EventRecorder events.EventRecorder
 }
 
 //nolint:lll
@@ -37,14 +39,11 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs/status,verbs=get;update;patch
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs/finalizers,verbs=update
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
 	rr := &renovatev1beta1.Renovator{}
-
 	if err := r.Get(ctx, req.NamespacedName, rr); err != nil {
 		if api_errors.IsNotFound(err) {
 			return ctrl.Result{}, nil
@@ -53,21 +52,33 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	renovator, err := renovator.NewReconciler(ctx, r.Client, r.Scheme, rr)
+	original := rr.DeepCopy()
+
+	outcome := r.reconcile(ctx, rr)
+	controller.FinalizeStatus(ctx, r.Client, r.EventRecorder, original, rr, outcome,
+		controller.FinalizeStatusOptions{SuccessMessage: "Renovator reconciled successfully"})
+
+	return controller.HandleReconcileResult(outcome.Result, outcome.Err)
+}
+
+// reconcile runs the Renovator reconciliation pipeline.
+func (r *Reconciler) reconcile(
+	ctx context.Context, rr *renovatev1beta1.Renovator,
+) controller.Outcome {
+	componentReconciler, err := renovator.NewReconciler(ctx, r.Client, r.Scheme, rr)
 	if err != nil {
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	res, err := renovator.Reconcile(ctx)
-	if err != nil {
-		return controller.HandleReconcileResult(res, err)
-	}
+	res, err := componentReconciler.Reconcile(ctx)
 
-	return *res, nil
+	return controller.Outcome{Result: res, Err: err}
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.EventRecorder = mgr.GetEventRecorder(ControllerName)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Renovator{}).
 		WithEventFilter(predicate.Or(

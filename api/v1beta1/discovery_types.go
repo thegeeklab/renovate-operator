@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	api_meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -82,4 +83,26 @@ func (d *Discovery) GetSuccessLimit() int {
 // GetFailedLimit returns the history limit for failed jobs.
 func (d *Discovery) GetFailedLimit() int {
 	return int(*d.Spec.FailedLimit)
+}
+
+func (d *Discovery) SetCondition(
+	conditionType string,
+	status metav1.ConditionStatus,
+	reason, message string,
+) {
+	api_meta.SetStatusCondition(&d.Status.Conditions, metav1.Condition{
+		Type:               conditionType,
+		Status:             status,
+		Reason:             reason,
+		Message:            message,
+		ObservedGeneration: d.Generation,
+	})
+}
+
+func (d *Discovery) GetCondition(conditionType string) *metav1.Condition {
+	return api_meta.FindStatusCondition(d.Status.Conditions, conditionType)
+}
+
+func (d *Discovery) RemoveCondition(conditionType string) {
+	api_meta.RemoveStatusCondition(&d.Status.Conditions, conditionType)
 }

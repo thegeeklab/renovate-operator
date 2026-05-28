@@ -9,6 +9,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,8 +20,9 @@ const ControllerName = "gitrepo"
 // Reconciler reconciles a GitRepo object.
 type Reconciler struct {
 	client.Client
-	Scheme      *runtime.Scheme
-	ExternalURL string
+	Scheme        *runtime.Scheme
+	ExternalURL   string
+	EventRecorder events.EventRecorder
 }
 
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=gitrepos,verbs=get;list;watch;create;update;patch;delete
@@ -29,8 +31,6 @@ type Reconciler struct {
 // +kubebuilder:rbac:groups=renovate.thegeeklab.de,resources=renovateconfigs,verbs=get;list;watch
 // +kubebuilder:rbac:groups=core,resources=secrets,verbs=get;list;watch;create;update;patch;delete
 
-// Reconcile is part of the main kubernetes reconciliation loop which aims to
-// move the current state of the cluster closer to the desired state.
 func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
@@ -44,41 +44,60 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
-	rcNamespacedName, err := r.resolveRenovateConfig(ctx, req.Namespace, gr)
-	if err != nil {
-		if errors.Is(err, controller.ErrNoRenovateConfigFound) {
-			log.V(1).Info("No RenovateConfig found for GitRepo, skipping", "object", req.NamespacedName)
+	original := gr.DeepCopy()
 
-			return ctrl.Result{}, nil
+	outcome := r.reconcile(ctx, gr)
+	controller.FinalizeStatus(ctx, r.Client, r.EventRecorder, original, gr, outcome,
+		controller.FinalizeStatusOptions{SuccessMessage: "GitRepo reconciled successfully"})
+
+	return controller.HandleReconcileResult(outcome.Result, outcome.Err)
+}
+
+// reconcile runs the GitRepo reconciliation pipeline.
+func (r *Reconciler) reconcile(
+	ctx context.Context, gr *renovatev1beta1.GitRepo,
+) controller.Outcome {
+	log := logf.FromContext(ctx)
+
+	rcKey, err := r.resolveRenovateConfig(ctx, gr.Namespace, gr)
+	if err != nil {
+		if errors.Is(err, controller.ErrRenovateConfigNotFound) {
+			log.V(1).Info("No RenovateConfig found for GitRepo, skipping",
+				"object", client.ObjectKeyFromObject(gr))
+			controller.MarkNotReady(gr, renovatev1beta1.ReasonConfigNotFound, err.Error())
+
+			return controller.Outcome{Result: &ctrl.Result{}, Terminal: true}
 		}
 
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
 	rc := &renovatev1beta1.RenovateConfig{}
-	if err := r.Get(ctx, rcNamespacedName, rc); err != nil {
+	if err := r.Get(ctx, rcKey, rc); err != nil {
 		if api_errors.IsNotFound(err) {
-			return ctrl.Result{}, nil
+			controller.MarkNotReady(gr, renovatev1beta1.ReasonConfigNotFound,
+				controller.ErrRenovateConfigNotFound.Error())
+
+			return controller.Outcome{Result: &ctrl.Result{}, Terminal: true}
 		}
 
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	gitrepoReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, gr, rc)
+	componentReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, gr, rc)
 	if err != nil {
-		return ctrl.Result{}, err
+		return controller.Outcome{Err: err}
 	}
 
-	res, err := gitrepoReconciler.Reconcile(ctx)
-	if err != nil {
-		return controller.HandleReconcileResult(res, err)
-	}
+	res, err := componentReconciler.Reconcile(ctx)
 
-	return *res, nil
+	return controller.Outcome{Result: res, Err: err}
 }
 
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
+	r.EventRecorder = mgr.GetEventRecorder(ControllerName)
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.GitRepo{}).
 		Named(ControllerName).
@@ -91,7 +110,7 @@ func (r *Reconciler) resolveRenovateConfig(
 ) (client.ObjectKey, error) {
 	renovator, ok := gr.Labels[renovatev1beta1.LabelRenovator]
 	if !ok {
-		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+		return client.ObjectKey{}, controller.ErrRenovateConfigNotFound
 	}
 
 	configList := &renovatev1beta1.RenovateConfigList{}
@@ -104,7 +123,7 @@ func (r *Reconciler) resolveRenovateConfig(
 	}
 
 	if len(configList.Items) == 0 {
-		return client.ObjectKey{}, controller.ErrNoRenovateConfigFound
+		return client.ObjectKey{}, controller.ErrRenovateConfigNotFound
 	}
 
 	return client.ObjectKey{Namespace: namespace, Name: configList.Items[0].Name}, nil

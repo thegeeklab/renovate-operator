@@ -65,7 +65,8 @@
     "evenodd",
     "vite",
     "alpinejs",
-    "finalizer"
+    "finalizer",
+    "Eventf"
   ],
   "ignorePaths": [
     ".woodpecker",
