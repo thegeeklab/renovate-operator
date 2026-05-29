@@ -7,6 +7,7 @@ import (
 	"github.com/a-h/templ"
 	"github.com/gorilla/mux"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/views"
 	batchv1 "k8s.io/api/batch/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -24,16 +25,22 @@ type WebHandler struct {
 	dataFactory *DataFactory
 	Broker      *SSEBroker
 	assets      FrontendAssets
+	authManager *auth.Manager
 }
 
 func NewWebHandler(
-	client client.Client, clientset kubernetes.Interface, broker *SSEBroker, assets FrontendAssets,
+	client client.Client,
+	clientset kubernetes.Interface,
+	broker *SSEBroker,
+	assets FrontendAssets,
+	authManager *auth.Manager,
 ) *WebHandler {
 	return &WebHandler{
 		client:      client,
-		dataFactory: NewDataFactory(client, clientset),
+		dataFactory: NewDataFactory(client, clientset, authManager),
 		Broker:      broker,
 		assets:      assets,
+		authManager: authManager,
 	}
 }
 
@@ -41,6 +48,7 @@ func (h *WebHandler) RegisterRoutes(router *mux.Router) {
 	router.Handle("/events", h.Broker).Methods("GET")
 
 	router.HandleFunc("/", h.HandleDashboard).Methods("GET")
+	router.HandleFunc("/login", h.HandleLogin).Methods("GET")
 	router.HandleFunc("/gitrepo", h.HandleGitRepoView).Methods("GET")
 	router.HandleFunc("/gitrepos", h.HandleGitReposPartial).Methods("GET")
 	router.HandleFunc("/joblogs", h.HandleJobLogs).Methods("GET")
@@ -50,11 +58,42 @@ func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, component te
 	isHxRequest := r.Header.Get("HX-Request") == "true"
 	isHxBoosted := r.Header.Get("HX-Boosted") == "true"
 
+	authInfo := h.buildAuthInfo(r)
+
 	if isHxRequest && !isHxBoosted {
 		_ = component.Render(r.Context(), w)
 	} else {
-		_ = views.Layout(h.assets.Styles, h.assets.Scripts, component).Render(r.Context(), w)
+		_ = views.Layout(h.assets.Styles, h.assets.Scripts, authInfo, component).Render(r.Context(), w)
 	}
+}
+
+func (h *WebHandler) buildAuthInfo(r *http.Request) views.AuthInfo {
+	info := views.AuthInfo{}
+
+	if h.authManager == nil || !h.authManager.IsEnabled() {
+		return info
+	}
+
+	info.Enabled = true
+
+	for _, p := range h.authManager.List() {
+		info.Providers = append(info.Providers, views.AuthProviderInfo{
+			Name: p.Name(),
+			Type: p.Type(),
+		})
+	}
+
+	session, ok := auth.SessionFromContext(r.Context())
+	if !ok {
+		return info
+	}
+
+	info.Authenticated = true
+	info.Email = session.Email
+	info.Name = session.Name
+	info.Provider = session.Provider
+
+	return info
 }
 
 func getWebListOptions(r *http.Request) ListOptions {
@@ -90,6 +129,17 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		discoveries, _ := h.dataFactory.GetDiscoveries(ctx, renOpts)
 		repos, _ := h.dataFactory.GetGitRepos(ctx, renOpts)
 
+		if h.authManager != nil && h.authManager.IsEnabled() {
+			session, ok := auth.SessionFromContext(ctx)
+			if ok {
+				repos, err = h.dataFactory.FilterGitReposByAccess(ctx, repos, session)
+				if err != nil {
+					frontendLog.Error(err, "Failed to filter gitrepos by access")
+					repos = []GitRepoInfo{}
+				}
+			}
+		}
+
 		runnerName := "-"
 		if len(runners) > 0 {
 			runnerName = runners[0].Name
@@ -114,6 +164,10 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	h.render(w, r, views.RenovatorList(viewsList))
 }
 
+func (h *WebHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	h.render(w, r, views.Login(h.buildAuthInfo(r)))
+}
+
 func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
 	opts := getWebListOptions(r)
@@ -131,10 +185,22 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
+	if h.authManager != nil && h.authManager.IsEnabled() {
+		session, ok := auth.SessionFromContext(ctx)
+		if ok {
+			repos, err = h.dataFactory.FilterGitReposByAccess(ctx, repos, session)
+			if err != nil {
+				frontendLog.Error(err, "Failed to filter gitrepos by access")
+				repos = []GitRepoInfo{}
+			}
+		}
+	}
+
 	var viewRepos []views.GitRepoInfo
 	for _, repo := range repos {
 		viewRepos = append(viewRepos, views.GitRepoInfo{
 			Name:               repo.Name,
+			FullName:           repo.FullName,
 			Namespace:          repo.Namespace,
 			WebhookID:          repo.WebhookID,
 			LastRenovateAt:     repo.LastRenovateAt,
@@ -167,6 +233,7 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 
 	repoInfo := views.GitRepoInfo{
 		Name:      repo.Name,
+		FullName:  repo.Spec.Name,
 		Namespace: repo.Namespace,
 		WebhookID: repo.Status.WebhookID,
 		CreatedAt: repo.CreationTimestamp.Time,

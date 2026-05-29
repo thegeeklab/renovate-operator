@@ -2,6 +2,20 @@ package views
 
 import "time"
 
+type AuthInfo struct {
+	Enabled       bool
+	Authenticated bool
+	Email         string
+	Name          string
+	Provider      string
+	Providers     []AuthProviderInfo
+}
+
+type AuthProviderInfo struct {
+	Name string
+	Type string
+}
+
 type WebView struct {
 	Name          string
 	Namespace     string
@@ -13,6 +27,7 @@ type WebView struct {
 
 type GitRepoInfo struct {
 	Name               string
+	FullName           string
 	Namespace          string
 	WebhookID          string
 	LastRenovateAt     time.Time

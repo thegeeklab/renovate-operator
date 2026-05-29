@@ -5,6 +5,7 @@ go 1.26.3
 require (
 	code.gitea.io/sdk/gitea v0.25.1
 	github.com/a-h/templ v0.3.1020
+	github.com/coreos/go-oidc/v3 v3.18.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gorilla/mux v1.8.1
 	github.com/netresearch/go-cron v0.14.0
@@ -12,6 +13,7 @@ require (
 	github.com/onsi/gomega v1.41.0
 	github.com/open-policy-agent/cert-controller v0.16.0
 	github.com/stretchr/testify v1.11.1
+	golang.org/x/oauth2 v0.36.0
 	k8s.io/api v0.36.1
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.36.1
@@ -37,6 +39,7 @@ require (
 	github.com/fsnotify/fsnotify v1.9.0 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.0 // indirect
 	github.com/go-fed/httpsig v1.1.0 // indirect
+	github.com/go-jose/go-jose/v4 v4.1.4 // indirect
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-logr/zapr v1.3.0 // indirect
@@ -95,7 +98,6 @@ require (
 	golang.org/x/exp v0.0.0-20260312153236-7ab1446f8b90 // indirect
 	golang.org/x/mod v0.35.0 // indirect
 	golang.org/x/net v0.53.0 // indirect
-	golang.org/x/oauth2 v0.36.0 // indirect
 	golang.org/x/sync v0.20.0 // indirect
 	golang.org/x/sys v0.43.0 // indirect
 	golang.org/x/term v0.42.0 // indirect

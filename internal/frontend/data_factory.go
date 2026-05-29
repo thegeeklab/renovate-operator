@@ -9,6 +9,7 @@ import (
 	"time"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/auth"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -28,15 +29,19 @@ type ListOptions struct {
 
 // DataFactory provides methods to fetch and transform data for both API and UI handlers.
 type DataFactory struct {
-	client    client.Client
-	clientset kubernetes.Interface
+	client      client.Client
+	clientset   kubernetes.Interface
+	authManager *auth.Manager
+	accessCache *accessCache
 }
 
 // NewDataFactory creates a new DataFactory instance.
-func NewDataFactory(client client.Client, clientset kubernetes.Interface) *DataFactory {
+func NewDataFactory(client client.Client, clientset kubernetes.Interface, authManager *auth.Manager) *DataFactory {
 	return &DataFactory{
-		client:    client,
-		clientset: clientset,
+		client:      client,
+		clientset:   clientset,
+		authManager: authManager,
+		accessCache: newAccessCache(defaultAccessCacheTTL),
 	}
 }
 
@@ -112,6 +117,7 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 
 		result = append(result, GitRepoInfo{
 			Name:               gitrepo.Name,
+			FullName:           gitrepo.Spec.Name,
 			Namespace:          gitrepo.Namespace,
 			WebhookID:          gitrepo.Status.WebhookID,
 			LastRenovateAt:     lastTime,
@@ -361,4 +367,64 @@ func sortItems[T any](items []T, opt ListOptions, nameFn func(T) string, dateFn 
 
 		return less
 	})
+}
+
+func (df *DataFactory) FilterGitReposByAccess(
+	ctx context.Context,
+	repos []GitRepoInfo,
+	session auth.SessionData,
+) ([]GitRepoInfo, error) {
+	if df.authManager == nil || session.AccessToken == "" || session.Provider == "" {
+		return repos, nil
+	}
+
+	provider, ok := df.authManager.Get(session.Provider)
+	if !ok {
+		return repos, nil
+	}
+
+	var (
+		accessibleRepos map[string]bool
+		cacheKey        string
+		cached          bool
+	)
+
+	if session.Subject != "" {
+		cacheKey = session.Provider + "|" + session.Subject
+		accessibleRepos, cached = df.accessCache.get(cacheKey)
+	}
+
+	if !cached {
+		checker, err := provider.GetAccessChecker(session.AccessToken)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get access checker: %w", err)
+		}
+
+		accessibleRepos, err = checker.GetAccessibleRepos(ctx)
+		if err != nil {
+			if cacheKey != "" {
+				df.accessCache.invalidate(cacheKey)
+			}
+
+			return nil, fmt.Errorf("failed to get accessible repos: %w", err)
+		}
+
+		if cacheKey != "" {
+			df.accessCache.set(cacheKey, accessibleRepos)
+		}
+	}
+
+	var filtered []GitRepoInfo
+
+	for _, repo := range repos {
+		if accessibleRepos[repo.FullName] {
+			filtered = append(filtered, repo)
+		}
+	}
+
+	if filtered == nil {
+		filtered = []GitRepoInfo{}
+	}
+
+	return filtered, nil
 }

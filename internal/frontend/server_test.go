@@ -24,7 +24,7 @@ var _ = Describe("Server", func() {
 		fakeClient = fake.NewClientBuilder().Build()
 		broker = NewSSEBroker()
 		config = DefaultServerConfig()
-		server = NewServer(config, fakeClient, nil, broker)
+		server = NewServer(config, fakeClient, nil, broker, nil)
 	})
 
 	Describe("NewServer", func() {
@@ -40,7 +40,7 @@ var _ = Describe("Server", func() {
 				IdleTimeout:  60 * time.Second,
 			}
 
-			customServer := NewServer(customConfig, fakeClient, nil, broker)
+			customServer := NewServer(customConfig, fakeClient, nil, broker, nil)
 
 			Expect(customServer).NotTo(BeNil())
 		})
@@ -49,7 +49,7 @@ var _ = Describe("Server", func() {
 	Describe("Start and Shutdown", func() {
 		It("should start and gracefully shut down the server when context is cancelled", func() {
 			config.Addr = "127.0.0.1:18082"
-			server = NewServer(config, fakeClient, nil, broker)
+			server = NewServer(config, fakeClient, nil, broker, nil)
 
 			ctx, cancel := context.WithCancel(context.Background())
 			defer cancel()

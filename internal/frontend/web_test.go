@@ -92,7 +92,7 @@ var _ = Describe("WebHandler", func() {
 		}
 
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		handler = NewWebHandler(fakeClient, fakeClientset, broker, dummyAssets)
+		handler = NewWebHandler(fakeClient, fakeClientset, broker, dummyAssets, nil)
 	})
 
 	Describe("NewWebHandler", func() {

@@ -6,6 +6,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/thegeeklab/renovate-operator/internal/auth"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -30,6 +31,7 @@ type RenovatorDetails struct {
 
 type GitRepoInfo struct {
 	Name               string    `json:"name"`
+	FullName           string    `json:"fullName"`
 	Namespace          string    `json:"namespace"`
 	WebhookID          string    `json:"webhookId"`
 	LastRenovateAt     time.Time `json:"lastRenovateAt"`
@@ -62,13 +64,15 @@ type JobInfo struct {
 type APIHandler struct {
 	client      client.Client
 	dataFactory *DataFactory
+	authManager *auth.Manager
 }
 
 // NewAPIHandler creates a new APIHandler.
-func NewAPIHandler(client client.Client, clientset kubernetes.Interface) *APIHandler {
+func NewAPIHandler(client client.Client, clientset kubernetes.Interface, authManager *auth.Manager) *APIHandler {
 	return &APIHandler{
 		client:      client,
-		dataFactory: NewDataFactory(client, clientset),
+		dataFactory: NewDataFactory(client, clientset, authManager),
+		authManager: authManager,
 	}
 }
 
@@ -135,6 +139,17 @@ func (h *APIHandler) getGitRepos(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
+	}
+
+	if h.authManager != nil && h.authManager.IsEnabled() {
+		session, ok := auth.SessionFromContext(r.Context())
+		if ok {
+			result, err = h.dataFactory.FilterGitReposByAccess(r.Context(), result, session)
+			if err != nil {
+				frontendLog.Error(err, "Failed to filter gitrepos by access")
+				result = []GitRepoInfo{}
+			}
+		}
 	}
 
 	w.Header().Set("Content-Type", "application/json")

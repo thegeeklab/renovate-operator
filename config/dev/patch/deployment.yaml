@@ -17,6 +17,32 @@ spec:
             - --frontend-bind-address=:8082
             - --receiver-bind-address=:8083
             - --external-url=http://renovate-operator-receiver-service.renovate-system.svc.cluster.local:8083
+            - --secure-cookies=false
           ports:
             - containerPort: 8083
               name: receiver
+          env:
+            - name: OIDC_PROVIDERS
+              value: "gitea"
+            - name: OIDC_GITEA_TYPE
+              value: "gitea"
+            - name: OIDC_GITEA_ISSUER_URL
+              value: "http://gitea-http.gitea.svc.cluster.local:3000"
+            - name: OIDC_GITEA_FORGE_URL
+              value: "http://gitea-http.gitea.svc.cluster.local:3000"
+            - name: OIDC_GITEA_REDIRECT_URL
+              value: "http://renovate-operator-frontend-service.renovate-system.svc.cluster.local:8082/auth/callback"
+            - name: OIDC_GITEA_INSECURE
+              value: "true"
+            - name: OIDC_GITEA_CLIENT_ID
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-oidc-credentials
+                  key: client-id
+            - name: OIDC_GITEA_CLIENT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: gitea-oidc-credentials
+                  key: client-secret
+            - name: OIDC_SESSION_SECRET
+              value: "dev-session-secret-change-in-production"

@@ -1,6 +1,6 @@
 package views
 
-templ Layout(styles []string, scripts []string, content templ.Component) {
+templ Layout(styles []string, scripts []string, auth AuthInfo, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang="en" class="h-full bg-gray-100">
 		<head>
@@ -27,6 +27,29 @@ templ Layout(styles []string, scripts []string, content templ.Component) {
 							<div class="flex-shrink-0">
 								<a href="/" class="text-white font-bold text-xl">Renovate Operator</a>
 							</div>
+						</div>
+						<div class="flex items-center gap-4">
+							if auth.Enabled && auth.Authenticated {
+								<div class="flex items-center gap-2">
+									<span class="text-gray-300 text-sm">{ auth.Name }</span>
+									<span class="text-gray-500 text-xs">({ auth.Provider })</span>
+									<a href="/auth/logout" class="text-gray-300 hover:text-white text-sm">Logout</a>
+								</div>
+							} else if auth.Enabled {
+								<div class="relative" x-data="{ open: false }">
+									<button @click="open = !open" class="text-gray-300 hover:text-white text-sm flex items-center gap-1">
+										Login
+										<svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+											<path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 9l-7 7-7-7"></path>
+										</svg>
+									</button>
+									<div x-show="open" @click.away="open = false" x-cloak class="absolute right-0 mt-2 w-48 bg-white rounded-md shadow-lg py-1 z-10">
+										for _, p := range auth.Providers {
+											<a href={ "/auth/login?provider=" + p.Name } class="block px-4 py-2 text-sm text-gray-700 hover:bg-gray-100">{ p.Name }</a>
+										}
+									</div>
+								</div>
+							}
 						</div>
 					</div>
 				</div>
