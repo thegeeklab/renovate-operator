@@ -15,11 +15,15 @@ import (
 const (
 	stateCookieName   = "renovate_oidc_state"
 	stateCookieMaxAge = 300
+
+	csrfFormName = "csrf_token"
+
+	stateParts = 2
 )
 
 var authLog = log.Log.WithName("auth")
 
-// encodeState produces a state value of the form "<random-hex>:<base64url-providername>".
+// encodeState produces a state value of the form "<random-hex>:<base64url-provider-name>".
 // The random component serves as the CSRF token (compared against the cookie),
 // while the provider segment binds the provider identity to the state so the
 // callback handler does not need to trust an attacker-controlled URL parameter.
@@ -34,9 +38,9 @@ func encodeState(provider string) (string, error) {
 
 // decodeState extracts the provider name from a state value previously produced by encodeState.
 // It returns false if the state value is malformed.
-func decodeState(state string) (provider string, ok bool) {
-	parts := strings.SplitN(state, ":", 2)
-	if len(parts) != 2 {
+func decodeState(state string) (string, bool) {
+	parts := strings.SplitN(state, ":", stateParts)
+	if len(parts) != stateParts {
 		return "", false
 	}
 
@@ -54,6 +58,23 @@ func decodeState(state string) (provider string, ok bool) {
 func isSecureRequest(r *http.Request, secureCookies bool) bool {
 	return secureCookies || r.TLS != nil ||
 		strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
+}
+
+// ValidateCSRFToken validates the CSRF token from the form against the session-derived token.
+func ValidateCSRFToken(r *http.Request) bool {
+	session, err := getSessionFromRequest(r)
+	if err != nil {
+		return false
+	}
+
+	expected, err := DeriveCSRFToken(session)
+	if err != nil {
+		return false
+	}
+
+	formToken := r.FormValue(csrfFormName)
+
+	return expected != "" && formToken != "" && expected == formToken
 }
 
 func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
@@ -138,6 +159,13 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 			return
 		}
 
+		nonce := make([]byte, 16) //nolint:mnd
+		if _, err := rand.Read(nonce); err != nil {
+			http.Error(w, "failed to create session", http.StatusInternalServerError)
+
+			return
+		}
+
 		session := SessionData{
 			Email:       user.Email,
 			Name:        user.Name,
@@ -145,6 +173,7 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 			AccessToken: user.AccessToken,
 			Provider:    user.Provider,
 			Expiry:      sessionDataExpiry(),
+			CSRFNonce:   hex.EncodeToString(nonce),
 		}
 
 		encrypted, err := encryptSession(session)
@@ -183,6 +212,15 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 func HandleLogout(secureCookies bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		secure := isSecureRequest(r, secureCookies)
+
+		_, sessionErr := getSessionFromRequest(r)
+		if sessionErr == nil {
+			if !ValidateCSRFToken(r) {
+				http.Error(w, "invalid CSRF token", http.StatusForbidden)
+
+				return
+			}
+		}
 
 		http.SetCookie(w, &http.Cookie{ //nolint:gosec
 			Name:     sessionCookieName,

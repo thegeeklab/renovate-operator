@@ -6,6 +6,7 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"time"
 
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/thegeeklab/renovate-operator/internal/auth"
@@ -13,6 +14,8 @@ import (
 )
 
 var errNoIDToken = errors.New("no id_token in token response")
+
+const defaultHTTPTimeout = 30 * time.Second
 
 type GiteaProvider struct {
 	name         string
@@ -29,6 +32,7 @@ type GiteaProvider struct {
 
 func NewGiteaProvider(cfg auth.ProviderConfig) (*GiteaProvider, error) {
 	httpClient := &http.Client{
+		Timeout: defaultHTTPTimeout,
 		Transport: &http.Transport{
 			TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Insecure}, //nolint:gosec
 		},
@@ -43,6 +47,11 @@ func NewGiteaProvider(cfg auth.ProviderConfig) (*GiteaProvider, error) {
 
 	oidcConfig := &oidc.Config{ClientID: cfg.ClientID}
 
+	endpoint := provider.Endpoint()
+	if cfg.AuthURL != "" {
+		endpoint.AuthURL = cfg.AuthURL
+	}
+
 	return &GiteaProvider{
 		name:         cfg.Name,
 		issuerURL:    cfg.IssuerURL,
@@ -56,7 +65,7 @@ func NewGiteaProvider(cfg auth.ProviderConfig) (*GiteaProvider, error) {
 			ClientID:     cfg.ClientID,
 			ClientSecret: cfg.ClientSecret,
 			RedirectURL:  cfg.RedirectURL,
-			Endpoint:     provider.Endpoint(),
+			Endpoint:     endpoint,
 			Scopes:       []string{oidc.ScopeOpenID, "profile", "email"},
 		},
 		httpClient: httpClient,
@@ -69,10 +78,6 @@ func (p *GiteaProvider) Type() string {
 
 func (p *GiteaProvider) Name() string {
 	return p.name
-}
-
-func (p *GiteaProvider) ForgeURL() string {
-	return p.forgeURL
 }
 
 func (p *GiteaProvider) LoginURL(state string) string {

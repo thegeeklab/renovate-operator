@@ -11,7 +11,6 @@ import (
 type testAuthProvider struct {
 	name     string
 	provType string
-	forgeURL string
 	loginURL string
 }
 
@@ -21,10 +20,6 @@ func (p *testAuthProvider) Type() string {
 
 func (p *testAuthProvider) Name() string {
 	return p.name
-}
-
-func (p *testAuthProvider) ForgeURL() string {
-	return p.forgeURL
 }
 
 func (p *testAuthProvider) LoginURL(state string) string {

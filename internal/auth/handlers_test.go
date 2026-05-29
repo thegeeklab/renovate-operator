@@ -26,10 +26,11 @@ var _ = Describe("Handlers", func() {
 		manager.Register(&testAuthProvider{
 			name:     "gitea-prod",
 			provType: ProviderTypeGitea,
-			forgeURL: "https://gitea.example.com",
 			loginURL: "https://gitea.example.com/login/oauth/authorize",
 		})
-		InitSessionKey("test-secret")
+
+		err := InitSessionKey("test-secret")
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	JustBeforeEach(func() {
@@ -72,6 +73,7 @@ var _ = Describe("Handlers", func() {
 			Expect(rec.Code).To(Equal(http.StatusFound))
 
 			var stateCookie *http.Cookie
+
 			for _, c := range rec.Result().Cookies() {
 				if c.Name == stateCookieName {
 					stateCookie = c
@@ -87,11 +89,113 @@ var _ = Describe("Handlers", func() {
 
 	Describe("HandleLogout", func() {
 		It("should clear session cookie and redirect to /", func() {
-			req := httptest.NewRequest(http.MethodGet, "/auth/logout", nil)
+			session := SessionData{
+				Email:    "test@example.com",
+				Name:     "Test User",
+				Subject:  "sub-123",
+				Provider: "gitea-prod",
+				Expiry:   time.Now().Add(time.Hour),
+			}
+
+			encrypted, err := encryptSession(session)
+			Expect(err).NotTo(HaveOccurred())
+
+			csrfToken, err := DeriveCSRFToken(session)
+			Expect(err).NotTo(HaveOccurred())
+
+			req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
 			req.AddCookie(&http.Cookie{
 				Name:  sessionCookieName,
-				Value: "some-session",
+				Value: encrypted,
 			})
+
+			form := url.Values{}
+			form.Set(csrfFormName, csrfToken)
+			req.PostForm = form
+
+			HandleLogout(false).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusFound))
+			Expect(rec.Header().Get("Location")).To(Equal("/"))
+
+			cookies := rec.Result().Cookies()
+
+			var sessionCleared bool
+
+			for _, c := range cookies {
+				if c.Name == sessionCookieName && c.MaxAge < 0 {
+					sessionCleared = true
+				}
+			}
+
+			Expect(sessionCleared).To(BeTrue())
+		})
+
+		It("should return 403 when CSRF token is missing", func() {
+			session := SessionData{
+				Email:    "test@example.com",
+				Subject:  "sub-123",
+				Provider: "gitea-prod",
+				Expiry:   time.Now().Add(time.Hour),
+			}
+
+			encrypted, err := encryptSession(session)
+			Expect(err).NotTo(HaveOccurred())
+
+			req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+			req.AddCookie(&http.Cookie{
+				Name:  sessionCookieName,
+				Value: encrypted,
+			})
+
+			HandleLogout(false).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusForbidden))
+		})
+
+		It("should return 403 when CSRF token does not match", func() {
+			session := SessionData{
+				Email:    "test@example.com",
+				Subject:  "sub-123",
+				Provider: "gitea-prod",
+				Expiry:   time.Now().Add(time.Hour),
+			}
+
+			encrypted, err := encryptSession(session)
+			Expect(err).NotTo(HaveOccurred())
+
+			req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+			req.AddCookie(&http.Cookie{
+				Name:  sessionCookieName,
+				Value: encrypted,
+			})
+
+			form := url.Values{}
+			form.Set(csrfFormName, "wrong-token")
+			req.PostForm = form
+
+			HandleLogout(false).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusForbidden))
+		})
+
+		It("should clear session cookie and redirect when session is expired", func() {
+			session := SessionData{
+				Email:    "test@example.com",
+				Subject:  "sub-123",
+				Provider: "gitea-prod",
+				Expiry:   time.Now().Add(-time.Hour),
+			}
+
+			encrypted, err := encryptSession(session)
+			Expect(err).NotTo(HaveOccurred())
+
+			req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+			req.AddCookie(&http.Cookie{
+				Name:  sessionCookieName,
+				Value: encrypted,
+			})
+
 			HandleLogout(false).ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusFound))
@@ -264,7 +368,6 @@ var _ = Describe("Handlers", func() {
 			spoofManager.Register(&testAuthProvider{
 				name:     "gitea-staging",
 				provType: ProviderTypeGitea,
-				forgeURL: "https://staging.example.com",
 				loginURL: "https://staging.example.com/login",
 			})
 
@@ -300,10 +403,6 @@ func (p *failingAuthProvider) Name() string {
 	return p.name
 }
 
-func (p *failingAuthProvider) ForgeURL() string {
-	return "https://fail.example.com"
-}
-
 func (p *failingAuthProvider) LoginURL(state string) string {
 	return "https://fail.example.com/login?state=" + url.QueryEscape(state)
 }
@@ -313,5 +412,5 @@ func (p *failingAuthProvider) HandleCallback(ctx context.Context, code string) (
 }
 
 func (p *failingAuthProvider) GetAccessChecker(_ string) (RepoAccessChecker, error) {
-	return nil, errNotImplemented
+	return nil, errors.New("not implemented")
 }

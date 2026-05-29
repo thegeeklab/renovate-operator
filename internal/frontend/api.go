@@ -64,7 +64,6 @@ type JobInfo struct {
 type APIHandler struct {
 	client      client.Client
 	dataFactory *DataFactory
-	authManager *auth.Manager
 }
 
 // NewAPIHandler creates a new APIHandler.
@@ -72,7 +71,6 @@ func NewAPIHandler(client client.Client, clientset kubernetes.Interface, authMan
 	return &APIHandler{
 		client:      client,
 		dataFactory: NewDataFactory(client, clientset, authManager),
-		authManager: authManager,
 	}
 }
 
@@ -141,16 +139,7 @@ func (h *APIHandler) getGitRepos(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if h.authManager != nil && h.authManager.IsEnabled() {
-		session, ok := auth.SessionFromContext(r.Context())
-		if ok {
-			result, err = h.dataFactory.FilterGitReposByAccess(r.Context(), result, session)
-			if err != nil {
-				frontendLog.Error(err, "Failed to filter gitrepos by access")
-				result = []GitRepoInfo{}
-			}
-		}
-	}
+	result = h.dataFactory.ApplyAccessFilter(r.Context(), result)
 
 	w.Header().Set("Content-Type", "application/json")
 

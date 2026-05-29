@@ -43,12 +43,13 @@ metadata:
   name: renovate-operator-frontend-service
   namespace: renovate-system
 spec:
-  type: LoadBalancer
+  type: NodePort
   ports:
     - name: frontend
       port: 8082
       protocol: TCP
       targetPort: 8082
+      nodePort: 30882
   selector:
     control-plane: controller-manager
     app.kubernetes.io/name: renovate-operator

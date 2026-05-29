@@ -31,7 +31,9 @@ spec:
             - name: OIDC_GITEA_FORGE_URL
               value: "http://gitea-http.gitea.svc.cluster.local:3000"
             - name: OIDC_GITEA_REDIRECT_URL
-              value: "http://renovate-operator-frontend-service.renovate-system.svc.cluster.local:8082/auth/callback"
+              value: "http://localhost:8082/auth/callback"
+            - name: OIDC_GITEA_AUTH_URL
+              value: "http://localhost:3000/login/oauth/authorize"
             - name: OIDC_GITEA_INSECURE
               value: "true"
             - name: OIDC_GITEA_CLIENT_ID

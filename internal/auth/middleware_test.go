@@ -20,7 +20,9 @@ var _ = Describe("Middleware", func() {
 	BeforeEach(func() {
 		manager = NewManager()
 		manager.Register(&testAuthProvider{name: "gitea-prod", provType: ProviderTypeGitea})
-		InitSessionKey("test-secret")
+
+		err := InitSessionKey("test-secret")
+		Expect(err).NotTo(HaveOccurred())
 
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -90,12 +92,12 @@ var _ = Describe("Middleware", func() {
 				Expect(rec.Code).To(Equal(http.StatusOK))
 			})
 
-			It("should pass through arbitrary paths under /auth/", func() {
+			It("should not treat arbitrary paths under /auth/ as public", func() {
 				req := httptest.NewRequest(http.MethodGet, "/auth/some-arbitrary-path", nil)
 				Middleware(manager)(handler).ServeHTTP(rec, req)
 
-				Expect(rec.Code).To(Equal(http.StatusOK))
-				Expect(rec.Body.String()).To(Equal("OK"))
+				Expect(rec.Code).To(Equal(http.StatusFound))
+				Expect(rec.Header().Get("Location")).To(Equal("/login"))
 			})
 
 			It("should not treat /healthz/extra as public", func() {
@@ -129,18 +131,11 @@ var _ = Describe("Middleware", func() {
 				Expect(resp["error"]).To(Equal("unauthorized"))
 			})
 
-			It("should return 401 for /events without session", func() {
+			It("should allow access to /events without session", func() {
 				req := httptest.NewRequest(http.MethodGet, "/events", nil)
 				Middleware(manager)(handler).ServeHTTP(rec, req)
 
-				Expect(rec.Code).To(Equal(http.StatusUnauthorized))
-				Expect(rec.Header().Get("Content-Type")).To(Equal("application/json"))
-
-				var resp map[string]string
-
-				err := json.Unmarshal(rec.Body.Bytes(), &resp)
-				Expect(err).NotTo(HaveOccurred())
-				Expect(resp["error"]).To(Equal("unauthorized"))
+				Expect(rec.Code).To(Equal(http.StatusOK))
 			})
 		})
 
@@ -248,7 +243,7 @@ var _ = Describe("Middleware", func() {
 				Expect(rec.Code).To(Equal(http.StatusUnauthorized))
 			})
 
-			It("should return 401 for /events with expired session", func() {
+			It("should allow access to /events with expired session", func() {
 				req := httptest.NewRequest(http.MethodGet, "/events", nil)
 				req.AddCookie(&http.Cookie{
 					Name:  sessionCookieName,
@@ -256,7 +251,7 @@ var _ = Describe("Middleware", func() {
 				})
 				Middleware(manager)(handler).ServeHTTP(rec, req)
 
-				Expect(rec.Code).To(Equal(http.StatusUnauthorized))
+				Expect(rec.Code).To(Equal(http.StatusOK))
 			})
 		})
 

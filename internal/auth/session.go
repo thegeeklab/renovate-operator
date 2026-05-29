@@ -3,9 +3,11 @@ package auth
 import (
 	"crypto/aes"
 	"crypto/cipher"
+	"crypto/hmac"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -23,6 +25,7 @@ var (
 	errInvalidSession           = errors.New("invalid session")
 	errSessionExpired           = errors.New("session expired")
 	errSessionKeyNotInitialized = errors.New("session key not initialized")
+	errSecretRequired           = errors.New("secret must not be empty")
 )
 
 type SessionData struct {
@@ -32,23 +35,22 @@ type SessionData struct {
 	AccessToken string    `json:"accessToken"`
 	Provider    string    `json:"provider"`
 	Expiry      time.Time `json:"expiry"`
+	CSRFNonce   string    `json:"csrfNonce"`
 }
 
 var sessionKey atomic.Pointer[[]byte]
 
-func InitSessionKey(secret string) {
-	var key []byte
+func InitSessionKey(secret string) error {
 	if secret == "" {
-		key = make([]byte, 32) //nolint:mnd
-		if _, err := io.ReadFull(rand.Reader, key); err != nil {
-			panic(fmt.Sprintf("failed to generate session key: %v", err))
-		}
-	} else {
-		hash := sha256.Sum256([]byte(secret))
-		key = hash[:]
+		return errSecretRequired
 	}
 
+	hash := sha256.Sum256([]byte(secret))
+	key := hash[:]
+
 	sessionKey.Store(&key)
+
+	return nil
 }
 
 func getSessionKey() []byte {
@@ -58,6 +60,22 @@ func getSessionKey() []byte {
 	}
 
 	return *p
+}
+
+// DeriveCSRFToken produces a CSRF token bound to the session subject and a random nonce
+// using HMAC-SHA256 with the session encryption key.
+func DeriveCSRFToken(session SessionData) (string, error) {
+	key := getSessionKey()
+	if key == nil {
+		return "", errSessionKeyNotInitialized
+	}
+
+	mac := hmac.New(sha256.New, key)
+	mac.Write([]byte("csrf"))
+	mac.Write([]byte(session.Subject))
+	mac.Write([]byte(session.CSRFNonce))
+
+	return hex.EncodeToString(mac.Sum(nil)), nil
 }
 
 func encryptSession(data SessionData) (string, error) {
@@ -131,7 +149,7 @@ func decryptSession(encoded string) (SessionData, error) {
 	}
 
 	if time.Now().After(data.Expiry) {
-		return data, errSessionExpired
+		return SessionData{}, errSessionExpired
 	}
 
 	return data, nil

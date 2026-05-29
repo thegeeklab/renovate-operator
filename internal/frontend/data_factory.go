@@ -2,14 +2,19 @@ package frontend
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-	"sort"
+	"slices"
 	"time"
 
+	"github.com/maypok86/otter/v2"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/pkg/util"
+	"golang.org/x/sync/singleflight"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -17,7 +22,12 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
-var errPodNotFound = errors.New("no pods found for job")
+var (
+	errPodNotFound            = errors.New("no pods found for job")
+	errUnableToDeriveCacheKey = errors.New("unable to derive cache key for session")
+	errUnexpectedCacheResult  = errors.New("unexpected cache result type")
+	errAuthNotEnabled         = errors.New("auth not enabled")
+)
 
 // ListOptions holds optional parameters for filtering and sorting data.
 type ListOptions struct {
@@ -27,21 +37,50 @@ type ListOptions struct {
 	Order     string
 }
 
+const (
+	defaultAccessCacheTTL = 60 * time.Second
+	defaultAccessCacheMax = 500
+)
+
+func hashAccessToken(token string) string {
+	hash := sha256.Sum256([]byte(token))
+
+	return hex.EncodeToString(hash[:8])
+}
+
+func (df *DataFactory) deriveCacheKey(session auth.SessionData) string {
+	if session.Subject != "" {
+		return session.Provider + "|" + session.Subject
+	}
+
+	if session.AccessToken != "" {
+		return session.Provider + "|token:" + hashAccessToken(session.AccessToken)
+	}
+
+	return ""
+}
+
 // DataFactory provides methods to fetch and transform data for both API and UI handlers.
 type DataFactory struct {
 	client      client.Client
 	clientset   kubernetes.Interface
 	authManager *auth.Manager
-	accessCache *accessCache
+	accessCache *otter.Cache[string, map[string]bool]
+	accessGroup singleflight.Group
 }
 
 // NewDataFactory creates a new DataFactory instance.
 func NewDataFactory(client client.Client, clientset kubernetes.Interface, authManager *auth.Manager) *DataFactory {
+	accessCache := otter.Must(&otter.Options[string, map[string]bool]{
+		ExpiryCalculator: otter.ExpiryAccessing[string, map[string]bool](defaultAccessCacheTTL),
+		MaximumSize:      defaultAccessCacheMax,
+	})
+
 	return &DataFactory{
 		client:      client,
 		clientset:   clientset,
 		authManager: authManager,
-		accessCache: newAccessCache(defaultAccessCacheTTL),
+		accessCache: accessCache,
 	}
 }
 
@@ -91,8 +130,10 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 		result = []RenovatorInfo{}
 	}
 
-	sortItems(
-		result, opt,
+	util.SortItems(
+		result,
+		util.SortBy(opt.SortBy),
+		util.SortOrder(opt.Order),
 		func(i RenovatorInfo) string { return i.Name },
 		func(i RenovatorInfo) time.Time { return i.CreatedAt },
 	)
@@ -130,8 +171,10 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 		result = []GitRepoInfo{}
 	}
 
-	sortItems(
-		result, opt,
+	util.SortItems(
+		result,
+		util.SortBy(opt.SortBy),
+		util.SortOrder(opt.Order),
 		func(i GitRepoInfo) string { return i.Name },
 		func(i GitRepoInfo) time.Time { return i.CreatedAt },
 	)
@@ -198,8 +241,10 @@ func (df *DataFactory) GetRunners(ctx context.Context, opts ...ListOptions) ([]R
 		result = []RunnerInfo{}
 	}
 
-	sortItems(
-		result, opt,
+	util.SortItems(
+		result,
+		util.SortBy(opt.SortBy),
+		util.SortOrder(opt.Order),
 		func(i RunnerInfo) string { return i.Name },
 		func(i RunnerInfo) time.Time { return i.CreatedAt },
 	)
@@ -231,8 +276,10 @@ func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) 
 		result = []DiscoveryInfo{}
 	}
 
-	sortItems(
-		result, opt,
+	util.SortItems(
+		result,
+		util.SortBy(opt.SortBy),
+		util.SortOrder(opt.Order),
 		func(i DiscoveryInfo) string { return i.Name },
 		func(i DiscoveryInfo) time.Time { return i.CreatedAt },
 	)
@@ -297,8 +344,10 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts
 		opt.Order = "desc"
 	}
 
-	sortItems(
-		result, opt,
+	util.SortItems(
+		result,
+		util.SortBy(opt.SortBy),
+		util.SortOrder(opt.Order),
 		func(i JobInfo) string { return i.Name },
 		func(i JobInfo) time.Time { return i.CreatedAt },
 	)
@@ -319,16 +368,12 @@ func (df *DataFactory) GetJobLogs(ctx context.Context, namespace, jobName string
 		return nil, fmt.Errorf("%w: %s", errPodNotFound, jobName)
 	}
 
-	// Sort to find the most recent pod
-	sort.Slice(podList.Items, func(i, j int) bool {
-		return podList.Items[i].CreationTimestamp.Before(&podList.Items[j].CreationTimestamp)
+	slices.SortFunc(podList.Items, func(a, b corev1.Pod) int {
+		return a.CreationTimestamp.Compare(b.CreationTimestamp.Time)
 	})
 	latestPod := podList.Items[len(podList.Items)-1]
 
-	// Request the log stream
-	req := df.clientset.CoreV1().Pods(namespace).GetLogs(latestPod.Name, &corev1.PodLogOptions{
-		// ⚡️ Removed Follow: true so io.ReadAll doesn't block forever
-	})
+	req := df.clientset.CoreV1().Pods(namespace).GetLogs(latestPod.Name, &corev1.PodLogOptions{})
 
 	stream, err := req.Stream(ctx)
 	if err != nil {
@@ -338,83 +383,52 @@ func (df *DataFactory) GetJobLogs(ctx context.Context, namespace, jobName string
 	return stream, nil
 }
 
-func getListOptions(opts []ListOptions) ListOptions {
-	if len(opts) > 0 {
-		return opts[0]
+// getAccessibleReposMap returns the user's accessible repo map, handling auth checks,
+// session extraction, provider lookup, and cache/fetch logic.
+func (df *DataFactory) getAccessibleReposMap(ctx context.Context) (map[string]bool, error) {
+	if df.authManager == nil || !df.authManager.IsEnabled() {
+		return nil, errAuthNotEnabled
 	}
 
-	return ListOptions{}
-}
+	session, ok := auth.SessionFromContext(ctx)
+	if !ok {
+		return nil, errAuthNotEnabled
+	}
 
-func sortItems[T any](items []T, opt ListOptions, nameFn func(T) string, dateFn func(T) time.Time) {
-	sort.Slice(items, func(i, j int) bool {
-		a, b := items[i], items[j]
-
-		var less, greater bool
-
-		switch opt.SortBy {
-		case "date":
-			less = dateFn(a).Before(dateFn(b))
-			greater = dateFn(a).After(dateFn(b))
-		default:
-			less = nameFn(a) < nameFn(b)
-			greater = nameFn(a) > nameFn(b)
-		}
-
-		if opt.Order == "desc" {
-			return greater
-		}
-
-		return less
-	})
-}
-
-func (df *DataFactory) FilterGitReposByAccess(
-	ctx context.Context,
-	repos []GitRepoInfo,
-	session auth.SessionData,
-) ([]GitRepoInfo, error) {
-	if df.authManager == nil || session.AccessToken == "" || session.Provider == "" {
-		return repos, nil
+	if session.AccessToken == "" {
+		return map[string]bool{}, nil
 	}
 
 	provider, ok := df.authManager.Get(session.Provider)
 	if !ok {
-		return repos, nil
+		return map[string]bool{}, nil
 	}
 
-	var (
-		accessibleRepos map[string]bool
-		cacheKey        string
-		cached          bool
-	)
-
-	if session.Subject != "" {
-		cacheKey = session.Provider + "|" + session.Subject
-		accessibleRepos, cached = df.accessCache.get(cacheKey)
+	cacheKey := df.deriveCacheKey(session)
+	if cacheKey == "" {
+		return nil, errUnableToDeriveCacheKey
 	}
 
-	if !cached {
-		checker, err := provider.GetAccessChecker(session.AccessToken)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get access checker: %w", err)
-		}
+	return df.fetchAccessibleRepos(ctx, provider, session.AccessToken, cacheKey)
+}
 
-		accessibleRepos, err = checker.GetAccessibleRepos(ctx)
-		if err != nil {
-			if cacheKey != "" {
-				df.accessCache.invalidate(cacheKey)
-			}
+// ApplyAccessFilter filters repos by user access if auth is enabled, failing closed on error.
+func (df *DataFactory) ApplyAccessFilter(
+	ctx context.Context,
+	repos []GitRepoInfo,
+) []GitRepoInfo {
+	accessibleRepos, err := df.getAccessibleReposMap(ctx)
+	if err != nil && !errors.Is(err, errAuthNotEnabled) {
+		frontendLog.Error(err, "Failed to fetch accessible repos")
 
-			return nil, fmt.Errorf("failed to get accessible repos: %w", err)
-		}
-
-		if cacheKey != "" {
-			df.accessCache.set(cacheKey, accessibleRepos)
-		}
+		return []GitRepoInfo{}
 	}
 
-	var filtered []GitRepoInfo
+	if errors.Is(err, errAuthNotEnabled) {
+		return repos
+	}
+
+	filtered := make([]GitRepoInfo, 0, len(repos))
 
 	for _, repo := range repos {
 		if accessibleRepos[repo.FullName] {
@@ -426,5 +440,110 @@ func (df *DataFactory) FilterGitReposByAccess(
 		filtered = []GitRepoInfo{}
 	}
 
-	return filtered, nil
+	return filtered
+}
+
+// IsRepoAccessible checks if a single repo is accessible by the current user.
+// Uses the cached access list when available, falling back to a direct single-repo check on cache miss.
+func (df *DataFactory) IsRepoAccessible(ctx context.Context, fullName string) bool {
+	accessibleRepos, err := df.getAccessibleReposMap(ctx)
+	if err != nil && !errors.Is(err, errAuthNotEnabled) {
+		frontendLog.Error(err, "Failed to fetch accessible repos", "repo", fullName)
+
+		return false
+	}
+
+	if errors.Is(err, errAuthNotEnabled) {
+		return true
+	}
+
+	if len(accessibleRepos) == 0 {
+		return false
+	}
+
+	if accessible, ok := accessibleRepos[fullName]; ok {
+		return accessible
+	}
+
+	return df.checkRepoAccessibleDirect(ctx, fullName)
+}
+
+func (df *DataFactory) checkRepoAccessibleDirect(ctx context.Context, fullName string) bool {
+	session, ok := auth.SessionFromContext(ctx)
+	if !ok {
+		return false
+	}
+
+	provider, ok := df.authManager.Get(session.Provider)
+	if !ok {
+		return false
+	}
+
+	checker, err := provider.GetAccessChecker(session.AccessToken)
+	if err != nil {
+		frontendLog.Error(err, "Failed to get access checker")
+
+		return false
+	}
+
+	accessible, err := checker.IsRepoAccessible(ctx, fullName)
+	if err != nil {
+		frontendLog.Error(err, "Failed to check repo accessibility", "repo", fullName)
+
+		return false
+	}
+
+	return accessible
+}
+
+// fetchAccessibleRepos retrieves accessible repositories with deduplication and caching.
+func (df *DataFactory) fetchAccessibleRepos(
+	ctx context.Context,
+	provider auth.AuthProvider,
+	token string,
+	cacheKey string,
+) (map[string]bool, error) {
+	fetch := func() (map[string]bool, error) {
+		checker, err := provider.GetAccessChecker(token)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get access checker: %w", err)
+		}
+
+		return checker.GetAccessibleRepos(ctx)
+	}
+
+	if cacheKey == "" {
+		return fetch()
+	}
+
+	result, err, _ := df.accessGroup.Do(cacheKey, func() (any, error) {
+		loader := otter.LoaderFunc[string, map[string]bool](func(_ context.Context, _ string) (map[string]bool, error) {
+			repos, err := fetch()
+			if err != nil {
+				return nil, err
+			}
+
+			return repos, nil
+		})
+
+		return df.accessCache.Get(ctx, cacheKey, loader)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	repos, ok := result.(map[string]bool)
+	if !ok {
+		return nil, errUnexpectedCacheResult
+	}
+
+	return repos, nil
+}
+
+func getListOptions(opts []ListOptions) ListOptions {
+	if len(opts) > 0 {
+		return opts[0]
+	}
+
+	return ListOptions{}
 }

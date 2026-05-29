@@ -17,7 +17,7 @@ import (
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/auth"
-	authgitea "github.com/thegeeklab/renovate-operator/internal/auth/gitea"
+	auth_gitea "github.com/thegeeklab/renovate-operator/internal/auth/gitea"
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
 	"github.com/thegeeklab/renovate-operator/internal/controller/gitrepo"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
@@ -49,8 +49,10 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	errWebhookTimeout = errors.New("timeout waiting for webhook")
-	errFlagRequired   = errors.New("missing required flag")
+	errWebhookTimeout      = errors.New("timeout waiting for webhook")
+	errFlagRequired        = errors.New("missing required flag")
+	errIncompleteProvider  = errors.New("incomplete OIDC provider configuration")
+	errUnknownProviderType = errors.New("unknown OIDC provider type")
 )
 
 const (
@@ -113,7 +115,12 @@ func main() {
 	}
 
 	sseBroker := frontend.NewSSEBroker()
-	authManager := setupAuth()
+
+	authManager, err := setupAuth()
+	if err != nil {
+		setupLog.Error(err, "Unable to initialize authentication")
+		os.Exit(1)
+	}
 
 	if err := setupControllers(mgr, cfg, sseBroker); err != nil {
 		setupLog.Error(err, "Unable to setup controllers")
@@ -178,8 +185,8 @@ func parseFlags() Config {
 		"The address the event receiver endpoint binds to.")
 	flag.StringVar(&cfg.ExternalURL, "external-url", "",
 		"The public base URL of the operator (e.g., https://operator.example.com). Required for webhooks.")
-	flag.BoolVar(&cfg.SecureCookies, "secure-cookies", false,
-		"Force Secure attribute on auth cookies. Recommended for any non-localhost deployment.")
+	flag.BoolVar(&cfg.SecureCookies, "secure-cookies", true,
+		"Force Secure attribute on auth cookies. Set to false for localhost-only development.")
 
 	opts := zap.Options{
 		Development: false,
@@ -526,19 +533,21 @@ func buildReceiverFactory() receiver.ReceiverFactory {
 // OIDC_<NAME>_REDIRECT_URL=https://... - OAuth2 callback URL
 // OIDC_<NAME>_FORGE_URL=https://... - Gitea API URL
 // OIDC_<NAME>_INSECURE=false - skip TLS verification
-// OIDC_SESSION_SECRET=... - session encryption key (optional, random if not set).
-func setupAuth() *auth.Manager {
+// OIDC_SESSION_SECRET=... - session encryption key (required).
+func setupAuth() (*auth.Manager, error) {
 	manager := auth.NewManager()
 
 	providersEnv := os.Getenv("OIDC_PROVIDERS")
 	if providersEnv == "" {
 		setupLog.Info("OIDC authentication disabled: no providers configured")
 
-		return manager
+		return manager, nil
 	}
 
 	sessionSecret := os.Getenv("OIDC_SESSION_SECRET")
-	auth.InitSessionKey(sessionSecret)
+	if err := auth.InitSessionKey(sessionSecret); err != nil {
+		return nil, fmt.Errorf("failed to initialize session key: %w", err)
+	}
 
 	providerNames := strings.SplitSeq(providersEnv, ",")
 	for name := range providerNames {
@@ -555,12 +564,11 @@ func setupAuth() *auth.Manager {
 		clientSecret := os.Getenv(prefix + "_CLIENT_SECRET")
 		redirectURL := os.Getenv(prefix + "_REDIRECT_URL")
 		forgeURL := os.Getenv(prefix + "_FORGE_URL")
+		authURL := os.Getenv(prefix + "_AUTH_URL")
 		insecure := os.Getenv(prefix+"_INSECURE") == "true"
 
 		if providerType == "" || issuerURL == "" || clientID == "" || clientSecret == "" {
-			setupLog.Info("Skipping incomplete OIDC provider", "name", name)
-
-			continue
+			return nil, fmt.Errorf("%w: %s", errIncompleteProvider, name)
 		}
 
 		cfg := auth.ProviderConfig{
@@ -571,6 +579,7 @@ func setupAuth() *auth.Manager {
 			ClientSecret: clientSecret,
 			RedirectURL:  redirectURL,
 			ForgeURL:     forgeURL,
+			AuthURL:      authURL,
 			Insecure:     insecure,
 		}
 
@@ -580,17 +589,13 @@ func setupAuth() *auth.Manager {
 
 		switch providerType {
 		case auth.ProviderTypeGitea:
-			provider, err = authgitea.NewGiteaProvider(cfg)
+			provider, err = auth_gitea.NewGiteaProvider(cfg)
 		default:
-			setupLog.Info("Unknown OIDC provider type", "type", providerType, "name", name)
-
-			continue
+			return nil, fmt.Errorf("%w: %s (%s)", errUnknownProviderType, providerType, name)
 		}
 
 		if err != nil {
-			setupLog.Error(err, "Failed to initialize OIDC provider", "name", name)
-
-			continue
+			return nil, fmt.Errorf("failed to initialize OIDC provider %s: %w", name, err)
 		}
 
 		manager.Register(provider)
@@ -603,5 +608,5 @@ func setupAuth() *auth.Manager {
 		setupLog.Info("OIDC authentication enabled", "providers", len(manager.List()))
 	}
 
-	return manager
+	return manager, nil
 }

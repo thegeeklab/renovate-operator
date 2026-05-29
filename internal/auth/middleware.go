@@ -69,12 +69,14 @@ func Middleware(manager *Manager) func(http.Handler) http.Handler {
 }
 
 func isPublicPath(path string) bool {
-	if strings.HasPrefix(path, "/auth/") {
+	if strings.HasPrefix(path, "/static/") {
 		return true
 	}
 
 	switch path {
-	case "/health", "/healthz", "/readyz", "/login":
+	case "/auth/login", "/auth/callback", "/auth/logout",
+		"/health", "/healthz", "/readyz", "/login",
+		"/api/v1/auth/status", "/events":
 		return true
 	default:
 		return false
@@ -93,10 +95,4 @@ func SessionFromContext(ctx context.Context) (SessionData, bool) {
 	session, ok := ctx.Value(sessionContextKey).(SessionData)
 
 	return session, ok
-}
-
-func IsAuthenticated(ctx context.Context) bool {
-	_, ok := SessionFromContext(ctx)
-
-	return ok
 }

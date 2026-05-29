@@ -9,30 +9,33 @@ import (
 
 var _ = Describe("Session", func() {
 	BeforeEach(func() {
-		InitSessionKey("test-secret-for-session-encryption")
+		err := InitSessionKey("test-secret-for-session-encryption")
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Describe("InitSessionKey", func() {
 		It("should initialize session key from secret", func() {
-			InitSessionKey("another-secret")
+			err := InitSessionKey("another-secret")
+			Expect(err).NotTo(HaveOccurred())
 			Expect(getSessionKey()).NotTo(BeEmpty())
 			Expect(getSessionKey()).To(HaveLen(32))
 		})
 
-		It("should generate random key when secret is empty", func() {
-			InitSessionKey("")
-			Expect(getSessionKey()).NotTo(BeEmpty())
-			Expect(getSessionKey()).To(HaveLen(32))
+		It("should return error when secret is empty", func() {
+			err := InitSessionKey("")
+			Expect(err).To(MatchError(errSecretRequired))
 		})
 
 		It("should produce consistent keys for the same secret", func() {
-			InitSessionKey("consistent-secret")
+			err := InitSessionKey("consistent-secret")
+			Expect(err).NotTo(HaveOccurred())
 
 			current := getSessionKey()
 			key1 := make([]byte, len(current))
 			copy(key1, current)
 
-			InitSessionKey("consistent-secret")
+			err = InitSessionKey("consistent-secret")
+			Expect(err).NotTo(HaveOccurred())
 
 			current = getSessionKey()
 			key2 := make([]byte, len(current))

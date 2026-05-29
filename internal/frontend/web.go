@@ -79,7 +79,6 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) views.AuthInfo {
 	for _, p := range h.authManager.List() {
 		info.Providers = append(info.Providers, views.AuthProviderInfo{
 			Name: p.Name(),
-			Type: p.Type(),
 		})
 	}
 
@@ -89,27 +88,20 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) views.AuthInfo {
 	}
 
 	info.Authenticated = true
-	info.Email = session.Email
 	info.Name = session.Name
 	info.Provider = session.Provider
+
+	csrfToken, err := auth.DeriveCSRFToken(session)
+	if err == nil {
+		info.CSRFToken = csrfToken
+	}
 
 	return info
 }
 
-func getWebListOptions(r *http.Request) ListOptions {
-	q := r.URL.Query()
-
-	return ListOptions{
-		Namespace: q.Get("namespace"),
-		Renovator: q.Get("renovator"),
-		SortBy:    q.Get("sort"),
-		Order:     q.Get("order"),
-	}
-}
-
 func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	opts := getWebListOptions(r)
+	opts := getOptionsFromRequest(r)
 
 	renovators, err := h.dataFactory.GetRenovators(ctx, opts)
 	if err != nil {
@@ -129,16 +121,7 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 		discoveries, _ := h.dataFactory.GetDiscoveries(ctx, renOpts)
 		repos, _ := h.dataFactory.GetGitRepos(ctx, renOpts)
 
-		if h.authManager != nil && h.authManager.IsEnabled() {
-			session, ok := auth.SessionFromContext(ctx)
-			if ok {
-				repos, err = h.dataFactory.FilterGitReposByAccess(ctx, repos, session)
-				if err != nil {
-					frontendLog.Error(err, "Failed to filter gitrepos by access")
-					repos = []GitRepoInfo{}
-				}
-			}
-		}
+		repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
 		runnerName := "-"
 		if len(runners) > 0 {
@@ -170,7 +153,7 @@ func (h *WebHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 
 func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	opts := getWebListOptions(r)
+	opts := getOptionsFromRequest(r)
 
 	if opts.Namespace == "" {
 		http.Error(w, "Namespace parameter is required", http.StatusBadRequest)
@@ -185,16 +168,7 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	if h.authManager != nil && h.authManager.IsEnabled() {
-		session, ok := auth.SessionFromContext(ctx)
-		if ok {
-			repos, err = h.dataFactory.FilterGitReposByAccess(ctx, repos, session)
-			if err != nil {
-				frontendLog.Error(err, "Failed to filter gitrepos by access")
-				repos = []GitRepoInfo{}
-			}
-		}
-	}
+	repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
 	var viewRepos []views.GitRepoInfo
 	for _, repo := range repos {
@@ -215,7 +189,7 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 
 func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	opts := getWebListOptions(r)
+	opts := getOptionsFromRequest(r)
 	name := r.URL.Query().Get("name")
 
 	if opts.Namespace == "" || name == "" {
@@ -240,6 +214,12 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	repoInfo.LastRenovateStatus, repoInfo.LastRenovateAt = getRenovateStatusFromConditions(&repo)
+
+	if !h.dataFactory.IsRepoAccessible(ctx, repoInfo.FullName) {
+		http.Error(w, "GitRepo not found", http.StatusNotFound)
+
+		return
+	}
 
 	jobs, err := h.dataFactory.GetJobsForRepo(ctx, name, opts)
 	if err != nil {
