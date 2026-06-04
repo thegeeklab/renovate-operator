@@ -122,7 +122,7 @@ func NewServer(
 func (s *Server) registerAuthRoutes() {
 	s.router.HandleFunc("/auth/login", auth.HandleLogin(s.authManager, s.config.SecureCookies)).Methods("GET")
 	s.router.HandleFunc("/auth/callback", auth.HandleCallback(s.authManager, s.config.SecureCookies)).Methods("GET")
-	s.router.HandleFunc("/auth/logout", auth.HandleLogout(s.config.SecureCookies)).Methods("POST")
+	s.router.HandleFunc("/auth/logout", auth.HandleLogout(s.authManager)).Methods("POST")
 	s.router.HandleFunc("/api/v1/auth/status", auth.HandleAuthStatus(s.authManager)).Methods("GET")
 }
 

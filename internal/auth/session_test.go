@@ -1,138 +1,172 @@
 package auth
 
 import (
-	"time"
+	"net/http"
+	"net/http/httptest"
 
+	"github.com/alexedwards/scs/v2"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 )
 
 var _ = Describe("Session", func() {
+	var sessionManager *scs.SessionManager
+
 	BeforeEach(func() {
-		err := InitSessionKey("test-secret-for-session-encryption")
+		var err error
+
+		sessionManager, err = NewSessionManager("test-secret", false)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
-	Describe("InitSessionKey", func() {
-		It("should initialize session key from secret", func() {
-			err := InitSessionKey("another-secret")
-			Expect(err).NotTo(HaveOccurred())
-			Expect(getSessionKey()).NotTo(BeEmpty())
-			Expect(getSessionKey()).To(HaveLen(32))
-		})
-
-		It("should return error when secret is empty", func() {
-			err := InitSessionKey("")
-			Expect(err).To(MatchError(errSecretRequired))
-		})
-
-		It("should produce consistent keys for the same secret", func() {
-			err := InitSessionKey("consistent-secret")
-			Expect(err).NotTo(HaveOccurred())
-
-			current := getSessionKey()
-			key1 := make([]byte, len(current))
-			copy(key1, current)
-
-			err = InitSessionKey("consistent-secret")
-			Expect(err).NotTo(HaveOccurred())
-
-			current = getSessionKey()
-			key2 := make([]byte, len(current))
-			copy(key2, current)
-
-			Expect(key1).To(Equal(key2))
+	Describe("NewSessionManager", func() {
+		It("should create a session manager with correct cookie settings", func() {
+			Expect(sessionManager).NotTo(BeNil())
+			Expect(sessionManager.Cookie.Name).To(Equal(sessionCookieName))
+			Expect(sessionManager.Cookie.HttpOnly).To(BeTrue())
+			Expect(sessionManager.Cookie.Path).To(Equal("/"))
 		})
 	})
 
-	Describe("encryptSession/decryptSession", func() {
-		It("should encrypt and decrypt session data", func() {
-			original := SessionData{
-				Email:       "test@example.com",
-				Name:        "Test User",
-				Subject:     "sub-123",
-				AccessToken: "access-token-123",
-				Provider:    "gitea-prod",
-				Expiry:      time.Now().Add(time.Hour),
-			}
+	Describe("SetSessionData/GetSessionData", func() {
+		It("should store and retrieve session data", func() {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
 
-			encrypted, err := encryptSession(original)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(encrypted).NotTo(BeEmpty())
+			handler := sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				original := SessionData{
+					Email:       "test@example.com",
+					Name:        "Test User",
+					Subject:     "sub-123",
+					AccessToken: "access-token-123",
+					Provider:    "gitea-prod",
+				}
 
-			decrypted, err := decryptSession(encrypted)
-			Expect(err).NotTo(HaveOccurred())
-			Expect(decrypted.Email).To(Equal(original.Email))
-			Expect(decrypted.Name).To(Equal(original.Name))
-			Expect(decrypted.Subject).To(Equal(original.Subject))
-			Expect(decrypted.AccessToken).To(Equal(original.AccessToken))
-			Expect(decrypted.Provider).To(Equal(original.Provider))
+				SetSessionData(r.Context(), sessionManager, original)
+
+				retrieved, ok := GetSessionData(r.Context(), sessionManager)
+				Expect(ok).To(BeTrue())
+				Expect(retrieved.Email).To(Equal(original.Email))
+				Expect(retrieved.Name).To(Equal(original.Name))
+				Expect(retrieved.Subject).To(Equal(original.Subject))
+				Expect(retrieved.AccessToken).To(Equal(original.AccessToken))
+				Expect(retrieved.Provider).To(Equal(original.Provider))
+
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			handler.ServeHTTP(rec, req)
+			Expect(rec.Code).To(Equal(http.StatusOK))
 		})
 
-		It("should return error for invalid encrypted data", func() {
-			_, err := decryptSession("invalid-base64-data!!!")
-			Expect(err).To(HaveOccurred())
-		})
+		It("should return false when session data is not set", func() {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
 
-		It("should return error for tampered data", func() {
-			original := SessionData{
-				Email:    "test@example.com",
-				Expiry:   time.Now().Add(time.Hour),
-				Provider: "gitea-prod",
-			}
+			handler := sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, ok := GetSessionData(r.Context(), sessionManager)
+				Expect(ok).To(BeFalse())
 
-			encrypted, err := encryptSession(original)
-			Expect(err).NotTo(HaveOccurred())
+				w.WriteHeader(http.StatusOK)
+			}))
 
-			tampered := encrypted + "tampered"
-			_, err = decryptSession(tampered)
-			Expect(err).To(HaveOccurred())
-		})
-
-		It("should return error for expired session", func() {
-			original := SessionData{
-				Email:    "test@example.com",
-				Expiry:   time.Now().Add(-time.Hour),
-				Provider: "gitea-prod",
-			}
-
-			encrypted, err := encryptSession(original)
-			Expect(err).NotTo(HaveOccurred())
-
-			_, err = decryptSession(encrypted)
-			Expect(err).To(MatchError(errSessionExpired))
-		})
-
-		It("should produce different sealed data for same plaintext", func() {
-			original := SessionData{
-				Email:    "test@example.com",
-				Expiry:   time.Now().Add(time.Hour),
-				Provider: "gitea-prod",
-			}
-
-			enc1, err := encryptSession(original)
-			Expect(err).NotTo(HaveOccurred())
-
-			enc2, err := encryptSession(original)
-			Expect(err).NotTo(HaveOccurred())
-
-			Expect(enc1).NotTo(Equal(enc2))
+			handler.ServeHTTP(rec, req)
+			Expect(rec.Code).To(Equal(http.StatusOK))
 		})
 	})
 
-	Context("when session key is not initialized", func() {
-		BeforeEach(func() {
-			sessionKey.Store(nil)
+	Describe("IsAuthenticated", func() {
+		It("should return false when not authenticated", func() {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			handler := sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				Expect(IsAuthenticated(r.Context(), sessionManager)).To(BeFalse())
+
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			handler.ServeHTTP(rec, req)
+			Expect(rec.Code).To(Equal(http.StatusOK))
 		})
 
-		It("should return error from encryptSession mentioning session key", func() {
-			_, err := encryptSession(SessionData{
-				Email:    "test@example.com",
-				Expiry:   time.Now().Add(time.Hour),
-				Provider: "gitea-prod",
-			})
-			Expect(err).To(HaveOccurred())
-			Expect(err.Error()).To(ContainSubstring("session key"))
+		It("should return true when authenticated", func() {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			handler := sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				SetSessionData(r.Context(), sessionManager, SessionData{
+					Provider: "gitea-prod",
+				})
+
+				Expect(IsAuthenticated(r.Context(), sessionManager)).To(BeTrue())
+
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			handler.ServeHTTP(rec, req)
+			Expect(rec.Code).To(Equal(http.StatusOK))
+		})
+	})
+
+	Describe("GenerateCSRFToken/ValidateCSRFToken", func() {
+		It("should generate and validate CSRF token", func() {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			handler := sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				token, err := GenerateCSRFToken(r.Context(), sessionManager)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(token).NotTo(BeEmpty())
+
+				Expect(ValidateCSRFToken(r.Context(), sessionManager, token)).To(BeTrue())
+				Expect(ValidateCSRFToken(r.Context(), sessionManager, "wrong-token")).To(BeFalse())
+				Expect(ValidateCSRFToken(r.Context(), sessionManager, "")).To(BeFalse())
+
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			handler.ServeHTTP(rec, req)
+			Expect(rec.Code).To(Equal(http.StatusOK))
+		})
+
+		It("should return false when no CSRF token exists", func() {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			handler := sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				Expect(ValidateCSRFToken(r.Context(), sessionManager, "any-token")).To(BeFalse())
+
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			handler.ServeHTTP(rec, req)
+			Expect(rec.Code).To(Equal(http.StatusOK))
+		})
+	})
+
+	Describe("DestroySession", func() {
+		It("should remove session data", func() {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			handler := sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				SetSessionData(r.Context(), sessionManager, SessionData{
+					Provider: "gitea-prod",
+				})
+
+				Expect(IsAuthenticated(r.Context(), sessionManager)).To(BeTrue())
+
+				err := DestroySession(r.Context(), sessionManager)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(IsAuthenticated(r.Context(), sessionManager)).To(BeFalse())
+
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			handler.ServeHTTP(rec, req)
+			Expect(rec.Code).To(Equal(http.StatusOK))
 		})
 	})
 })

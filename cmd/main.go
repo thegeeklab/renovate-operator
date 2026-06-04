@@ -116,7 +116,7 @@ func main() {
 
 	sseBroker := frontend.NewSSEBroker()
 
-	authManager, err := setupAuth()
+	authManager, err := setupAuth(cfg.SecureCookies)
 	if err != nil {
 		setupLog.Error(err, "Unable to initialize authentication")
 		os.Exit(1)
@@ -534,19 +534,17 @@ func buildReceiverFactory() receiver.ReceiverFactory {
 // OIDC_<NAME>_FORGE_URL=https://... - Gitea API URL
 // OIDC_<NAME>_INSECURE=false - skip TLS verification
 // OIDC_SESSION_SECRET=... - session encryption key (required).
-func setupAuth() (*auth.Manager, error) {
-	manager := auth.NewManager()
+func setupAuth(secureCookies bool) (*auth.Manager, error) {
+	manager, err := auth.NewManager(os.Getenv("OIDC_SESSION_SECRET"), secureCookies)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize session manager: %w", err)
+	}
 
 	providersEnv := os.Getenv("OIDC_PROVIDERS")
 	if providersEnv == "" {
 		setupLog.Info("OIDC authentication disabled: no providers configured")
 
 		return manager, nil
-	}
-
-	sessionSecret := os.Getenv("OIDC_SESSION_SECRET")
-	if err := auth.InitSessionKey(sessionSecret); err != nil {
-		return nil, fmt.Errorf("failed to initialize session key: %w", err)
 	}
 
 	providerNames := strings.SplitSeq(providersEnv, ",")

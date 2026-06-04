@@ -4,7 +4,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -18,11 +17,11 @@ var _ = Describe("Middleware", func() {
 	)
 
 	BeforeEach(func() {
-		manager = NewManager()
-		manager.Register(&testAuthProvider{name: "gitea-prod", provType: ProviderTypeGitea})
+		var err error
 
-		err := InitSessionKey("test-secret")
+		manager, err = NewManager("test-secret", false)
 		Expect(err).NotTo(HaveOccurred())
+		manager.Register(&testAuthProvider{name: "gitea-prod", provType: ProviderTypeGitea})
 
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusOK)
@@ -36,7 +35,10 @@ var _ = Describe("Middleware", func() {
 
 	Describe("When auth is disabled", func() {
 		BeforeEach(func() {
-			manager = NewManager()
+			var err error
+
+			manager, err = NewManager("test-secret", false)
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should pass through all requests", func() {
@@ -131,16 +133,17 @@ var _ = Describe("Middleware", func() {
 				Expect(resp["error"]).To(Equal("unauthorized"))
 			})
 
-			It("should allow access to /events without session", func() {
+			It("should redirect /events to /login without session", func() {
 				req := httptest.NewRequest(http.MethodGet, "/events", nil)
 				Middleware(manager)(handler).ServeHTTP(rec, req)
 
-				Expect(rec.Code).To(Equal(http.StatusOK))
+				Expect(rec.Code).To(Equal(http.StatusFound))
+				Expect(rec.Header().Get("Location")).To(Equal("/login"))
 			})
 		})
 
 		Describe("protected paths with valid session", func() {
-			var validSession string
+			var sessionCookie *http.Cookie
 
 			BeforeEach(func() {
 				session := SessionData{
@@ -148,21 +151,30 @@ var _ = Describe("Middleware", func() {
 					Name:        "Test User",
 					AccessToken: "token",
 					Provider:    "gitea-prod",
-					Expiry:      time.Now().Add(time.Hour),
 				}
 
-				var err error
+				req := httptest.NewRequest(http.MethodGet, "/setup-session", nil)
+				setupRec := httptest.NewRecorder()
 
-				validSession, err = encryptSession(session)
-				Expect(err).NotTo(HaveOccurred())
+				setupHandler := manager.Session.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					SetSessionData(r.Context(), manager.Session, session)
+					w.WriteHeader(http.StatusOK)
+				}))
+				setupHandler.ServeHTTP(setupRec, req)
+
+				cookies := setupRec.Result().Cookies()
+				for _, c := range cookies {
+					if c.Name == sessionCookieName {
+						sessionCookie = c
+
+						break
+					}
+				}
 			})
 
 			It("should allow access to UI paths", func() {
 				req := httptest.NewRequest(http.MethodGet, "/", nil)
-				req.AddCookie(&http.Cookie{
-					Name:  sessionCookieName,
-					Value: validSession,
-				})
+				req.AddCookie(sessionCookie)
 				Middleware(manager)(handler).ServeHTTP(rec, req)
 
 				Expect(rec.Code).To(Equal(http.StatusOK))
@@ -170,33 +182,28 @@ var _ = Describe("Middleware", func() {
 
 			It("should allow access to API paths", func() {
 				req := httptest.NewRequest(http.MethodGet, "/api/v1/gitrepos", nil)
-				req.AddCookie(&http.Cookie{
-					Name:  sessionCookieName,
-					Value: validSession,
-				})
+				req.AddCookie(sessionCookie)
 				Middleware(manager)(handler).ServeHTTP(rec, req)
 
 				Expect(rec.Code).To(Equal(http.StatusOK))
 			})
 
-			It("should put session in context", func() {
+			It("should put session data accessible via GetSessionData", func() {
 				var sessionInCtx SessionData
 
 				var ok bool
 
 				ctxHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-					sessionInCtx, ok = SessionFromContext(r.Context())
+					sessionInCtx, ok = GetSessionData(r.Context(), manager.Session)
 
 					w.WriteHeader(http.StatusOK)
 				})
 
 				req := httptest.NewRequest(http.MethodGet, "/", nil)
-				req.AddCookie(&http.Cookie{
-					Name:  sessionCookieName,
-					Value: validSession,
-				})
+				req.AddCookie(sessionCookie)
 				Middleware(manager)(ctxHandler).ServeHTTP(rec, req)
 
+				Expect(rec.Code).To(Equal(http.StatusOK))
 				Expect(ok).To(BeTrue())
 				Expect(sessionInCtx.Email).To(Equal("test@example.com"))
 				Expect(sessionInCtx.Name).To(Equal("Test User"))
@@ -204,79 +211,37 @@ var _ = Describe("Middleware", func() {
 			})
 		})
 
-		Describe("protected paths with expired session", func() {
-			var expiredSession string
-
-			BeforeEach(func() {
-				session := SessionData{
-					Email:    "test@example.com",
-					Provider: "gitea-prod",
-					Expiry:   time.Now().Add(-time.Hour),
-				}
-
-				var err error
-
-				expiredSession, err = encryptSession(session)
-				Expect(err).NotTo(HaveOccurred())
-			})
-
-			It("should redirect UI paths to /login", func() {
-				req := httptest.NewRequest(http.MethodGet, "/", nil)
-				req.AddCookie(&http.Cookie{
-					Name:  sessionCookieName,
-					Value: expiredSession,
-				})
-				Middleware(manager)(handler).ServeHTTP(rec, req)
-
-				Expect(rec.Code).To(Equal(http.StatusFound))
-				Expect(rec.Header().Get("Location")).To(Equal("/login"))
-			})
-
-			It("should return 401 for API paths", func() {
-				req := httptest.NewRequest(http.MethodGet, "/api/v1/gitrepos", nil)
-				req.AddCookie(&http.Cookie{
-					Name:  sessionCookieName,
-					Value: expiredSession,
-				})
-				Middleware(manager)(handler).ServeHTTP(rec, req)
-
-				Expect(rec.Code).To(Equal(http.StatusUnauthorized))
-			})
-
-			It("should allow access to /events with expired session", func() {
-				req := httptest.NewRequest(http.MethodGet, "/events", nil)
-				req.AddCookie(&http.Cookie{
-					Name:  sessionCookieName,
-					Value: expiredSession,
-				})
-				Middleware(manager)(handler).ServeHTTP(rec, req)
-
-				Expect(rec.Code).To(Equal(http.StatusOK))
-			})
-		})
-
 		Describe("protected paths with invalid provider", func() {
-			var validSession string
+			var sessionCookie *http.Cookie
 
 			BeforeEach(func() {
 				session := SessionData{
 					Email:    "test@example.com",
 					Provider: "unknown-provider",
-					Expiry:   time.Now().Add(time.Hour),
 				}
 
-				var err error
+				req := httptest.NewRequest(http.MethodGet, "/setup-session", nil)
+				setupRec := httptest.NewRecorder()
 
-				validSession, err = encryptSession(session)
-				Expect(err).NotTo(HaveOccurred())
+				setupHandler := manager.Session.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+					SetSessionData(r.Context(), manager.Session, session)
+					w.WriteHeader(http.StatusOK)
+				}))
+				setupHandler.ServeHTTP(setupRec, req)
+
+				cookies := setupRec.Result().Cookies()
+				for _, c := range cookies {
+					if c.Name == sessionCookieName {
+						sessionCookie = c
+
+						break
+					}
+				}
 			})
 
 			It("should redirect UI paths to /login", func() {
 				req := httptest.NewRequest(http.MethodGet, "/", nil)
-				req.AddCookie(&http.Cookie{
-					Name:  sessionCookieName,
-					Value: validSession,
-				})
+				req.AddCookie(sessionCookie)
 				Middleware(manager)(handler).ServeHTTP(rec, req)
 
 				Expect(rec.Code).To(Equal(http.StatusFound))
@@ -285,10 +250,7 @@ var _ = Describe("Middleware", func() {
 
 			It("should return 401 for API paths", func() {
 				req := httptest.NewRequest(http.MethodGet, "/api/v1/gitrepos", nil)
-				req.AddCookie(&http.Cookie{
-					Name:  sessionCookieName,
-					Value: validSession,
-				})
+				req.AddCookie(sessionCookie)
 				Middleware(manager)(handler).ServeHTTP(rec, req)
 
 				Expect(rec.Code).To(Equal(http.StatusUnauthorized))

@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+
+	"github.com/alexedwards/scs/v2"
 )
 
 const (
@@ -39,12 +41,19 @@ type AuthProvider interface {
 
 type Manager struct {
 	providers map[string]AuthProvider
+	Session   *scs.SessionManager
 }
 
-func NewManager() *Manager {
+func NewManager(sessionSecret string, secureCookies bool) (*Manager, error) {
+	session, err := NewSessionManager(sessionSecret, secureCookies)
+	if err != nil {
+		return nil, err
+	}
+
 	return &Manager{
 		providers: make(map[string]AuthProvider),
-	}
+		Session:   session,
+	}, nil
 }
 
 func (m *Manager) Register(provider AuthProvider) {

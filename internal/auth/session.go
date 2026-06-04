@@ -1,158 +1,105 @@
 package auth
 
 import (
-	"crypto/aes"
-	"crypto/cipher"
-	"crypto/hmac"
+	"context"
 	"crypto/rand"
-	"crypto/sha256"
-	"encoding/base64"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
-	"sync/atomic"
+	"net/http"
 	"time"
+
+	"github.com/alexedwards/scs/v2"
 )
+
+var errSessionSecretRequired = errors.New("session secret must not be empty")
 
 const (
-	sessionCookieName = "renovate_session"
-	sessionDuration   = 24 * time.Hour
-	csrfTokenPurpose  = "csrf"
-)
-
-var (
-	errInvalidSession           = errors.New("invalid session")
-	errSessionExpired           = errors.New("session expired")
-	errSessionKeyNotInitialized = errors.New("session key not initialized")
-	errSecretRequired           = errors.New("secret must not be empty")
+	sessionCookieName   = "renovate_session"
+	sessionDuration     = 24 * time.Hour
+	sessionKeyEmail     = "email"
+	sessionKeyName      = "name"
+	sessionKeySubject   = "sub"
+	sessionKeyToken     = "accessToken"
+	sessionKeyProvider  = "provider"
+	sessionKeyCSRFToken = "_csrf"
 )
 
 type SessionData struct {
-	Email       string    `json:"email"`
-	Name        string    `json:"name"`
-	Subject     string    `json:"sub"`
-	AccessToken string    `json:"accessToken"`
-	Provider    string    `json:"provider"`
-	Expiry      time.Time `json:"expiry"`
-	CSRFNonce   string    `json:"csrfNonce"`
+	Email       string
+	Name        string
+	Subject     string
+	AccessToken string
+	Provider    string
 }
 
-var sessionKey atomic.Pointer[[]byte]
-
-func InitSessionKey(secret string) error {
+func NewSessionManager(secret string, secureCookies bool) (*scs.SessionManager, error) {
 	if secret == "" {
-		return errSecretRequired
+		return nil, errSessionSecretRequired
 	}
 
-	hash := sha256.Sum256([]byte(secret))
-	key := hash[:]
+	session := scs.New()
+	session.Lifetime = sessionDuration
+	session.Cookie.Name = sessionCookieName
+	session.Cookie.HttpOnly = true
+	session.Cookie.Secure = secureCookies
+	session.Cookie.SameSite = http.SameSiteLaxMode
+	session.Cookie.Path = "/"
 
-	sessionKey.Store(&key)
-
-	return nil
+	return session, nil
 }
 
-func getSessionKey() []byte {
-	p := sessionKey.Load()
-	if p == nil {
-		return nil
-	}
-
-	return *p
+func SetSessionData(ctx context.Context, session *scs.SessionManager, data SessionData) {
+	session.Put(ctx, sessionKeyEmail, data.Email)
+	session.Put(ctx, sessionKeyName, data.Name)
+	session.Put(ctx, sessionKeySubject, data.Subject)
+	session.Put(ctx, sessionKeyToken, data.AccessToken)
+	session.Put(ctx, sessionKeyProvider, data.Provider)
 }
 
-// DeriveCSRFToken produces a CSRF token bound to the session subject and a random nonce
-// using HMAC-SHA256 with the session encryption key.
-func DeriveCSRFToken(session SessionData) (string, error) {
-	key := getSessionKey()
-	if key == nil {
-		return "", errSessionKeyNotInitialized
+func GetSessionData(ctx context.Context, session *scs.SessionManager) (SessionData, bool) {
+	if !session.Exists(ctx, sessionKeyProvider) {
+		return SessionData{}, false
 	}
 
-	mac := hmac.New(sha256.New, key)
-	mac.Write([]byte(csrfTokenPurpose))
-	mac.Write([]byte(session.Subject))
-	mac.Write([]byte(session.CSRFNonce))
-
-	return hex.EncodeToString(mac.Sum(nil)), nil
+	return SessionData{
+		Email:       session.GetString(ctx, sessionKeyEmail),
+		Name:        session.GetString(ctx, sessionKeyName),
+		Subject:     session.GetString(ctx, sessionKeySubject),
+		AccessToken: session.GetString(ctx, sessionKeyToken),
+		Provider:    session.GetString(ctx, sessionKeyProvider),
+	}, true
 }
 
-func encryptSession(data SessionData) (string, error) {
-	key := getSessionKey()
-	if key == nil {
-		return "", errSessionKeyNotInitialized
-	}
-
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return "", fmt.Errorf("failed to create cipher: %w", err)
-	}
-
-	aesGCM, err := cipher.NewGCM(block)
-	if err != nil {
-		return "", fmt.Errorf("failed to create GCM: %w", err)
-	}
-
-	nonce := make([]byte, aesGCM.NonceSize())
-	if _, err := io.ReadFull(rand.Reader, nonce); err != nil {
-		return "", fmt.Errorf("failed to generate nonce: %w", err)
-	}
-
-	jsonData, err := json.Marshal(data)
-	if err != nil {
-		return "", fmt.Errorf("failed to marshal session: %w", err)
-	}
-
-	sealedData := aesGCM.Seal(nonce, nonce, jsonData, nil)
-
-	return base64.URLEncoding.EncodeToString(sealedData), nil
+func GetProvider(ctx context.Context, session *scs.SessionManager) string {
+	return session.GetString(ctx, sessionKeyProvider)
 }
 
-func decryptSession(encoded string) (SessionData, error) {
-	var data SessionData
+func IsAuthenticated(ctx context.Context, session *scs.SessionManager) bool {
+	return session.Exists(ctx, sessionKeyProvider)
+}
 
-	key := getSessionKey()
-	if key == nil {
-		return data, errSessionKeyNotInitialized
+func DestroySession(ctx context.Context, session *scs.SessionManager) error {
+	return session.Destroy(ctx)
+}
+
+func GenerateCSRFToken(ctx context.Context, session *scs.SessionManager) (string, error) {
+	b := make([]byte, 32) //nolint:mnd
+	if _, err := rand.Read(b); err != nil {
+		return "", err
 	}
 
-	payload, err := base64.URLEncoding.DecodeString(encoded)
-	if err != nil {
-		return data, fmt.Errorf("%w: invalid encoding", errInvalidSession)
-	}
+	token := hex.EncodeToString(b)
+	session.Put(ctx, sessionKeyCSRFToken, token)
 
-	block, err := aes.NewCipher(key)
-	if err != nil {
-		return data, fmt.Errorf("failed to create cipher: %w", err)
-	}
+	return token, nil
+}
 
-	aesGCM, err := cipher.NewGCM(block)
-	if err != nil {
-		return data, fmt.Errorf("failed to create GCM: %w", err)
-	}
+func GetCSRFToken(ctx context.Context, session *scs.SessionManager) string {
+	return session.GetString(ctx, sessionKeyCSRFToken)
+}
 
-	nonceSize := aesGCM.NonceSize()
-	if len(payload) < nonceSize {
-		return data, errInvalidSession
-	}
+func ValidateCSRFToken(ctx context.Context, session *scs.SessionManager, token string) bool {
+	expected := session.GetString(ctx, sessionKeyCSRFToken)
 
-	nonce := payload[:nonceSize]
-	encryptedData := payload[nonceSize:]
-
-	plaintext, err := aesGCM.Open(nil, nonce, encryptedData, nil)
-	if err != nil {
-		return data, fmt.Errorf("%w: decryption failed", errInvalidSession)
-	}
-
-	if err := json.Unmarshal(plaintext, &data); err != nil {
-		return data, fmt.Errorf("%w: invalid JSON", errInvalidSession)
-	}
-
-	if time.Now().After(data.Expiry) {
-		return data, errSessionExpired
-	}
-
-	return data, nil
+	return expected != "" && token != "" && expected == token
 }

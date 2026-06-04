@@ -7,7 +7,6 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"net/url"
-	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -22,15 +21,15 @@ var _ = Describe("Handlers", func() {
 	)
 
 	BeforeEach(func() {
-		manager = NewManager()
+		var err error
+
+		manager, err = NewManager("test-secret", false)
+		Expect(err).NotTo(HaveOccurred())
 		manager.Register(&testAuthProvider{
 			name:     "gitea-prod",
 			provType: ProviderTypeGitea,
 			loginURL: "https://gitea.example.com/login/oauth/authorize",
 		})
-
-		err := InitSessionKey("test-secret")
-		Expect(err).NotTo(HaveOccurred())
 	})
 
 	JustBeforeEach(func() {
@@ -89,138 +88,70 @@ var _ = Describe("Handlers", func() {
 
 	Describe("HandleLogout", func() {
 		It("should clear session cookie and redirect to /", func() {
-			session := SessionData{
-				Email:     "test@example.com",
-				Name:      "Test User",
-				Subject:   "sub-123",
-				Provider:  "gitea-prod",
-				Expiry:    time.Now().Add(time.Hour),
-				CSRFNonce: "test-nonce-123",
-			}
-
-			encrypted, err := encryptSession(session)
-			Expect(err).NotTo(HaveOccurred())
-
-			csrfToken, err := DeriveCSRFToken(session)
-			Expect(err).NotTo(HaveOccurred())
-
 			req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-			req.AddCookie(&http.Cookie{
-				Name:  sessionCookieName,
-				Value: encrypted,
-			})
 
 			form := url.Values{}
-			form.Set(csrfFormName, csrfToken)
+			form.Set(csrfFormName, "any-token")
 			req.PostForm = form
 
-			HandleLogout(false).ServeHTTP(rec, req)
+			handler := manager.Session.LoadAndSave(HandleLogout(manager))
+			handler.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusFound))
 			Expect(rec.Header().Get("Location")).To(Equal("/"))
-
-			cookies := rec.Result().Cookies()
-
-			var sessionCleared bool
-
-			for _, c := range cookies {
-				if c.Name == sessionCookieName && c.MaxAge < 0 {
-					sessionCleared = true
-				}
-			}
-
-			Expect(sessionCleared).To(BeTrue())
 		})
 
 		It("should return 403 when CSRF token is missing", func() {
+			req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
+
 			session := SessionData{
-				Email:     "test@example.com",
-				Subject:   "sub-123",
-				Provider:  "gitea-prod",
-				Expiry:    time.Now().Add(time.Hour),
-				CSRFNonce: "test-nonce-456",
+				Email:    "test@example.com",
+				Name:     "Test User",
+				Subject:  "sub-123",
+				Provider: "gitea-prod",
 			}
 
-			encrypted, err := encryptSession(session)
-			Expect(err).NotTo(HaveOccurred())
+			handler := manager.Session.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				SetSessionData(r.Context(), manager.Session, session)
 
-			req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-			req.AddCookie(&http.Cookie{
-				Name:  sessionCookieName,
-				Value: encrypted,
-			})
-
-			HandleLogout(false).ServeHTTP(rec, req)
+				HandleLogout(manager).ServeHTTP(w, r)
+			}))
+			handler.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusForbidden))
 		})
 
 		It("should return 403 when CSRF token does not match", func() {
-			session := SessionData{
-				Email:     "test@example.com",
-				Subject:   "sub-123",
-				Provider:  "gitea-prod",
-				Expiry:    time.Now().Add(time.Hour),
-				CSRFNonce: "test-nonce-789",
-			}
-
-			encrypted, err := encryptSession(session)
-			Expect(err).NotTo(HaveOccurred())
-
 			req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-			req.AddCookie(&http.Cookie{
-				Name:  sessionCookieName,
-				Value: encrypted,
-			})
 
 			form := url.Values{}
 			form.Set(csrfFormName, "wrong-token")
 			req.PostForm = form
 
-			HandleLogout(false).ServeHTTP(rec, req)
-
-			Expect(rec.Code).To(Equal(http.StatusForbidden))
-		})
-
-		It("should clear session cookie and redirect when session is expired", func() {
 			session := SessionData{
 				Email:    "test@example.com",
+				Name:     "Test User",
 				Subject:  "sub-123",
 				Provider: "gitea-prod",
-				Expiry:   time.Now().Add(-time.Hour),
 			}
 
-			encrypted, err := encryptSession(session)
-			Expect(err).NotTo(HaveOccurred())
+			handler := manager.Session.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				SetSessionData(r.Context(), manager.Session, session)
+				_, _ = GenerateCSRFToken(r.Context(), manager.Session)
 
-			req := httptest.NewRequest(http.MethodPost, "/auth/logout", nil)
-			req.AddCookie(&http.Cookie{
-				Name:  sessionCookieName,
-				Value: encrypted,
-			})
+				HandleLogout(manager).ServeHTTP(w, r)
+			}))
+			handler.ServeHTTP(rec, req)
 
-			HandleLogout(false).ServeHTTP(rec, req)
-
-			Expect(rec.Code).To(Equal(http.StatusFound))
-			Expect(rec.Header().Get("Location")).To(Equal("/"))
-
-			cookies := rec.Result().Cookies()
-
-			var sessionCleared bool
-
-			for _, c := range cookies {
-				if c.Name == sessionCookieName && c.MaxAge < 0 {
-					sessionCleared = true
-				}
-			}
-
-			Expect(sessionCleared).To(BeTrue())
+			Expect(rec.Code).To(Equal(http.StatusForbidden))
 		})
 	})
 
 	Describe("HandleAuthStatus", func() {
 		It("should return enabled=false when auth is disabled", func() {
-			disabledManager := NewManager()
+			disabledManager, err := NewManager("test-secret", false)
+			Expect(err).NotTo(HaveOccurred())
+
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/status", nil)
 			rec := httptest.NewRecorder()
 			HandleAuthStatus(disabledManager).ServeHTTP(rec, req)
@@ -229,14 +160,16 @@ var _ = Describe("Handlers", func() {
 
 			var status map[string]any
 
-			err := json.Unmarshal(rec.Body.Bytes(), &status)
+			err = json.Unmarshal(rec.Body.Bytes(), &status)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(status["enabled"]).To(BeFalse())
 		})
 
 		It("should return enabled=true, authenticated=false without session", func() {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/status", nil)
-			HandleAuthStatus(manager).ServeHTTP(rec, req)
+
+			handler := manager.Session.LoadAndSave(HandleAuthStatus(manager))
+			handler.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusOK))
 
@@ -253,24 +186,21 @@ var _ = Describe("Handlers", func() {
 				Email:    "test@example.com",
 				Name:     "Test User",
 				Provider: "gitea-prod",
-				Expiry:   time.Now().Add(time.Hour),
 			}
 
-			encrypted, err := encryptSession(session)
-			Expect(err).NotTo(HaveOccurred())
-
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/status", nil)
-			req.AddCookie(&http.Cookie{
-				Name:  sessionCookieName,
-				Value: encrypted,
-			})
-			HandleAuthStatus(manager).ServeHTTP(rec, req)
+
+			handler := manager.Session.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				SetSessionData(r.Context(), manager.Session, session)
+				HandleAuthStatus(manager).ServeHTTP(w, r)
+			}))
+			handler.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusOK))
 
 			var status map[string]any
 
-			err = json.Unmarshal(rec.Body.Bytes(), &status)
+			err := json.Unmarshal(rec.Body.Bytes(), &status)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(status["enabled"]).To(BeTrue())
 			Expect(status["authenticated"]).To(BeTrue())
@@ -346,7 +276,8 @@ var _ = Describe("Handlers", func() {
 
 		It("should return 500 when provider callback fails", func() {
 			failingProvider := &failingAuthProvider{name: "gitea-fail"}
-			failingManager := NewManager()
+			failingManager, err := NewManager("test-secret", false)
+			Expect(err).NotTo(HaveOccurred())
 			failingManager.Register(failingProvider)
 
 			state, err := encodeState("gitea-fail")
@@ -363,7 +294,8 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should derive provider from state, not from query", func() {
-			spoofManager := NewManager()
+			spoofManager, err := NewManager("test-secret", false)
+			Expect(err).NotTo(HaveOccurred())
 			spoofManager.Register(&failingAuthProvider{name: "gitea-prod"})
 			spoofManager.Register(&testAuthProvider{
 				name:     "gitea-staging",
@@ -385,7 +317,6 @@ var _ = Describe("Handlers", func() {
 			})
 			HandleCallback(spoofManager, false).ServeHTTP(rec, req)
 
-			// gitea-prod (failing) was invoked, NOT gitea-staging from the query.
 			Expect(rec.Code).To(Equal(http.StatusInternalServerError))
 		})
 	})

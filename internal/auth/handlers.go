@@ -7,7 +7,6 @@ import (
 	"encoding/json"
 	"net/http"
 	"strings"
-	"time"
 
 	"sigs.k8s.io/controller-runtime/pkg/log"
 )
@@ -58,23 +57,6 @@ func decodeState(state string) (string, bool) {
 func isSecureRequest(r *http.Request, secureCookies bool) bool {
 	return secureCookies || r.TLS != nil ||
 		strings.EqualFold(r.Header.Get("X-Forwarded-Proto"), "https")
-}
-
-// ValidateCSRFToken validates the CSRF token from the form against the session-derived token.
-func ValidateCSRFToken(r *http.Request) bool {
-	session, err := getSessionFromRequest(r)
-	if err != nil {
-		return false
-	}
-
-	expected, err := DeriveCSRFToken(session)
-	if err != nil {
-		return false
-	}
-
-	formToken := r.FormValue(csrfFormName)
-
-	return expected != "" && formToken != "" && expected == formToken
 }
 
 func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
@@ -159,41 +141,25 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 			return
 		}
 
-		nonce := make([]byte, 16) //nolint:mnd
-		if _, err := rand.Read(nonce); err != nil {
-			http.Error(w, "failed to create session", http.StatusInternalServerError)
-
-			return
-		}
-
 		session := SessionData{
 			Email:       user.Email,
 			Name:        user.Name,
 			Subject:     user.Subject,
 			AccessToken: user.AccessToken,
 			Provider:    providerName,
-			Expiry:      sessionDataExpiry(),
-			CSRFNonce:   hex.EncodeToString(nonce),
 		}
 
-		encrypted, err := encryptSession(session)
-		if err != nil {
-			http.Error(w, "failed to create session", http.StatusInternalServerError)
+		if err := manager.Session.RenewToken(r.Context()); err != nil {
+			authLog.Error(err, "Failed to renew session token")
+		}
 
-			return
+		SetSessionData(r.Context(), manager.Session, session)
+
+		if _, err := GenerateCSRFToken(r.Context(), manager.Session); err != nil {
+			authLog.Error(err, "Failed to generate CSRF token")
 		}
 
 		secure := isSecureRequest(r, secureCookies)
-
-		http.SetCookie(w, &http.Cookie{ //nolint:gosec
-			Name:     sessionCookieName,
-			Value:    encrypted,
-			Path:     "/",
-			MaxAge:   int(sessionDuration.Seconds()),
-			HttpOnly: true,
-			Secure:   secure,
-			SameSite: http.SameSiteLaxMode,
-		})
 
 		http.SetCookie(w, &http.Cookie{ //nolint:gosec
 			Name:     stateCookieName,
@@ -209,28 +175,19 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 	}
 }
 
-func HandleLogout(secureCookies bool) http.HandlerFunc {
+func HandleLogout(manager *Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		secure := isSecureRequest(r, secureCookies)
-
-		_, sessionErr := getSessionFromRequest(r)
-		if sessionErr == nil {
-			if !ValidateCSRFToken(r) {
+		if IsAuthenticated(r.Context(), manager.Session) {
+			if !ValidateCSRFToken(r.Context(), manager.Session, r.FormValue(csrfFormName)) {
 				http.Error(w, "invalid CSRF token", http.StatusForbidden)
 
 				return
 			}
 		}
 
-		http.SetCookie(w, &http.Cookie{ //nolint:gosec
-			Name:     sessionCookieName,
-			Value:    "",
-			Path:     "/",
-			MaxAge:   -1,
-			HttpOnly: true,
-			Secure:   secure,
-			SameSite: http.SameSiteLaxMode,
-		})
+		if err := DestroySession(r.Context(), manager.Session); err != nil {
+			authLog.Error(err, "Failed to destroy session")
+		}
 
 		http.Redirect(w, r, "/", http.StatusFound)
 	}
@@ -246,12 +203,13 @@ func HandleAuthStatus(manager *Manager) http.HandlerFunc {
 			return
 		}
 
-		session, err := getSessionFromRequest(r)
-		if err != nil {
+		if !IsAuthenticated(r.Context(), manager.Session) {
 			_, _ = w.Write([]byte(`{"enabled":true,"authenticated":false}`))
 
 			return
 		}
+
+		session, _ := GetSessionData(r.Context(), manager.Session)
 
 		provider, ok := manager.Get(session.Provider)
 		if !ok {
@@ -274,17 +232,4 @@ func HandleAuthStatus(manager *Manager) http.HandlerFunc {
 			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 	}
-}
-
-func getSessionFromRequest(r *http.Request) (SessionData, error) {
-	cookie, err := r.Cookie(sessionCookieName)
-	if err != nil {
-		return SessionData{}, err
-	}
-
-	return decryptSession(cookie.Value)
-}
-
-func sessionDataExpiry() time.Time {
-	return time.Now().Add(sessionDuration)
 }

@@ -106,7 +106,7 @@ func (h *APIHandler) getVersion(w http.ResponseWriter, r *http.Request) {
 	}{
 		Version: "v1.0.0",
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -116,7 +116,7 @@ func (h *APIHandler) getRenovators(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.dataFactory.GetRenovators(r.Context(), opts)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 
 		return
 	}
@@ -124,7 +124,7 @@ func (h *APIHandler) getRenovators(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(result); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -134,7 +134,7 @@ func (h *APIHandler) getGitRepos(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.dataFactory.GetGitRepos(r.Context(), opts)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 
 		return
 	}
@@ -144,7 +144,7 @@ func (h *APIHandler) getGitRepos(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(result); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -153,7 +153,7 @@ func (h *APIHandler) getRunners(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.dataFactory.GetRunners(r.Context(), opts)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 
 		return
 	}
@@ -161,7 +161,7 @@ func (h *APIHandler) getRunners(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(result); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -171,7 +171,7 @@ func (h *APIHandler) getDiscoveries(w http.ResponseWriter, r *http.Request) {
 
 	result, err := h.dataFactory.GetDiscoveries(r.Context(), opts)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 
 		return
 	}
@@ -179,7 +179,7 @@ func (h *APIHandler) getDiscoveries(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "application/json")
 
 	if err := json.NewEncoder(w).Encode(result); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -195,7 +195,7 @@ func (h *APIHandler) startDiscovery(w http.ResponseWriter, r *http.Request) {
 		Status:  "success",
 		Message: "Discovery started",
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }
 
@@ -209,6 +209,6 @@ func (h *APIHandler) getDiscoveryStatus(w http.ResponseWriter, r *http.Request) 
 	}{
 		Status: "running",
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		http.Error(w, "internal server error", http.StatusInternalServerError)
 	}
 }

@@ -1,19 +1,16 @@
 package auth
 
 import (
-	"context"
 	"encoding/json"
 	"net/http"
 	"strings"
 )
 
-type contextKey string
-
-const sessionContextKey contextKey = "session"
-
 func Middleware(manager *Manager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
-		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		sessionManager := manager.Session
+
+		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if !manager.IsEnabled() {
 				next.ServeHTTP(w, r)
 
@@ -26,8 +23,7 @@ func Middleware(manager *Manager) func(http.Handler) http.Handler {
 				return
 			}
 
-			session, err := getSessionFromRequest(r)
-			if err != nil {
+			if !IsAuthenticated(r.Context(), sessionManager) {
 				if isAPIPath(r.URL.Path) {
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusUnauthorized)
@@ -44,8 +40,8 @@ func Middleware(manager *Manager) func(http.Handler) http.Handler {
 				return
 			}
 
-			_, ok := manager.Get(session.Provider)
-			if !ok {
+			providerName := GetProvider(r.Context(), sessionManager)
+			if _, ok := manager.Get(providerName); !ok {
 				if isAPIPath(r.URL.Path) {
 					w.Header().Set("Content-Type", "application/json")
 					w.WriteHeader(http.StatusUnauthorized)
@@ -62,9 +58,10 @@ func Middleware(manager *Manager) func(http.Handler) http.Handler {
 				return
 			}
 
-			ctx := contextWithSession(r.Context(), session)
-			next.ServeHTTP(w, r.WithContext(ctx))
+			next.ServeHTTP(w, r)
 		})
+
+		return sessionManager.LoadAndSave(handler)
 	}
 }
 
@@ -76,7 +73,7 @@ func isPublicPath(path string) bool {
 	switch path {
 	case "/auth/login", "/auth/callback", "/auth/logout",
 		"/health", "/healthz", "/readyz", "/login",
-		"/api/v1/auth/status", "/events":
+		"/api/v1/auth/status":
 		return true
 	default:
 		return false
@@ -85,14 +82,4 @@ func isPublicPath(path string) bool {
 
 func isAPIPath(path string) bool {
 	return strings.HasPrefix(path, "/api/")
-}
-
-func contextWithSession(ctx context.Context, session SessionData) context.Context {
-	return context.WithValue(ctx, sessionContextKey, session)
-}
-
-func SessionFromContext(ctx context.Context) (SessionData, bool) {
-	session, ok := ctx.Value(sessionContextKey).(SessionData)
-
-	return session, ok
 }

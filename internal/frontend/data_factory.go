@@ -27,6 +27,7 @@ var (
 	errUnableToDeriveCacheKey = errors.New("unable to derive cache key for session")
 	errUnexpectedCacheResult  = errors.New("unexpected cache result type")
 	errAuthNotEnabled         = errors.New("auth not enabled")
+	errNotAuthenticated       = errors.New("not authenticated")
 )
 
 // ListOptions holds optional parameters for filtering and sorting data.
@@ -45,7 +46,7 @@ const (
 func hashAccessToken(token string) string {
 	hash := sha256.Sum256([]byte(token))
 
-	return hex.EncodeToString(hash[:8])
+	return hex.EncodeToString(hash[:])
 }
 
 func (df *DataFactory) deriveCacheKey(session auth.SessionData) string {
@@ -390,9 +391,9 @@ func (df *DataFactory) getUserReposMap(ctx context.Context) (map[string]bool, er
 		return nil, errAuthNotEnabled
 	}
 
-	session, ok := auth.SessionFromContext(ctx)
+	session, ok := auth.GetSessionData(ctx, df.authManager.Session)
 	if !ok {
-		return nil, errAuthNotEnabled
+		return nil, errNotAuthenticated
 	}
 
 	if session.AccessToken == "" {
@@ -465,7 +466,7 @@ func (df *DataFactory) IsUserRepo(ctx context.Context, fullName string) bool {
 		return accessible
 	}
 
-	session, ok := auth.SessionFromContext(ctx)
+	session, ok := auth.GetSessionData(ctx, df.authManager.Session)
 	if !ok {
 		return false
 	}

@@ -82,7 +82,7 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) views.AuthInfo {
 		})
 	}
 
-	session, ok := auth.SessionFromContext(r.Context())
+	session, ok := auth.GetSessionData(r.Context(), h.authManager.Session)
 	if !ok {
 		return info
 	}
@@ -91,8 +91,8 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) views.AuthInfo {
 	info.Name = session.Name
 	info.Provider = session.Provider
 
-	csrfToken, err := auth.DeriveCSRFToken(session)
-	if err == nil {
+	csrfToken := auth.GetCSRFToken(r.Context(), h.authManager.Session)
+	if csrfToken != "" {
 		info.CSRFToken = csrfToken
 	}
 
@@ -100,6 +100,13 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) views.AuthInfo {
 }
 
 func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
+	authInfo := h.buildAuthInfo(r)
+	if h.authManager != nil && h.authManager.IsEnabled() && !authInfo.Authenticated {
+		http.Redirect(w, r, "/login", http.StatusFound)
+
+		return
+	}
+
 	ctx := r.Context()
 	opts := getOptionsFromRequest(r)
 
@@ -152,6 +159,13 @@ func (h *WebHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 }
 
 func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Request) {
+	authInfo := h.buildAuthInfo(r)
+	if h.authManager != nil && h.authManager.IsEnabled() && !authInfo.Authenticated {
+		http.Redirect(w, r, "/login", http.StatusFound)
+
+		return
+	}
+
 	ctx := r.Context()
 	opts := getOptionsFromRequest(r)
 
@@ -188,6 +202,13 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 }
 
 func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
+	authInfo := h.buildAuthInfo(r)
+	if h.authManager != nil && h.authManager.IsEnabled() && !authInfo.Authenticated {
+		http.Redirect(w, r, "/login", http.StatusFound)
+
+		return
+	}
+
 	ctx := r.Context()
 	opts := getOptionsFromRequest(r)
 	name := r.URL.Query().Get("name")
@@ -250,6 +271,13 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 
 // HandleJobLogs fetches the log stream and renders it.
 func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
+	authInfo := h.buildAuthInfo(r)
+	if h.authManager != nil && h.authManager.IsEnabled() && !authInfo.Authenticated {
+		http.Redirect(w, r, "/login", http.StatusFound)
+
+		return
+	}
+
 	ctx := r.Context()
 	namespace := r.URL.Query().Get("namespace")
 	runner := r.URL.Query().Get("runner")

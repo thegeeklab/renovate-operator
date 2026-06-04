@@ -48,7 +48,10 @@ var _ = Describe("Manager", func() {
 	var manager *Manager
 
 	BeforeEach(func() {
-		manager = NewManager()
+		var err error
+
+		manager, err = NewManager("test-secret", false)
+		Expect(err).NotTo(HaveOccurred())
 	})
 
 	Describe("NewManager", func() {

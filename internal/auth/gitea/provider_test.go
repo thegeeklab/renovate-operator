@@ -35,9 +35,9 @@ var _ = Describe("GiteaProvider", func() {
 	})
 
 	Describe("GetUserRepos", func() {
-		It("returns all repos from wrapped Gitea response across pages", func() {
+		It("returns all repos with write access from Gitea response across pages", func() {
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				Expect(r.URL.Path).To(Equal("/api/v1/repos/search"))
+				Expect(r.URL.Path).To(Equal("/api/v1/user/repos"))
 
 				page := r.URL.Query().Get("page")
 
@@ -45,9 +45,12 @@ var _ = Describe("GiteaProvider", func() {
 
 				switch page {
 				case "1":
-					_, _ = fmt.Fprint(w, `{"ok":true,"data":[{"full_name":"owner/repo1"},{"full_name":"owner/repo2"}]}`)
+					_, _ = fmt.Fprint(w, `[
+						{"full_name":"owner/repo1","permissions":{"push":true}},
+						{"full_name":"owner/repo2","permissions":{"push":true}}
+					]`)
 				default:
-					_, _ = fmt.Fprint(w, `{"ok":true,"data":[]}`)
+					_, _ = fmt.Fprint(w, `[]`)
 				}
 			}))
 
@@ -66,7 +69,7 @@ var _ = Describe("GiteaProvider", func() {
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotAuth = r.Header.Get("Authorization")
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = fmt.Fprint(w, `{"ok":true,"data":[]}`)
+				_, _ = fmt.Fprint(w, `[]`)
 			}))
 
 			provider := newTestProvider(server.URL, server.Client())
@@ -94,7 +97,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				w.Header().Set("Content-Type", "application/json")
-				_, _ = fmt.Fprint(w, `{"ok":true,"data":[]}`)
+				_, _ = fmt.Fprint(w, `[]`)
 			}))
 
 			provider := newTestProvider(server.URL, server.Client())
@@ -103,13 +106,41 @@ var _ = Describe("GiteaProvider", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(repos).To(BeEmpty())
 		})
+
+		It("filters out repos without write access", func() {
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+
+				page := r.URL.Query().Get("page")
+				if page == "1" {
+					_, _ = fmt.Fprint(w, `[
+						{"full_name":"owner/read-only","permissions":{"push":false}},
+						{"full_name":"owner/write-access","permissions":{"push":true}}
+					]`)
+				} else {
+					_, _ = fmt.Fprint(w, `[]`)
+				}
+			}))
+
+			provider := newTestProvider(server.URL, server.Client())
+
+			repos, err := provider.GetUserRepos(ctx, "test-token")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repos).To(HaveKeyWithValue("owner/write-access", true))
+			Expect(repos).NotTo(HaveKey("owner/read-only"))
+			Expect(repos).To(HaveLen(1))
+		})
 	})
 
 	Describe("IsUserRepo", func() {
-		It("returns true for 200 response", func() {
+		It("returns true for 200 response with push access", func() {
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				Expect(r.URL.Path).To(Equal("/api/v1/repos/owner/repo1"))
-				w.WriteHeader(http.StatusOK)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = fmt.Fprint(w, `{
+					"full_name": "owner/repo1",
+					"permissions": {"push": true}
+				}`)
 			}))
 
 			provider := newTestProvider(server.URL, server.Client())
@@ -117,6 +148,23 @@ var _ = Describe("GiteaProvider", func() {
 			accessible, err := provider.IsUserRepo(ctx, "test-token", "owner/repo1")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(accessible).To(BeTrue())
+		})
+
+		It("returns false for 200 response without push access", func() {
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				Expect(r.URL.Path).To(Equal("/api/v1/repos/owner/repo1"))
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = fmt.Fprint(w, `{
+					"full_name": "owner/repo1",
+					"permissions": {"push": false}
+				}`)
+			}))
+
+			provider := newTestProvider(server.URL, server.Client())
+
+			accessible, err := provider.IsUserRepo(ctx, "test-token", "owner/repo1")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(accessible).To(BeFalse())
 		})
 
 		It("returns false for 404 response", func() {
@@ -160,8 +208,11 @@ var _ = Describe("GiteaProvider", func() {
 
 			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				gotAuth = r.Header.Get("Authorization")
-
-				w.WriteHeader(http.StatusOK)
+				w.Header().Set("Content-Type", "application/json")
+				_, _ = fmt.Fprint(w, `{
+					"full_name": "owner/repo1",
+					"permissions": {"push": true}
+				}`)
 			}))
 
 			provider := newTestProvider(server.URL, server.Client())

@@ -39,7 +39,10 @@ var (
 
 //nolint:tagliatelle // Gitea API uses snake_case
 type giteaRepo struct {
-	FullName string `json:"full_name"`
+	FullName    string `json:"full_name"`
+	Permissions struct {
+		Push bool `json:"push"`
+	} `json:"permissions"`
 }
 
 type GiteaProvider struct {
@@ -171,7 +174,9 @@ func (p *GiteaProvider) GetUserRepos(ctx context.Context, token string) (map[str
 		}
 
 		for _, repo := range data {
-			result[repo.FullName] = true
+			if repo.Permissions.Push {
+				result[repo.FullName] = true
+			}
 		}
 
 		if len(data) == 0 {
@@ -200,18 +205,22 @@ func (p *GiteaProvider) IsUserRepo(ctx context.Context, token, fullName string) 
 	if err != nil {
 		return false, fmt.Errorf("failed to check repo access: %w", err)
 	}
-
 	defer resp.Body.Close()
-
-	if resp.StatusCode == http.StatusOK {
-		return true, nil
-	}
 
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden {
 		return false, nil
 	}
 
-	return false, fmt.Errorf("%w: %d", errUnexpectedStatus, resp.StatusCode)
+	if resp.StatusCode != http.StatusOK {
+		return false, fmt.Errorf("%w: %d", errUnexpectedStatus, resp.StatusCode)
+	}
+
+	var repo giteaRepo
+	if err := json.NewDecoder(resp.Body).Decode(&repo); err != nil {
+		return false, fmt.Errorf("failed to decode repo: %w", err)
+	}
+
+	return repo.Permissions.Push, nil
 }
 
 func (p *GiteaProvider) fetchPageWithRetry(ctx context.Context, page int, token string) ([]giteaRepo, error) {
@@ -250,7 +259,7 @@ func (p *GiteaProvider) fetchPage(ctx context.Context, page int, token string) (
 	[]giteaRepo, int, time.Duration, error,
 ) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
-		fmt.Sprintf("%s/api/v1/repos/search?limit=%d&page=%d",
+		fmt.Sprintf("%s/api/v1/user/repos?limit=%d&page=%d",
 			strings.TrimRight(p.forgeURL, "/"), defaultPageSize, page), nil)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to create request: %w", err)
@@ -271,15 +280,12 @@ func (p *GiteaProvider) fetchPage(ctx context.Context, page int, token string) (
 		return nil, resp.StatusCode, retryAfter, nil
 	}
 
-	var respBody struct {
-		OK   bool        `json:"ok"`
-		Data []giteaRepo `json:"data"`
-	}
-	if err := json.NewDecoder(resp.Body).Decode(&respBody); err != nil {
+	var data []giteaRepo
+	if err := json.NewDecoder(resp.Body).Decode(&data); err != nil {
 		return nil, resp.StatusCode, 0, fmt.Errorf("failed to decode repos: %w", err)
 	}
 
-	return respBody.Data, resp.StatusCode, 0, nil
+	return data, resp.StatusCode, 0, nil
 }
 
 func (p *GiteaProvider) parseRetryAfter(resp *http.Response) time.Duration {
