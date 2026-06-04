@@ -85,19 +85,7 @@ templ GitRepoView(data GitRepoViewData) {
 										</div>
 									</div>
 									<div class="flex-shrink-0">
-										if job.Status == "Succeeded" {
-											<span class="inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-[10px] font-medium text-green-700 ring-1 ring-inset ring-green-600/20">
-												Succeeded
-											</span>
-										} else if job.Status == "Running" {
-											<span class="inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-[10px] font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20">
-												Running
-											</span>
-										} else {
-											<span class="inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-[10px] font-medium text-red-700 ring-1 ring-inset ring-red-600/10">
-												Failed
-											</span>
-										}
+										@statusBadge(job.Status)
 									</div>
 								</div>
 							}

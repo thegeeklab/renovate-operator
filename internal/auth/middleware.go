@@ -84,7 +84,7 @@ func isPublicPath(path string) bool {
 }
 
 func isAPIPath(path string) bool {
-	return strings.HasPrefix(path, "/api/") || path == "/events"
+	return strings.HasPrefix(path, "/api/")
 }
 
 func contextWithSession(ctx context.Context, session SessionData) context.Context {

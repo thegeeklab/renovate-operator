@@ -215,7 +215,7 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 
 	repoInfo.LastRenovateStatus, repoInfo.LastRenovateAt = getRenovateStatusFromConditions(&repo)
 
-	if !h.dataFactory.IsRepoAccessible(ctx, repoInfo.FullName) {
+	if !h.dataFactory.IsUserRepo(ctx, repoInfo.FullName) {
 		http.Error(w, "GitRepo not found", http.StatusNotFound)
 
 		return

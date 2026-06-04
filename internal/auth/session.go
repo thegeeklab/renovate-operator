@@ -19,6 +19,7 @@ import (
 const (
 	sessionCookieName = "renovate_session"
 	sessionDuration   = 24 * time.Hour
+	csrfTokenPurpose  = "csrf"
 )
 
 var (
@@ -71,7 +72,7 @@ func DeriveCSRFToken(session SessionData) (string, error) {
 	}
 
 	mac := hmac.New(sha256.New, key)
-	mac.Write([]byte("csrf"))
+	mac.Write([]byte(csrfTokenPurpose))
 	mac.Write([]byte(session.Subject))
 	mac.Write([]byte(session.CSRFNonce))
 
@@ -104,9 +105,9 @@ func encryptSession(data SessionData) (string, error) {
 		return "", fmt.Errorf("failed to marshal session: %w", err)
 	}
 
-	ciphertext := aesGCM.Seal(nonce, nonce, jsonData, nil)
+	sealedData := aesGCM.Seal(nonce, nonce, jsonData, nil)
 
-	return base64.URLEncoding.EncodeToString(ciphertext), nil
+	return base64.URLEncoding.EncodeToString(sealedData), nil
 }
 
 func decryptSession(encoded string) (SessionData, error) {
@@ -117,7 +118,7 @@ func decryptSession(encoded string) (SessionData, error) {
 		return data, errSessionKeyNotInitialized
 	}
 
-	ciphertext, err := base64.URLEncoding.DecodeString(encoded)
+	payload, err := base64.URLEncoding.DecodeString(encoded)
 	if err != nil {
 		return data, fmt.Errorf("%w: invalid encoding", errInvalidSession)
 	}
@@ -133,13 +134,14 @@ func decryptSession(encoded string) (SessionData, error) {
 	}
 
 	nonceSize := aesGCM.NonceSize()
-	if len(ciphertext) < nonceSize {
+	if len(payload) < nonceSize {
 		return data, errInvalidSession
 	}
 
-	nonce, ciphertext := ciphertext[:nonceSize], ciphertext[nonceSize:]
+	nonce := payload[:nonceSize]
+	encryptedData := payload[nonceSize:]
 
-	plaintext, err := aesGCM.Open(nil, nonce, ciphertext, nil)
+	plaintext, err := aesGCM.Open(nil, nonce, encryptedData, nil)
 	if err != nil {
 		return data, fmt.Errorf("%w: decryption failed", errInvalidSession)
 	}
@@ -149,7 +151,7 @@ func decryptSession(encoded string) (SessionData, error) {
 	}
 
 	if time.Now().After(data.Expiry) {
-		return SessionData{}, errSessionExpired
+		return data, errSessionExpired
 	}
 
 	return data, nil

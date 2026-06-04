@@ -90,11 +90,12 @@ var _ = Describe("Handlers", func() {
 	Describe("HandleLogout", func() {
 		It("should clear session cookie and redirect to /", func() {
 			session := SessionData{
-				Email:    "test@example.com",
-				Name:     "Test User",
-				Subject:  "sub-123",
-				Provider: "gitea-prod",
-				Expiry:   time.Now().Add(time.Hour),
+				Email:     "test@example.com",
+				Name:      "Test User",
+				Subject:   "sub-123",
+				Provider:  "gitea-prod",
+				Expiry:    time.Now().Add(time.Hour),
+				CSRFNonce: "test-nonce-123",
 			}
 
 			encrypted, err := encryptSession(session)
@@ -133,10 +134,11 @@ var _ = Describe("Handlers", func() {
 
 		It("should return 403 when CSRF token is missing", func() {
 			session := SessionData{
-				Email:    "test@example.com",
-				Subject:  "sub-123",
-				Provider: "gitea-prod",
-				Expiry:   time.Now().Add(time.Hour),
+				Email:     "test@example.com",
+				Subject:   "sub-123",
+				Provider:  "gitea-prod",
+				Expiry:    time.Now().Add(time.Hour),
+				CSRFNonce: "test-nonce-456",
 			}
 
 			encrypted, err := encryptSession(session)
@@ -155,10 +157,11 @@ var _ = Describe("Handlers", func() {
 
 		It("should return 403 when CSRF token does not match", func() {
 			session := SessionData{
-				Email:    "test@example.com",
-				Subject:  "sub-123",
-				Provider: "gitea-prod",
-				Expiry:   time.Now().Add(time.Hour),
+				Email:     "test@example.com",
+				Subject:   "sub-123",
+				Provider:  "gitea-prod",
+				Expiry:    time.Now().Add(time.Hour),
+				CSRFNonce: "test-nonce-789",
 			}
 
 			encrypted, err := encryptSession(session)
@@ -360,9 +363,6 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should derive provider from state, not from query", func() {
-			// Register a failing provider as gitea-prod, and a working one as gitea-staging.
-			// The state encodes gitea-prod; the URL query attempts to spoof gitea-staging.
-			// The handler must invoke gitea-prod (failing -> 500), proving it ignored the URL.
 			spoofManager := NewManager()
 			spoofManager.Register(&failingAuthProvider{name: "gitea-prod"})
 			spoofManager.Register(&testAuthProvider{
@@ -411,6 +411,10 @@ func (p *failingAuthProvider) HandleCallback(ctx context.Context, code string) (
 	return nil, ErrCallbackFailed
 }
 
-func (p *failingAuthProvider) GetAccessChecker(_ string) (RepoAccessChecker, error) {
+func (p *failingAuthProvider) GetUserRepos(ctx context.Context, token string) (map[string]bool, error) {
 	return nil, errors.New("not implemented")
+}
+
+func (p *failingAuthProvider) IsUserRepo(ctx context.Context, token, fullName string) (bool, error) {
+	return false, errors.New("not implemented")
 }

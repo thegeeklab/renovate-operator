@@ -36,8 +36,12 @@ func (p *testAuthProvider) HandleCallback(ctx context.Context, code string) (*Au
 	}, nil
 }
 
-func (p *testAuthProvider) GetAccessChecker(token string) (RepoAccessChecker, error) {
+func (p *testAuthProvider) GetUserRepos(ctx context.Context, token string) (map[string]bool, error) {
 	return nil, errors.New("not implemented")
+}
+
+func (p *testAuthProvider) IsUserRepo(ctx context.Context, token, fullName string) (bool, error) {
+	return false, errors.New("not implemented")
 }
 
 var _ = Describe("Manager", func() {

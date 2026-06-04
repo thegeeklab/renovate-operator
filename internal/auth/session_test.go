@@ -103,7 +103,7 @@ var _ = Describe("Session", func() {
 			Expect(err).To(MatchError(errSessionExpired))
 		})
 
-		It("should produce different ciphertext for same plaintext", func() {
+		It("should produce different sealed data for same plaintext", func() {
 			original := SessionData{
 				Email:    "test@example.com",
 				Expiry:   time.Now().Add(time.Hour),

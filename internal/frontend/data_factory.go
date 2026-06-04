@@ -383,9 +383,9 @@ func (df *DataFactory) GetJobLogs(ctx context.Context, namespace, jobName string
 	return stream, nil
 }
 
-// getAccessibleReposMap returns the user's accessible repo map, handling auth checks,
+// getUserReposMap returns the user's accessible repo map, handling auth checks,
 // session extraction, provider lookup, and cache/fetch logic.
-func (df *DataFactory) getAccessibleReposMap(ctx context.Context) (map[string]bool, error) {
+func (df *DataFactory) getUserReposMap(ctx context.Context) (map[string]bool, error) {
 	if df.authManager == nil || !df.authManager.IsEnabled() {
 		return nil, errAuthNotEnabled
 	}
@@ -409,7 +409,7 @@ func (df *DataFactory) getAccessibleReposMap(ctx context.Context) (map[string]bo
 		return nil, errUnableToDeriveCacheKey
 	}
 
-	return df.fetchAccessibleRepos(ctx, provider, session.AccessToken, cacheKey)
+	return df.getUserRepos(ctx, provider, session.AccessToken, cacheKey)
 }
 
 // ApplyAccessFilter filters repos by user access if auth is enabled, failing closed on error.
@@ -417,9 +417,9 @@ func (df *DataFactory) ApplyAccessFilter(
 	ctx context.Context,
 	repos []GitRepoInfo,
 ) []GitRepoInfo {
-	accessibleRepos, err := df.getAccessibleReposMap(ctx)
+	userRepos, err := df.getUserReposMap(ctx)
 	if err != nil && !errors.Is(err, errAuthNotEnabled) {
-		frontendLog.Error(err, "Failed to fetch accessible repos")
+		frontendLog.Error(err, "Failed to fetch user repos")
 
 		return []GitRepoInfo{}
 	}
@@ -431,7 +431,7 @@ func (df *DataFactory) ApplyAccessFilter(
 	filtered := make([]GitRepoInfo, 0, len(repos))
 
 	for _, repo := range repos {
-		if accessibleRepos[repo.FullName] {
+		if userRepos[repo.FullName] {
 			filtered = append(filtered, repo)
 		}
 	}
@@ -443,12 +443,12 @@ func (df *DataFactory) ApplyAccessFilter(
 	return filtered
 }
 
-// IsRepoAccessible checks if a single repo is accessible by the current user.
+// IsUserRepo checks if a single repo is accessible by the current user.
 // Uses the cached access list when available, falling back to a direct single-repo check on cache miss.
-func (df *DataFactory) IsRepoAccessible(ctx context.Context, fullName string) bool {
-	accessibleRepos, err := df.getAccessibleReposMap(ctx)
+func (df *DataFactory) IsUserRepo(ctx context.Context, fullName string) bool {
+	userRepos, err := df.getUserReposMap(ctx)
 	if err != nil && !errors.Is(err, errAuthNotEnabled) {
-		frontendLog.Error(err, "Failed to fetch accessible repos", "repo", fullName)
+		frontendLog.Error(err, "Failed to fetch user repos", "repo", fullName)
 
 		return false
 	}
@@ -457,18 +457,14 @@ func (df *DataFactory) IsRepoAccessible(ctx context.Context, fullName string) bo
 		return true
 	}
 
-	if len(accessibleRepos) == 0 {
+	if len(userRepos) == 0 {
 		return false
 	}
 
-	if accessible, ok := accessibleRepos[fullName]; ok {
+	if accessible, ok := userRepos[fullName]; ok {
 		return accessible
 	}
 
-	return df.checkRepoAccessibleDirect(ctx, fullName)
-}
-
-func (df *DataFactory) checkRepoAccessibleDirect(ctx context.Context, fullName string) bool {
 	session, ok := auth.SessionFromContext(ctx)
 	if !ok {
 		return false
@@ -479,16 +475,9 @@ func (df *DataFactory) checkRepoAccessibleDirect(ctx context.Context, fullName s
 		return false
 	}
 
-	checker, err := provider.GetAccessChecker(session.AccessToken)
+	accessible, err := provider.IsUserRepo(ctx, session.AccessToken, fullName)
 	if err != nil {
-		frontendLog.Error(err, "Failed to get access checker")
-
-		return false
-	}
-
-	accessible, err := checker.IsRepoAccessible(ctx, fullName)
-	if err != nil {
-		frontendLog.Error(err, "Failed to check repo accessibility", "repo", fullName)
+		frontendLog.Error(err, "Failed to check user repo", "repo", fullName)
 
 		return false
 	}
@@ -496,20 +485,15 @@ func (df *DataFactory) checkRepoAccessibleDirect(ctx context.Context, fullName s
 	return accessible
 }
 
-// fetchAccessibleRepos retrieves accessible repositories with deduplication and caching.
-func (df *DataFactory) fetchAccessibleRepos(
+// getUserRepos retrieves user repositories with deduplication and caching.
+func (df *DataFactory) getUserRepos(
 	ctx context.Context,
 	provider auth.AuthProvider,
 	token string,
 	cacheKey string,
 ) (map[string]bool, error) {
 	fetch := func() (map[string]bool, error) {
-		checker, err := provider.GetAccessChecker(token)
-		if err != nil {
-			return nil, fmt.Errorf("failed to get access checker: %w", err)
-		}
-
-		return checker.GetAccessibleRepos(ctx)
+		return provider.GetUserRepos(ctx, token)
 	}
 
 	if cacheKey == "" {

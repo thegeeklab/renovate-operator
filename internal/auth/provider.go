@@ -33,12 +33,8 @@ type AuthProvider interface {
 	Name() string
 	LoginURL(state string) string
 	HandleCallback(ctx context.Context, code string) (*AuthenticatedUser, error)
-	GetAccessChecker(token string) (RepoAccessChecker, error)
-}
-
-type RepoAccessChecker interface {
-	GetAccessibleRepos(ctx context.Context) (map[string]bool, error)
-	IsRepoAccessible(ctx context.Context, fullName string) (bool, error)
+	GetUserRepos(ctx context.Context, token string) (map[string]bool, error)
+	IsUserRepo(ctx context.Context, token, fullName string) (bool, error)
 }
 
 type Manager struct {

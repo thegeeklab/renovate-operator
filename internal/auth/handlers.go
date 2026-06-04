@@ -171,7 +171,7 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 			Name:        user.Name,
 			Subject:     user.Subject,
 			AccessToken: user.AccessToken,
-			Provider:    user.Provider,
+			Provider:    providerName,
 			Expiry:      sessionDataExpiry(),
 			CSRFNonce:   hex.EncodeToString(nonce),
 		}
@@ -271,6 +271,7 @@ func HandleAuthStatus(manager *Manager) http.HandlerFunc {
 
 		if err := json.NewEncoder(w).Encode(status); err != nil {
 			authLog.Error(err, "Failed to encode auth status")
+			http.Error(w, "internal server error", http.StatusInternalServerError)
 		}
 	}
 }
