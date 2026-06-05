@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"slices"
+	"strings"
 	"time"
 
 	"github.com/maypok86/otter/v2"
@@ -36,6 +37,7 @@ type ListOptions struct {
 	Renovator string
 	SortBy    string
 	Order     string
+	Search    string
 }
 
 const (
@@ -152,20 +154,48 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 		return nil, err
 	}
 
+	renovatorMap := make(map[string]string)
+	var renList renovatev1beta1.RenovatorList
+	if err := df.client.List(ctx, &renList); err == nil {
+		for _, ren := range renList.Items {
+			renovatorMap[string(ren.UID)] = ren.Name
+		}
+	}
+
 	var result []GitRepoInfo
 
 	for _, gitrepo := range list.Items {
 		lastStatus, lastTime := getRenovateStatusFromConditions(&gitrepo)
 
+		renovatorUID := gitrepo.Labels[renovatev1beta1.LabelRenovator]
+		renovatorName := renovatorMap[renovatorUID]
+		if renovatorName == "" {
+			renovatorName = "Unknown"
+		}
+
 		result = append(result, GitRepoInfo{
 			Name:               gitrepo.Name,
 			FullName:           gitrepo.Spec.Name,
 			Namespace:          gitrepo.Namespace,
+			RenovatorName:      renovatorName,
 			WebhookID:          gitrepo.Status.WebhookID,
 			LastRenovateAt:     lastTime,
 			LastRenovateStatus: lastStatus,
 			CreatedAt:          gitrepo.CreationTimestamp.Time,
 		})
+	}
+
+	if opt.Search != "" {
+		term := strings.ToLower(opt.Search)
+
+		filtered := make([]GitRepoInfo, 0, len(result))
+		for _, repo := range result {
+			if strings.Contains(strings.ToLower(repo.Name), term) || strings.Contains(strings.ToLower(repo.FullName), term) {
+				filtered = append(filtered, repo)
+			}
+		}
+
+		result = filtered
 	}
 
 	if result == nil {
@@ -178,6 +208,7 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 		util.SortOrder(opt.Order),
 		func(i GitRepoInfo) string { return i.Name },
 		func(i GitRepoInfo) time.Time { return i.CreatedAt },
+		func(i GitRepoInfo) time.Time { return i.LastRenovateAt },
 	)
 
 	return result, nil

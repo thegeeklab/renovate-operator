@@ -28,6 +28,7 @@ type GitRepoInfo struct {
 	Name               string
 	FullName           string
 	Namespace          string
+	RenovatorName      string
 	WebhookID          string
 	LastRenovateAt     time.Time
 	LastRenovateStatus string

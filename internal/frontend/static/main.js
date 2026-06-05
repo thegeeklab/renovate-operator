@@ -92,12 +92,26 @@ Alpine.data("logViewer", function (namespace, runner, jobName, isRunning) {
 Alpine.start()
 
 const scrollStates = new Map()
+let savedSearchSelection = null
 
 document.addEventListener("htmx:beforeSwap", (e) => {
   const { target } = e.detail
+
   const scrollBox = target.querySelector('[x-ref="scrollBox"]')
   if (scrollBox) {
     scrollStates.set(scrollBox.id, scrollBox.scrollTop)
+  }
+
+  if (target.id === "dashboard-content") {
+    const searchInput = target.querySelector('input[name="search"]')
+    if (searchInput && document.activeElement === searchInput) {
+      savedSearchSelection = {
+        start: searchInput.selectionStart,
+        end: searchInput.selectionEnd,
+      }
+    } else {
+      savedSearchSelection = null
+    }
   }
 })
 
@@ -132,6 +146,21 @@ document.addEventListener("htmx:afterSwap", (e) => {
 
   const { target, xhr } = e.detail
   if (!target) return
+
+  if (target.id === "dashboard-content") {
+    const searchInput = target.querySelector('input[name="search"]')
+    if (searchInput) {
+      searchInput.focus({ preventScroll: true })
+      if (savedSearchSelection !== null) {
+        searchInput.setSelectionRange(savedSearchSelection.start, savedSearchSelection.end)
+      } else {
+        const len = searchInput.value.length
+        searchInput.setSelectionRange(len, len)
+      }
+      savedSearchSelection = null
+      return
+    }
+  }
 
   const boosted = xhr?.getResponseHeader("HX-Boosted") || target.closest("[hx-boost]")
   if (boosted || target.id === "dashboard-content") {

@@ -2,78 +2,123 @@ package views
 
 import "fmt"
 
-templ RenovatorList(views []WebView) {
+templ RenovatorList(views []WebView, searchQuery string, searchResults []GitRepoInfo) {
 	<div class="bg-white shadow mb-6 shrink-0">
-		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center">
+		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 			<h2 class="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h2>
+			<div class="relative w-full sm:w-64">
+				<input
+					type="text"
+					name="search"
+					value={ searchQuery }
+					placeholder="Search all repositories..."
+					hx-get="/"
+					hx-push-url="true"
+					hx-target="#dashboard-content"
+					hx-swap="innerHTML"
+					hx-trigger="input changed delay:500ms, search"
+					class="block w-full rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+				/>
+				if searchQuery == "" {
+					<div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+						@IconSearch("h-4 w-4 text-gray-400")
+					</div>
+				} else {
+					<button
+						type="button"
+						hx-get="/"
+						hx-push-url="true"
+						hx-target="#dashboard-content"
+						hx-swap="innerHTML"
+						class="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600 cursor-pointer"
+					>
+						@IconXMark("h-4 w-4")
+					</button>
+				}
+			</div>
 		</div>
 	</div>
 	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
-		if len(views) == 0 {
-			<div class="text-center py-12">
-				@IconInbox("mx-auto h-12 w-12 text-gray-400")
-				<h3 class="mt-2 text-sm font-semibold text-gray-900">No Renovators Found</h3>
-				<p class="mt-1 text-sm text-gray-500">
-					Get started by creating a Renovator custom resource.
-				</p>
-			</div>
+		if searchQuery != "" {
+			if len(searchResults) > 0 {
+				@GitRepoList(searchResults)
+			} else {
+				<div class="text-center py-12">
+					@IconInbox("mx-auto h-12 w-12 text-gray-400")
+					<h3 class="mt-2 text-sm font-semibold text-gray-900">No Results Found</h3>
+					<p class="mt-1 text-sm text-gray-500">
+						No repositories match your search query.
+					</p>
+				</div>
+			}
 		} else {
-			<div class="space-y-4">
-				for _, v := range views {
-					<details
-						x-cloak
-						x-data={ fmt.Sprintf("{ open: $persist(false).as('renovator-%s') }", v.Name) }
-						:open="open"
-						@toggle="open = $el.open"
-						class="group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200"
-					>
-						<summary class="cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out">
-							<div class="flex items-center justify-between">
-								<div class="flex items-center gap-4">
-									@IconChevron("chevron h-5 w-5 text-gray-400 group-open:rotate-90 transition-transform duration-200")
-									<div>
-										<h3 class="text-base font-semibold leading-6 text-gray-900">
-											{ v.Name }
-										</h3>
-										<p class="mt-1 max-w-2xl text-sm text-gray-500">
-											Namespace:
-											<span class="font-medium text-gray-900">{ v.Namespace }</span>
-										</p>
+			if len(views) == 0 {
+				<div class="text-center py-12">
+					@IconInbox("mx-auto h-12 w-12 text-gray-400")
+					<h3 class="mt-2 text-sm font-semibold text-gray-900">No Renovators Found</h3>
+					<p class="mt-1 text-sm text-gray-500">
+						Get started by creating a Renovator custom resource.
+					</p>
+				</div>
+			} else {
+				<div class="space-y-4">
+					for _, v := range views {
+						<details
+							x-cloak
+							x-data={ fmt.Sprintf("{ open: $persist(false).as('renovator-%s') }", v.Name) }
+							:open="open"
+							@toggle="open = $el.open"
+							class="group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200"
+						>
+							<summary class="cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out">
+								<div class="flex items-center justify-between">
+									<div class="flex items-center gap-4">
+										@IconChevron("chevron h-5 w-5 text-gray-400 group-open:rotate-90 transition-transform duration-200")
+										<div>
+											<h3 class="text-base font-semibold leading-6 text-gray-900">
+												{ v.Name }
+											</h3>
+											<p class="mt-1 max-w-2xl text-sm text-gray-500">
+												Namespace:
+												<span class="font-medium text-gray-900">{ v.Namespace }</span>
+											</p>
+										</div>
+									</div>
+									<div class="flex items-center gap-2 sm:gap-6">
+										<div class="flex flex-col items-end sm:items-center justify-center gap-1">
+											<span class="text-xs text-gray-500">Repos</span>
+											<span class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
+												{ fmt.Sprint(v.GitRepoCount) }
+											</span>
+										</div>
+										<div class="hidden sm:flex flex-col items-end justify-center gap-1">
+											<span class="text-xs text-gray-500">Runner</span>
+											<span class="text-sm font-medium text-gray-900">{ v.RunnerName }</span>
+										</div>
+										<div class="hidden sm:flex flex-col items-end justify-center gap-1">
+											<span class="text-xs text-gray-500">Discovery</span>
+											<span class="text-sm font-medium text-gray-900">{ v.DiscoveryName }</span>
+										</div>
 									</div>
 								</div>
-								<div class="flex items-center gap-2 sm:gap-6">
-									<div class="flex flex-col items-end sm:items-center justify-center gap-1">
-										<span class="text-xs text-gray-500">Repos</span>
-										<span class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
-											{ fmt.Sprint(v.GitRepoCount) }
-										</span>
-									</div>
-									<div class="hidden sm:flex flex-col items-end justify-center gap-1">
-										<span class="text-xs text-gray-500">Runner</span>
-										<span class="text-sm font-medium text-gray-900">{ v.RunnerName }</span>
-									</div>
-									<div class="hidden sm:flex flex-col items-end justify-center gap-1">
-										<span class="text-xs text-gray-500">Discovery</span>
-										<span class="text-sm font-medium text-gray-900">{ v.DiscoveryName }</span>
+							</summary>
+							<div class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6">
+								<div
+									x-ref="repoList"
+									hx-get={ fmt.Sprintf("/gitrepos?namespace=%s&renovator=%s&sort=name&order=asc", v.Namespace, v.Renovator) }
+									hx-trigger="revealed once, sse:job-updated"
+									hx-swap="innerHTML"
+								>
+									<div class="flex justify-center py-4">
+										@IconSpinner("animate-spin h-5 w-5 text-indigo-600")
+										<span class="ml-2 text-sm text-gray-500">Loading Repositories...</span>
 									</div>
 								</div>
 							</div>
-						</summary>
-						<div class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6">
-							<div
-								hx-get={ fmt.Sprintf("/gitrepos?namespace=%s&renovator=%s", v.Namespace, v.Renovator) }
-								hx-trigger="revealed once, sse:job-updated"
-								hx-swap="innerHTML"
-							>
-								<div class="flex justify-center py-4">
-									@IconSpinner("animate-spin h-5 w-5 text-indigo-600")
-									<span class="ml-2 text-sm text-gray-500">Loading Repositories...</span>
-								</div>
-							</div>
-						</div>
-					</details>
-				}
-			</div>
+						</details>
+					}
+				</div>
+			}
 		}
 	</div>
 }

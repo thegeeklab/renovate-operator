@@ -112,6 +112,37 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	ctx := r.Context()
 	opts := getOptionsFromRequest(r)
+	searchQuery := opts.Search
+
+	if searchQuery != "" {
+		repos, err := h.dataFactory.GetGitRepos(ctx, opts)
+		if err != nil {
+			http.Error(w, "Failed to search repositories", http.StatusInternalServerError)
+
+			return
+		}
+
+		repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
+
+		var viewRepos []views.GitRepoInfo
+		for _, repo := range repos {
+			viewRepos = append(viewRepos, views.GitRepoInfo{
+				Name:               repo.Name,
+				FullName:           repo.FullName,
+				Namespace:          repo.Namespace,
+				RenovatorName:      repo.RenovatorName,
+				WebhookID:          repo.WebhookID,
+				LastRenovateAt:     repo.LastRenovateAt,
+				LastRenovateStatus: repo.LastRenovateStatus,
+				CreatedAt:          repo.CreatedAt,
+			})
+		}
+
+		w.Header().Set("Content-Type", "text/html")
+		h.render(w, r, views.RenovatorList(nil, searchQuery, viewRepos))
+
+		return
+	}
 
 	renovators, err := h.dataFactory.GetRenovators(ctx, opts)
 	if err != nil {
@@ -154,7 +185,7 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	h.render(w, r, views.RenovatorList(viewsList))
+	h.render(w, r, views.RenovatorList(viewsList, searchQuery, nil))
 }
 
 func (h *WebHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
@@ -193,6 +224,7 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 			Name:               repo.Name,
 			FullName:           repo.FullName,
 			Namespace:          repo.Namespace,
+			RenovatorName:      repo.RenovatorName,
 			WebhookID:          repo.WebhookID,
 			LastRenovateAt:     repo.LastRenovateAt,
 			LastRenovateStatus: repo.LastRenovateStatus,

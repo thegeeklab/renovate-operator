@@ -33,6 +33,7 @@ type GitRepoInfo struct {
 	Name               string    `json:"name"`
 	FullName           string    `json:"fullName"`
 	Namespace          string    `json:"namespace"`
+	RenovatorName      string    `json:"renovatorName"`
 	WebhookID          string    `json:"webhookId"`
 	LastRenovateAt     time.Time `json:"lastRenovateAt"`
 	LastRenovateStatus string    `json:"lastRenovateStatus"`
@@ -94,6 +95,7 @@ func getOptionsFromRequest(r *http.Request) ListOptions {
 		Renovator: q.Get("renovator"),
 		SortBy:    q.Get("sort"),
 		Order:     q.Get("order"),
+		Search:    q.Get("search"),
 	}
 }
 

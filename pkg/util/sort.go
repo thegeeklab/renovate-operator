@@ -24,16 +24,24 @@ const (
 	SortByName SortBy = "name"
 	// SortByDate sorts by time comparison.
 	SortByDate SortBy = "date"
+	// SortByLastUpdate sorts by last update time comparison.
+	SortByLastUpdate SortBy = "last_update"
 )
 
 // SortItems sorts a slice in-place by name or date fields using accessor functions.
-func SortItems[T any](items []T, sortBy SortBy, order SortOrder, nameFn func(T) string, dateFn func(T) time.Time) {
+func SortItems[T any](items []T, sortBy SortBy, order SortOrder, nameFn func(T) string, dateFns ...func(T) time.Time) {
 	slices.SortFunc(items, func(a, b T) int {
 		var result int
 
 		switch sortBy {
 		case SortByDate:
-			result = dateFn(a).Compare(dateFn(b))
+			result = dateFns[0](a).Compare(dateFns[0](b))
+		case SortByLastUpdate:
+			if len(dateFns) > 1 {
+				result = dateFns[1](a).Compare(dateFns[1](b))
+			} else {
+				result = dateFns[0](a).Compare(dateFns[0](b))
+			}
 		default:
 			result = cmp.Compare(nameFn(a), nameFn(b))
 		}

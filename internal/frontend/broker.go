@@ -88,6 +88,12 @@ func (b *SSEBroker) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	if err := http.NewResponseController(w).SetWriteDeadline(time.Time{}); err != nil {
+		http.Error(w, "Failed to configure SSE stream", http.StatusInternalServerError)
+
+		return
+	}
+
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "event: connected\ndata: ok\n\n")
 	fmt.Fprint(w, ": heartbeat\n\n")
