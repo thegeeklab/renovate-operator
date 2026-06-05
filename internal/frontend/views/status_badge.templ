@@ -1,0 +1,27 @@
+package views
+
+func getStatusBadgeClass(status string) string {
+	switch status {
+	case "Succeeded":
+		return "inline-flex items-center rounded-full bg-green-50 px-2 py-1 text-xs font-medium text-green-700 ring-1 ring-inset ring-green-600/20"
+	case "Running":
+		return "inline-flex items-center rounded-full bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"
+	case "Failed":
+		return "inline-flex items-center rounded-full bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/10"
+	default:
+		return "inline-flex items-center rounded-full bg-gray-50 px-2 py-1 text-xs font-medium text-gray-600 ring-1 ring-inset ring-gray-500/10"
+	}
+}
+
+func getStatusBadgeLabel(status string) string {
+	switch status {
+	case "Succeeded", "Running", "Failed":
+		return status
+	default:
+		return "Unknown"
+	}
+}
+
+templ statusBadge(status string) {
+	<span class={ getStatusBadgeClass(status) }>{ getStatusBadgeLabel(status) }</span>
+}

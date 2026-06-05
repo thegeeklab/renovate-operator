@@ -16,6 +16,8 @@ import (
 
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/auth"
+	auth_gitea "github.com/thegeeklab/renovate-operator/internal/auth/gitea"
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
 	"github.com/thegeeklab/renovate-operator/internal/controller/gitrepo"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
@@ -47,8 +49,10 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	errWebhookTimeout = errors.New("timeout waiting for webhook")
-	errFlagRequired   = errors.New("missing required flag")
+	errWebhookTimeout      = errors.New("timeout waiting for webhook")
+	errFlagRequired        = errors.New("missing required flag")
+	errIncompleteProvider  = errors.New("incomplete OIDC provider configuration")
+	errUnknownProviderType = errors.New("unknown OIDC provider type")
 )
 
 const (
@@ -92,6 +96,7 @@ type Config struct {
 	FrontendAddr         string
 	ReceiverAddr         string
 	ExternalURL          string
+	SecureCookies        bool
 }
 
 func main() {
@@ -110,6 +115,12 @@ func main() {
 	}
 
 	sseBroker := frontend.NewSSEBroker()
+
+	authManager, err := setupAuth(cfg.SecureCookies)
+	if err != nil {
+		setupLog.Error(err, "Unable to initialize authentication")
+		os.Exit(1)
+	}
 
 	if err := setupControllers(mgr, cfg, sseBroker); err != nil {
 		setupLog.Error(err, "Unable to setup controllers")
@@ -133,7 +144,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := setupHTTPServers(mgr, cfg, clientset, sseBroker); err != nil {
+	if err := setupHTTPServers(mgr, cfg, clientset, sseBroker, authManager); err != nil {
 		setupLog.Error(err, "Unable to setup auxiliary servers")
 		os.Exit(1)
 	}
@@ -174,6 +185,8 @@ func parseFlags() Config {
 		"The address the event receiver endpoint binds to.")
 	flag.StringVar(&cfg.ExternalURL, "external-url", "",
 		"The public base URL of the operator (e.g., https://operator.example.com). Required for webhooks.")
+	flag.BoolVar(&cfg.SecureCookies, "secure-cookies", true,
+		"Force Secure attribute on auth cookies. Set to false for localhost-only development.")
 
 	opts := zap.Options{
 		Development: false,
@@ -381,19 +394,24 @@ func setupWebhooks(mgr manager.Manager, cfg Config) error {
 
 // setupHTTPServers registers the web frontend and event receiver HTTP servers.
 func setupHTTPServers(
-	mgr manager.Manager, cfg Config, clientset kubernetes.Interface, sseBroker *frontend.SSEBroker,
+	mgr manager.Manager,
+	cfg Config,
+	clientset kubernetes.Interface,
+	sseBroker *frontend.SSEBroker,
+	authManager *auth.Manager,
 ) error {
-	// Setup web frontend server if enabled
 	if cfg.FrontendAddr != "0" {
 		frontendConfig := frontend.DefaultServerConfig()
 		frontendConfig.Addr = cfg.FrontendAddr
 		frontendConfig.DevMode = os.Getenv("NODE_ENV") == "development"
+		frontendConfig.SecureCookies = cfg.SecureCookies
 
 		frontendServer := frontend.NewServer(
 			frontendConfig,
 			mgr.GetClient(),
 			clientset,
 			sseBroker,
+			authManager,
 		)
 
 		setupLog.Info("Adding HTTP server to manager", "server", "frontend", "addr", cfg.FrontendAddr)
@@ -503,4 +521,90 @@ func buildReceiverFactory() receiver.ReceiverFactory {
 			return nil
 		}
 	}
+}
+
+// setupAuth initializes OIDC authentication providers from environment variables.
+// Environment variables follow the pattern:
+// OIDC_PROVIDERS=<name1>,<name2> - comma-separated list of provider names
+// OIDC_<NAME>_TYPE=gitea - provider type
+// OIDC_<NAME>_ISSUER_URL=https://... - OIDC issuer URL
+// OIDC_<NAME>_CLIENT_ID=... - OAuth2 client ID
+// OIDC_<NAME>_CLIENT_SECRET=... - OAuth2 client secret
+// OIDC_<NAME>_REDIRECT_URL=https://... - OAuth2 callback URL
+// OIDC_<NAME>_FORGE_URL=https://... - Gitea API URL
+// OIDC_<NAME>_INSECURE=false - skip TLS verification
+// OIDC_SESSION_SECRET=... - session encryption key (required).
+func setupAuth(secureCookies bool) (*auth.Manager, error) {
+	manager, err := auth.NewManager(os.Getenv("OIDC_SESSION_SECRET"), secureCookies)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize session manager: %w", err)
+	}
+
+	providersEnv := os.Getenv("OIDC_PROVIDERS")
+	if providersEnv == "" {
+		setupLog.Info("OIDC authentication disabled: no providers configured")
+
+		return manager, nil
+	}
+
+	providerNames := strings.SplitSeq(providersEnv, ",")
+	for name := range providerNames {
+		name = strings.TrimSpace(name)
+		if name == "" {
+			continue
+		}
+
+		prefix := "OIDC_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
+
+		providerType := os.Getenv(prefix + "_TYPE")
+		issuerURL := os.Getenv(prefix + "_ISSUER_URL")
+		clientID := os.Getenv(prefix + "_CLIENT_ID")
+		clientSecret := os.Getenv(prefix + "_CLIENT_SECRET")
+		redirectURL := os.Getenv(prefix + "_REDIRECT_URL")
+		forgeURL := os.Getenv(prefix + "_FORGE_URL")
+		authURL := os.Getenv(prefix + "_AUTH_URL")
+		insecure := os.Getenv(prefix+"_INSECURE") == "true"
+
+		if providerType == "" || issuerURL == "" || clientID == "" || clientSecret == "" {
+			return nil, fmt.Errorf("%w: %s", errIncompleteProvider, name)
+		}
+
+		cfg := auth.ProviderConfig{
+			Name:         name,
+			Type:         providerType,
+			IssuerURL:    issuerURL,
+			ClientID:     clientID,
+			ClientSecret: clientSecret,
+			RedirectURL:  redirectURL,
+			ForgeURL:     forgeURL,
+			AuthURL:      authURL,
+			Insecure:     insecure,
+		}
+
+		var provider auth.AuthProvider
+
+		var err error
+
+		switch providerType {
+		case auth.ProviderTypeGitea:
+			provider, err = auth_gitea.NewGiteaProvider(cfg)
+		default:
+			return nil, fmt.Errorf("%w: %s (%s)", errUnknownProviderType, providerType, name)
+		}
+
+		if err != nil {
+			return nil, fmt.Errorf("failed to initialize OIDC provider %s: %w", name, err)
+		}
+
+		manager.Register(provider)
+		setupLog.Info("Registered OIDC provider", "name", name, "type", providerType)
+	}
+
+	if !manager.IsEnabled() {
+		setupLog.Info("OIDC authentication disabled: no valid providers")
+	} else {
+		setupLog.Info("OIDC authentication enabled", "providers", len(manager.List()))
+	}
+
+	return manager, nil
 }

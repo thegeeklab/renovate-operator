@@ -1,6 +1,6 @@
 package views
 
-templ Layout(styles []string, scripts []string, content templ.Component) {
+templ Layout(styles []string, scripts []string, auth AuthInfo, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang="en" class="h-full bg-gray-100">
 		<head>
@@ -19,25 +19,52 @@ templ Layout(styles []string, scripts []string, content templ.Component) {
 				<script type="module" src={ script }></script>
 			}
 		</head>
-		<body class="h-full flex flex-col" hx-boost="true" hx-ext="sse" sse-connect="/events">
-			<nav class="bg-gray-800 shrink-0">
-				<div class="w-full px-4 sm:px-6 lg:px-8">
-					<div class="flex h-16 items-center justify-between">
-						<div class="flex items-center">
-							<div class="flex-shrink-0">
-								<a href="/" class="text-white font-bold text-xl">Renovate Operator</a>
-							</div>
-						</div>
+		if auth.Enabled && !auth.Authenticated {
+			<body class="h-full flex flex-col" hx-boost="true">
+				@NavBar(auth)
+				@MainContent(content)
+			</body>
+		} else {
+			<body class="h-full flex flex-col" hx-boost="true" hx-ext="sse" sse-connect="/events">
+				@NavBar(auth)
+				@MainContent(content)
+			</body>
+		}
+	</html>
+}
+
+templ NavBar(auth AuthInfo) {
+	<nav class="bg-gray-800 shrink-0">
+		<div class="w-full px-4 sm:px-6 lg:px-8">
+			<div class="flex h-16 items-center justify-between">
+				<div class="flex items-center">
+					<div class="flex-shrink-0">
+						<a href="/" class="text-white font-bold text-xl">Renovate Operator</a>
 					</div>
 				</div>
-			</nav>
-			<main class="flex-1 overflow-hidden">
-				<div id="dashboard-content" class="h-full w-full">
-					if content != nil {
-						@content
-					}
-				</div>
-			</main>
-		</body>
-	</html>
+				if auth.Enabled && auth.Authenticated {
+					<div class="flex items-center gap-4">
+						<div class="flex items-center gap-2">
+							<span class="text-gray-300 text-sm">{ auth.Name }</span>
+							<span class="text-gray-500 text-xs">({ auth.Provider })</span>
+							<form method="POST" action="/auth/logout" class="inline">
+								<input type="hidden" name="csrf_token" value={ auth.CSRFToken }/>
+								<button type="submit" class="text-gray-300 hover:text-white text-sm bg-transparent border-none p-0 cursor-pointer">Logout</button>
+							</form>
+						</div>
+					</div>
+				}
+			</div>
+		</div>
+	</nav>
+}
+
+templ MainContent(content templ.Component) {
+	<main class="flex-1 overflow-hidden">
+		<div id="dashboard-content" class="h-full w-full">
+			if content != nil {
+				@content
+			}
+		</div>
+	</main>
 }

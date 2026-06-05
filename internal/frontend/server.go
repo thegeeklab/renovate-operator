@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/gorilla/mux"
+	"github.com/thegeeklab/renovate-operator/internal/auth"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -30,11 +31,12 @@ const (
 
 // ServerConfig holds configuration for the HTTP server.
 type ServerConfig struct {
-	Addr         string
-	ReadTimeout  time.Duration
-	WriteTimeout time.Duration
-	IdleTimeout  time.Duration
-	DevMode      bool
+	Addr          string
+	ReadTimeout   time.Duration
+	WriteTimeout  time.Duration
+	IdleTimeout   time.Duration
+	DevMode       bool
+	SecureCookies bool
 }
 
 // assetManifest is used internally to unmarshal the bundler's build output.
@@ -56,19 +58,27 @@ func DefaultServerConfig() ServerConfig {
 
 // Server manages the HTTP server.
 type Server struct {
-	config           ServerConfig
-	assets           FrontendAssets
-	router           *mux.Router
-	server           *http.Server
-	apiHandler       *APIHandler
-	dashboardHandler *WebHandler
+	config      ServerConfig
+	assets      FrontendAssets
+	router      *mux.Router
+	server      *http.Server
+	apiHandler  *APIHandler
+	webHandler  *WebHandler
+	authManager *auth.Manager
 }
 
 // NewServer creates a new HTTP server instance.
-func NewServer(config ServerConfig, client client.Client, clientset kubernetes.Interface, broker *SSEBroker) *Server {
+func NewServer(
+	config ServerConfig,
+	client client.Client,
+	clientset kubernetes.Interface,
+	broker *SSEBroker,
+	authManager *auth.Manager,
+) *Server {
 	s := &Server{
-		config: config,
-		router: mux.NewRouter(),
+		config:      config,
+		router:      mux.NewRouter(),
+		authManager: authManager,
 	}
 
 	if err := s.loadFrontendAssets(); err != nil {
@@ -77,11 +87,15 @@ func NewServer(config ServerConfig, client client.Client, clientset kubernetes.I
 		frontendLog.Info("Frontend assets loaded", "devMode", s.config.DevMode)
 	}
 
-	s.apiHandler = NewAPIHandler(client, clientset)
-	s.dashboardHandler = NewWebHandler(client, clientset, broker, s.assets)
+	s.apiHandler = NewAPIHandler(client, clientset, authManager)
+	s.webHandler = NewWebHandler(client, clientset, broker, s.assets, authManager)
 
 	s.apiHandler.RegisterRoutes(s.router)
-	s.dashboardHandler.RegisterRoutes(s.router)
+	s.webHandler.RegisterRoutes(s.router)
+
+	if authManager != nil && authManager.IsEnabled() {
+		s.registerAuthRoutes()
+	}
 
 	if !s.config.DevMode {
 		staticDir := "internal/frontend/static/dist"
@@ -89,15 +103,27 @@ func NewServer(config ServerConfig, client client.Client, clientset kubernetes.I
 		s.router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
 	}
 
+	var handler http.Handler = s.router
+	if authManager != nil && authManager.IsEnabled() {
+		handler = auth.Middleware(authManager)(s.router)
+	}
+
 	s.server = &http.Server{
 		Addr:         config.Addr,
-		Handler:      s.router,
+		Handler:      handler,
 		ReadTimeout:  config.ReadTimeout,
 		WriteTimeout: config.WriteTimeout,
 		IdleTimeout:  config.IdleTimeout,
 	}
 
 	return s
+}
+
+func (s *Server) registerAuthRoutes() {
+	s.router.HandleFunc("/auth/login", auth.HandleLogin(s.authManager, s.config.SecureCookies)).Methods("GET")
+	s.router.HandleFunc("/auth/callback", auth.HandleCallback(s.authManager, s.config.SecureCookies)).Methods("GET")
+	s.router.HandleFunc("/auth/logout", auth.HandleLogout(s.authManager)).Methods("POST")
+	s.router.HandleFunc("/api/v1/auth/status", auth.HandleAuthStatus(s.authManager)).Methods("GET")
 }
 
 // loadFrontendAssets populates the server's FrontendAssets struct based on the configuration.

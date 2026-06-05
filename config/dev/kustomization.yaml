@@ -26,7 +26,8 @@ helmCharts:
             DB_TYPE: sqlite3
       service:
         http:
-          type: LoadBalancer
+          type: NodePort
+          nodePort: 30300
           port: 3000
       strategy:
         type: Recreate
@@ -42,6 +43,10 @@ helmCharts:
         enabled: false
       valkey-cluster:
         enabled: false
+      serviceAccount:
+        create: false
+        name: gitea-bootstrap
+        automountServiceAccountToken: true
       postExtraInitContainers:
         - name: bootstrap
           image: docker.io/gitea/gitea:latest
@@ -58,7 +63,7 @@ helmCharts:
                 export GITEA_TOKEN=$(su-exec git gitea admin user generate-access-token -u renovate --scopes write:organization,write:repository,write:admin,write:user,write:issue --raw)
                 GITEA_OAUTH_APP=$(curl -s -X 'POST' 'http://localhost:3000/api/v1/user/applications/oauth2' \
                   -H 'accept: application/json' -H 'Content-Type: application/json' -H "Authorization: token ${GITEA_TOKEN}" \
-                  -d '{ "name": "renovate-operator", "confidential_client": true, "redirect_uris": [ "http://renovate-operator-receiver-service.renovate-system.svc.cluster.local:8083/oauth/callback" ] }')
+                  -d '{ "name": "renovate-operator", "confidential_client": true, "redirect_uris": [ "http://localhost:8082/auth/callback" ] }')
                 curl -s -X 'POST' \
                   'http://localhost:3000/api/v1/orgs' \
                   -H 'accept: application/json' \
@@ -71,6 +76,38 @@ helmCharts:
                 touch /data/gitea/INIT
               else
                 export GITEA_TOKEN=$(cat /data/gitea/gitea_token)
+              fi
+
+              SA_TOKEN=$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)
+              K8S_API="https://kubernetes.default.svc"
+              TARGET_NAMESPACE="renovate-system"
+              SECRET_DATA=$(jq -n \
+                --arg cid "$(cat /data/gitea/client_id)" \
+                --arg csec "$(cat /data/gitea/client_secret)" \
+                --arg gtok "$(cat /data/gitea/gitea_token)" \
+                '{"apiVersion":"v1","kind":"Secret","metadata":{"name":"gitea-oidc-credentials","namespace":"renovate-system"},"type":"Opaque","stringData":{"client-id":$cid,"client-secret":$csec}}')
+              http_code=$(curl -s -o /dev/null -w "%{http_code}" -X GET "$K8S_API/api/v1/namespaces/$TARGET_NAMESPACE/secrets/gitea-oidc-credentials" \
+                -H "Authorization: Bearer $SA_TOKEN" -H "Content-Type: application/json" --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt)
+              if [ "$http_code" = "200" ]; then
+                echo "Updating existing gitea-oidc-credentials secret in $TARGET_NAMESPACE..."
+                update_code=$(curl -s -o /dev/null -w "%{http_code}" -X PUT "$K8S_API/api/v1/namespaces/$TARGET_NAMESPACE/secrets/gitea-oidc-credentials" \
+                  -H "Authorization: Bearer $SA_TOKEN" -H "Content-Type: application/json" --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+                  -d "$SECRET_DATA")
+                if [ "$update_code" -lt 200 ] || [ "$update_code" -ge 300 ]; then
+                  echo "ERROR: Failed to update gitea-oidc-credentials secret (HTTP $update_code)"
+                  exit 1
+                fi
+                echo "Successfully updated gitea-oidc-credentials secret"
+              else
+                echo "Creating gitea-oidc-credentials secret in $TARGET_NAMESPACE..."
+                create_code=$(curl -s -o /dev/null -w "%{http_code}" -X POST "$K8S_API/api/v1/namespaces/$TARGET_NAMESPACE/secrets" \
+                  -H "Authorization: Bearer $SA_TOKEN" -H "Content-Type: application/json" --cacert /var/run/secrets/kubernetes.io/serviceaccount/ca.crt \
+                  -d "$SECRET_DATA")
+                if [ "$create_code" -lt 200 ] || [ "$create_code" -ge 300 ]; then
+                  echo "ERROR: Failed to create gitea-oidc-credentials secret (HTTP $create_code)"
+                  exit 1
+                fi
+                echo "Successfully created gitea-oidc-credentials secret"
               fi
 
               REPOS=( "12260" "27806" )

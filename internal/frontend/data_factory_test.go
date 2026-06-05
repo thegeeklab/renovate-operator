@@ -105,7 +105,7 @@ var _ = Describe("DataFactory", func() {
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
 		fakeClientset := kubernetesfake.NewClientset()
 
-		dataFactory = NewDataFactory(fakeClient, fakeClientset)
+		dataFactory = NewDataFactory(fakeClient, fakeClientset, nil)
 	})
 
 	Describe("GetRenovators", func() {

@@ -5,5 +5,12 @@ name: renovate-operator
 nodes:
   - role: control-plane
     image: kindest/node:v1.35.0
+    extraPortMappings:
+      - containerPort: 30882
+        hostPort: 8082
+        protocol: TCP
+      - containerPort: 30300
+        hostPort: 3000
+        protocol: TCP
   - role: worker
     image: kindest/node:v1.35.0
