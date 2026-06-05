@@ -49,7 +49,7 @@ templ NavBar(auth AuthInfo) {
 							<span class="text-gray-500 text-xs">({ auth.Provider })</span>
 							<form method="POST" action="/auth/logout" class="inline">
 								<input type="hidden" name="csrf_token" value={ auth.CSRFToken }/>
-								<button type="submit" class="text-gray-300 hover:text-white text-sm bg-transparent border-none p-0 cursor-pointer">Logout</button>
+								<button type="submit" class={ btnLink() }>Logout</button>
 							</form>
 						</div>
 					</div>
@@ -61,7 +61,7 @@ templ NavBar(auth AuthInfo) {
 
 templ MainContent(content templ.Component) {
 	<main class="flex-1 overflow-hidden">
-		<div id="dashboard-content" class="h-full w-full">
+		<div id="dashboard-content" class="h-full w-full" aria-live="polite" aria-atomic="false">
 			if content != nil {
 				@content
 			}

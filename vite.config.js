@@ -8,7 +8,6 @@ export default defineConfig({
       content: [
         "./internal/frontend/views/**/*.templ",
         "./internal/frontend/views/**/*.go",
-        "./cmd/**/*.go",
       ],
     }),
   ],

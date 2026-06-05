@@ -39,14 +39,14 @@ templ GitRepoList(repos []GitRepoInfo) {
 							<p class="mt-1 flex items-center gap-3 text-xs text-gray-500">
 								<span class="group/created relative z-10">
 									Created: { humanize.Time(r.CreatedAt) }
-									<span class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 opacity-0 transition-opacity group-hover/created:opacity-100">
+									<span class="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 opacity-0 transition-opacity group-hover/created:opacity-100">
 										{ r.CreatedAt.Format("Jan 02, 2006 15:04") }
 									</span>
 								</span>
 								if !r.LastRenovateAt.IsZero() {
 									<span class="group/last-run relative z-10">
 										Last run: { humanize.Time(r.LastRenovateAt) }
-										<span class="pointer-events-none absolute bottom-full left-1/2 z-20 mb-1.5 -translate-x-1/2 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 opacity-0 transition-opacity group-hover/last-run:opacity-100">
+										<span class="pointer-events-none absolute bottom-full left-0 z-20 mb-1.5 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 opacity-0 transition-opacity group-hover/last-run:opacity-100">
 											{ r.LastRenovateAt.Format("Jan 02, 2006 15:04") }
 										</span>
 									</span>

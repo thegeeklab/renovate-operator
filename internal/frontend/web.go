@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"context"
 	"io"
 	"net/http"
 
@@ -43,6 +44,8 @@ func NewWebHandler(
 		authManager: authManager,
 	}
 }
+
+const maxLogReadSize = 2 * 1024 * 1024 // 2MB
 
 func (h *WebHandler) RegisterRoutes(router *mux.Router) {
 	router.Handle("/events", h.Broker).Methods("GET")
@@ -269,26 +272,18 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 	h.render(w, r, views.GitRepoView(data))
 }
 
-// HandleJobLogs fetches the log stream and renders it.
-func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
+func (h *WebHandler) requireAuth(w http.ResponseWriter, r *http.Request) bool {
 	authInfo := h.buildAuthInfo(r)
 	if h.authManager != nil && h.authManager.IsEnabled() && !authInfo.Authenticated {
 		http.Redirect(w, r, "/login", http.StatusFound)
 
-		return
+		return false
 	}
 
-	ctx := r.Context()
-	namespace := r.URL.Query().Get("namespace")
-	runner := r.URL.Query().Get("runner")
-	job := r.URL.Query().Get("job")
+	return true
+}
 
-	if namespace == "" || runner == "" || job == "" {
-		http.Error(w, "Missing required parameters", http.StatusBadRequest)
-
-		return
-	}
-
+func (h *WebHandler) buildJobLogData(ctx context.Context, namespace, runner, job string) views.JobLogData {
 	data := views.JobLogData{
 		JobName:   job,
 		Namespace: namespace,
@@ -313,7 +308,7 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 	} else {
 		defer stream.Close()
 
-		content, ioErr := io.ReadAll(stream)
+		content, ioErr := io.ReadAll(io.LimitReader(stream, maxLogReadSize))
 		if ioErr != nil {
 			data.Error = "Failed to read log stream from pod."
 		} else {
@@ -321,7 +316,29 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate, max-age=0")
+	return data
+}
+
+// HandleJobLogs fetches the log stream and renders it.
+func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAuth(w, r) {
+		return
+	}
+
+	ctx := r.Context()
+	namespace := r.URL.Query().Get("namespace")
+	runner := r.URL.Query().Get("runner")
+	job := r.URL.Query().Get("job")
+
+	if namespace == "" || runner == "" || job == "" {
+		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+
+		return
+	}
+
+	data := h.buildJobLogData(ctx, namespace, runner, job)
+
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/html")
 	_ = views.JobLogs(data).Render(r.Context(), w)
 }
