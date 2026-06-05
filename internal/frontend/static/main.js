@@ -80,37 +80,23 @@ Alpine.start()
 const scrollStates = new Map()
 
 document.addEventListener("htmx:beforeSwap", (e) => {
-  const oldScrollBox =
-    e.detail.target.querySelector('[x-ref="scrollBox"]') ||
-    (e.detail.target.getAttribute("x-ref") === "scrollBox" ? e.detail.target : null)
-
-  if (oldScrollBox && oldScrollBox.id) {
-    scrollStates.set(oldScrollBox.id, oldScrollBox.scrollTop)
+  const { target } = e.detail
+  const scrollBox = target.querySelector('[x-ref="scrollBox"]')
+  if (scrollBox) {
+    scrollStates.set(scrollBox.id, scrollBox.scrollTop)
   }
 })
 
 document.addEventListener("htmx:afterSwap", (e) => {
-  if (!e.detail.target.id) {
-    return
-  }
-
-  const newScrollBox =
-    document.getElementById(e.detail.target.id)?.querySelector('[x-ref="scrollBox"]') ||
-    (e.detail.target.getAttribute("x-ref") === "scrollBox"
-      ? document.getElementById(e.detail.target.id)
-      : null)
-
-  if (newScrollBox && window.Alpine) {
-    window.Alpine.nextTick(() => {
-      const data = window.Alpine.$data(newScrollBox)
-
-      if (data && data.autoscroll && data.isRunning) {
-        newScrollBox.scrollTop = newScrollBox.scrollHeight
-      } else if (scrollStates.has(newScrollBox.id)) {
-        newScrollBox.scrollTop = scrollStates.get(newScrollBox.id)
-      }
-
-      scrollStates.delete(newScrollBox.id)
+  const { target } = e.detail
+  const scrollBox = target.querySelector('[x-ref="scrollBox"]')
+  if (scrollBox && scrollStates.has(scrollBox.id)) {
+    const saved = scrollStates.get(scrollBox.id)
+    // Use requestAnimationFrame to apply the scroll position before the browser paints,
+    // preventing the visual jump to the top.
+    requestAnimationFrame(() => {
+      scrollBox.scrollTop = saved
+      scrollStates.delete(scrollBox.id)
     })
   }
 })
