@@ -11,7 +11,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/gorilla/mux v1.8.1
 	github.com/maypok86/otter/v2 v2.3.0
-	github.com/netresearch/go-cron v0.14.0
+	github.com/netresearch/go-cron v0.15.0
 	github.com/onsi/ginkgo/v2 v2.29.0
 	github.com/onsi/gomega v1.41.0
 	github.com/open-policy-agent/cert-controller v0.16.0
