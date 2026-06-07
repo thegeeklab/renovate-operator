@@ -1,15 +1,12 @@
-import { defineConfig } from "vite";
-import { resolve } from "path";
-import tailwindcss from "@tailwindcss/vite";
+import { defineConfig } from "vite"
+import { resolve } from "path"
+import tailwindcss from "@tailwindcss/vite"
 
 export default defineConfig({
   plugins: [
     tailwindcss({
-      content: [
-        "./internal/frontend/views/**/*.templ",
-        "./internal/frontend/views/**/*.go",
-      ],
-    }),
+      content: ["./internal/frontend/view/**/*.templ", "./internal/frontend/view/**/*.go"]
+    })
   ],
   build: {
     outDir: "internal/frontend/static/dist",
@@ -20,11 +17,11 @@ export default defineConfig({
       output: {
         entryFileNames: "assets/[name]-[hash].js",
         chunkFileNames: "assets/[name]-[hash].js",
-        assetFileNames: "assets/[name]-[hash].[ext]",
-      },
-    },
+        assetFileNames: "assets/[name]-[hash].[ext]"
+      }
+    }
   },
   server: {
-    origin: "http://localhost:5173",
-  },
-});
+    origin: "http://localhost:5173"
+  }
+})

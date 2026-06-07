@@ -14,6 +14,7 @@ import (
 	"github.com/maypok86/otter/v2"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
 	"golang.org/x/sync/singleflight"
 	batchv1 "k8s.io/api/batch/v1"
@@ -155,8 +156,11 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 	}
 
 	renovatorMap := make(map[string]string)
+
 	var renList renovatev1beta1.RenovatorList
-	if err := df.client.List(ctx, &renList); err == nil {
+	if err := df.client.List(ctx, &renList); err != nil {
+		frontendLog.Error(err, "Failed to list renovators for name mapping")
+	} else {
 		for _, ren := range renList.Items {
 			renovatorMap[string(ren.UID)] = ren.Name
 		}
@@ -168,6 +172,7 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 		lastStatus, lastTime := getRenovateStatusFromConditions(&gitrepo)
 
 		renovatorUID := gitrepo.Labels[renovatev1beta1.LabelRenovator]
+
 		renovatorName := renovatorMap[renovatorUID]
 		if renovatorName == "" {
 			renovatorName = "Unknown"
@@ -214,20 +219,20 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 	return result, nil
 }
 
-func getRenovateStatusFromConditions(repo *renovatev1beta1.GitRepo) (string, time.Time) {
+func getRenovateStatusFromConditions(repo *renovatev1beta1.GitRepo) (viewmodel.Status, time.Time) {
 	var lastTime time.Time
 	if repo.Status.LastRenovateTime != nil {
 		lastTime = repo.Status.LastRenovateTime.Time
 	}
 
-	statusByType := map[string]string{
-		renovatev1beta1.GitRepoConditionRenovateRunning:   "Running",
-		renovatev1beta1.GitRepoConditionRenovateCompleted: "Succeeded",
-		renovatev1beta1.GitRepoConditionRenovateFailed:    "Failed",
+	statusByType := map[string]viewmodel.Status{
+		renovatev1beta1.GitRepoConditionRenovateRunning:   viewmodel.StatusRunning,
+		renovatev1beta1.GitRepoConditionRenovateCompleted: viewmodel.StatusSucceeded,
+		renovatev1beta1.GitRepoConditionRenovateFailed:    viewmodel.StatusFailed,
 	}
 
 	var (
-		activeStatus     string
+		activeStatus     viewmodel.Status
 		activeTransition time.Time
 	)
 
@@ -244,7 +249,7 @@ func getRenovateStatusFromConditions(repo *renovatev1beta1.GitRepo) (string, tim
 	}
 
 	if activeStatus == "" {
-		return "Unknown", lastTime
+		return viewmodel.StatusUnknown, lastTime
 	}
 
 	return activeStatus, lastTime
@@ -340,19 +345,19 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts
 	var result []JobInfo
 
 	for _, job := range jobList.Items {
-		status := "Running"
+		status := viewmodel.StatusRunning
 
 		if job.Status.CompletionTime != nil {
-			status = "Succeeded"
+			status = viewmodel.StatusSucceeded
 		}
 
 		for _, cond := range job.Status.Conditions {
 			if cond.Type == batchv1.JobComplete && cond.Status == "True" {
-				status = "Succeeded"
+				status = viewmodel.StatusSucceeded
 			}
 
 			if cond.Type == batchv1.JobFailed && cond.Status == "True" {
-				status = "Failed"
+				status = viewmodel.StatusFailed
 			}
 		}
 

@@ -85,6 +85,39 @@ Alpine.data("logViewer", function (namespace, runner, jobName, isRunning) {
         logViewer.innerHTML = ""
       }
       window.dispatchEvent(new CustomEvent("clear-selected-job"))
+    },
+
+    async downloadLog(url, filename) {
+      try {
+        const response = await fetch(url)
+        if (!response.ok) {
+          throw new Error("Failed to fetch log")
+        }
+        const blob = await response.blob()
+
+        if ("showSaveFilePicker" in window) {
+          const handle = await window.showSaveFilePicker({
+            suggestedName: filename,
+            types: [{ description: "Log file", accept: { "text/plain": [".log"] } }]
+          })
+          const writable = await handle.createWritable()
+          await writable.write(blob)
+          await writable.close()
+        } else {
+          const objectUrl = URL.createObjectURL(blob)
+          const a = document.createElement("a")
+          a.href = objectUrl
+          a.download = filename
+          document.body.appendChild(a)
+          a.click()
+          document.body.removeChild(a)
+          URL.revokeObjectURL(objectUrl)
+        }
+      } catch (err) {
+        if (err.name !== "AbortError") {
+          console.error("Download failed:", err)
+        }
+      }
     }
   }
 })
@@ -107,7 +140,7 @@ document.addEventListener("htmx:beforeSwap", (e) => {
     if (searchInput && document.activeElement === searchInput) {
       savedSearchSelection = {
         start: searchInput.selectionStart,
-        end: searchInput.selectionEnd,
+        end: searchInput.selectionEnd
       }
     } else {
       savedSearchSelection = null

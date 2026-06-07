@@ -1,17 +1,21 @@
-package views
+package view
 
-import "fmt"
+import (
+	"github.com/thegeeklab/renovate-operator/internal/frontend/sanitize"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+)
 
-templ RenovatorList(views []WebView, searchQuery string, searchResults []GitRepoInfo) {
+templ RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults []viewmodel.GitRepoInfo) {
 	<div class="bg-white shadow mb-6 shrink-0">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 			<h2 class="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h2>
 			<div class="relative w-full sm:w-64">
 				<input
-					type="text"
+					type="search"
 					name="search"
 					value={ searchQuery }
 					placeholder="Search all repositories..."
+					aria-label="Search all repositories"
 					hx-get="/"
 					hx-push-url="true"
 					hx-target="#dashboard-content"
@@ -30,6 +34,7 @@ templ RenovatorList(views []WebView, searchQuery string, searchResults []GitRepo
 						hx-push-url="true"
 						hx-target="#dashboard-content"
 						hx-swap="innerHTML"
+						aria-label="Clear search"
 						class="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600 cursor-pointer"
 					>
 						@IconXMark("h-4 w-4")
@@ -65,7 +70,7 @@ templ RenovatorList(views []WebView, searchQuery string, searchResults []GitRepo
 					for _, v := range views {
 						<details
 							x-cloak
-							x-data={ fmt.Sprintf("{ open: $persist(false).as('renovator-%s') }", v.Name) }
+							x-data={ sanitize.RenovatorOpenXData(v.Name) }
 							:open="open"
 							@toggle="open = $el.open"
 							class="group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200"
@@ -88,7 +93,7 @@ templ RenovatorList(views []WebView, searchQuery string, searchResults []GitRepo
 										<div class="flex flex-col items-end sm:items-center justify-center gap-1">
 											<span class="text-xs text-gray-500">Repos</span>
 											<span class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
-												{ fmt.Sprint(v.GitRepoCount) }
+												{ v.GitRepoCount }
 											</span>
 										</div>
 										<div class="hidden sm:flex flex-col items-end justify-center gap-1">
@@ -102,12 +107,56 @@ templ RenovatorList(views []WebView, searchQuery string, searchResults []GitRepo
 									</div>
 								</div>
 							</summary>
-							<div class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6">
+							<div
+								class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6"
+								x-data={ sanitize.RepoSortXData(v.Name) }
+							>
+								<div class="flex items-center justify-end mb-4 gap-2">
+									<label for={ "sort-" + v.Name } class="sr-only">Sort repositories</label>
+									<div class="relative">
+										<select
+											id={ "sort-" + v.Name }
+											name="sort"
+											x-model="sort"
+											aria-label="Sort repositories"
+											class="appearance-none rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-700 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer"
+											@change="$nextTick(() => $refs.repoList.dispatchEvent(new Event('sort-changed')))"
+										>
+											<option value="name">{ string(viewmodel.GitRepoFieldName) }</option>
+											<option value="date">{ string(viewmodel.GitRepoFieldCreated) }</option>
+											<option value="last_update">{ string(viewmodel.GitRepoFieldLastRun) }</option>
+										</select>
+										<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+											@IconChevronUpDown("h-4 w-4 text-gray-400")
+										</div>
+									</div>
+									<span
+										class="tooltip"
+										@mouseenter="const r = $el.getBoundingClientRect(); $el.style.setProperty('--tt-x', (r.left + r.width/2) + 'px'); $el.style.setProperty('--tt-y', (r.top - 4) + 'px')"
+									>
+										<button
+											type="button"
+											x-cloak
+											@click="order = order === 'asc' ? 'desc' : 'asc'; $nextTick(() => $refs.repoList.dispatchEvent(new Event('sort-changed')))"
+											:aria-label="order === 'asc' ? 'Switch to descending order' : 'Switch to ascending order'"
+											class="inline-flex items-center justify-center rounded-md py-1.5 px-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer transition-colors self-stretch"
+										>
+											<span x-show="order === 'asc'" style="display:none">
+												@IconBarsArrowDown("h-4 w-4")
+											</span>
+											<span x-show="order === 'desc'" style="display:none">
+												@IconBarsArrowUp("h-4 w-4")
+											</span>
+										</button>
+										<span class="tooltip-text pointer-events-none -translate-x-1/2 -translate-y-full z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100" x-text="order === 'asc' ? 'Sort ascending' : 'Sort descending'"></span>
+									</span>
+								</div>
 								<div
 									x-ref="repoList"
-									hx-get={ fmt.Sprintf("/gitrepos?namespace=%s&renovator=%s&sort=name&order=asc", v.Namespace, v.Renovator) }
-									hx-trigger="revealed once, sse:job-updated"
+									hx-get={ sanitize.GitreposURL(v.Namespace, v.Renovator) }
+									hx-trigger="revealed once, sse:job-updated, sort-changed"
 									hx-swap="innerHTML"
+									:hx-vals="JSON.stringify({ sort: sort, order: order })"
 								>
 									<div class="flex justify-center py-4">
 										@IconSpinner("animate-spin h-5 w-5 text-indigo-600")

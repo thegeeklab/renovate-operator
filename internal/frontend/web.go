@@ -7,13 +7,18 @@ import (
 
 	"github.com/a-h/templ"
 	"github.com/gorilla/mux"
-	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/auth"
-	"github.com/thegeeklab/renovate-operator/internal/frontend/views"
+	"golang.org/x/sync/errgroup"
 	batchv1 "k8s.io/api/batch/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 )
 
 type FrontendAssets struct {
@@ -45,7 +50,10 @@ func NewWebHandler(
 	}
 }
 
-const maxLogReadSize = 2 * 1024 * 1024 // 2MB
+const (
+	maxLogReadSize                  = 2 * 1024 * 1024 // 2MB
+	maxConcurrentRenovatorSummaries = 10
+)
 
 func (h *WebHandler) RegisterRoutes(router *mux.Router) {
 	router.Handle("/events", h.Broker).Methods("GET")
@@ -55,6 +63,7 @@ func (h *WebHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/gitrepo", h.HandleGitRepoView).Methods("GET")
 	router.HandleFunc("/gitrepos", h.HandleGitReposPartial).Methods("GET")
 	router.HandleFunc("/joblogs", h.HandleJobLogs).Methods("GET")
+	router.HandleFunc("/joblogs/download", h.HandleJobLogsDownload).Methods("GET")
 }
 
 func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, component templ.Component) {
@@ -66,12 +75,12 @@ func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, component te
 	if isHxRequest && !isHxBoosted {
 		_ = component.Render(r.Context(), w)
 	} else {
-		_ = views.Layout(h.assets.Styles, h.assets.Scripts, authInfo, component).Render(r.Context(), w)
+		_ = view.Layout(h.assets.Styles, h.assets.Scripts, authInfo, component).Render(r.Context(), w)
 	}
 }
 
-func (h *WebHandler) buildAuthInfo(r *http.Request) views.AuthInfo {
-	info := views.AuthInfo{}
+func (h *WebHandler) buildAuthInfo(r *http.Request) viewmodel.AuthInfo {
+	info := viewmodel.AuthInfo{}
 
 	if h.authManager == nil || !h.authManager.IsEnabled() {
 		return info
@@ -80,7 +89,7 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) views.AuthInfo {
 	info.Enabled = true
 
 	for _, p := range h.authManager.List() {
-		info.Providers = append(info.Providers, views.AuthProviderInfo{
+		info.Providers = append(info.Providers, viewmodel.AuthProviderInfo{
 			Name: p.Name(),
 		})
 	}
@@ -102,11 +111,45 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) views.AuthInfo {
 	return info
 }
 
-func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
+// requireAuth aborts the response with a redirect to /login if auth is enabled
+// and the request is not authenticated. Returns true if the handler may proceed.
+func (h *WebHandler) requireAuth(w http.ResponseWriter, r *http.Request) bool {
 	authInfo := h.buildAuthInfo(r)
 	if h.authManager != nil && h.authManager.IsEnabled() && !authInfo.Authenticated {
 		http.Redirect(w, r, "/login", http.StatusFound)
 
+		return false
+	}
+
+	return true
+}
+
+// toViewGitRepoInfo converts an API-layer GitRepoInfo into a view-layer one.
+func toViewGitRepoInfo(r GitRepoInfo) viewmodel.GitRepoInfo {
+	return viewmodel.GitRepoInfo{
+		Name:               r.Name,
+		FullName:           r.FullName,
+		Namespace:          r.Namespace,
+		RenovatorName:      r.RenovatorName,
+		WebhookID:          r.WebhookID,
+		LastRenovateAt:     r.LastRenovateAt,
+		LastRenovateStatus: r.LastRenovateStatus,
+		CreatedAt:          r.CreatedAt,
+	}
+}
+
+func toViewJobInfo(j JobInfo) viewmodel.JobInfo {
+	return viewmodel.JobInfo{
+		Name:      j.Name,
+		Namespace: j.Namespace,
+		Runner:    j.Runner,
+		Status:    j.Status,
+		CreatedAt: j.CreatedAt,
+	}
+}
+
+func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAuth(w, r) {
 		return
 	}
 
@@ -117,6 +160,7 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 	if searchQuery != "" {
 		repos, err := h.dataFactory.GetGitRepos(ctx, opts)
 		if err != nil {
+			frontendLog.Error(err, "Failed to search repositories")
 			http.Error(w, "Failed to search repositories", http.StatusInternalServerError)
 
 			return
@@ -124,79 +168,124 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 		repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
-		var viewRepos []views.GitRepoInfo
+		viewRepos := make([]viewmodel.GitRepoInfo, 0, len(repos))
 		for _, repo := range repos {
-			viewRepos = append(viewRepos, views.GitRepoInfo{
-				Name:               repo.Name,
-				FullName:           repo.FullName,
-				Namespace:          repo.Namespace,
-				RenovatorName:      repo.RenovatorName,
-				WebhookID:          repo.WebhookID,
-				LastRenovateAt:     repo.LastRenovateAt,
-				LastRenovateStatus: repo.LastRenovateStatus,
-				CreatedAt:          repo.CreatedAt,
-			})
+			viewRepos = append(viewRepos, toViewGitRepoInfo(repo))
 		}
 
 		w.Header().Set("Content-Type", "text/html")
-		h.render(w, r, views.RenovatorList(nil, searchQuery, viewRepos))
+		h.render(w, r, view.RenovatorList(nil, searchQuery, viewRepos))
 
 		return
 	}
 
 	renovators, err := h.dataFactory.GetRenovators(ctx, opts)
 	if err != nil {
+		frontendLog.Error(err, "Failed to list renovators")
 		http.Error(w, "Failed to list renovators", http.StatusInternalServerError)
 
 		return
 	}
 
-	var viewsList []views.WebView
+	summaries := h.buildRenovatorSummaries(ctx, renovators, opts)
 
-	for _, ren := range renovators {
-		renOpts := opts
-		renOpts.Namespace = ren.Namespace
-		renOpts.Renovator = ren.UID
+	w.Header().Set("Content-Type", "text/html")
+	h.render(w, r, view.RenovatorList(summaries, searchQuery, nil))
+}
 
-		runners, _ := h.dataFactory.GetRunners(ctx, renOpts)
-		discoveries, _ := h.dataFactory.GetDiscoveries(ctx, renOpts)
-		repos, _ := h.dataFactory.GetGitRepos(ctx, renOpts)
+// buildRenovatorSummaries fetches the runner, discovery, and repo count for each
+// Renovator in parallel. Per-renovator fetches are independent of one another, and
+// within a single renovator the three queries are independent, so both axes are
+// fanned out. A failure in one query degrades to "-" placeholders for that
+// renovator rather than aborting the whole dashboard.
+func (h *WebHandler) buildRenovatorSummaries(
+	ctx context.Context,
+	renovators []RenovatorInfo,
+	opts ListOptions,
+) []viewmodel.WebView {
+	summaries := make([]viewmodel.WebView, len(renovators))
+	group, groupCtx := errgroup.WithContext(ctx)
+	group.SetLimit(maxConcurrentRenovatorSummaries)
 
-		repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
+	for i, ren := range renovators {
+		group.Go(func() error {
+			renOpts := opts
+			renOpts.Namespace = ren.Namespace
+			renOpts.Renovator = ren.UID
 
-		runnerName := "-"
-		if len(runners) > 0 {
-			runnerName = runners[0].Name
-		}
+			var (
+				runners     []RunnerInfo
+				discoveries []DiscoveryInfo
+				repos       []GitRepoInfo
+			)
 
-		discoveryName := "-"
-		if len(discoveries) > 0 {
-			discoveryName = discoveries[0].Name
-		}
+			innerGroup, innerCtx := errgroup.WithContext(groupCtx)
+			innerGroup.Go(func() error {
+				var err error
 
-		viewsList = append(viewsList, views.WebView{
-			Name:          ren.Name,
-			Namespace:     ren.Namespace,
-			Renovator:     ren.UID,
-			GitRepoCount:  len(repos),
-			RunnerName:    runnerName,
-			DiscoveryName: discoveryName,
+				runners, err = h.dataFactory.GetRunners(innerCtx, renOpts)
+
+				return err
+			})
+			innerGroup.Go(func() error {
+				var err error
+
+				discoveries, err = h.dataFactory.GetDiscoveries(innerCtx, renOpts)
+
+				return err
+			})
+			innerGroup.Go(func() error {
+				var err error
+
+				repos, err = h.dataFactory.GetGitRepos(innerCtx, renOpts)
+
+				return err
+			})
+
+			if err := innerGroup.Wait(); err != nil {
+				frontendLog.Error(err, "Failed to load renovator summary data",
+					"renovator", ren.Name, "namespace", ren.Namespace)
+			}
+
+			if repos != nil {
+				repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
+			}
+
+			summary := viewmodel.WebView{
+				Name:          ren.Name,
+				Namespace:     ren.Namespace,
+				Renovator:     ren.UID,
+				GitRepoCount:  len(repos),
+				RunnerName:    "-",
+				DiscoveryName: "-",
+			}
+			if len(runners) > 0 {
+				summary.RunnerName = runners[0].Name
+			}
+
+			if len(discoveries) > 0 {
+				summary.DiscoveryName = discoveries[0].Name
+			}
+
+			summaries[i] = summary
+
+			return nil
 		})
 	}
 
-	w.Header().Set("Content-Type", "text/html")
-	h.render(w, r, views.RenovatorList(viewsList, searchQuery, nil))
+	if err := group.Wait(); err != nil {
+		frontendLog.Error(err, "Unexpected error building renovator summaries")
+	}
+
+	return summaries
 }
 
 func (h *WebHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	h.render(w, r, views.Login(h.buildAuthInfo(r)))
+	h.render(w, r, view.Login(h.buildAuthInfo(r)))
 }
 
 func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Request) {
-	authInfo := h.buildAuthInfo(r)
-	if h.authManager != nil && h.authManager.IsEnabled() && !authInfo.Authenticated {
-		http.Redirect(w, r, "/login", http.StatusFound)
-
+	if !h.requireAuth(w, r) {
 		return
 	}
 
@@ -211,6 +300,7 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 
 	repos, err := h.dataFactory.GetGitRepos(ctx, opts)
 	if err != nil {
+		frontendLog.Error(err, "Failed to list git repos", "namespace", opts.Namespace)
 		http.Error(w, err.Error(), http.StatusInternalServerError)
 
 		return
@@ -218,29 +308,17 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 
 	repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
-	var viewRepos []views.GitRepoInfo
+	viewRepos := make([]viewmodel.GitRepoInfo, 0, len(repos))
 	for _, repo := range repos {
-		viewRepos = append(viewRepos, views.GitRepoInfo{
-			Name:               repo.Name,
-			FullName:           repo.FullName,
-			Namespace:          repo.Namespace,
-			RenovatorName:      repo.RenovatorName,
-			WebhookID:          repo.WebhookID,
-			LastRenovateAt:     repo.LastRenovateAt,
-			LastRenovateStatus: repo.LastRenovateStatus,
-			CreatedAt:          repo.CreatedAt,
-		})
+		viewRepos = append(viewRepos, toViewGitRepoInfo(repo))
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	_ = views.GitRepoList(viewRepos).Render(r.Context(), w)
+	_ = view.GitRepoList(viewRepos).Render(r.Context(), w)
 }
 
 func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
-	authInfo := h.buildAuthInfo(r)
-	if h.authManager != nil && h.authManager.IsEnabled() && !authInfo.Authenticated {
-		http.Redirect(w, r, "/login", http.StatusFound)
-
+	if !h.requireAuth(w, r) {
 		return
 	}
 
@@ -261,7 +339,7 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	repoInfo := views.GitRepoInfo{
+	repoInfo := viewmodel.GitRepoInfo{
 		Name:      repo.Name,
 		FullName:  repo.Spec.Name,
 		Namespace: repo.Namespace,
@@ -279,44 +357,28 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 
 	jobs, err := h.dataFactory.GetJobsForRepo(ctx, name, opts)
 	if err != nil {
+		frontendLog.Error(err, "Failed to fetch jobs", "repo", name, "namespace", opts.Namespace)
 		http.Error(w, "Failed to fetch jobs", http.StatusInternalServerError)
 
 		return
 	}
 
-	var viewJobs []views.JobInfo
+	viewJobs := make([]viewmodel.JobInfo, 0, len(jobs))
 	for _, j := range jobs {
-		viewJobs = append(viewJobs, views.JobInfo{
-			Name:      j.Name,
-			Namespace: j.Namespace,
-			Runner:    j.Runner,
-			Status:    j.Status,
-			CreatedAt: j.CreatedAt,
-		})
+		viewJobs = append(viewJobs, toViewJobInfo(j))
 	}
 
-	data := views.GitRepoViewData{
+	data := viewmodel.GitRepoViewData{
 		Repo: repoInfo,
 		Jobs: viewJobs,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
-	h.render(w, r, views.GitRepoView(data))
+	h.render(w, r, view.GitRepoView(data))
 }
 
-func (h *WebHandler) requireAuth(w http.ResponseWriter, r *http.Request) bool {
-	authInfo := h.buildAuthInfo(r)
-	if h.authManager != nil && h.authManager.IsEnabled() && !authInfo.Authenticated {
-		http.Redirect(w, r, "/login", http.StatusFound)
-
-		return false
-	}
-
-	return true
-}
-
-func (h *WebHandler) buildJobLogData(ctx context.Context, namespace, runner, job string) views.JobLogData {
-	data := views.JobLogData{
+func (h *WebHandler) buildJobLogData(ctx context.Context, namespace, runner, job string) viewmodel.JobLogData {
+	data := viewmodel.JobLogData{
 		JobName:   job,
 		Namespace: namespace,
 		Runner:    runner,
@@ -331,21 +393,27 @@ func (h *WebHandler) buildJobLogData(ctx context.Context, namespace, runner, job
 
 	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
 	if err != nil {
-		data.Error = "Logs are no longer available. The pods may have been garbage collected by Kubernetes."
-
-		if data.IsRunning {
+		if data.IsRunning && api_errors.IsNotFound(err) {
 			data.Error = ""
 			data.Content = "Waiting for pods to initialize..."
-		}
-	} else {
-		defer stream.Close()
-
-		content, ioErr := io.ReadAll(io.LimitReader(stream, maxLogReadSize))
-		if ioErr != nil {
-			data.Error = "Failed to read log stream from pod."
 		} else {
-			data.Content = string(content)
+			data.Error = "Failed to fetch logs: " + err.Error()
 		}
+
+		return data
+	}
+	defer stream.Close()
+
+	content, ioErr := io.ReadAll(io.LimitReader(stream, maxLogReadSize))
+	if ioErr != nil {
+		data.Error = "Failed to read log stream from pod."
+
+		return data
+	}
+
+	data.Content = string(content)
+	if len(content) == maxLogReadSize {
+		data.Content += "\n--- Log truncated at 2MB ---"
 	}
 
 	return data
@@ -372,5 +440,59 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/html")
-	_ = views.JobLogs(data).Render(r.Context(), w)
+	_ = view.JobLogs(data).Render(r.Context(), w)
+}
+
+func (h *WebHandler) HandleJobLogsDownload(w http.ResponseWriter, r *http.Request) {
+	if !h.requireAuth(w, r) {
+		return
+	}
+
+	ctx := r.Context()
+	namespace := r.URL.Query().Get("namespace")
+	job := r.URL.Query().Get("job")
+
+	if namespace == "" || job == "" {
+		http.Error(w, "Missing required parameters", http.StatusBadRequest)
+
+		return
+	}
+
+	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
+	if err != nil {
+		var k8sJob batchv1.Job
+
+		isRunning := false
+
+		if err := h.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: job}, &k8sJob); err == nil {
+			if k8sJob.Status.CompletionTime == nil && k8sJob.Status.Failed == 0 {
+				isRunning = true
+			}
+		}
+
+		if isRunning && api_errors.IsNotFound(err) {
+			http.Error(w, "Logs are not yet available. The pods may still be initializing.", http.StatusNotFound)
+
+			return
+		}
+
+		http.Error(w, "Logs are no longer available. The pods may have been garbage collected.", http.StatusNotFound)
+
+		return
+	}
+	defer stream.Close()
+
+	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
+
+	safeJobName := "job"
+	if sanitized, err := k8s.SanitizeName(job); err == nil && sanitized != "" {
+		safeJobName = sanitized
+	}
+
+	w.Header().Set("Content-Disposition", "attachment; filename=\""+safeJobName+".log\"")
+	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
+
+	if _, err := io.Copy(w, stream); err != nil {
+		frontendLog.Error(err, "Failed to stream job logs download", "job", job)
+	}
 }

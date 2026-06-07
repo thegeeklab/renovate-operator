@@ -106,7 +106,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: templ
 templ: ## Generate templ components.
-	templ generate -include-version=false -include-timestamp=false --path=./internal/frontend/views
+	templ generate -include-version=false -include-timestamp=false --path=./internal/frontend/view
 
 .PHONY: yamlfmt
 yamlfmt: ## Run yamlfmt.
@@ -127,7 +127,7 @@ fmt: ## Run go fmt against code.
 
 .PHONY: templ-fmt
 templ-fmt: ## Format templ files.
-	templ fmt ./internal/frontend/views
+	templ fmt ./internal/frontend/view
 
 .PHONY: vet
 vet: ## Run go vet against code.

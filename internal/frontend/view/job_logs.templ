@@ -1,0 +1,94 @@
+package view
+
+import "github.com/thegeeklab/renovate-operator/internal/frontend/sanitize"
+import "github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+
+templ JobLogs(data viewmodel.JobLogData) {
+	<div
+		id={ "logs-" + data.JobName }
+		x-cloak
+		x-data={ sanitize.LogViewerXData(data.Namespace, data.Runner, data.JobName, data.IsRunning) }
+		class="rounded-lg bg-gray-900 shadow-lg overflow-hidden flex flex-col border border-gray-700 w-full h-full"
+		if data.IsRunning {
+			hx-get={ sanitize.JobLogsURL(data.Namespace, data.Runner, data.JobName) }
+			hx-trigger="every 2s"
+			hx-swap="outerHTML show:no-scroll"
+		}
+	>
+		<div class="flex items-center justify-between bg-gray-800 px-4 py-2 border-b border-gray-700 shrink-0">
+			<div class="flex items-center gap-3">
+				<span class="text-xs font-mono text-gray-400">{ data.JobName }</span>
+				if data.IsRunning {
+					@Tooltip("Live Log Streaming") {
+						<span class="relative flex h-2 w-2">
+							<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+							<span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+						</span>
+					}
+				}
+			</div>
+			<div class="flex items-center gap-4">
+				if data.IsRunning {
+					<span
+						class="tooltip"
+						@mouseenter="const r = $el.getBoundingClientRect(); $el.style.setProperty('--tt-x', (r.left + r.width/2) + 'px'); $el.style.setProperty('--tt-y', (r.top - 4) + 'px')"
+					>
+						<button
+							type="button"
+							@click="toggleAutoscroll()"
+							:aria-pressed="autoscroll.toString()"
+							aria-label="Toggle auto-scroll"
+							class={ btnGhostIcon() }
+						>
+							<span x-show="autoscroll" style="display:none">
+								@IconEye("h-4 w-4")
+							</span>
+							<span x-show="!autoscroll" style="display:none">
+								@IconEyeSlash("h-4 w-4")
+							</span>
+						</button>
+						<span class="tooltip-text pointer-events-none -translate-x-1/2 -translate-y-full z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100" x-text="autoscroll ? 'Auto-scroll enabled' : 'Auto-scroll disabled'"></span>
+					</span>
+				}
+				if !data.IsRunning {
+					@Tooltip("Download full log") {
+						<button
+							type="button"
+							@click={ "downloadLog(" + sanitize.JSString(sanitize.JobLogsDownloadURL(data.Namespace, data.JobName)) + ", " + sanitize.JSString(data.JobName+".log") + ")" }
+							aria-label="Download full log"
+							class={ btnGhostIcon() }
+						>
+							@IconArrowDownTray("h-5 w-5")
+						</button>
+					}
+				}
+				@Tooltip("Close logs") {
+					<button
+						type="button"
+						@click="closeLogs()"
+						aria-label="Close logs"
+						class={ btnGhostIcon() }
+					>
+						@IconXMark("h-5 w-5")
+					</button>
+				}
+			</div>
+		</div>
+		<div
+			x-ref="scrollBox"
+			id={ "scroll-" + data.JobName }
+			class="p-4 overflow-x-auto overflow-y-auto relative flex-1"
+		>
+			if data.Error != "" {
+				<div class="flex flex-col items-center justify-center py-8 text-gray-500 h-full">
+					@IconInformationCircle("h-10 w-10 text-gray-600 mb-3")
+					<p class="text-sm font-mono text-center px-4">{ data.Error }</p>
+				</div>
+			} else {
+				<pre class="text-xs font-mono text-gray-300 whitespace-pre-wrap break-all leading-relaxed">
+					<code>{ data.Content }</code>
+				</pre>
+			}
+		</div>
+	</div>
+}

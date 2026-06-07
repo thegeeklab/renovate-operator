@@ -10,6 +10,10 @@
   details[open] summary ~ * {
     animation: sweep 0.3s ease-in-out;
   }
+  input[type="search"]::-webkit-search-cancel-button {
+    -webkit-appearance: none;
+    appearance: none;
+  }
 }
 
 @keyframes sweep {
@@ -21,4 +25,24 @@
     opacity: 1;
     transform: translateY(0);
   }
+}
+
+/* Tooltip: each .tooltip wrapper scopes its own :hover state.
+   The tooltip-text element uses position:fixed so it is never
+   clipped by ancestor overflow. Positioning is handled via a
+   tiny Alpine.js x-effect that sets --tt-x/--tt-y on hover. */
+.tooltip {
+  display: inline-flex;
+  align-items: center;
+}
+.tooltip > .tooltip-text {
+  position: fixed;
+  left: var(--tt-x, -9999px);
+  top: var(--tt-y, -9999px);
+  opacity: 0;
+  transition: opacity 150ms ease-in-out;
+  transition-delay: 200ms;
+}
+.tooltip:hover > .tooltip-text {
+  opacity: 1;
 }

@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -30,14 +31,14 @@ type RenovatorDetails struct {
 }
 
 type GitRepoInfo struct {
-	Name               string    `json:"name"`
-	FullName           string    `json:"fullName"`
-	Namespace          string    `json:"namespace"`
-	RenovatorName      string    `json:"renovatorName"`
-	WebhookID          string    `json:"webhookId"`
-	LastRenovateAt     time.Time `json:"lastRenovateAt"`
-	LastRenovateStatus string    `json:"lastRenovateStatus"`
-	CreatedAt          time.Time `json:"createdAt"`
+	Name               string           `json:"name"`
+	FullName           string           `json:"fullName"`
+	Namespace          string           `json:"namespace"`
+	RenovatorName      string           `json:"renovatorName"`
+	WebhookID          string           `json:"webhookId"`
+	LastRenovateAt     time.Time        `json:"lastRenovateAt"`
+	LastRenovateStatus viewmodel.Status `json:"lastRenovateStatus"`
+	CreatedAt          time.Time        `json:"createdAt"`
 }
 
 type RunnerInfo struct {
@@ -54,11 +55,11 @@ type DiscoveryInfo struct {
 }
 
 type JobInfo struct {
-	Name      string    `json:"name"`
-	Namespace string    `json:"namespace"`
-	Runner    string    `json:"runner"`
-	Status    string    `json:"status"`
-	CreatedAt time.Time `json:"createdAt"`
+	Name      string           `json:"name"`
+	Namespace string           `json:"namespace"`
+	Runner    string           `json:"runner"`
+	Status    viewmodel.Status `json:"status"`
+	CreatedAt time.Time        `json:"createdAt"`
 }
 
 // APIHandler manages the web UI API endpoints.
