@@ -130,7 +130,6 @@ func toViewGitRepoInfo(r GitRepoInfo) viewmodel.GitRepoInfo {
 		Name:               r.Name,
 		FullName:           r.FullName,
 		Namespace:          r.Namespace,
-		RenovatorName:      r.RenovatorName,
 		WebhookID:          r.WebhookID,
 		LastRenovateAt:     r.LastRenovateAt,
 		LastRenovateStatus: r.LastRenovateStatus,

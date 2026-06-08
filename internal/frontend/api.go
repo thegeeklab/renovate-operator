@@ -34,7 +34,6 @@ type GitRepoInfo struct {
 	Name               string           `json:"name"`
 	FullName           string           `json:"fullName"`
 	Namespace          string           `json:"namespace"`
-	RenovatorName      string           `json:"renovatorName"`
 	WebhookID          string           `json:"webhookId"`
 	LastRenovateAt     time.Time        `json:"lastRenovateAt"`
 	LastRenovateStatus viewmodel.Status `json:"lastRenovateStatus"`

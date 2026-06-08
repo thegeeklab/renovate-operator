@@ -233,7 +233,7 @@ var _ = Describe("WebHandler", func() {
 			handler.HandleJobLogs(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(w.Body.String()).To(ContainSubstring("Logs are no longer available"))
+			Expect(w.Body.String()).To(ContainSubstring("Failed to fetch logs"))
 		})
 	})
 })

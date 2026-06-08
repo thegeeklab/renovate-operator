@@ -155,34 +155,15 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 		return nil, err
 	}
 
-	renovatorMap := make(map[string]string)
-
-	var renList renovatev1beta1.RenovatorList
-	if err := df.client.List(ctx, &renList); err != nil {
-		frontendLog.Error(err, "Failed to list renovators for name mapping")
-	} else {
-		for _, ren := range renList.Items {
-			renovatorMap[string(ren.UID)] = ren.Name
-		}
-	}
-
 	var result []GitRepoInfo
 
 	for _, gitrepo := range list.Items {
 		lastStatus, lastTime := getRenovateStatusFromConditions(&gitrepo)
 
-		renovatorUID := gitrepo.Labels[renovatev1beta1.LabelRenovator]
-
-		renovatorName := renovatorMap[renovatorUID]
-		if renovatorName == "" {
-			renovatorName = "Unknown"
-		}
-
 		result = append(result, GitRepoInfo{
 			Name:               gitrepo.Name,
 			FullName:           gitrepo.Spec.Name,
 			Namespace:          gitrepo.Namespace,
-			RenovatorName:      renovatorName,
 			WebhookID:          gitrepo.Status.WebhookID,
 			LastRenovateAt:     lastTime,
 			LastRenovateStatus: lastStatus,

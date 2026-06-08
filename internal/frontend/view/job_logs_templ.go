@@ -192,9 +192,9 @@ func JobLogs(data viewmodel.JobLogData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var11 string
-				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue("downloadLog('" + sanitize.JobLogsDownloadURL(data.Namespace, data.JobName) + "', '" + data.JobName + ".log')")
+				templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue("downloadLog(" + sanitize.JSString(sanitize.JobLogsDownloadURL(data.Namespace, data.JobName)) + ", " + sanitize.JSString(data.JobName+".log") + ")")
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `job_logs.templ`, Line: 57, Col: 126}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `job_logs.templ`, Line: 57, Col: 163}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 				if templ_7745c5c3_Err != nil {

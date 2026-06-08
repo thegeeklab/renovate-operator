@@ -139,7 +139,7 @@ templ RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults
 											x-cloak
 											@click="order = order === 'asc' ? 'desc' : 'asc'; $nextTick(() => $refs.repoList.dispatchEvent(new Event('sort-changed')))"
 											:aria-label="order === 'asc' ? 'Switch to descending order' : 'Switch to ascending order'"
-											class="inline-flex items-center justify-center rounded-md py-1.5 px-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer transition-colors self-stretch"
+											class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer transition-colors self-stretch"
 										>
 											<span x-show="order === 'asc'" style="display:none">
 												@IconBarsArrowDown("h-4 w-4")

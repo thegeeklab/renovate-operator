@@ -41,8 +41,9 @@
   top: var(--tt-y, -9999px);
   opacity: 0;
   transition: opacity 150ms ease-in-out;
-  transition-delay: 200ms;
+  transition-delay: 100ms;
 }
 .tooltip:hover > .tooltip-text {
   opacity: 1;
+  transition-delay: 600ms;
 }

@@ -5,6 +5,7 @@
 *.so
 *.dylib
 bin/
+tmp/
 Dockerfile.cross
 config/dev/charts/
 /node_modules/

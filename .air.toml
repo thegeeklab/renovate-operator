@@ -1,0 +1,15 @@
+root = "."
+tmp_dir = "tmp"
+
+[build]
+# Generate templ files and build the binary on every change. Output to bin/ to
+# match the `build-go` Make target and reuse the existing gitignored bin/ dir.
+cmd = "templ generate --include-version=false --include-timestamp=false --path=./internal/frontend/view && go build -o ./bin/manager ./cmd/main.go"
+bin = "bin/manager"
+args_bin = ["-zap-log-level=debug"]
+include_ext = ["go", "templ"]
+exclude_dir = ["tmp", "vendor", "node_modules", "dist", "test", "config"]
+include_dir = ["cmd", "internal"]
+
+[log]
+time = true
