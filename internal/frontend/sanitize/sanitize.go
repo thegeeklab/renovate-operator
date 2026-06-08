@@ -126,10 +126,9 @@ func LogViewerXData(namespace, runner, jobName string, isRunning bool) string {
 		JSValue(isRunning) + ")"
 }
 
-// SelectJobExpr returns an Alpine @click expression that selects a job.
-// All three arguments are JSON-escaped.
-func SelectJobExpr(name, namespace, runner string) string {
-	return "selectJob(" + JSString(name) + ", " +
-		JSString(namespace) + ", " +
-		JSString(runner) + ")"
+// SelectJobExpr returns an Alpine @click expression that selects a job. The
+// job's log URL is read from the button's data-log-url attribute (rendered
+// server-side by JobLogsURL) so the URL schema lives in one place.
+func SelectJobExpr(name string) string {
+	return "selectJob($event.currentTarget.dataset.logUrl, " + JSString(name) + ")"
 }

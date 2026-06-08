@@ -25,19 +25,9 @@ type RenovatorInfo struct {
 // RenovatorDetails contains detailed information about a Renovator and its related resources.
 type RenovatorDetails struct {
 	RenovatorInfo
-	GitRepos    []GitRepoInfo   `json:"gitRepos"`
-	Runners     []RunnerInfo    `json:"runners"`
-	Discoveries []DiscoveryInfo `json:"discoveries"`
-}
-
-type GitRepoInfo struct {
-	Name               string           `json:"name"`
-	FullName           string           `json:"fullName"`
-	Namespace          string           `json:"namespace"`
-	WebhookID          string           `json:"webhookId"`
-	LastRenovateAt     time.Time        `json:"lastRenovateAt"`
-	LastRenovateStatus viewmodel.Status `json:"lastRenovateStatus"`
-	CreatedAt          time.Time        `json:"createdAt"`
+	GitRepos    []viewmodel.GitRepoInfo `json:"gitRepos"`
+	Runners     []RunnerInfo            `json:"runners"`
+	Discoveries []DiscoveryInfo         `json:"discoveries"`
 }
 
 type RunnerInfo struct {
@@ -51,14 +41,6 @@ type DiscoveryInfo struct {
 	Namespace string    `json:"namespace"`
 	Schedule  string    `json:"schedule"`
 	CreatedAt time.Time `json:"createdAt"`
-}
-
-type JobInfo struct {
-	Name      string           `json:"name"`
-	Namespace string           `json:"namespace"`
-	Runner    string           `json:"runner"`
-	Status    viewmodel.Status `json:"status"`
-	CreatedAt time.Time        `json:"createdAt"`
 }
 
 // APIHandler manages the web UI API endpoints.

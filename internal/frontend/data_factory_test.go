@@ -168,7 +168,7 @@ var _ = Describe("DataFactory", func() {
 			repos, err := dataFactory.GetGitRepos(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 
-			var foundRepo *GitRepoInfo
+			var foundRepo *viewmodel.GitRepoInfo
 
 			for i := range repos {
 				if repos[i].Name == "repo-with-lastrun" {

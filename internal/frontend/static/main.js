@@ -31,9 +31,9 @@ Alpine.data("jobList", function (repoId) {
       })
     },
 
-    selectJob(name, namespace, runner) {
+    selectJob(url, name) {
       this.selectedJob = name
-      this.activeLogUrl = `/joblogs?namespace=${namespace}&runner=${runner}&job=${name}`
+      this.activeLogUrl = url
       this.$nextTick(() => {
         this.updateSelectionStyles()
       })
@@ -120,6 +120,14 @@ Alpine.data("logViewer", function (namespace, runner, jobName, isRunning) {
       }
     }
   }
+})
+
+Alpine.directive("tooltip", (el) => {
+  el.addEventListener("mouseenter", () => {
+    const r = el.getBoundingClientRect()
+    el.style.setProperty("--tt-x", `${r.left + r.width / 2}px`)
+    el.style.setProperty("--tt-y", `${r.top - 4}px`)
+  })
 })
 
 Alpine.start()

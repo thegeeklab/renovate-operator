@@ -31,7 +31,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 				if data.IsRunning {
 					<span
 						class="tooltip"
-						@mouseenter="const r = $el.getBoundingClientRect(); $el.style.setProperty('--tt-x', (r.left + r.width/2) + 'px'); $el.style.setProperty('--tt-y', (r.top - 4) + 'px')"
+						x-tooltip
 					>
 						<button
 							type="button"

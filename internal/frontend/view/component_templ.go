@@ -19,10 +19,6 @@ func btnGhostIcon() string {
 	return btnGhost() + " text-gray-400 hover:text-white"
 }
 
-func btnGhostSmall() string {
-	return btnGhost() + " flex items-center gap-1.5 text-xs font-medium"
-}
-
 func btnOutline() string {
 	return btnBase() +
 		" inline-flex items-center text-center rounded-md bg-white px-3 py-2" +
@@ -34,10 +30,7 @@ func btnLink() string {
 	return btnBase() + " text-gray-300 hover:text-white text-sm bg-transparent border-none p-0"
 }
 
-// Tooltip wraps content with a styled tooltip that appears above on hover with a 200ms delay.
-// Uses position:fixed (set in style.css) so it is never clipped by ancestor overflow.
-// Alpine.js computes the viewport position on mouseenter via CSS custom properties.
-// No x-data here to avoid creating nested Alpine scopes that interfere with parent state during HTMX swaps.
+// Tooltip wraps content with a styled tooltip.
 func Tooltip(text string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -59,7 +52,7 @@ func Tooltip(text string) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<span class=\"tooltip\" @mouseenter=\"const r = $el.getBoundingClientRect(); $el.style.setProperty('--tt-x', (r.left + r.width/2) + 'px'); $el.style.setProperty('--tt-y', (r.top - 4) + 'px')\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<span class=\"tooltip\" x-tooltip>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -74,7 +67,7 @@ func Tooltip(text string) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 41, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 34, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {

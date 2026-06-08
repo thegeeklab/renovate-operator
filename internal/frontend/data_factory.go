@@ -146,7 +146,7 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 }
 
 // GetGitRepos fetches GitRepo resources with optional filtering.
-func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]GitRepoInfo, error) {
+func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]viewmodel.GitRepoInfo, error) {
 	opt := getListOptions(opts)
 	listOpts := buildListOptions(opt)
 
@@ -155,12 +155,12 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 		return nil, err
 	}
 
-	var result []GitRepoInfo
+	var result []viewmodel.GitRepoInfo
 
 	for _, gitrepo := range list.Items {
 		lastStatus, lastTime := getRenovateStatusFromConditions(&gitrepo)
 
-		result = append(result, GitRepoInfo{
+		result = append(result, viewmodel.GitRepoInfo{
 			Name:               gitrepo.Name,
 			FullName:           gitrepo.Spec.Name,
 			Namespace:          gitrepo.Namespace,
@@ -174,7 +174,7 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 	if opt.Search != "" {
 		term := strings.ToLower(opt.Search)
 
-		filtered := make([]GitRepoInfo, 0, len(result))
+		filtered := make([]viewmodel.GitRepoInfo, 0, len(result))
 		for _, repo := range result {
 			if strings.Contains(strings.ToLower(repo.Name), term) || strings.Contains(strings.ToLower(repo.FullName), term) {
 				filtered = append(filtered, repo)
@@ -185,16 +185,16 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 	}
 
 	if result == nil {
-		result = []GitRepoInfo{}
+		result = []viewmodel.GitRepoInfo{}
 	}
 
 	util.SortItems(
 		result,
 		util.SortBy(opt.SortBy),
 		util.SortOrder(opt.Order),
-		func(i GitRepoInfo) string { return i.Name },
-		func(i GitRepoInfo) time.Time { return i.CreatedAt },
-		func(i GitRepoInfo) time.Time { return i.LastRenovateAt },
+		func(i viewmodel.GitRepoInfo) string { return i.Name },
+		func(i viewmodel.GitRepoInfo) time.Time { return i.CreatedAt },
+		func(i viewmodel.GitRepoInfo) time.Time { return i.LastRenovateAt },
 	)
 
 	return result, nil
@@ -306,7 +306,11 @@ func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) 
 }
 
 // GetJobsForRepo fetches jobs associated with a specific GitRepo.
-func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts ...ListOptions) ([]JobInfo, error) {
+func (df *DataFactory) GetJobsForRepo(
+	ctx context.Context,
+	repoName string,
+	opts ...ListOptions,
+) ([]viewmodel.JobInfo, error) {
 	opt := getListOptions(opts)
 
 	var jobList batchv1.JobList
@@ -323,7 +327,7 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts
 		return nil, err
 	}
 
-	var result []JobInfo
+	var result []viewmodel.JobInfo
 
 	for _, job := range jobList.Items {
 		status := viewmodel.StatusRunning
@@ -344,7 +348,7 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts
 
 		runnerName := job.Labels[renovatev1beta1.LabelAppInstance]
 
-		result = append(result, JobInfo{
+		result = append(result, viewmodel.JobInfo{
 			Name:      job.Name,
 			Namespace: job.Namespace,
 			Runner:    runnerName,
@@ -354,7 +358,7 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts
 	}
 
 	if result == nil {
-		result = []JobInfo{}
+		result = []viewmodel.JobInfo{}
 	}
 
 	if opt.SortBy == "" {
@@ -366,8 +370,8 @@ func (df *DataFactory) GetJobsForRepo(ctx context.Context, repoName string, opts
 		result,
 		util.SortBy(opt.SortBy),
 		util.SortOrder(opt.Order),
-		func(i JobInfo) string { return i.Name },
-		func(i JobInfo) time.Time { return i.CreatedAt },
+		func(i viewmodel.JobInfo) string { return i.Name },
+		func(i viewmodel.JobInfo) time.Time { return i.CreatedAt },
 	)
 
 	return result, nil
@@ -433,20 +437,20 @@ func (df *DataFactory) getUserReposMap(ctx context.Context) (map[string]bool, er
 // ApplyAccessFilter filters repos by user access if auth is enabled, failing closed on error.
 func (df *DataFactory) ApplyAccessFilter(
 	ctx context.Context,
-	repos []GitRepoInfo,
-) []GitRepoInfo {
+	repos []viewmodel.GitRepoInfo,
+) []viewmodel.GitRepoInfo {
 	userRepos, err := df.getUserReposMap(ctx)
 	if err != nil && !errors.Is(err, errAuthNotEnabled) {
 		frontendLog.Error(err, "Failed to fetch user repos")
 
-		return []GitRepoInfo{}
+		return []viewmodel.GitRepoInfo{}
 	}
 
 	if errors.Is(err, errAuthNotEnabled) {
 		return repos
 	}
 
-	filtered := make([]GitRepoInfo, 0, len(repos))
+	filtered := make([]viewmodel.GitRepoInfo, 0, len(repos))
 
 	for _, repo := range repos {
 		if userRepos[repo.FullName] {
@@ -455,7 +459,7 @@ func (df *DataFactory) ApplyAccessFilter(
 	}
 
 	if filtered == nil {
-		filtered = []GitRepoInfo{}
+		filtered = []viewmodel.GitRepoInfo{}
 	}
 
 	return filtered

@@ -126,7 +126,7 @@ func JobLogs(data viewmodel.JobLogData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if data.IsRunning {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span class=\"tooltip\" @mouseenter=\"const r = $el.getBoundingClientRect(); $el.style.setProperty('--tt-x', (r.left + r.width/2) + 'px'); $el.style.setProperty('--tt-y', (r.top - 4) + 'px')\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<span class=\"tooltip\" x-tooltip>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

@@ -2,14 +2,16 @@ package frontend
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/http"
+	"sync"
 
 	"github.com/a-h/templ"
 	"github.com/gorilla/mux"
 	"golang.org/x/sync/errgroup"
 	batchv1 "k8s.io/api/batch/v1"
-	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -53,6 +55,7 @@ func NewWebHandler(
 const (
 	maxLogReadSize                  = 2 * 1024 * 1024 // 2MB
 	maxConcurrentRenovatorSummaries = 10
+	queriesPerRenovator             = 3 // runners, discoveries, repos
 )
 
 func (h *WebHandler) RegisterRoutes(router *mux.Router) {
@@ -124,27 +127,26 @@ func (h *WebHandler) requireAuth(w http.ResponseWriter, r *http.Request) bool {
 	return true
 }
 
-// toViewGitRepoInfo converts an API-layer GitRepoInfo into a view-layer one.
-func toViewGitRepoInfo(r GitRepoInfo) viewmodel.GitRepoInfo {
-	return viewmodel.GitRepoInfo{
-		Name:               r.Name,
-		FullName:           r.FullName,
-		Namespace:          r.Namespace,
-		WebhookID:          r.WebhookID,
-		LastRenovateAt:     r.LastRenovateAt,
-		LastRenovateStatus: r.LastRenovateStatus,
-		CreatedAt:          r.CreatedAt,
+// isJobRunning reports whether the given Kubernetes Job is still running.
+// A job is considered running if it has not reached a terminal state (completed
+// or permanently failed).
+func (h *WebHandler) isJobRunning(ctx context.Context, namespace, job string) bool {
+	var k8sJob batchv1.Job
+	if err := h.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: job}, &k8sJob); err != nil {
+		return false
 	}
-}
 
-func toViewJobInfo(j JobInfo) viewmodel.JobInfo {
-	return viewmodel.JobInfo{
-		Name:      j.Name,
-		Namespace: j.Namespace,
-		Runner:    j.Runner,
-		Status:    j.Status,
-		CreatedAt: j.CreatedAt,
+	if k8sJob.Status.CompletionTime != nil {
+		return false
 	}
+
+	for _, cond := range k8sJob.Status.Conditions {
+		if (cond.Type == batchv1.JobComplete || cond.Type == batchv1.JobFailed) && cond.Status == corev1.ConditionTrue {
+			return false
+		}
+	}
+
+	return true
 }
 
 func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -167,13 +169,8 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 		repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
-		viewRepos := make([]viewmodel.GitRepoInfo, 0, len(repos))
-		for _, repo := range repos {
-			viewRepos = append(viewRepos, toViewGitRepoInfo(repo))
-		}
-
 		w.Header().Set("Content-Type", "text/html")
-		h.render(w, r, view.RenovatorList(nil, searchQuery, viewRepos))
+		h.render(w, r, view.RenovatorList(nil, searchQuery, repos))
 
 		return
 	}
@@ -215,35 +212,43 @@ func (h *WebHandler) buildRenovatorSummaries(
 			var (
 				runners     []RunnerInfo
 				discoveries []DiscoveryInfo
-				repos       []GitRepoInfo
+				repos       []viewmodel.GitRepoInfo
 			)
 
-			innerGroup, innerCtx := errgroup.WithContext(groupCtx)
-			innerGroup.Go(func() error {
-				var err error
+			// Run the three independent queries in parallel using the outer
+			// groupCtx directly. Using errgroup.WithContext here would cancel
+			// sibling queries on the first failure, defeating per-query
+			// degradation: a transient GetRunners error would wipe the repos
+			// and discoveries results for this renovator.
+			var runnersErr, discoveriesErr, reposErr error
 
-				runners, err = h.dataFactory.GetRunners(innerCtx, renOpts)
+			var wg sync.WaitGroup
 
-				return err
-			})
-			innerGroup.Go(func() error {
-				var err error
+			wg.Add(queriesPerRenovator)
 
-				discoveries, err = h.dataFactory.GetDiscoveries(innerCtx, renOpts)
+			go func() {
+				defer wg.Done()
 
-				return err
-			})
-			innerGroup.Go(func() error {
-				var err error
+				runners, runnersErr = h.dataFactory.GetRunners(groupCtx, renOpts)
+			}()
+			go func() {
+				defer wg.Done()
 
-				repos, err = h.dataFactory.GetGitRepos(innerCtx, renOpts)
+				discoveries, discoveriesErr = h.dataFactory.GetDiscoveries(groupCtx, renOpts)
+			}()
+			go func() {
+				defer wg.Done()
 
-				return err
-			})
+				repos, reposErr = h.dataFactory.GetGitRepos(groupCtx, renOpts)
+			}()
 
-			if err := innerGroup.Wait(); err != nil {
-				frontendLog.Error(err, "Failed to load renovator summary data",
-					"renovator", ren.Name, "namespace", ren.Namespace)
+			wg.Wait()
+
+			for _, qErr := range []error{runnersErr, discoveriesErr, reposErr} {
+				if qErr != nil {
+					frontendLog.Error(qErr, "Failed to load renovator summary data",
+						"renovator", ren.Name, "namespace", ren.Namespace)
+				}
 			}
 
 			if repos != nil {
@@ -307,13 +312,8 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 
 	repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
-	viewRepos := make([]viewmodel.GitRepoInfo, 0, len(repos))
-	for _, repo := range repos {
-		viewRepos = append(viewRepos, toViewGitRepoInfo(repo))
-	}
-
 	w.Header().Set("Content-Type", "text/html")
-	_ = view.GitRepoList(viewRepos).Render(r.Context(), w)
+	_ = view.GitRepoList(repos).Render(r.Context(), w)
 }
 
 func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
@@ -362,14 +362,9 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	viewJobs := make([]viewmodel.JobInfo, 0, len(jobs))
-	for _, j := range jobs {
-		viewJobs = append(viewJobs, toViewJobInfo(j))
-	}
-
 	data := viewmodel.GitRepoViewData{
 		Repo: repoInfo,
-		Jobs: viewJobs,
+		Jobs: jobs,
 	}
 
 	w.Header().Set("Content-Type", "text/html")
@@ -381,23 +376,19 @@ func (h *WebHandler) buildJobLogData(ctx context.Context, namespace, runner, job
 		JobName:   job,
 		Namespace: namespace,
 		Runner:    runner,
-	}
-
-	var k8sJob batchv1.Job
-	if err := h.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: job}, &k8sJob); err == nil {
-		if k8sJob.Status.CompletionTime == nil && k8sJob.Status.Failed == 0 {
-			data.IsRunning = true
-		}
+		IsRunning: h.isJobRunning(ctx, namespace, job),
 	}
 
 	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
 	if err != nil {
-		if data.IsRunning && api_errors.IsNotFound(err) {
-			data.Error = ""
+		if data.IsRunning && errors.Is(err, errPodNotFound) {
 			data.Content = "Waiting for pods to initialize..."
-		} else {
-			data.Error = "Failed to fetch logs: " + err.Error()
+
+			return data
 		}
+
+		frontendLog.Error(err, "Failed to fetch logs", "namespace", namespace, "job", job)
+		data.Error = "Failed to fetch logs for this job."
 
 		return data
 	}
@@ -459,17 +450,9 @@ func (h *WebHandler) HandleJobLogsDownload(w http.ResponseWriter, r *http.Reques
 
 	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
 	if err != nil {
-		var k8sJob batchv1.Job
+		isRunning := h.isJobRunning(ctx, namespace, job)
 
-		isRunning := false
-
-		if err := h.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: job}, &k8sJob); err == nil {
-			if k8sJob.Status.CompletionTime == nil && k8sJob.Status.Failed == 0 {
-				isRunning = true
-			}
-		}
-
-		if isRunning && api_errors.IsNotFound(err) {
+		if isRunning && errors.Is(err, errPodNotFound) {
 			http.Error(w, "Logs are not yet available. The pods may still be initializing.", http.StatusNotFound)
 
 			return

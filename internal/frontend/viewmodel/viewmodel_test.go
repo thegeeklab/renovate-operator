@@ -6,21 +6,6 @@ import (
 )
 
 var _ = Describe("Status", func() {
-	Describe("ParseStatus", func() {
-		DescribeTable(
-			"maps raw status strings",
-			func(input string, want Status) {
-				Expect(ParseStatus(input)).To(Equal(want))
-			},
-			Entry("Succeeded", "Succeeded", StatusSucceeded),
-			Entry("Running", "Running", StatusRunning),
-			Entry("Failed", "Failed", StatusFailed),
-			Entry("empty", "", StatusUnknown),
-			Entry("garbage", "garbage", StatusUnknown),
-			Entry("trailing space is not Succeeded", "Succeeded ", StatusUnknown),
-		)
-	})
-
 	Describe("Label", func() {
 		DescribeTable(
 			"returns the human-readable label",

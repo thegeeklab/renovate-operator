@@ -3,6 +3,7 @@ package view
 import (
 	"fmt"
 
+	"github.com/dustin/go-humanize"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/sanitize"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 )
@@ -61,20 +62,21 @@ templ GitRepoView(data viewmodel.GitRepoViewData) {
 								<li>
 									<button
 										type="button"
-										@click={ sanitize.SelectJobExpr(job.Name, job.Namespace, job.Runner) }
+										@click={ sanitize.SelectJobExpr(job.Name) }
 										hx-get={ sanitize.JobLogsURL(job.Namespace, job.Runner, job.Name) }
 										hx-target="#log-viewer"
 										hx-swap="innerHTML show:#log-viewer:top"
 										aria-label={ fmt.Sprintf("View logs for job %s in namespace %s", job.Name, job.Namespace) }
 										class={ getBaseJobClass(job.Status) }
 										data-job-name={ job.Name }
+										data-log-url={ sanitize.JobLogsURL(job.Namespace, job.Runner, job.Name) }
 									>
 										<div class="min-w-0 flex-1">
 											<p class="text-sm font-medium text-gray-900 truncate">{ job.Name }</p>
 											<p class="text-xs text-gray-500">
 												@Tooltip(job.CreatedAt.Format("Jan 02, 2006 15:04")) {
 													<span class="truncate">
-														{ humanizeTime(job.CreatedAt) }
+														{ humanize.Time(job.CreatedAt) }
 													</span>
 												}
 											</p>

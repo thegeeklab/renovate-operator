@@ -17,18 +17,6 @@ const (
 	StatusFailed    Status = "Failed"
 )
 
-// ParseStatus maps a raw status string to a Status. Unknown values become
-// StatusUnknown rather than producing an error so callers can pass through
-// untrusted input safely.
-func ParseStatus(s string) Status {
-	switch Status(s) {
-	case StatusSucceeded, StatusRunning, StatusFailed:
-		return Status(s)
-	default:
-		return StatusUnknown
-	}
-}
-
 // Label returns the human-readable label for the status.
 func (s Status) Label() string {
 	switch s {
@@ -116,22 +104,22 @@ type WebView struct {
 
 // GitRepoInfo is the view-layer representation of a GitRepo.
 type GitRepoInfo struct {
-	Name               string
-	FullName           string
-	Namespace          string
-	WebhookID          string
-	LastRenovateAt     time.Time
-	LastRenovateStatus Status
-	CreatedAt          time.Time
+	Name               string    `json:"name"`
+	FullName           string    `json:"fullName"`
+	Namespace          string    `json:"namespace"`
+	WebhookID          string    `json:"webhookId"`
+	LastRenovateAt     time.Time `json:"lastRenovateAt"`
+	LastRenovateStatus Status    `json:"lastRenovateStatus"`
+	CreatedAt          time.Time `json:"createdAt"`
 }
 
 // JobInfo is the view-layer representation of a Kubernetes Job.
 type JobInfo struct {
-	Name      string
-	Namespace string
-	Runner    string
-	Status    Status
-	CreatedAt time.Time
+	Name      string    `json:"name"`
+	Namespace string    `json:"namespace"`
+	Runner    string    `json:"runner"`
+	Status    Status    `json:"status"`
+	CreatedAt time.Time `json:"createdAt"`
 }
 
 // GitRepoViewData bundles a single GitRepo with its associated jobs for the

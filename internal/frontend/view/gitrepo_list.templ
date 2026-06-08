@@ -3,6 +3,7 @@ package view
 import (
 	"fmt"
 
+	"github.com/dustin/go-humanize"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/sanitize"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 )
@@ -32,13 +33,13 @@ templ GitRepoList(repos []viewmodel.GitRepoInfo) {
 							<p class="mt-1 flex items-center gap-3 text-xs text-gray-500">
 								@Tooltip(r.CreatedAt.Format("Jan 02, 2006 15:04")) {
 									<span>
-										{ string(viewmodel.GitRepoFieldCreated) + ": " }{ humanizeTime(r.CreatedAt) }
+										{ string(viewmodel.GitRepoFieldCreated) + ": " }{ humanize.Time(r.CreatedAt) }
 									</span>
 								}
 								if !r.LastRenovateAt.IsZero() {
 									@Tooltip(r.LastRenovateAt.Format("Jan 02, 2006 15:04")) {
 										<span>
-											{ string(viewmodel.GitRepoFieldLastRun) + ": " }{ humanizeTime(r.LastRenovateAt) }
+											{ string(viewmodel.GitRepoFieldLastRun) + ": " }{ humanize.Time(r.LastRenovateAt) }
 										</span>
 									}
 								}
