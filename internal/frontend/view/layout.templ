@@ -1,6 +1,8 @@
-package views
+package view
 
-templ Layout(styles []string, scripts []string, auth AuthInfo, content templ.Component) {
+import "github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+
+templ Layout(styles []string, scripts []string, auth viewmodel.AuthInfo, content templ.Component) {
 	<!DOCTYPE html>
 	<html lang="en" class="h-full bg-gray-100">
 		<head>
@@ -33,7 +35,7 @@ templ Layout(styles []string, scripts []string, auth AuthInfo, content templ.Com
 	</html>
 }
 
-templ NavBar(auth AuthInfo) {
+templ NavBar(auth viewmodel.AuthInfo) {
 	<nav class="bg-gray-800 shrink-0">
 		<div class="w-full px-4 sm:px-6 lg:px-8">
 			<div class="flex h-16 items-center justify-between">
@@ -49,7 +51,7 @@ templ NavBar(auth AuthInfo) {
 							<span class="text-gray-500 text-xs">({ auth.Provider })</span>
 							<form method="POST" action="/auth/logout" class="inline">
 								<input type="hidden" name="csrf_token" value={ auth.CSRFToken }/>
-								<button type="submit" class="text-gray-300 hover:text-white text-sm bg-transparent border-none p-0 cursor-pointer">Logout</button>
+								<button type="submit" class={ btnLink() }>Logout</button>
 							</form>
 						</div>
 					</div>
@@ -61,7 +63,7 @@ templ NavBar(auth AuthInfo) {
 
 templ MainContent(content templ.Component) {
 	<main class="flex-1 overflow-hidden">
-		<div id="dashboard-content" class="h-full w-full">
+		<div id="dashboard-content" class="h-full w-full" aria-live="polite" aria-atomic="false">
 			if content != nil {
 				@content
 			}

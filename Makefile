@@ -6,12 +6,10 @@ YAMLFMT_PACKAGE_VERSION := v0.21.0
 GOLANGCI_LINT_PACKAGE_VERSION := v2.12.2
 # renovate: datasource=go depName=github.com/a-h/templ
 TEMPL_PACKAGE_VERSION := v0.3.1020
+# renovate: datasource=github-releases depName=air-verse/air
+AIR_PACKAGE_VERSION := v1.61.5
 
-GOFUMPT_PACKAGE ?= mvdan.cc/gofumpt@$(GOFUMPT_PACKAGE_VERSION)
-YAMLFMT_PACKAGE ?= github.com/google/yamlfmt/cmd/yamlfmt@$(YAMLFMT_PACKAGE_VERSION)
-GOTESTSUM_PACKAGE ?= gotest.tools/gotestsum@latest
 MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
-TEMPL_PACKAGE ?= github.com/a-h/templ/cmd/templ@$(TEMPL_PACKAGE_VERSION)
 
 # Image URL to use all building image targets
 IMG ?= docker.io/thegeeklab/renovate-operator:latest
@@ -66,15 +64,6 @@ help: ## Display this help.
 
 ##@ Development
 
-.PHONY: deps
-deps:
-	curl -sSfL https://raw.githubusercontent.com/golangci/golangci-lint/HEAD/install.sh | sh -s -- -b $(shell go env GOPATH)/bin $(GOLANGCI_LINT_PACKAGE_VERSION)
-	$(GO) mod download
-	$(GO) install $(GOFUMPT_PACKAGE)
-	$(GO) install $(YAMLFMT_PACKAGE)
-	$(GO) install $(GOTESTSUM_PACKAGE)
-	$(GO) install $(TEMPL_PACKAGE)
-
 .PHONY: frontend-deps
 frontend-deps: ## Install frontend dependencies.
 	@echo "Installing frontend dependencies..."
@@ -105,40 +94,40 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 	@$(MAKE) --no-print-directory yamlfmt
 
 .PHONY: templ
-templ: ## Generate templ components.
-	templ generate -include-version=false -include-timestamp=false --path=./internal/frontend/views
-
-.PHONY: yamlfmt
-yamlfmt: ## Run yamlfmt.
-	$(shell go env GOPATH)/bin/yamlfmt .
-
-.PHONY: yamlfmt-dry
-yamlfmt-dry:
-	$(shell go env GOPATH)/bin/yamlfmt -dry .
-
-.PHONY: yamlfmt-lint
-yamlfmt-lint:
-	$(shell go env GOPATH)/bin/yamlfmt -lint .
-
-.PHONY: fmt
-fmt: ## Run go fmt against code.
-	$(shell go env GOPATH)/bin/gofumpt -extra -w $(SOURCES)
-	@$(MAKE) --no-print-directory templ-fmt
+templ: templ-bin ## Generate templ components.
+	$(TEMPL_BIN) generate --include-version=false --include-timestamp=false --path=./internal/frontend/view
 
 .PHONY: templ-fmt
-templ-fmt: ## Format templ files.
-	templ fmt ./internal/frontend/views
+templ-fmt: templ-bin ## Format templ files.
+	$(TEMPL_BIN) fmt ./internal/frontend/view
 
 .PHONY: vet
 vet: ## Run go vet against code.
 	$(GO) vet ./...
 
+.PHONY: fmt
+fmt: gofumpt ## Run go fmt against code.
+	$(GOFUMPT_BIN) -extra -w $(SOURCES)
+	@$(MAKE) --no-print-directory templ-fmt
+
+.PHONY: yamlfmt
+yamlfmt: yamlfmt-bin ## Run yamlfmt.
+	$(YAMLFMT_BIN) .
+
+.PHONY: yamlfmt-dry
+yamlfmt-dry: yamlfmt-bin
+	$(YAMLFMT_BIN) -dry .
+
+.PHONY: yamlfmt-lint
+yamlfmt-lint: yamlfmt-bin
+	$(YAMLFMT_BIN) -lint .
+
 .PHONY: test
-test: setup-envtest ## Run tests without setup.
-	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(shell go env GOPATH)/bin/gotestsum $(GOTEST_FLAGS) $$($(GO) list ./... | grep -v /e2e) $(GINKGO_FLAGS)
+test: setup-envtest gotestsum ## Run tests without setup.
+	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GOTESTSUM_BIN) $(GOTEST_FLAGS) $$($(GO) list ./... | grep -v /e2e) $(GINKGO_FLAGS)
 
 .PHONY: test-ci
-test-ci: manifests generate fmt vet setup-envtest test ## Run tests with full setup.
+test-ci: manifests generate fmt vet test ## Run tests with full setup.
 
 .PHONY: kind-create
 kind-create: ## Create a Kind cluster.
@@ -169,8 +158,8 @@ test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated 
 	$(GO) test ./test/e2e/ -v -ginkgo.v
 
 .PHONY: golangci-lint
-golangci-lint:
-	$(shell go env GOPATH)/bin/golangci-lint run
+golangci-lint: golangci-lint-bin ## Run golangci-lint.
+	$(GOLANGCI_LINT) run
 
 .PHONY: lint
 lint: yamlfmt-dry golangci-lint eslint
@@ -186,7 +175,7 @@ build-go: ## Build the Go binaries.
 build: manifests generate fmt vet frontend-build build-go ## Build binaries and frontend assets.
 
 .PHONY: run
-run: manifests generate fmt vet ## Run a controller from your host. Use FRONTEND_DEV=true to start Vite dev server.
+run: manifests generate fmt vet air-bin ## Run a controller from your host. Use FRONTEND_DEV=true to start Vite dev server and air for live reload.
 	@echo "Disabling cluster-side webhooks..."
 	$(KUBECTL) delete mutatingwebhookconfigurations renovate-operator-webhook-configuration --ignore-not-found
 	$(KUBECTL) delete validatingwebhookconfigurations renovate-operator-webhook-configuration --ignore-not-found
@@ -194,9 +183,9 @@ ifeq ($(FRONTEND_DEV),true)
 	@npm install
 	@npm run dev & VITE_PID=$$!; \
 	trap "kill $$VITE_PID 2>/dev/null" EXIT INT TERM; \
-	NODE_ENV=development ENABLE_WEBHOOKS=false $(GO) run ./cmd/main.go -zap-log-level=debug
+	NODE_ENV=development ENABLE_WEBHOOKS=false OIDC_SESSION_SECRET="dummy-session-secret" $(AIR_BIN) -c .air.toml
 else
-	ENABLE_WEBHOOKS=false $(GO) run ./cmd/main.go -zap-log-level=debug
+	ENABLE_WEBHOOKS=false OIDC_SESSION_SECRET="dummy-session-secret" $(GO) run ./cmd/main.go -zap-log-level=debug
 endif
 
 .PHONY: docker-build
@@ -249,46 +238,23 @@ KUBECTL ?= kubectl
 KUSTOMIZE ?= $(LOCALBIN)/kustomize
 CONTROLLER_GEN ?= $(LOCALBIN)/controller-gen
 ENVTEST ?= $(LOCALBIN)/setup-envtest
-GOLANGCI_LINT = $(LOCALBIN)/golangci-lint
+GOLANGCI_LINT ?= $(LOCALBIN)/golangci-lint
+GOFUMPT_BIN ?= $(LOCALBIN)/gofumpt
+YAMLFMT_BIN ?= $(LOCALBIN)/yamlfmt
+GOTESTSUM_BIN ?= $(LOCALBIN)/gotestsum
+TEMPL_BIN ?= $(LOCALBIN)/templ
+AIR_BIN ?= $(LOCALBIN)/air
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
 CONTROLLER_TOOLS_VERSION ?= v0.17.1
-#ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
+# ENVTEST_VERSION is the version of controller-runtime release branch to fetch the envtest setup script (i.e. release-0.20)
 ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller-runtime | awk -F'[v.]' '{printf "release-%d.%d", $$2, $$3}')
-#ENVTEST_K8S_VERSION is the version of Kubernetes to use for setting up ENVTEST binaries (i.e. 1.31)
+# ENVTEST_K8S_VERSION is the version of Kubernetes to use for setting up ENVTEST binaries (i.e. 1.31)
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
 
-.PHONY: kustomize
-kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
-$(KUSTOMIZE): $(LOCALBIN)
-	$(call go-install-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5,$(KUSTOMIZE_VERSION))
-
-.PHONY: controller-gen
-controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
-$(CONTROLLER_GEN): $(LOCALBIN)
-	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
-
-.PHONY: setup-envtest
-setup-envtest: envtest ## Download the binaries required for ENVTEST in the local bin directory.
-	@echo "Setting up envtest binaries for Kubernetes version $(ENVTEST_K8S_VERSION)..."
-	@$(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path || { \
-		echo "Error: Failed to set up envtest binaries for version $(ENVTEST_K8S_VERSION)."; \
-		exit 1; \
-	}
-
-.PHONY: envtest
-envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
-$(ENVTEST): $(LOCALBIN)
-	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest,$(ENVTEST_VERSION))
-
-.PHONY: golangci-lint
-golangci-lint: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
-$(GOLANGCI_LINT): $(LOCALBIN)
-	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_PACKAGE_VERSION))
-
-# go-install-tool will 'go install' any package with custom target and name of binary, if it doesn't exist
-# $1 - target path with name of binary
+# go-install-tool will 'go install' any package if the target binary is missing or not executable
+# $1 - target path with name of binary (e.g., $(LOCALBIN)/yamlfmt)
 # $2 - package url which can be installed
 # $3 - specific version of package
 define go-install-tool
@@ -302,3 +268,56 @@ mv $(1) $(1)-$(3) ;\
 } ;\
 ln -sf $(1)-$(3) $(1)
 endef
+
+.PHONY: kustomize
+kustomize: $(KUSTOMIZE) ## Download kustomize locally if necessary.
+$(KUSTOMIZE): $(LOCALBIN)
+	$(call go-install-tool,$(KUSTOMIZE),sigs.k8s.io/kustomize/kustomize/v5,$(KUSTOMIZE_VERSION))
+
+.PHONY: controller-gen
+controller-gen: $(CONTROLLER_GEN) ## Download controller-gen locally if necessary.
+$(CONTROLLER_GEN): $(LOCALBIN)
+	$(call go-install-tool,$(CONTROLLER_GEN),sigs.k8s.io/controller-tools/cmd/controller-gen,$(CONTROLLER_TOOLS_VERSION))
+
+.PHONY: envtest
+envtest: $(ENVTEST) ## Download setup-envtest locally if necessary.
+$(ENVTEST): $(LOCALBIN)
+	$(call go-install-tool,$(ENVTEST),sigs.k8s.io/controller-runtime/tools/setup-envtest,$(ENVTEST_VERSION))
+
+.PHONY: setup-envtest
+setup-envtest: envtest ## Download the binaries required for ENVTEST in the local bin directory.
+	@echo "Setting up envtest binaries for Kubernetes version $(ENVTEST_K8S_VERSION)..."
+	@$(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path || { \
+		echo "Error: Failed to set up envtest binaries for version $(ENVTEST_K8S_VERSION)."; \
+		exit 1; \
+	}
+
+.PHONY: golangci-lint-bin
+golangci-lint-bin: $(GOLANGCI_LINT) ## Download golangci-lint locally if necessary.
+$(GOLANGCI_LINT): $(LOCALBIN)
+	$(call go-install-tool,$(GOLANGCI_LINT),github.com/golangci/golangci-lint/v2/cmd/golangci-lint,$(GOLANGCI_LINT_PACKAGE_VERSION))
+
+.PHONY: gofumpt
+gofumpt: $(GOFUMPT_BIN) ## Download gofumpt locally if necessary.
+$(GOFUMPT_BIN): $(LOCALBIN)
+	$(call go-install-tool,$(GOFUMPT_BIN),mvdan.cc/gofumpt,$(GOFUMPT_PACKAGE_VERSION))
+
+.PHONY: yamlfmt-bin
+yamlfmt-bin: $(YAMLFMT_BIN) ## Download yamlfmt locally if necessary.
+$(YAMLFMT_BIN): $(LOCALBIN)
+	$(call go-install-tool,$(YAMLFMT_BIN),github.com/google/yamlfmt/cmd/yamlfmt,$(YAMLFMT_PACKAGE_VERSION))
+
+.PHONY: gotestsum
+gotestsum: $(GOTESTSUM_BIN) ## Download gotestsum locally if necessary.
+$(GOTESTSUM_BIN): $(LOCALBIN)
+	$(call go-install-tool,$(GOTESTSUM_BIN),gotest.tools/gotestsum,latest)
+
+.PHONY: templ-bin
+templ-bin: $(TEMPL_BIN) ## Download templ locally if necessary.
+$(TEMPL_BIN): $(LOCALBIN)
+	$(call go-install-tool,$(TEMPL_BIN),github.com/a-h/templ/cmd/templ,$(TEMPL_PACKAGE_VERSION))
+
+.PHONY: air-bin
+air-bin: $(AIR_BIN) ## Download air locally if necessary.
+$(AIR_BIN): $(LOCALBIN)
+	$(call go-install-tool,$(AIR_BIN),github.com/air-verse/air,$(AIR_PACKAGE_VERSION))

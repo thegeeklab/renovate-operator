@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"context"
 	"net/http"
 	"net/http/httptest"
 	"time"
@@ -10,6 +11,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	batchv1 "k8s.io/api/batch/v1"
+	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -233,7 +235,96 @@ var _ = Describe("WebHandler", func() {
 			handler.HandleJobLogs(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).To(ContainSubstring("Failed to fetch logs"))
+		})
+	})
+
+	Describe("HandleDashboard search", func() {
+		It("should handle search requests and return matching repos", func() {
+			req := httptest.NewRequest(http.MethodGet, "/?search=test-repo", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleDashboard(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+			Expect(w.Body.String()).To(ContainSubstring("test-repo"))
+		})
+
+		It("should return no results found for non-matching search", func() {
+			req := httptest.NewRequest(http.MethodGet, "/?search=nonexistent", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleDashboard(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).To(ContainSubstring("No Results Found"))
+		})
+	})
+
+	Describe("HandleJobLogsDownload", func() {
+		It("should return bad request for missing parameters", func() {
+			req := httptest.NewRequest(http.MethodGet, "/joblogs/download", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleJobLogsDownload(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("should return not found for non-existent job", func() {
+			req := httptest.NewRequest(http.MethodGet, "/joblogs/download?namespace=test-namespace&job=missing-job", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleJobLogsDownload(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusNotFound))
 			Expect(w.Body.String()).To(ContainSubstring("Logs are no longer available"))
+		})
+	})
+
+	Describe("isJobRunning", func() {
+		It("should return false when job does not exist", func() {
+			running := handler.isJobRunning(context.Background(), "test-namespace", "non-existent-job")
+			Expect(running).To(BeFalse())
+		})
+
+		It("should return true when job has no completion time and no terminal conditions", func() {
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{Name: "running-job", Namespace: "test-namespace"},
+				Status:     batchv1.JobStatus{},
+			}
+			Expect(fakeClient.Create(context.Background(), job)).To(Succeed())
+
+			running := handler.isJobRunning(context.Background(), "test-namespace", "running-job")
+			Expect(running).To(BeTrue())
+		})
+
+		It("should return false when job has CompletionTime", func() {
+			now := metav1.Now()
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{Name: "completed-job", Namespace: "test-namespace"},
+				Status:     batchv1.JobStatus{CompletionTime: &now},
+			}
+			Expect(fakeClient.Create(context.Background(), job)).To(Succeed())
+
+			running := handler.isJobRunning(context.Background(), "test-namespace", "completed-job")
+			Expect(running).To(BeFalse())
+		})
+
+		It("should return false when job has JobFailed condition", func() {
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{Name: "failed-job", Namespace: "test-namespace"},
+				Status: batchv1.JobStatus{
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(context.Background(), job)).To(Succeed())
+
+			running := handler.isJobRunning(context.Background(), "test-namespace", "failed-job")
+			Expect(running).To(BeFalse())
 		})
 	})
 })

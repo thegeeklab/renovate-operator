@@ -1,6 +1,8 @@
-package views
+package view
 
-templ Login(auth AuthInfo) {
+import "github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+
+templ Login(auth viewmodel.AuthInfo) {
 	<div class="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
 		<div class="max-w-md w-full space-y-8">
 			<div class="text-center">

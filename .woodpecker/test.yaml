@@ -9,4 +9,4 @@ steps:
   - name: test
     image: docker.io/library/golang:1.26.4
     commands:
-      - make deps test-ci
+      - make test-ci

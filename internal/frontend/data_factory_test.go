@@ -8,6 +8,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -167,7 +168,7 @@ var _ = Describe("DataFactory", func() {
 			repos, err := dataFactory.GetGitRepos(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 
-			var foundRepo *GitRepoInfo
+			var foundRepo *viewmodel.GitRepoInfo
 
 			for i := range repos {
 				if repos[i].Name == "repo-with-lastrun" {
@@ -180,7 +181,7 @@ var _ = Describe("DataFactory", func() {
 			Expect(foundRepo).NotTo(BeNil())
 			Expect(foundRepo.LastRenovateAt.IsZero()).To(BeFalse())
 			Expect(foundRepo.LastRenovateAt.Unix()).To(BeNumerically("~", jobTime.Unix(), 2))
-			Expect(foundRepo.LastRenovateStatus).To(Equal("Succeeded"))
+			Expect(foundRepo.LastRenovateStatus).To(Equal(viewmodel.StatusSucceeded))
 		})
 
 		It("should return empty LastRenovateAt when no jobs exist", func() {
@@ -225,7 +226,7 @@ var _ = Describe("DataFactory", func() {
 			Expect(jobs[0].Name).To(Equal("test-job-1"))
 			Expect(jobs[0].Namespace).To(Equal("test-namespace"))
 			Expect(jobs[0].Runner).To(Equal("test-runner"))
-			Expect(jobs[0].Status).To(Equal("Succeeded"))
+			Expect(jobs[0].Status).To(Equal(viewmodel.StatusSucceeded))
 		})
 
 		It("should return empty list for non-matching repo", func() {

@@ -1,0 +1,41 @@
+package view
+
+func btnBase() string {
+	return "cursor-pointer focus:outline-none"
+}
+
+func btnGhost() string {
+	return btnBase() + " transition-colors"
+}
+
+func btnGhostIcon() string {
+	return btnGhost() + " text-gray-400 hover:text-white"
+}
+
+func btnOutline() string {
+	return btnBase() +
+		" inline-flex items-center text-center rounded-md bg-white px-3 py-2" +
+		" text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset" +
+		" ring-gray-300 hover:bg-gray-50 gap-1"
+}
+
+func btnLink() string {
+	return btnBase() + " text-gray-300 hover:text-white text-sm bg-transparent border-none p-0"
+}
+
+func statusCardBase() string {
+	return "relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 border-l-4 hover:border-blue-400"
+}
+
+// Tooltip wraps content with a styled tooltip.
+templ Tooltip(text string) {
+	<span
+		class="tooltip"
+		x-tooltip
+	>
+		{ children... }
+		<span class="tooltip-text pointer-events-none -translate-x-1/2 -translate-y-full z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100">
+			{ text }
+		</span>
+	</span>
+}

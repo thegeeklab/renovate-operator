@@ -7,6 +7,7 @@ import (
 
 	"github.com/gorilla/mux"
 	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -24,19 +25,9 @@ type RenovatorInfo struct {
 // RenovatorDetails contains detailed information about a Renovator and its related resources.
 type RenovatorDetails struct {
 	RenovatorInfo
-	GitRepos    []GitRepoInfo   `json:"gitRepos"`
-	Runners     []RunnerInfo    `json:"runners"`
-	Discoveries []DiscoveryInfo `json:"discoveries"`
-}
-
-type GitRepoInfo struct {
-	Name               string    `json:"name"`
-	FullName           string    `json:"fullName"`
-	Namespace          string    `json:"namespace"`
-	WebhookID          string    `json:"webhookId"`
-	LastRenovateAt     time.Time `json:"lastRenovateAt"`
-	LastRenovateStatus string    `json:"lastRenovateStatus"`
-	CreatedAt          time.Time `json:"createdAt"`
+	GitRepos    []viewmodel.GitRepoInfo `json:"gitRepos"`
+	Runners     []RunnerInfo            `json:"runners"`
+	Discoveries []DiscoveryInfo         `json:"discoveries"`
 }
 
 type RunnerInfo struct {
@@ -49,14 +40,6 @@ type DiscoveryInfo struct {
 	Name      string    `json:"name"`
 	Namespace string    `json:"namespace"`
 	Schedule  string    `json:"schedule"`
-	CreatedAt time.Time `json:"createdAt"`
-}
-
-type JobInfo struct {
-	Name      string    `json:"name"`
-	Namespace string    `json:"namespace"`
-	Runner    string    `json:"runner"`
-	Status    string    `json:"status"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 
@@ -94,6 +77,7 @@ func getOptionsFromRequest(r *http.Request) ListOptions {
 		Renovator: q.Get("renovator"),
 		SortBy:    q.Get("sort"),
 		Order:     q.Get("order"),
+		Search:    q.Get("search"),
 	}
 }
 

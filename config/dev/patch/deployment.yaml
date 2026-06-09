@@ -47,4 +47,4 @@ spec:
                   name: gitea-oidc-credentials
                   key: client-secret
             - name: OIDC_SESSION_SECRET
-              value: "dev-session-secret-change-in-production"
+              value: "dummy-session-secret"

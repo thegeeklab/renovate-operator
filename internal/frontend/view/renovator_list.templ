@@ -1,0 +1,173 @@
+package view
+
+import (
+	"github.com/thegeeklab/renovate-operator/internal/frontend/sanitize"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+)
+
+templ RenovatorList(data viewmodel.DashboardData) {
+	<div class="bg-white shadow mb-6 shrink-0">
+		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
+			<h2 class="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h2>
+			<div class="relative w-full sm:w-64">
+				<input
+					type="search"
+					name="search"
+					value={ data.SearchQuery }
+					placeholder="Search all repositories..."
+					aria-label="Search all repositories"
+					hx-get="/"
+					hx-push-url="true"
+					hx-target="#dashboard-content"
+					hx-swap="innerHTML"
+					hx-trigger="input changed delay:500ms, search"
+					class="block w-full rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+				/>
+				if data.SearchQuery == "" {
+					<div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
+						@IconSearch("h-4 w-4 text-gray-400")
+					</div>
+				} else {
+					<button
+						type="button"
+						hx-get="/"
+						hx-push-url="true"
+						hx-target="#dashboard-content"
+						hx-swap="innerHTML"
+						aria-label="Clear search"
+						class="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600 cursor-pointer"
+					>
+						@IconXMark("h-4 w-4")
+					</button>
+				}
+			</div>
+		</div>
+	</div>
+	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
+		if data.SearchQuery != "" {
+			if len(data.SearchResults) > 0 {
+				@GitRepoList(data.SearchResults)
+			} else {
+				<div class="text-center py-12">
+					@IconInbox("mx-auto h-12 w-12 text-gray-400")
+					<h3 class="mt-2 text-sm font-semibold text-gray-900">No Results Found</h3>
+					<p class="mt-1 text-sm text-gray-500">
+						No repositories match your search query.
+					</p>
+				</div>
+			}
+		} else {
+			if len(data.Renovators) == 0 {
+				<div class="text-center py-12">
+					@IconInbox("mx-auto h-12 w-12 text-gray-400")
+					<h3 class="mt-2 text-sm font-semibold text-gray-900">No Renovators Found</h3>
+					<p class="mt-1 text-sm text-gray-500">
+						Get started by creating a Renovator custom resource.
+					</p>
+				</div>
+			} else {
+				<div class="space-y-4">
+					for _, v := range data.Renovators {
+						<details
+							x-cloak
+							x-data={ sanitize.RenovatorOpenXData(v.Name) }
+							:open="open"
+							@toggle="open = $el.open"
+							class="group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200"
+						>
+							<summary class="cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out">
+								<div class="flex items-center justify-between">
+									<div class="flex items-center gap-4">
+										@IconChevron("chevron h-5 w-5 text-gray-400 group-open:rotate-90 transition-transform duration-200")
+										<div>
+											<h3 class="text-base font-semibold leading-6 text-gray-900">
+												{ v.Name }
+											</h3>
+											<p class="mt-1 max-w-2xl text-sm text-gray-500">
+												Namespace:
+												<span class="font-medium text-gray-900">{ v.Namespace }</span>
+											</p>
+										</div>
+									</div>
+									<div class="flex items-center gap-2 sm:gap-6">
+										<div class="flex flex-col items-end sm:items-center justify-center gap-1">
+											<span class="text-xs text-gray-500">Repos</span>
+											<span class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
+												{ v.GitRepoCount }
+											</span>
+										</div>
+										<div class="hidden sm:flex flex-col items-end justify-center gap-1">
+											<span class="text-xs text-gray-500">Runner</span>
+											<span class="text-sm font-medium text-gray-900">{ v.RunnerName }</span>
+										</div>
+										<div class="hidden sm:flex flex-col items-end justify-center gap-1">
+											<span class="text-xs text-gray-500">Discovery</span>
+											<span class="text-sm font-medium text-gray-900">{ v.DiscoveryName }</span>
+										</div>
+									</div>
+								</div>
+							</summary>
+							<div
+								class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6"
+								x-data={ sanitize.RepoSortXData(v.Name) }
+							>
+								<div class="flex items-center justify-end mb-4 gap-2">
+									<label for={ "sort-" + v.Name } class="sr-only">Sort repositories</label>
+									<div class="relative">
+										<select
+											id={ "sort-" + v.Name }
+											name="sort"
+											x-model="sort"
+											aria-label="Sort repositories"
+											class="appearance-none rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-700 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer"
+											@change="$nextTick(() => $refs.repoList.dispatchEvent(new Event('sort-changed')))"
+										>
+											<option value="name">{ string(viewmodel.GitRepoFieldName) }</option>
+											<option value="date">{ string(viewmodel.GitRepoFieldCreated) }</option>
+											<option value="last_update">{ string(viewmodel.GitRepoFieldLastRun) }</option>
+										</select>
+										<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
+											@IconChevronUpDown("h-4 w-4 text-gray-400")
+										</div>
+									</div>
+									<span
+										class="tooltip"
+										x-tooltip
+									>
+										<button
+											type="button"
+											x-cloak
+											@click="order = order === 'asc' ? 'desc' : 'asc'; $nextTick(() => $refs.repoList.dispatchEvent(new Event('sort-changed')))"
+											:aria-label="order === 'asc' ? 'Switch to descending order' : 'Switch to ascending order'"
+											class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer transition-colors self-stretch"
+										>
+											<span x-show="order === 'asc'" style="display:none">
+												@IconBarsArrowDown("h-4 w-4")
+											</span>
+											<span x-show="order === 'desc'" style="display:none">
+												@IconBarsArrowUp("h-4 w-4")
+											</span>
+										</button>
+										<span class="tooltip-text pointer-events-none -translate-x-1/2 -translate-y-full z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100" x-text="order === 'asc' ? 'Sort ascending' : 'Sort descending'"></span>
+									</span>
+								</div>
+								<div
+									x-ref="repoList"
+									hx-get={ sanitize.GitreposURL(v.Namespace, v.Renovator) }
+									hx-trigger="revealed once, sse:job-updated, sort-changed"
+									hx-swap="innerHTML"
+									:hx-vals="JSON.stringify({ sort: sort, order: order })"
+								>
+									<div class="flex justify-center py-4">
+										@IconSpinner("animate-spin h-5 w-5 text-indigo-600")
+										<span class="ml-2 text-sm text-gray-500">Loading Repositories...</span>
+									</div>
+								</div>
+							</div>
+						</details>
+					}
+				</div>
+			}
+		}
+	</div>
+}
