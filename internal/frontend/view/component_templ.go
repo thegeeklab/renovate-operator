@@ -30,6 +30,10 @@ func btnLink() string {
 	return btnBase() + " text-gray-300 hover:text-white text-sm bg-transparent border-none p-0"
 }
 
+func statusCardBase() string {
+	return "relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 border-l-4 hover:border-blue-400"
+}
+
 // Tooltip wraps content with a styled tooltip.
 func Tooltip(text string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
@@ -67,7 +71,7 @@ func Tooltip(text string) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 34, Col: 9}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 38, Col: 9}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {

@@ -12,7 +12,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 )
 
-func RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults []viewmodel.GitRepoInfo) templ.Component {
+func RenovatorList(data viewmodel.DashboardData) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -38,9 +38,9 @@ func RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults 
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var2 string
-		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(searchQuery)
+		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.ResolveAttributeValue(data.SearchQuery)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 16, Col: 24}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 16, Col: 29}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var2)
 		if templ_7745c5c3_Err != nil {
@@ -50,7 +50,7 @@ func RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if searchQuery == "" {
+		if data.SearchQuery == "" {
 			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<div class=\"absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
@@ -81,9 +81,9 @@ func RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults 
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		if searchQuery != "" {
-			if len(searchResults) > 0 {
-				templ_7745c5c3_Err = GitRepoList(searchResults).Render(ctx, templ_7745c5c3_Buffer)
+		if data.SearchQuery != "" {
+			if len(data.SearchResults) > 0 {
+				templ_7745c5c3_Err = GitRepoList(data.SearchResults).Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -102,7 +102,7 @@ func RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults 
 				}
 			}
 		} else {
-			if len(views) == 0 {
+			if len(data.Renovators) == 0 {
 				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div class=\"text-center py-12\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
@@ -120,7 +120,7 @@ func RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults 
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				for _, v := range views {
+				for _, v := range data.Renovators {
 					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<details x-cloak x-data=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err

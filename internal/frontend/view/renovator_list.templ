@@ -5,7 +5,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 )
 
-templ RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults []viewmodel.GitRepoInfo) {
+templ RenovatorList(data viewmodel.DashboardData) {
 	<div class="bg-white shadow mb-6 shrink-0">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 			<h2 class="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h2>
@@ -13,7 +13,7 @@ templ RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults
 				<input
 					type="search"
 					name="search"
-					value={ searchQuery }
+					value={ data.SearchQuery }
 					placeholder="Search all repositories..."
 					aria-label="Search all repositories"
 					hx-get="/"
@@ -23,7 +23,7 @@ templ RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults
 					hx-trigger="input changed delay:500ms, search"
 					class="block w-full rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
 				/>
-				if searchQuery == "" {
+				if data.SearchQuery == "" {
 					<div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
 						@IconSearch("h-4 w-4 text-gray-400")
 					</div>
@@ -44,9 +44,9 @@ templ RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults
 		</div>
 	</div>
 	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
-		if searchQuery != "" {
-			if len(searchResults) > 0 {
-				@GitRepoList(searchResults)
+		if data.SearchQuery != "" {
+			if len(data.SearchResults) > 0 {
+				@GitRepoList(data.SearchResults)
 			} else {
 				<div class="text-center py-12">
 					@IconInbox("mx-auto h-12 w-12 text-gray-400")
@@ -57,7 +57,7 @@ templ RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults
 				</div>
 			}
 		} else {
-			if len(views) == 0 {
+			if len(data.Renovators) == 0 {
 				<div class="text-center py-12">
 					@IconInbox("mx-auto h-12 w-12 text-gray-400")
 					<h3 class="mt-2 text-sm font-semibold text-gray-900">No Renovators Found</h3>
@@ -67,7 +67,7 @@ templ RenovatorList(views []viewmodel.WebView, searchQuery string, searchResults
 				</div>
 			} else {
 				<div class="space-y-4">
-					for _, v := range views {
+					for _, v := range data.Renovators {
 						<details
 							x-cloak
 							x-data={ sanitize.RenovatorOpenXData(v.Name) }

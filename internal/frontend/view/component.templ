@@ -23,6 +23,10 @@ func btnLink() string {
 	return btnBase() + " text-gray-300 hover:text-white text-sm bg-transparent border-none p-0"
 }
 
+func statusCardBase() string {
+	return "relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white shadow-sm focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 border-l-4 hover:border-blue-400"
+}
+
 // Tooltip wraps content with a styled tooltip.
 templ Tooltip(text string) {
 	<span

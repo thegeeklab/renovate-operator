@@ -30,7 +30,7 @@
 /* Tooltip: each .tooltip wrapper scopes its own :hover state.
    The tooltip-text element uses position:fixed so it is never
    clipped by ancestor overflow. Positioning is handled via a
-   tiny Alpine.js x-effect that sets --tt-x/--tt-y on hover. */
+   mouseenter listener that sets --tt-x/--tt-y on hover. */
 .tooltip {
   display: inline-flex;
   align-items: center;

@@ -129,6 +129,14 @@ type GitRepoViewData struct {
 	Jobs []JobInfo
 }
 
+// DashboardData carries either the renovator list or search results for the
+// dashboard template. Exactly one of Renovators or SearchResults is populated.
+type DashboardData struct {
+	SearchQuery   string
+	Renovators    []WebView
+	SearchResults []GitRepoInfo
+}
+
 // JobLogData is the payload rendered by the JobLogs template, including the
 // log content and metadata describing whether the job is still running.
 type JobLogData struct {
@@ -137,5 +145,5 @@ type JobLogData struct {
 	Runner    string
 	IsRunning bool
 	Content   string
-	Error     string
+	Message   string
 }

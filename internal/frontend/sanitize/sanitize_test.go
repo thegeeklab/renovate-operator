@@ -144,9 +144,9 @@ var _ = Describe("sanitize helpers", func() {
 	})
 
 	Describe("SelectJobExpr", func() {
-		It("builds an Alpine expression that selects a job and reads the URL from data-log-url", func() {
+		It("builds an Alpine expression that selects a job and reads the URL from hx-get", func() {
 			Expect(SelectJobExpr("name")).
-				To(Equal(`selectJob($event.currentTarget.dataset.logUrl, "name")`))
+				To(Equal(`selectJob($event.currentTarget.getAttribute('hx-get'), "name")`))
 		})
 	})
 })

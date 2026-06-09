@@ -21,31 +21,17 @@ Alpine.data("jobList", function (repoId) {
         if (this.activeLogUrl && window.htmx) {
           htmx.ajax("GET", this.activeLogUrl, { target: "#log-viewer" })
         }
-        this.updateSelectionStyles()
       })
 
       window.addEventListener("clear-selected-job", () => {
         this.selectedJob = ""
         this.activeLogUrl = ""
-        this.updateSelectionStyles()
       })
     },
 
     selectJob(url, name) {
       this.selectedJob = name
       this.activeLogUrl = url
-      this.$nextTick(() => {
-        this.updateSelectionStyles()
-      })
-    },
-
-    updateSelectionStyles() {
-      const items = this.$el.querySelectorAll("[data-job-name]")
-      items.forEach((item) => {
-        const isSelected = item.dataset.jobName === this.selectedJob
-        item.classList.toggle("!border-blue-400", isSelected)
-        item.classList.toggle("bg-gray-50", isSelected)
-      })
     }
   }
 })
@@ -170,27 +156,14 @@ document.addEventListener("htmx:afterSwap", (e) => {
     })
   }
 
-  const jobListEl = document.querySelector("[x-data^='jobList']")
-  if (jobListEl) {
-    const data = Alpine.$data(jobListEl)
-    if (data && data.updateSelectionStyles) {
-      requestAnimationFrame(() => data.updateSelectionStyles())
-    }
-  }
-
   const { target, xhr } = e.detail
   if (!target) return
 
   if (target.id === "dashboard-content") {
     const searchInput = target.querySelector('input[name="search"]')
-    if (searchInput) {
+    if (searchInput && savedSearchSelection !== null) {
       searchInput.focus({ preventScroll: true })
-      if (savedSearchSelection !== null) {
-        searchInput.setSelectionRange(savedSearchSelection.start, savedSearchSelection.end)
-      } else {
-        const len = searchInput.value.length
-        searchInput.setSelectionRange(len, len)
-      }
+      searchInput.setSelectionRange(savedSearchSelection.start, savedSearchSelection.end)
       savedSearchSelection = null
       return
     }

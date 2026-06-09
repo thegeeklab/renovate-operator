@@ -95,7 +95,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 
 .PHONY: templ
 templ: templ-bin ## Generate templ components.
-	$(TEMPL_BIN) generate -include-version=false -include-timestamp=false --path=./internal/frontend/view
+	$(TEMPL_BIN) generate --include-version=false --include-timestamp=false --path=./internal/frontend/view
 
 .PHONY: templ-fmt
 templ-fmt: templ-bin ## Format templ files.

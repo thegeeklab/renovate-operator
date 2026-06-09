@@ -127,8 +127,8 @@ func LogViewerXData(namespace, runner, jobName string, isRunning bool) string {
 }
 
 // SelectJobExpr returns an Alpine @click expression that selects a job. The
-// job's log URL is read from the button's data-log-url attribute (rendered
+// job's log URL is read from the button's hx-get attribute (rendered
 // server-side by JobLogsURL) so the URL schema lives in one place.
 func SelectJobExpr(name string) string {
-	return "selectJob($event.currentTarget.dataset.logUrl, " + JSString(name) + ")"
+	return "selectJob($event.currentTarget.getAttribute('hx-get'), " + JSString(name) + ")"
 }

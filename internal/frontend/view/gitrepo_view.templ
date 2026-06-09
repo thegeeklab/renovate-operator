@@ -9,9 +9,7 @@ import (
 )
 
 func getBaseJobClass(status viewmodel.Status) string {
-	base := `cursor-pointer relative flex items-center space-x-3 rounded-lg border px-4 py-3 shadow-sm text-left w-full transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 border-l-4 bg-white border-gray-300 hover:border-blue-400`
-
-	return base + " " + status.LeftBorderClass()
+	return statusCardBase() + " cursor-pointer text-left w-full transition-colors px-4 py-3 " + status.LeftBorderClass()
 }
 
 templ GitRepoView(data viewmodel.GitRepoViewData) {
@@ -68,8 +66,8 @@ templ GitRepoView(data viewmodel.GitRepoViewData) {
 										hx-swap="innerHTML show:#log-viewer:top"
 										aria-label={ fmt.Sprintf("View logs for job %s in namespace %s", job.Name, job.Namespace) }
 										class={ getBaseJobClass(job.Status) }
+										:class={ "{ '!border-blue-400 bg-gray-50': selectedJob === " + sanitize.JSString(job.Name) + " }" }
 										data-job-name={ job.Name }
-										data-log-url={ sanitize.JobLogsURL(job.Namespace, job.Runner, job.Name) }
 									>
 										<div class="min-w-0 flex-1">
 											<p class="text-sm font-medium text-gray-900 truncate">{ job.Name }</p>

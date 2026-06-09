@@ -79,10 +79,10 @@ templ JobLogs(data viewmodel.JobLogData) {
 			id={ "scroll-" + data.JobName }
 			class="p-4 overflow-x-auto overflow-y-auto relative flex-1"
 		>
-			if data.Error != "" {
+			if data.Message != "" {
 				<div class="flex flex-col items-center justify-center py-8 text-gray-500 h-full">
 					@IconInformationCircle("h-10 w-10 text-gray-600 mb-3")
-					<p class="text-sm font-mono text-center px-4">{ data.Error }</p>
+					<p class="text-sm font-mono text-center px-4">{ data.Message }</p>
 				</div>
 			} else {
 				<pre class="text-xs font-mono text-gray-300 whitespace-pre-wrap break-all leading-relaxed">

@@ -9,9 +9,7 @@ import (
 )
 
 func getRepoClass(status viewmodel.Status) string {
-	base := `relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white px-6 py-5 shadow-sm hover:border-blue-400 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-indigo-500 focus-visible:ring-offset-2 border-l-4`
-
-	return base + " " + status.LeftBorderClass()
+	return statusCardBase() + " px-6 py-5 " + status.LeftBorderClass()
 }
 
 templ GitRepoList(repos []viewmodel.GitRepoInfo) {

@@ -26,6 +26,7 @@ import (
 
 var (
 	errPodNotFound            = errors.New("no pods found for job")
+	errPodNotReady            = errors.New("pod not ready")
 	errUnableToDeriveCacheKey = errors.New("unable to derive cache key for session")
 	errUnexpectedCacheResult  = errors.New("unexpected cache result type")
 	errAuthNotEnabled         = errors.New("auth not enabled")
@@ -130,9 +131,7 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 		})
 	}
 
-	if result == nil {
-		result = []RenovatorInfo{}
-	}
+	result = util.EmptyIfNil(result)
 
 	util.SortItems(
 		result,
@@ -184,9 +183,7 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 		result = filtered
 	}
 
-	if result == nil {
-		result = []viewmodel.GitRepoInfo{}
-	}
+	result = util.EmptyIfNil(result)
 
 	util.SortItems(
 		result,
@@ -255,9 +252,7 @@ func (df *DataFactory) GetRunners(ctx context.Context, opts ...ListOptions) ([]R
 		})
 	}
 
-	if result == nil {
-		result = []RunnerInfo{}
-	}
+	result = util.EmptyIfNil(result)
 
 	util.SortItems(
 		result,
@@ -290,9 +285,7 @@ func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) 
 		})
 	}
 
-	if result == nil {
-		result = []DiscoveryInfo{}
-	}
+	result = util.EmptyIfNil(result)
 
 	util.SortItems(
 		result,
@@ -337,11 +330,11 @@ func (df *DataFactory) GetJobsForRepo(
 		}
 
 		for _, cond := range job.Status.Conditions {
-			if cond.Type == batchv1.JobComplete && cond.Status == "True" {
+			if cond.Type == batchv1.JobComplete && cond.Status == corev1.ConditionTrue {
 				status = viewmodel.StatusSucceeded
 			}
 
-			if cond.Type == batchv1.JobFailed && cond.Status == "True" {
+			if cond.Type == batchv1.JobFailed && cond.Status == corev1.ConditionTrue {
 				status = viewmodel.StatusFailed
 			}
 		}
@@ -357,9 +350,7 @@ func (df *DataFactory) GetJobsForRepo(
 		})
 	}
 
-	if result == nil {
-		result = []viewmodel.JobInfo{}
-	}
+	result = util.EmptyIfNil(result)
 
 	if opt.SortBy == "" {
 		opt.SortBy = "date"
@@ -394,6 +385,10 @@ func (df *DataFactory) GetJobLogs(ctx context.Context, namespace, jobName string
 		return a.CreationTimestamp.Compare(b.CreationTimestamp.Time)
 	})
 	latestPod := podList.Items[len(podList.Items)-1]
+
+	if latestPod.Status.Phase == corev1.PodPending {
+		return nil, fmt.Errorf("%w: %s", errPodNotReady, latestPod.Name)
+	}
 
 	req := df.clientset.CoreV1().Pods(namespace).GetLogs(latestPod.Name, &corev1.PodLogOptions{})
 
@@ -458,11 +453,7 @@ func (df *DataFactory) ApplyAccessFilter(
 		}
 	}
 
-	if filtered == nil {
-		filtered = []viewmodel.GitRepoInfo{}
-	}
-
-	return filtered
+	return util.EmptyIfNil(filtered)
 }
 
 // IsUserRepo checks if a single repo is accessible by the current user.
