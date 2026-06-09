@@ -17,7 +17,7 @@ require (
 	github.com/open-policy-agent/cert-controller v0.16.0
 	github.com/stretchr/testify v1.11.1
 	golang.org/x/oauth2 v0.36.0
-	golang.org/x/sync v0.20.0
+	golang.org/x/sync v0.21.0
 	k8s.io/api v0.36.1
 	k8s.io/apimachinery v0.36.1
 	k8s.io/client-go v0.36.1
