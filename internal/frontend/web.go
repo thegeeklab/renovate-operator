@@ -58,6 +58,8 @@ const (
 	queriesPerRenovator             = 3 // runners, discoveries, repos
 )
 
+var errPodInitializing = errors.New("pods still initializing")
+
 func (h *WebHandler) RegisterRoutes(router *mux.Router) {
 	router.Handle("/events", h.Broker).Methods("GET")
 
@@ -277,9 +279,7 @@ func (h *WebHandler) buildRenovatorSummaries(
 		})
 	}
 
-	if err := group.Wait(); err != nil {
-		frontendLog.Error(err, "Unexpected error building renovator summaries")
-	}
+	_ = group.Wait()
 
 	return summaries
 }
@@ -371,6 +371,20 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 	h.render(w, r, view.GitRepoView(data))
 }
 
+// getJobLogStream fetches the log stream for a job.
+func (h *WebHandler) getJobLogStream(ctx context.Context, namespace, job string) (io.ReadCloser, error) {
+	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
+	if err != nil {
+		if errors.Is(err, errPodNotFound) && h.isJobRunning(ctx, namespace, job) {
+			return nil, errPodInitializing
+		}
+
+		return nil, err
+	}
+
+	return stream, nil
+}
+
 func (h *WebHandler) buildJobLogData(ctx context.Context, namespace, runner, job string) viewmodel.JobLogData {
 	data := viewmodel.JobLogData{
 		JobName:   job,
@@ -379,9 +393,9 @@ func (h *WebHandler) buildJobLogData(ctx context.Context, namespace, runner, job
 		IsRunning: h.isJobRunning(ctx, namespace, job),
 	}
 
-	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
+	stream, err := h.getJobLogStream(ctx, namespace, job)
 	if err != nil {
-		if data.IsRunning && errors.Is(err, errPodNotFound) {
+		if errors.Is(err, errPodInitializing) {
 			data.Content = "Waiting for pods to initialize..."
 
 			return data
@@ -448,11 +462,9 @@ func (h *WebHandler) HandleJobLogsDownload(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
+	stream, err := h.getJobLogStream(ctx, namespace, job)
 	if err != nil {
-		isRunning := h.isJobRunning(ctx, namespace, job)
-
-		if isRunning && errors.Is(err, errPodNotFound) {
+		if errors.Is(err, errPodInitializing) {
 			http.Error(w, "Logs are not yet available. The pods may still be initializing.", http.StatusNotFound)
 
 			return

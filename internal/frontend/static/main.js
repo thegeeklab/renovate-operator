@@ -39,13 +39,6 @@ Alpine.data("jobList", function (repoId) {
       })
     },
 
-    getSelectedClass(name) {
-      if (this.selectedJob === name) {
-        return "!border-blue-400 bg-gray-50"
-      }
-      return ""
-    },
-
     updateSelectionStyles() {
       const items = this.$el.querySelectorAll("[data-job-name]")
       items.forEach((item) => {
