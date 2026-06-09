@@ -7,7 +7,7 @@ GOLANGCI_LINT_PACKAGE_VERSION := v2.12.2
 # renovate: datasource=go depName=github.com/a-h/templ
 TEMPL_PACKAGE_VERSION := v0.3.1020
 # renovate: datasource=github-releases depName=air-verse/air
-AIR_PACKAGE_VERSION := v1.61.5
+AIR_PACKAGE_VERSION := v1.65.3
 
 MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
 
