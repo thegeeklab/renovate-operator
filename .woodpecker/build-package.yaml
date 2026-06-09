@@ -9,7 +9,7 @@ steps:
   - name: build-installer
     image: docker.io/library/golang:1.26.4
     commands:
-      - make deps build-installer
+      - make build-installer
       - git diff --exit-code
 
   - name: changelog
