@@ -6,12 +6,6 @@ when:
       - ${CI_REPO_DEFAULT_BRANCH}
 
 steps:
-  - name: build-installer
-    image: docker.io/library/golang:1.26.4
-    commands:
-      - make build-installer
-      - git diff --exit-code
-
   - name: changelog
     image: quay.io/thegeeklab/git-sv
     commands:
@@ -29,6 +23,36 @@ steps:
       note: CHANGELOG.md
       overwrite: true
       title: ${CI_COMMIT_TAG}
+    when:
+      - event: [tag]
+
+  - name: publish-chart-dockerhub
+    image: quay.io/thegeeklab/kube-tools
+    depends_on: [publish-github]
+    environment:
+      DOCKER_USERNAME:
+        from_secret: docker_username
+      DOCKER_PASSWORD:
+        from_secret: docker_password
+    commands:
+      - echo "$DOCKER_PASSWORD" | helm registry login docker.io --username "$DOCKER_USERNAME" --password-stdin
+      - helm package dist/chart/
+      - helm push *.tgz oci://docker.io/thegeeklab
+    when:
+      - event: [tag]
+
+  - name: publish-chart-quay
+    image: quay.io/thegeeklab/kube-tools
+    depends_on: [publish-github]
+    environment:
+      QUAY_USERNAME:
+        from_secret: quay_username
+      QUAY_PASSWORD:
+        from_secret: quay_password
+    commands:
+      - echo "$QUAY_PASSWORD" | helm registry login quay.io --username "$QUAY_USERNAME" --password-stdin
+      - helm package dist/chart/
+      - helm push *.tgz oci://quay.io/thegeeklab
     when:
       - event: [tag]
 

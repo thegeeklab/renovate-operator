@@ -8,6 +8,10 @@ GOLANGCI_LINT_PACKAGE_VERSION := v2.12.2
 TEMPL_PACKAGE_VERSION := v0.3.1020
 # renovate: datasource=github-releases depName=air-verse/air
 AIR_PACKAGE_VERSION := v1.65.3
+# renovate: datasource=github-releases depName=norwoodj/helm-docs
+HELM_DOCS_PACKAGE_VERSION := v1.14.2
+# renovate: datasource=docker depName=ghcr.io/helm-unittest/helm-unittest/unittest
+HELM_UNITTEST_VERSION := 1.1.0
 
 MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
 
@@ -164,6 +168,21 @@ golangci-lint: golangci-lint-bin ## Run golangci-lint.
 .PHONY: lint
 lint: yamlfmt-dry golangci-lint eslint
 
+.PHONY: helm-docs
+helm-docs: helm-docs-bin ## Generate helm documentation.
+	$(HELM_DOCS_BIN) -c dist/chart/
+	npx prettier --write "dist/chart/**/*.md"
+
+.PHONY: helm-test
+helm-test: ## Run helm unit tests.
+	@if ! gpg --list-keys 2>/dev/null | grep -qi "helm-unittest"; then \
+		mkdir -p ~/.gnupg && chmod 700 ~/.gnupg; \
+		curl -SsL https://github.com/helm-unittest/helm-unittest/raw/refs/heads/main/public-key.asc 2>/dev/null | gpg --import >/dev/null 2>&1 || true; \
+		gpg --export > ~/.gnupg/pubring.gpg 2>/dev/null || true; \
+	fi
+	@helm plugin install oci://ghcr.io/helm-unittest/helm-unittest/unittest:$(HELM_UNITTEST_VERSION) >/dev/null 2>&1 || true
+	helm unittest --strict -f 'tests/**/*.yaml' dist/chart/
+
 ##@ Build
 
 .PHONY: build-go
@@ -244,6 +263,7 @@ YAMLFMT_BIN ?= $(LOCALBIN)/yamlfmt
 GOTESTSUM_BIN ?= $(LOCALBIN)/gotestsum
 TEMPL_BIN ?= $(LOCALBIN)/templ
 AIR_BIN ?= $(LOCALBIN)/air
+HELM_DOCS_BIN ?= $(LOCALBIN)/helm-docs
 
 ## Tool Versions
 KUSTOMIZE_VERSION ?= v5.8.1
@@ -321,3 +341,8 @@ $(TEMPL_BIN): $(LOCALBIN)
 air-bin: $(AIR_BIN) ## Download air locally if necessary.
 $(AIR_BIN): $(LOCALBIN)
 	$(call go-install-tool,$(AIR_BIN),github.com/air-verse/air,$(AIR_PACKAGE_VERSION))
+
+.PHONY: helm-docs-bin
+helm-docs-bin: $(HELM_DOCS_BIN) ## Download helm-docs locally if necessary.
+$(HELM_DOCS_BIN): $(LOCALBIN)
+	$(call go-install-tool,$(HELM_DOCS_BIN),github.com/norwoodj/helm-docs/cmd/helm-docs,$(HELM_DOCS_PACKAGE_VERSION))

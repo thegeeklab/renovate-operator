@@ -1,0 +1,24 @@
+{{- if .Values.rbacHelpers.enable }}
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    labels:
+        app.kubernetes.io/managed-by: {{ .Release.Service }}
+        app.kubernetes.io/name: {{ include "renovate-operator.name" . }}
+        helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+        app.kubernetes.io/instance: {{ .Release.Name }}
+    name: {{ include "renovate-operator.resourceName" (dict "suffix" "renovator-admin-role" "context" $) }}
+rules:
+    - apiGroups:
+        - renovate.thegeeklab.de
+      resources:
+        - renovators
+      verbs:
+        - '*'
+    - apiGroups:
+        - renovate.thegeeklab.de
+      resources:
+        - renovators/status
+      verbs:
+        - get
+{{- end }}

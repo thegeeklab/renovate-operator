@@ -10,3 +10,8 @@ steps:
     image: docker.io/library/golang:1.26.4
     commands:
       - make test-ci
+
+  - name: helm-test
+    image: quay.io/thegeeklab/kube-tools
+    commands:
+      - make helm-test
