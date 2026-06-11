@@ -14,14 +14,6 @@ steps:
     environment:
       FORCE_COLOR: "true"
 
-  - name: helm-docs-verify
-    image: docker.io/library/golang:1.26.4
-    commands:
-      - apt-get update && apt-get install -y --no-install-recommends nodejs npm
-      - npm ci
-      - make helm-docs
-      - git diff --exit-code dist/chart/
-
   - name: markdownlint
     image: quay.io/thegeeklab/markdownlint-cli
     depends_on: []

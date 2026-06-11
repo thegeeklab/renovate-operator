@@ -5,7 +5,6 @@ description: A Helm chart to distribute the project renovate-operator
 type: application
 version: 0.1.0
 appVersion: "0.1.0"
-icon: "https://example.com/icon.png"
 maintainers:
   - name: Renovate Operator Maintainers
     email: mail@thegeeklab.de

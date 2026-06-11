@@ -11,6 +11,7 @@ config/dev/charts/
 /node_modules/
 /internal/frontend/static/dist
 __snapshot__
+renovate-operator*.tgz
 
 # Test binary, built with `go test -c`
 *.test
