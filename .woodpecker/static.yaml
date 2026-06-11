@@ -44,5 +44,5 @@ steps:
   - name: helm-lint
     image: quay.io/helmpack/chart-testing:v3.14.0
     commands:
-      - ct list-changed --target-branch ${CI_REPO_DEFAULT_BRANCH} --charts dist/chart
-      - ct lint --target-branch ${CI_REPO_DEFAULT_BRANCH} --charts dist/chart --validate-maintainers=false
+      - ct list-changed --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist
+      - ct lint --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist --validate-maintainers=false
