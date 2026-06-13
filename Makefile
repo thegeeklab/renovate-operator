@@ -175,6 +175,7 @@ helm-docs: helm-docs-bin ## Generate helm documentation.
 
 .PHONY: helm-test
 helm-test: ## Run helm unit tests.
+	@command -v gpg >/dev/null 2>&1 || { echo "ERROR: gpg is not installed"; exit 1; }
 	@if ! gpg --list-keys 2>/dev/null | grep -qi "helm-unittest"; then \
 		mkdir -p ~/.gnupg && chmod 700 ~/.gnupg; \
 		curl -SsL https://github.com/helm-unittest/helm-unittest/raw/refs/heads/main/public-key.asc 2>/dev/null | gpg --import >/dev/null 2>&1 || true; \

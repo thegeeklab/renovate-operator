@@ -63,7 +63,7 @@ type ProviderManager_DeleteWebhook_Call struct {
 //   - ctx context.Context
 //   - repoName string
 //   - webhookID string
-func (_e *ProviderManager_Expecter) DeleteWebhook(ctx interface{}, repoName interface{}, webhookID interface{}) *ProviderManager_DeleteWebhook_Call {
+func (_e *ProviderManager_Expecter) DeleteWebhook(ctx any, repoName any, webhookID any) *ProviderManager_DeleteWebhook_Call {
 	return &ProviderManager_DeleteWebhook_Call{Call: _e.mock.On("DeleteWebhook", ctx, repoName, webhookID)}
 }
 
@@ -136,7 +136,7 @@ type ProviderManager_EnsureWebhook_Call struct {
 //   - repoName string
 //   - webhookURL string
 //   - secret string
-func (_e *ProviderManager_Expecter) EnsureWebhook(ctx interface{}, repoName interface{}, webhookURL interface{}, secret interface{}) *ProviderManager_EnsureWebhook_Call {
+func (_e *ProviderManager_Expecter) EnsureWebhook(ctx any, repoName any, webhookURL any, secret any) *ProviderManager_EnsureWebhook_Call {
 	return &ProviderManager_EnsureWebhook_Call{Call: _e.mock.On("EnsureWebhook", ctx, repoName, webhookURL, secret)}
 }
 
