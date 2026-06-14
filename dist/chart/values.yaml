@@ -1,0 +1,98 @@
+---
+# -- String to partially override chart.fullname template (will maintain the release name)
+nameOverride: ""
+
+# -- String to fully override chart.fullname template
+fullnameOverride: ""
+
+manager:
+  # -- Number of replicas for the manager deployment
+  replicas: 1
+
+  image:
+    # -- Manager container image repository
+    repository: docker.io/thegeeklab/renovate-operator
+    # -- Manager container image tag
+    tag: latest
+    # -- Manager container image pull policy
+    pullPolicy: IfNotPresent
+
+  # -- Arguments passed to the manager container
+  args:
+    - --leader-elect
+    - --frontend-bind-address=:8082
+
+  # -- Environment variables for the manager container
+  env:
+    - name: POD_NAMESPACE
+      valueFrom:
+        fieldRef:
+          fieldPath: metadata.namespace
+
+  # -- Image pull secrets for the manager pod
+  imagePullSecrets: []
+
+  podSecurityContext:
+    # -- Ensure the pod runs as a non-root user
+    runAsNonRoot: true
+    seccompProfile:
+      # -- Type of seccomp profile
+      type: RuntimeDefault
+
+  securityContext:
+    # -- Prevent privilege escalation
+    allowPrivilegeEscalation: false
+    capabilities:
+      drop:
+        - ALL
+
+  resources:
+    limits:
+      # -- CPU limit for the manager container
+      cpu: 500m
+      # -- Memory limit for the manager container
+      memory: 128Mi
+    requests:
+      # -- CPU request for the manager container
+      cpu: 10m
+      # -- Memory request for the manager container
+      memory: 64Mi
+
+  # -- Node affinity rules for the manager pod
+  affinity: {}
+
+  # -- Node selector for the manager pod
+  nodeSelector: {}
+
+  # -- Tolerations for the manager pod
+  tolerations: []
+
+rbacHelpers:
+  # -- Install convenience admin/editor/viewer roles for CRDs
+  enable: false
+
+crd:
+  # -- Install CRDs with the chart
+  enable: true
+  # -- Keep CRDs when uninstalling the chart
+  keep: true
+
+metrics:
+  # -- Enable the /metrics endpoint with RBAC protection
+  enable: true
+  # -- Metrics server port
+  port: 8443
+
+certManager:
+  # -- Enable cert-manager integration for webhook and metrics certificates
+  enable: true
+
+webhook:
+  # -- Enable the validating/mutating webhook server
+  enable: true
+  # -- Webhook server port
+  port: 9443
+
+prometheus:
+  # -- Enable ServiceMonitor creation (requires prometheus-operator)
+  enable: false

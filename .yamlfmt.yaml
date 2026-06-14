@@ -5,3 +5,5 @@ formatter:
   eof_newline: True
   retain_line_breaks_single: True
 gitignore_excludes: True
+exclude:
+  - dist/chart

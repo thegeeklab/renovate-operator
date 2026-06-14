@@ -1,0 +1,113 @@
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+    name: {{ include "renovate-operator.resourceName" (dict "suffix" "manager-role" "context" $) }}
+rules:
+    - apiGroups:
+        - ""
+      resources:
+        - configmaps
+        - secrets
+        - serviceaccounts
+      verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+    - apiGroups:
+        - ""
+      resources:
+        - pods
+        - pods/log
+      verbs:
+        - get
+        - list
+        - watch
+    - apiGroups:
+        - admissionregistration.k8s.io
+      resources:
+        - mutatingwebhookconfigurations
+        - validatingwebhookconfigurations
+      verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+    - apiGroups:
+        - batch
+      resources:
+        - cronjobs
+        - jobs
+      verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+    - apiGroups:
+        - events.k8s.io
+      resources:
+        - events
+      verbs:
+        - create
+        - patch
+        - update
+    - apiGroups:
+        - rbac.authorization.k8s.io
+      resources:
+        - rolebindings
+        - roles
+      verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+    - apiGroups:
+        - renovate.thegeeklab.de
+      resources:
+        - discoveries
+        - gitrepos
+        - renovateconfigs
+        - renovators
+        - runners
+      verbs:
+        - create
+        - delete
+        - get
+        - list
+        - patch
+        - update
+        - watch
+    - apiGroups:
+        - renovate.thegeeklab.de
+      resources:
+        - discoveries/finalizers
+        - gitrepos/finalizers
+        - renovateconfigs/finalizers
+        - renovators/finalizers
+        - runners/finalizers
+      verbs:
+        - update
+    - apiGroups:
+        - renovate.thegeeklab.de
+      resources:
+        - discoveries/status
+        - gitrepos/status
+        - renovateconfigs/status
+        - renovators/status
+        - runners/status
+      verbs:
+        - get
+        - patch
+        - update
