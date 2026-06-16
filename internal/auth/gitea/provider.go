@@ -11,7 +11,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cenkalti/backoff/v5"
+	"github.com/cenkalti/backoff/v6"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/thegeeklab/renovate-operator/internal/auth"
 	"golang.org/x/oauth2"
