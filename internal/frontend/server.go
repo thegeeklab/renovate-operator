@@ -1,6 +1,7 @@
 package frontend
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
@@ -161,10 +162,17 @@ var defaultErrorPages = map[int]ErrorPageInfo{
 // It checks for X-Error-Title and X-Error-Message headers first, falling back to generic defaults.
 func (s *Server) errorPageMiddleware(next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		recorder := &statusRecorder{
+			ResponseWriter: w,
+			statusCode:     http.StatusOK,
+			body:           &bytes.Buffer{},
+		}
 		next.ServeHTTP(recorder, r)
 
 		if strings.HasPrefix(r.URL.Path, "/api/") {
+			w.WriteHeader(recorder.statusCode)
+			_, _ = w.Write(recorder.body.Bytes())
+
 			return
 		}
 
@@ -187,19 +195,28 @@ func (s *Server) errorPageMiddleware(next http.Handler) http.Handler {
 			if err != nil {
 				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
 			}
+
+			return
 		}
+
+		w.WriteHeader(recorder.statusCode)
+		_, _ = w.Write(recorder.body.Bytes())
 	})
 }
 
-// statusRecorder wraps http.ResponseWriter to capture the status code.
+// statusRecorder wraps http.ResponseWriter to capture the status code and buffer the response body.
 type statusRecorder struct {
 	http.ResponseWriter
 	statusCode int
+	body       *bytes.Buffer
 }
 
 func (r *statusRecorder) WriteHeader(code int) {
 	r.statusCode = code
-	r.ResponseWriter.WriteHeader(code)
+}
+
+func (r *statusRecorder) Write(b []byte) (int, error) {
+	return r.body.Write(b)
 }
 
 // loadFrontendAssets populates the server's FrontendAssets struct based on the configuration.
