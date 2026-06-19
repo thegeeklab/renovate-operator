@@ -11,9 +11,13 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/builder"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
+	"sigs.k8s.io/controller-runtime/pkg/event"
+	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/auth"
@@ -23,9 +27,9 @@ import (
 
 const (
 	ControllerName = "authprovider"
-	// FinalizerCleanup is the finalizer added to AuthProvider resources to ensure
-	// the provider is unregistered from the auth manager before deletion.
-	FinalizerCleanup = "authprovider.renovate.thegeeklab.de/cleanup"
+
+	//nolint:gosec // G101: This is a field path for indexing, not a credential
+	secretRefIndexKey = ".spec.clientSecret.name"
 )
 
 var (
@@ -54,9 +58,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	ap := &renovatev1beta1.AuthProvider{}
 	if err := r.Get(ctx, req.NamespacedName, ap); err != nil {
 		if api_errors.IsNotFound(err) {
-			// Object was deleted — refresh the intended flag from the
-			// remaining AuthProvider CRs so the auth system can transition
-			// back to disabled when the last one is gone.
 			r.refreshIntended(ctx)
 
 			return ctrl.Result{}, nil
@@ -78,7 +79,6 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) reconcile(
 	ctx context.Context, ap *renovatev1beta1.AuthProvider,
 ) controller.Outcome {
-	// List all AuthProvider CRs to determine if auth is intended
 	var authProviderList renovatev1beta1.AuthProviderList
 	if err := r.List(ctx, &authProviderList); err != nil {
 		return controller.Outcome{Err: fmt.Errorf("failed to list AuthProviders: %w", err)}
@@ -86,16 +86,13 @@ func (r *Reconciler) reconcile(
 
 	r.AuthManager.SetIntended(len(authProviderList.Items) > 0)
 
-	// Handle deletion
 	if !ap.DeletionTimestamp.IsZero() {
-		if controllerutil.ContainsFinalizer(ap, FinalizerCleanup) {
-			// Unregister the provider
+		if controllerutil.ContainsFinalizer(ap, renovatev1beta1.FinalizerAuthProviderCleanup) {
 			r.AuthManager.Unregister(ap.Name)
 			ap.Status.Registered = false
 
-			// Remove the finalizer
 			patch := client.MergeFrom(ap.DeepCopy())
-			controllerutil.RemoveFinalizer(ap, FinalizerCleanup)
+			controllerutil.RemoveFinalizer(ap, renovatev1beta1.FinalizerAuthProviderCleanup)
 
 			if err := r.Patch(ctx, ap, patch); err != nil && !api_errors.IsNotFound(err) {
 				return controller.Outcome{Err: fmt.Errorf("failed to remove finalizer: %w", err)}
@@ -105,10 +102,9 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Result: &ctrl.Result{}}
 	}
 
-	// Add finalizer if not present
-	if !controllerutil.ContainsFinalizer(ap, FinalizerCleanup) {
+	if !controllerutil.ContainsFinalizer(ap, renovatev1beta1.FinalizerAuthProviderCleanup) {
 		patch := client.MergeFrom(ap.DeepCopy())
-		controllerutil.AddFinalizer(ap, FinalizerCleanup)
+		controllerutil.AddFinalizer(ap, renovatev1beta1.FinalizerAuthProviderCleanup)
 
 		if err := r.Patch(ctx, ap, patch); err != nil {
 			return controller.Outcome{Err: fmt.Errorf("failed to add finalizer: %w", err)}
@@ -117,39 +113,34 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Result: &ctrl.Result{}}
 	}
 
-	// Skip the expensive provider construction (which performs a network OIDC
-	// discovery round-trip) and re-registration when the spec is unchanged and
-	// the provider is already registered with the auth manager. Reconciles also
-	// fire on periodic resyncs, secret watches and our own status patches, so
-	// without this guard the issuer would be contacted on every pass.
-	if r.isProviderUpToDate(ap) {
+	secret, err := r.getSecret(ctx, ap)
+	if err != nil {
+		return controller.Outcome{Err: fmt.Errorf("failed to get secret: %w", err)}
+	}
+
+	if r.isProviderUpToDate(ap, secret) {
 		return controller.Outcome{Result: &ctrl.Result{}}
 	}
 
-	// Get client secret
-	clientSecret, err := r.getClientSecret(ctx, ap)
+	clientSecret, err := r.extractClientSecret(ap, secret)
 	if err != nil {
-		return controller.Outcome{Err: fmt.Errorf("failed to get client secret: %w", err)}
+		return controller.Outcome{Err: fmt.Errorf("failed to extract client secret: %w", err)}
 	}
 
-	// Create auth provider
 	provider, err := r.createAuthProvider(ctx, ap, clientSecret)
 	if err != nil {
 		return controller.Outcome{Err: fmt.Errorf("failed to create auth provider: %w", err)}
 	}
 
-	// Register with auth manager
 	r.AuthManager.Register(provider)
 
 	ap.Status.Registered = true
+	ap.Status.SecretResourceVersion = secret.ResourceVersion
 
 	return controller.Outcome{Result: &ctrl.Result{}}
 }
 
-// isProviderUpToDate reports whether the provider for ap is already registered
-// for the current spec generation, so that re-construction and re-registration
-// can be safely skipped.
-func (r *Reconciler) isProviderUpToDate(ap *renovatev1beta1.AuthProvider) bool {
+func (r *Reconciler) isProviderUpToDate(ap *renovatev1beta1.AuthProvider, secret *corev1.Secret) bool {
 	if !ap.Status.Registered {
 		return false
 	}
@@ -160,12 +151,13 @@ func (r *Reconciler) isProviderUpToDate(ap *renovatev1beta1.AuthProvider) bool {
 	}
 
 	_, ok := r.AuthManager.Get(ap.Name)
+	if !ok {
+		return false
+	}
 
-	return ok
+	return ap.Status.SecretResourceVersion == secret.ResourceVersion
 }
 
-// refreshIntended re-lists all AuthProvider CRs and updates the intended flag.
-// This ensures the flag stays accurate when objects are deleted.
 func (r *Reconciler) refreshIntended(ctx context.Context) {
 	var authProviderList renovatev1beta1.AuthProviderList
 	if err := r.List(ctx, &authProviderList); err != nil {
@@ -175,21 +167,26 @@ func (r *Reconciler) refreshIntended(ctx context.Context) {
 	r.AuthManager.SetIntended(len(authProviderList.Items) > 0)
 }
 
-func (r *Reconciler) getClientSecret(ctx context.Context, ap *renovatev1beta1.AuthProvider) (string, error) {
+func (r *Reconciler) getSecret(ctx context.Context, ap *renovatev1beta1.AuthProvider) (*corev1.Secret, error) {
 	secretName := ap.Spec.ClientSecret.Name
-	secretKey := ap.Spec.ClientSecret.Key
 
 	var secret corev1.Secret
 	if err := r.Get(ctx, types.NamespacedName{
 		Name:      secretName,
 		Namespace: ap.Namespace,
 	}, &secret); err != nil {
-		return "", fmt.Errorf("failed to get secret %s: %w", secretName, err)
+		return nil, fmt.Errorf("failed to get secret %s: %w", secretName, err)
 	}
+
+	return &secret, nil
+}
+
+func (r *Reconciler) extractClientSecret(ap *renovatev1beta1.AuthProvider, secret *corev1.Secret) (string, error) {
+	secretKey := ap.Spec.ClientSecret.Key
 
 	secretValue, ok := secret.Data[secretKey]
 	if !ok {
-		return "", fmt.Errorf("%w: %s in secret %s", errSecretKeyNotFound, secretKey, secretName)
+		return "", fmt.Errorf("%w: %s in secret %s", errSecretKeyNotFound, secretKey, secret.Name)
 	}
 
 	return string(secretValue), nil
@@ -228,8 +225,88 @@ func (r *Reconciler) createAuthProvider(
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.EventRecorder = mgr.GetEventRecorder(ControllerName)
 
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(), &renovatev1beta1.AuthProvider{}, secretRefIndexKey, authProviderSecretRefIndexFn,
+	); err != nil {
+		return err
+	}
+
+	secretPredicate := predicate.Funcs{
+		CreateFunc: func(e event.CreateEvent) bool {
+			return r.isSecretReferenced(e.Object)
+		},
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return r.isSecretReferenced(e.ObjectNew)
+		},
+		DeleteFunc: func(e event.DeleteEvent) bool {
+			return r.isSecretReferenced(e.Object)
+		},
+		GenericFunc: func(_ event.GenericEvent) bool {
+			return false
+		},
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.AuthProvider{}).
+		Watches(
+			&corev1.Secret{},
+			handler.EnqueueRequestsFromMapFunc(r.mapSecretWithAuthProvider),
+			builder.WithPredicates(secretPredicate),
+		).
 		Named(ControllerName).
 		Complete(r)
+}
+
+// authProviderSecretRefIndexFn returns the secret name reference for indexing.
+func authProviderSecretRefIndexFn(rawObj client.Object) []string {
+	authProvider, ok := rawObj.(*renovatev1beta1.AuthProvider)
+	if !ok {
+		return nil
+	}
+
+	if authProvider.Spec.ClientSecret.Name == "" {
+		return nil
+	}
+
+	return []string{authProvider.Spec.ClientSecret.Name}
+}
+
+// isSecretReferenced checks if a secret is referenced by any AuthProvider.
+func (r *Reconciler) isSecretReferenced(secret client.Object) bool {
+	ctx := context.Background()
+
+	authProviderList := &renovatev1beta1.AuthProviderList{}
+	if err := r.List(
+		ctx, authProviderList,
+		client.InNamespace(secret.GetNamespace()),
+		client.MatchingFields{secretRefIndexKey: secret.GetName()},
+	); err != nil {
+		return false
+	}
+
+	return len(authProviderList.Items) > 0
+}
+
+// mapSecretWithAuthProvider maps a Secret event to a Request for the AuthProvider(s) that reference it.
+func (r *Reconciler) mapSecretWithAuthProvider(ctx context.Context, obj client.Object) []ctrl.Request {
+	authProviderList := &renovatev1beta1.AuthProviderList{}
+	if err := r.List(
+		ctx, authProviderList,
+		client.InNamespace(obj.GetNamespace()),
+		client.MatchingFields{secretRefIndexKey: obj.GetName()},
+	); err != nil {
+		return nil
+	}
+
+	reqs := make([]ctrl.Request, len(authProviderList.Items))
+	for i := range authProviderList.Items {
+		reqs[i] = ctrl.Request{
+			NamespacedName: client.ObjectKey{
+				Name:      authProviderList.Items[i].Name,
+				Namespace: authProviderList.Items[i].Namespace,
+			},
+		}
+	}
+
+	return reqs
 }

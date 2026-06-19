@@ -167,6 +167,11 @@ spec:
                 registered:
                   description: Registered indicates whether the provider is currently registered with the auth manager.
                   type: boolean
+                secretResourceVersion:
+                  description: |-
+                    SecretResourceVersion tracks the resource version of the referenced secret.
+                    This allows the controller to detect when the secret has been rotated.
+                  type: string
               type: object
           type: object
       served: true
@@ -2452,30 +2457,4 @@ webhooks:
           - UPDATE
         resources:
           - runners
-    sideEffects: None
----
-apiVersion: admissionregistration.k8s.io/v1
-kind: ValidatingWebhookConfiguration
-metadata:
-  name: renovate-operator-webhook-configuration
-webhooks:
-  - admissionReviewVersions:
-      - v1
-    clientConfig:
-      service:
-        name: renovate-operator-webhook-service
-        namespace: renovate-system
-        path: /validate-renovate-thegeeklab-de-v1beta1-renovator
-    failurePolicy: Fail
-    name: vrenovator-v1beta1.kb.io
-    rules:
-      - apiGroups:
-          - renovate.thegeeklab.de
-        apiVersions:
-          - v1beta1
-        operations:
-          - CREATE
-          - UPDATE
-        resources:
-          - renovators
     sideEffects: None

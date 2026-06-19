@@ -30,6 +30,10 @@ const (
 	// remote webhooks are cleaned up before the resource is deleted.
 	FinalizerGitRepoWebhook = "renovate.thegeeklab.de/webhook-cleanup"
 
+	// FinalizerAuthProviderCleanup is the finalizer added to AuthProvider resources to ensure
+	// the provider is unregistered from the auth manager before the resource is deleted.
+	FinalizerAuthProviderCleanup = "renovate.thegeeklab.de/authprovider-cleanup"
+
 	// WebhookSecretDataKey is the key used in the webhook Secret to store the validation token.
 	WebhookSecretDataKey = "secret"
 

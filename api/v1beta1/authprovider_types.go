@@ -48,6 +48,11 @@ type AuthProviderStatus struct {
 	// Registered indicates whether the provider is currently registered with the auth manager.
 	// +kubebuilder:validation:Optional
 	Registered bool `json:"registered,omitempty"`
+
+	// SecretResourceVersion tracks the resource version of the referenced secret.
+	// This allows the controller to detect when the secret has been rotated.
+	// +kubebuilder:validation:Optional
+	SecretResourceVersion string `json:"secretResourceVersion,omitempty"`
 }
 
 // +kubebuilder:object:root=true

@@ -158,6 +158,11 @@ spec:
                 registered:
                   description: Registered indicates whether the provider is currently registered with the auth manager.
                   type: boolean
+                secretResourceVersion:
+                  description: |-
+                    SecretResourceVersion tracks the resource version of the referenced secret.
+                    This allows the controller to detect when the secret has been rotated.
+                  type: string
               type: object
           type: object
       served: true
