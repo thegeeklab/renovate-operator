@@ -4,6 +4,7 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/frontend"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -16,6 +17,7 @@ type Reconciler struct {
 	scheme          *runtime.Scheme
 	req             ctrl.Request
 	externalURL     string
+	broker          *frontend.SSEBroker
 	instance        *renovatev1beta1.GitRepo
 	renovate        *renovatev1beta1.RenovateConfig
 	providerFactory provider.ProviderFactory
@@ -25,6 +27,7 @@ func NewReconciler(
 	c client.Client,
 	scheme *runtime.Scheme,
 	externalURL string,
+	broker *frontend.SSEBroker,
 	instance *renovatev1beta1.GitRepo,
 	renovate *renovatev1beta1.RenovateConfig,
 ) (*Reconciler, error) {
@@ -32,6 +35,7 @@ func NewReconciler(
 		Client:          c,
 		scheme:          scheme,
 		externalURL:     externalURL,
+		broker:          broker,
 		req:             ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
 		instance:        instance,
 		renovate:        renovate,
@@ -64,6 +68,10 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		}
 
 		results.Collect(res)
+	}
+
+	if r.broker != nil {
+		r.broker.Broadcast("job-updated", "refresh")
 	}
 
 	return results.ToResult(), nil

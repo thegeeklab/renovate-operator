@@ -296,6 +296,7 @@ func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBr
 		Client:      mgr.GetClient(),
 		Scheme:      mgr.GetScheme(),
 		ExternalURL: cfg.ExternalURL,
+		Broker:      sseBroker,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller %s: %w", gitrepo.ControllerName, err)
 	}
