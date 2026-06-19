@@ -2,6 +2,7 @@ package auth
 
 import (
 	"context"
+	"sync"
 
 	"github.com/alexedwards/scs/v2"
 )
@@ -40,8 +41,10 @@ type AuthProvider interface {
 }
 
 type Manager struct {
+	mu        sync.RWMutex
 	providers map[string]AuthProvider
 	Session   *scs.SessionManager
+	intended  bool
 }
 
 func NewManager(sessionSecret string, secureCookies bool) (*Manager, error) {
@@ -57,17 +60,33 @@ func NewManager(sessionSecret string, secureCookies bool) (*Manager, error) {
 }
 
 func (m *Manager) Register(provider AuthProvider) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
 	m.providers[provider.Name()] = provider
+}
+
+func (m *Manager) Unregister(name string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	delete(m.providers, name)
 }
 
 //nolint:ireturn
 func (m *Manager) Get(name string) (AuthProvider, bool) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	p, ok := m.providers[name]
 
 	return p, ok
 }
 
 func (m *Manager) List() []AuthProvider {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	result := make([]AuthProvider, 0, len(m.providers))
 	for _, p := range m.providers {
 		result = append(result, p)
@@ -77,5 +96,22 @@ func (m *Manager) List() []AuthProvider {
 }
 
 func (m *Manager) IsEnabled() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
 	return len(m.providers) > 0
+}
+
+func (m *Manager) SetIntended(intended bool) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	m.intended = intended
+}
+
+func (m *Manager) IsIntended() bool {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+
+	return m.intended
 }

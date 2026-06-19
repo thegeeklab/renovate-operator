@@ -61,6 +61,14 @@ func isSecureRequest(r *http.Request, secureCookies bool) bool {
 
 func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if manager.IsIntended() && !manager.IsEnabled() {
+			w.Header().Set("X-Error-Title", errorTitleNotReady)
+			w.Header().Set("X-Error-Message", errorMsgNotReady)
+			w.WriteHeader(http.StatusServiceUnavailable)
+
+			return
+		}
+
 		providerName := r.URL.Query().Get("provider")
 		if providerName == "" {
 			http.Error(w, "provider parameter required", http.StatusBadRequest)
@@ -196,6 +204,12 @@ func HandleLogout(manager *Manager) http.HandlerFunc {
 func HandleAuthStatus(manager *Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Content-Type", "application/json")
+
+		if manager.IsIntended() && !manager.IsEnabled() {
+			_, _ = w.Write([]byte(`{"enabled":true,"ready":false}`))
+
+			return
+		}
 
 		if !manager.IsEnabled() {
 			_, _ = w.Write([]byte(`{"enabled":false}`))

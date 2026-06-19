@@ -9,6 +9,8 @@ const (
 	LabelRenovator = "renovate.thegeeklab.de/renovator"
 	// LabelGitRepo is the label used to associate resources with a specific Git repository.
 	LabelGitRepo = "renovate.thegeeklab.de/gitrepo"
+	// LabelAuthProvider is the label used to associate resources with an AuthProvider for access control.
+	LabelAuthProvider = "renovate.thegeeklab.de/auth-provider"
 	// LabelLogsCollected is the annotation used to mark jobs whose logs
 	// have already been archived to the persistent store.
 	LabelLogsCollected = "renovate.thegeeklab.de/logs-collected"

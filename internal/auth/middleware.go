@@ -6,11 +6,35 @@ import (
 	"strings"
 )
 
+const (
+	errorTitleNotReady = "Service Unavailable"
+	errorMsgNotReady   = "Authentication service is not ready yet. Please try again later."
+)
+
 func Middleware(manager *Manager) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		sessionManager := manager.Session
 
 		handler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if manager.IsIntended() && !manager.IsEnabled() {
+				if isAPIPath(r.URL.Path) {
+					w.Header().Set("Content-Type", "application/json")
+					w.WriteHeader(http.StatusServiceUnavailable)
+
+					_ = json.NewEncoder(w).Encode(map[string]string{
+						"error": "auth not ready",
+					})
+
+					return
+				}
+
+				w.Header().Set("X-Error-Title", errorTitleNotReady)
+				w.Header().Set("X-Error-Message", errorMsgNotReady)
+				w.WriteHeader(http.StatusServiceUnavailable)
+
+				return
+			}
+
 			if !manager.IsEnabled() {
 				next.ServeHTTP(w, r)
 

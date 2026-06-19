@@ -31,16 +31,18 @@ type RenovatorDetails struct {
 }
 
 type RunnerInfo struct {
-	Name      string    `json:"name"`
-	Namespace string    `json:"namespace"`
-	CreatedAt time.Time `json:"createdAt"`
+	Name         string    `json:"name"`
+	Namespace    string    `json:"namespace"`
+	CreatedAt    time.Time `json:"createdAt"`
+	RenovatorUID string    `json:"renovatorUid"`
 }
 
 type DiscoveryInfo struct {
-	Name      string    `json:"name"`
-	Namespace string    `json:"namespace"`
-	Schedule  string    `json:"schedule"`
-	CreatedAt time.Time `json:"createdAt"`
+	Name         string    `json:"name"`
+	Namespace    string    `json:"namespace"`
+	Schedule     string    `json:"schedule"`
+	CreatedAt    time.Time `json:"createdAt"`
+	RenovatorUID string    `json:"renovatorUid"`
 }
 
 // APIHandler manages the web UI API endpoints.

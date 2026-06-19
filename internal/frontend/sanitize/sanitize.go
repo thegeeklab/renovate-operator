@@ -74,6 +74,12 @@ func GitreposURL(namespace, renovatorUID string) string {
 		"&renovator=" + QueryEscape(renovatorUID)
 }
 
+// RenovatorCountURL builds a /renovators/count URL with safely escaped query parameters.
+func RenovatorCountURL(namespace, renovatorUID string) string {
+	return "/renovators/count?namespace=" + QueryEscape(namespace) +
+		"&renovator=" + QueryEscape(renovatorUID)
+}
+
 // GitrepoURL builds a /gitrepo URL with safely escaped query parameters.
 func GitrepoURL(namespace, name string) string {
 	return "/gitrepo?namespace=" + QueryEscape(namespace) +

@@ -89,5 +89,16 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 		renovator.Spec.Renovate.FailOnConfigValidationError = new(false)
 	}
 
+	// Enforce LabelAuthProvider to match authProviderRef.
+	if renovator.Labels == nil {
+		renovator.Labels = make(map[string]string)
+	}
+
+	if renovator.Spec.AuthProviderRef != "" {
+		renovator.Labels[renovatev1beta1.LabelAuthProvider] = renovator.Spec.AuthProviderRef
+	} else {
+		delete(renovator.Labels, renovatev1beta1.LabelAuthProvider)
+	}
+
 	return nil
 }

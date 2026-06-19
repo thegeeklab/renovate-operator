@@ -58,7 +58,7 @@ type GiteaProvider struct {
 	httpClient   *http.Client
 }
 
-func NewGiteaProvider(cfg auth.ProviderConfig) (*GiteaProvider, error) {
+func NewGiteaProvider(ctx context.Context, cfg auth.ProviderConfig) (*GiteaProvider, error) {
 	httpClient := &http.Client{
 		Timeout: defaultHTTPTimeout,
 		Transport: &http.Transport{
@@ -66,7 +66,7 @@ func NewGiteaProvider(cfg auth.ProviderConfig) (*GiteaProvider, error) {
 		},
 	}
 
-	ctx := oidc.ClientContext(context.Background(), httpClient)
+	ctx = oidc.ClientContext(ctx, httpClient)
 
 	provider, err := oidc.NewProvider(ctx, cfg.IssuerURL)
 	if err != nil {

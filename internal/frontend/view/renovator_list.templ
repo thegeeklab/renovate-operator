@@ -5,6 +5,18 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 )
 
+templ RenovatorCountBadge(namespace, renovatorUID string, count int) {
+	<span
+		hx-get={ sanitize.RenovatorCountURL(namespace, renovatorUID) }
+		hx-trigger="sse:job-updated"
+		hx-swap="outerHTML"
+		hx-target="this"
+		class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10"
+	>
+		{ count }
+	</span>
+}
+
 templ RenovatorList(data viewmodel.DashboardData) {
 	<div class="bg-white shadow mb-6 shrink-0">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
@@ -92,9 +104,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 									<div class="flex items-center gap-2 sm:gap-6">
 										<div class="flex flex-col items-end sm:items-center justify-center gap-1">
 											<span class="text-xs text-gray-500">Repos</span>
-											<span class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10">
-												{ v.GitRepoCount }
-											</span>
+											@RenovatorCountBadge(v.Namespace, v.Renovator, v.GitRepoCount)
 										</div>
 										<div class="hidden sm:flex flex-col items-end justify-center gap-1">
 											<span class="text-xs text-gray-500">Runner</span>
@@ -157,6 +167,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 									hx-trigger="revealed once, sse:job-updated, sort-changed"
 									hx-swap="innerHTML"
 									:hx-vals="JSON.stringify({ sort: sort, order: order })"
+									class="focus:outline-none"
 								>
 									<div class="flex justify-center py-4">
 										@IconSpinner("animate-spin h-5 w-5 text-indigo-600")

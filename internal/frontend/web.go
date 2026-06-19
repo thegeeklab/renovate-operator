@@ -66,6 +66,7 @@ func (h *WebHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/login", h.HandleLogin).Methods("GET")
 	router.HandleFunc("/gitrepo", h.HandleGitRepoView).Methods("GET")
 	router.HandleFunc("/gitrepos", h.HandleGitReposPartial).Methods("GET")
+	router.HandleFunc("/renovators/count", h.HandleRenovatorCount).Methods("GET")
 	router.HandleFunc("/joblogs", h.HandleJobLogs).Methods("GET")
 	router.HandleFunc("/joblogs/download", h.HandleJobLogsDownload).Methods("GET")
 }
@@ -301,6 +302,30 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 
 	w.Header().Set("Content-Type", "text/html")
 	_ = view.GitRepoList(repos).Render(r.Context(), w)
+}
+
+func (h *WebHandler) HandleRenovatorCount(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	opts := getOptionsFromRequest(r)
+
+	if opts.Namespace == "" || opts.Renovator == "" {
+		http.Error(w, "Namespace and renovator parameters are required", http.StatusBadRequest)
+
+		return
+	}
+
+	repos, err := h.dataFactory.GetGitRepos(ctx, opts)
+	if err != nil {
+		frontendLog.Error(err, "Failed to list git repos for count", "namespace", opts.Namespace)
+		http.Error(w, "Failed to list git repos", http.StatusInternalServerError)
+
+		return
+	}
+
+	repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
+
+	w.Header().Set("Content-Type", "text/html")
+	_ = view.RenovatorCountBadge(opts.Namespace, opts.Renovator, len(repos)).Render(r.Context(), w)
 }
 
 func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {

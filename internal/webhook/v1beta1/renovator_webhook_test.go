@@ -84,5 +84,54 @@ var _ = Describe("Renovator Webhook", func() {
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("expected a Renovator object but got other type"))
 		})
+
+		It("Should set LabelAuthProvider when authProviderRef is set", func() {
+			By("setting authProviderRef")
+
+			obj.Spec.AuthProviderRef = "test-auth-provider"
+
+			By("calling the Default method")
+
+			err := defaulter.Default(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj.Labels).NotTo(BeNil())
+			Expect(obj.Labels[renovatev1beta1.LabelAuthProvider]).To(Equal("test-auth-provider"))
+		})
+
+		It("Should remove LabelAuthProvider when authProviderRef is empty", func() {
+			By("setting authProviderRef and then clearing it")
+
+			obj.Spec.AuthProviderRef = "test-auth-provider"
+			obj.Labels = map[string]string{
+				renovatev1beta1.LabelAuthProvider: "test-auth-provider",
+			}
+
+			By("clearing authProviderRef")
+
+			obj.Spec.AuthProviderRef = ""
+
+			By("calling the Default method")
+
+			err := defaulter.Default(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, exists := obj.Labels[renovatev1beta1.LabelAuthProvider]
+			Expect(exists).To(BeFalse())
+		})
+
+		It("Should override manually set LabelAuthProvider", func() {
+			By("manually setting LabelAuthProvider to wrong value")
+
+			obj.Spec.AuthProviderRef = "correct-auth-provider"
+			obj.Labels = map[string]string{
+				renovatev1beta1.LabelAuthProvider: "wrong-auth-provider",
+			}
+
+			By("calling the Default method")
+
+			err := defaulter.Default(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj.Labels[renovatev1beta1.LabelAuthProvider]).To(Equal("correct-auth-provider"))
+		})
 	})
 })

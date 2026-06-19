@@ -17,7 +17,7 @@ import (
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/auth"
-	auth_gitea "github.com/thegeeklab/renovate-operator/internal/auth/gitea"
+	"github.com/thegeeklab/renovate-operator/internal/controller/authprovider"
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
 	"github.com/thegeeklab/renovate-operator/internal/controller/gitrepo"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
@@ -49,10 +49,8 @@ var (
 	scheme   = runtime.NewScheme()
 	setupLog = ctrl.Log.WithName("setup")
 
-	errWebhookTimeout      = errors.New("timeout waiting for webhook")
-	errFlagRequired        = errors.New("missing required flag")
-	errIncompleteProvider  = errors.New("incomplete OIDC provider configuration")
-	errUnknownProviderType = errors.New("unknown OIDC provider type")
+	errWebhookTimeout = errors.New("timeout waiting for webhook")
+	errFlagRequired   = errors.New("missing required flag")
 )
 
 const (
@@ -122,7 +120,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := setupControllers(mgr, cfg, sseBroker); err != nil {
+	if err := setupControllers(mgr, cfg, sseBroker, authManager); err != nil {
 		setupLog.Error(err, "Unable to setup controllers")
 		os.Exit(1)
 	}
@@ -272,7 +270,7 @@ func setupManager(cfg Config) (manager.Manager, error) {
 }
 
 // setupControllers registers all reconcilers with the Manager.
-func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBroker) error {
+func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBroker, authManager *auth.Manager) error {
 	// renovator
 	if err := (&renovator.Reconciler{
 		Client: mgr.GetClient(),
@@ -305,6 +303,15 @@ func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBr
 		ExternalURL: cfg.ExternalURL,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller %s: %w", gitrepo.ControllerName, err)
+	}
+
+	// authprovider
+	if err := (&authprovider.Reconciler{
+		Client:      mgr.GetClient(),
+		Scheme:      mgr.GetScheme(),
+		AuthManager: authManager,
+	}).SetupWithManager(mgr); err != nil {
+		return fmt.Errorf("unable to create controller %s: %w", authprovider.ControllerName, err)
 	}
 
 	return nil
@@ -523,88 +530,15 @@ func buildReceiverFactory() receiver.ReceiverFactory {
 	}
 }
 
-// setupAuth initializes OIDC authentication providers from environment variables.
-// Environment variables follow the pattern:
-// OIDC_PROVIDERS=<name1>,<name2> - comma-separated list of provider names
-// OIDC_<NAME>_TYPE=gitea - provider type
-// OIDC_<NAME>_ISSUER_URL=https://... - OIDC issuer URL
-// OIDC_<NAME>_CLIENT_ID=... - OAuth2 client ID
-// OIDC_<NAME>_CLIENT_SECRET=... - OAuth2 client secret
-// OIDC_<NAME>_REDIRECT_URL=https://... - OAuth2 callback URL
-// OIDC_<NAME>_FORGE_URL=https://... - Gitea API URL
-// OIDC_<NAME>_INSECURE=false - skip TLS verification
-// OIDC_SESSION_SECRET=... - session encryption key (required).
+// setupAuth initializes the auth manager with session configuration.
+// Authentication providers are dynamically registered by the AuthProvider controller.
 func setupAuth(secureCookies bool) (*auth.Manager, error) {
 	manager, err := auth.NewManager(os.Getenv("OIDC_SESSION_SECRET"), secureCookies)
 	if err != nil {
 		return nil, fmt.Errorf("failed to initialize session manager: %w", err)
 	}
 
-	providersEnv := os.Getenv("OIDC_PROVIDERS")
-	if providersEnv == "" {
-		setupLog.Info("OIDC authentication disabled: no providers configured")
-
-		return manager, nil
-	}
-
-	providerNames := strings.SplitSeq(providersEnv, ",")
-	for name := range providerNames {
-		name = strings.TrimSpace(name)
-		if name == "" {
-			continue
-		}
-
-		prefix := "OIDC_" + strings.ToUpper(strings.ReplaceAll(name, "-", "_"))
-
-		providerType := os.Getenv(prefix + "_TYPE")
-		issuerURL := os.Getenv(prefix + "_ISSUER_URL")
-		clientID := os.Getenv(prefix + "_CLIENT_ID")
-		clientSecret := os.Getenv(prefix + "_CLIENT_SECRET")
-		redirectURL := os.Getenv(prefix + "_REDIRECT_URL")
-		forgeURL := os.Getenv(prefix + "_FORGE_URL")
-		authURL := os.Getenv(prefix + "_AUTH_URL")
-		insecure := os.Getenv(prefix+"_INSECURE") == "true"
-
-		if providerType == "" || issuerURL == "" || clientID == "" || clientSecret == "" {
-			return nil, fmt.Errorf("%w: %s", errIncompleteProvider, name)
-		}
-
-		cfg := auth.ProviderConfig{
-			Name:         name,
-			Type:         providerType,
-			IssuerURL:    issuerURL,
-			ClientID:     clientID,
-			ClientSecret: clientSecret,
-			RedirectURL:  redirectURL,
-			ForgeURL:     forgeURL,
-			AuthURL:      authURL,
-			Insecure:     insecure,
-		}
-
-		var provider auth.AuthProvider
-
-		var err error
-
-		switch providerType {
-		case auth.ProviderTypeGitea:
-			provider, err = auth_gitea.NewGiteaProvider(cfg)
-		default:
-			return nil, fmt.Errorf("%w: %s (%s)", errUnknownProviderType, providerType, name)
-		}
-
-		if err != nil {
-			return nil, fmt.Errorf("failed to initialize OIDC provider %s: %w", name, err)
-		}
-
-		manager.Register(provider)
-		setupLog.Info("Registered OIDC provider", "name", name, "type", providerType)
-	}
-
-	if !manager.IsEnabled() {
-		setupLog.Info("OIDC authentication disabled: no valid providers")
-	} else {
-		setupLog.Info("OIDC authentication enabled", "providers", len(manager.List()))
-	}
+	setupLog.Info("Auth manager initialized, waiting for AuthProvider resources")
 
 	return manager, nil
 }

@@ -1,0 +1,10 @@
+---
+apiVersion: renovate.thegeeklab.de/v1beta1
+kind: AuthProvider
+metadata:
+  labels:
+    app.kubernetes.io/name: renovate-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: authprovider-sample
+spec:
+# TODO(user): Add fields here

@@ -8,6 +8,7 @@ resources:
   - bases/renovate.thegeeklab.de_discoveries.yaml
   - bases/renovate.thegeeklab.de_renovateconfigs.yaml
   - bases/renovate.thegeeklab.de_runners.yaml
+  - bases/renovate.thegeeklab.de_authproviders.yaml
 # +kubebuilder:scaffold:crdkustomizeresource
 
 patches: []

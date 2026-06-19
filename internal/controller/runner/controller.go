@@ -121,6 +121,20 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 	}
 
+	// gitRepoLifecyclePredicate triggers Runner reconciliation when a GitRepo
+	// is created, deleted, or its operation annotation changes. Create and delete
+	// events do not do useful reconcile work but force the UI broadcast so the
+	// per-renovator repo counter stays in sync.
+	gitRepoLifecyclePredicate := predicate.Or(
+		renovateOperationPredicate,
+		predicate.Funcs{
+			CreateFunc:  func(_ event.CreateEvent) bool { return true },
+			DeleteFunc:  func(_ event.DeleteEvent) bool { return true },
+			UpdateFunc:  func(_ event.UpdateEvent) bool { return false },
+			GenericFunc: func(_ event.GenericEvent) bool { return false },
+		},
+	)
+
 	jobStatusPredicate := predicate.Funcs{
 		UpdateFunc: func(e event.UpdateEvent) bool {
 			oldJob, ok1 := e.ObjectOld.(*batchv1.Job)
@@ -149,7 +163,7 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		Watches(
 			&renovatev1beta1.GitRepo{},
 			handler.EnqueueRequestsFromMapFunc(r.mapGitRepoToRunner),
-			builder.WithPredicates(renovateOperationPredicate),
+			builder.WithPredicates(gitRepoLifecyclePredicate),
 		).
 		Watches(
 			&renovatev1beta1.RenovateConfig{},

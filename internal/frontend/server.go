@@ -7,10 +7,12 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 	"time"
 
 	"github.com/gorilla/mux"
 	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -93,7 +95,7 @@ func NewServer(
 	s.apiHandler.RegisterRoutes(s.router)
 	s.webHandler.RegisterRoutes(s.router)
 
-	if authManager != nil && authManager.IsEnabled() {
+	if authManager != nil {
 		s.registerAuthRoutes()
 	}
 
@@ -104,8 +106,10 @@ func NewServer(
 	}
 
 	var handler http.Handler = s.router
-	if authManager != nil && authManager.IsEnabled() {
+
+	if authManager != nil {
 		handler = auth.Middleware(authManager)(s.router)
+		handler = s.errorPageMiddleware(handler)
 	}
 
 	s.server = &http.Server{
@@ -124,6 +128,78 @@ func (s *Server) registerAuthRoutes() {
 	s.router.HandleFunc("/auth/callback", auth.HandleCallback(s.authManager, s.config.SecureCookies)).Methods("GET")
 	s.router.HandleFunc("/auth/logout", auth.HandleLogout(s.authManager)).Methods("POST")
 	s.router.HandleFunc("/api/v1/auth/status", auth.HandleAuthStatus(s.authManager)).Methods("GET")
+}
+
+// ErrorPageInfo contains the content for a styled error page.
+type ErrorPageInfo struct {
+	Title   string
+	Message string
+}
+
+// defaultErrorPages provides fallback content for common HTTP error codes.
+// Components can override these by setting X-Error-Title and X-Error-Message headers.
+var defaultErrorPages = map[int]ErrorPageInfo{
+	http.StatusServiceUnavailable: {
+		Title:   "Service Unavailable",
+		Message: "The service is temporarily unavailable. Please try again later.",
+	},
+	http.StatusUnauthorized: {
+		Title:   "Unauthorized",
+		Message: "You need to log in to access this resource.",
+	},
+	http.StatusForbidden: {
+		Title:   "Forbidden",
+		Message: "You don't have permission to access this resource.",
+	},
+	http.StatusNotFound: {
+		Title:   "Not Found",
+		Message: "The requested resource could not be found.",
+	},
+}
+
+// errorPageMiddleware wraps the handler to intercept error responses and render styled error pages.
+// It checks for X-Error-Title and X-Error-Message headers first, falling back to generic defaults.
+func (s *Server) errorPageMiddleware(next http.Handler) http.Handler {
+	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		recorder := &statusRecorder{ResponseWriter: w, statusCode: http.StatusOK}
+		next.ServeHTTP(recorder, r)
+
+		if strings.HasPrefix(r.URL.Path, "/api/") {
+			return
+		}
+
+		if page, ok := defaultErrorPages[recorder.statusCode]; ok {
+			title := recorder.Header().Get("X-Error-Title")
+			message := recorder.Header().Get("X-Error-Message")
+
+			if title == "" {
+				title = page.Title
+			}
+
+			if message == "" {
+				message = page.Message
+			}
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.WriteHeader(recorder.statusCode)
+
+			err := view.ErrorPage(recorder.statusCode, title, message, s.assets.Styles).Render(r.Context(), w)
+			if err != nil {
+				http.Error(w, "Internal Server Error", http.StatusInternalServerError)
+			}
+		}
+	})
+}
+
+// statusRecorder wraps http.ResponseWriter to capture the status code.
+type statusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+}
+
+func (r *statusRecorder) WriteHeader(code int) {
+	r.statusCode = code
+	r.ResponseWriter.WriteHeader(code)
 }
 
 // loadFrontendAssets populates the server's FrontendAssets struct based on the configuration.

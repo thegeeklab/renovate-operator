@@ -68,7 +68,8 @@
     "finalizer",
     "Eventf",
     "viewmodel",
-    "errgroup"
+    "errgroup",
+    "authprovider"
   ],
   "ignorePaths": [
     ".woodpecker",
