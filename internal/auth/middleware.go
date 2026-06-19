@@ -28,9 +28,7 @@ func Middleware(manager *Manager) func(http.Handler) http.Handler {
 					return
 				}
 
-				w.Header().Set("X-Error-Title", errorTitleNotReady)
-				w.Header().Set("X-Error-Message", errorMsgNotReady)
-				w.WriteHeader(http.StatusServiceUnavailable)
+				writeNotReadyResponse(w)
 
 				return
 			}
@@ -106,4 +104,10 @@ func isPublicPath(path string) bool {
 
 func isAPIPath(path string) bool {
 	return strings.HasPrefix(path, "/api/")
+}
+
+func writeNotReadyResponse(w http.ResponseWriter) {
+	w.Header().Set("X-Error-Title", errorTitleNotReady)
+	w.Header().Set("X-Error-Message", errorMsgNotReady)
+	w.WriteHeader(http.StatusServiceUnavailable)
 }

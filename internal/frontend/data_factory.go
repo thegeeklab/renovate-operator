@@ -126,8 +126,8 @@ func (df *DataFactory) getAuthorizedRenovatorUIDs(ctx context.Context) ([]string
 		return nil, nil
 	}
 
-	if df.authManager.IsIntended() && !df.authManager.IsEnabled() {
-		return nil, errAuthNotReady
+	if err := df.checkAuthReady(); err != nil {
+		return nil, err
 	}
 
 	if !df.authManager.IsEnabled() {
@@ -242,8 +242,8 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 		listOpts = append(listOpts, client.MatchingLabels{
 			renovatev1beta1.LabelAuthProvider: session.Provider,
 		})
-	} else if df.authManager != nil && df.authManager.IsIntended() {
-		return nil, errAuthNotReady
+	} else if err := df.checkAuthReady(); err != nil {
+		return nil, err
 	}
 
 	var list renovatev1beta1.RenovatorList
@@ -295,12 +295,6 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 
 		lastStatus, lastTime := getRenovateStatusFromConditions(&gitrepo)
 
-		// Extract Renovator UID from labels
-		renovatorUID := ""
-		if gitrepo.Labels != nil {
-			renovatorUID = gitrepo.Labels[renovatev1beta1.LabelRenovator]
-		}
-
 		result = append(result, viewmodel.GitRepoInfo{
 			Name:               gitrepo.Name,
 			FullName:           gitrepo.Spec.Name,
@@ -309,7 +303,7 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 			LastRenovateAt:     lastTime,
 			LastRenovateStatus: lastStatus,
 			CreatedAt:          gitrepo.CreationTimestamp.Time,
-			RenovatorUID:       renovatorUID,
+			RenovatorUID:       extractRenovatorUID(gitrepo.Labels),
 		})
 	}
 
@@ -399,17 +393,11 @@ func (df *DataFactory) GetRunners(ctx context.Context, opts ...ListOptions) ([]R
 	var result []RunnerInfo
 
 	for _, runner := range list.Items {
-		// Extract Renovator UID from labels
-		renovatorUID := ""
-		if runner.Labels != nil {
-			renovatorUID = runner.Labels[renovatev1beta1.LabelRenovator]
-		}
-
 		result = append(result, RunnerInfo{
 			Name:         runner.Name,
 			Namespace:    runner.Namespace,
 			CreatedAt:    runner.CreationTimestamp.Time,
-			RenovatorUID: renovatorUID,
+			RenovatorUID: extractRenovatorUID(runner.Labels),
 		})
 	}
 
@@ -449,18 +437,12 @@ func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) 
 	var result []DiscoveryInfo
 
 	for _, discovery := range list.Items {
-		// Extract Renovator UID from labels
-		renovatorUID := ""
-		if discovery.Labels != nil {
-			renovatorUID = discovery.Labels[renovatev1beta1.LabelRenovator]
-		}
-
 		result = append(result, DiscoveryInfo{
 			Name:         discovery.Name,
 			Namespace:    discovery.Namespace,
 			Schedule:     discovery.Spec.Schedule,
 			CreatedAt:    discovery.CreationTimestamp.Time,
-			RenovatorUID: renovatorUID,
+			RenovatorUID: extractRenovatorUID(discovery.Labels),
 		})
 	}
 
@@ -596,8 +578,8 @@ func (df *DataFactory) getUserReposMap(ctx context.Context) (map[string]bool, er
 		return nil, errAuthNotEnabled
 	}
 
-	if df.authManager.IsIntended() && !df.authManager.IsEnabled() {
-		return nil, errAuthNotReady
+	if err := df.checkAuthReady(); err != nil {
+		return nil, err
 	}
 
 	if !df.authManager.IsEnabled() {
@@ -740,4 +722,20 @@ func getListOptions(opts []ListOptions) ListOptions {
 	}
 
 	return ListOptions{}
+}
+
+func extractRenovatorUID(labels map[string]string) string {
+	if labels == nil {
+		return ""
+	}
+
+	return labels[renovatev1beta1.LabelRenovator]
+}
+
+func (df *DataFactory) checkAuthReady() error {
+	if df.authManager != nil && df.authManager.IsIntended() && !df.authManager.IsEnabled() {
+		return errAuthNotReady
+	}
+
+	return nil
 }

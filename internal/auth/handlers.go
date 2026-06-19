@@ -62,9 +62,7 @@ func isSecureRequest(r *http.Request, secureCookies bool) bool {
 func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if manager.IsIntended() && !manager.IsEnabled() {
-			w.Header().Set("X-Error-Title", errorTitleNotReady)
-			w.Header().Set("X-Error-Message", errorMsgNotReady)
-			w.WriteHeader(http.StatusServiceUnavailable)
+			writeNotReadyResponse(w)
 
 			return
 		}
