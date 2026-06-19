@@ -47,16 +47,13 @@ type Manager struct {
 	intended  bool
 }
 
-func NewManager(sessionSecret string, secureCookies bool) (*Manager, error) {
-	session, err := NewSessionManager(sessionSecret, secureCookies)
-	if err != nil {
-		return nil, err
-	}
+func NewManager(secureCookies bool) *Manager {
+	session := NewSessionManager(secureCookies)
 
 	return &Manager{
 		providers: make(map[string]AuthProvider),
 		Session:   session,
-	}, nil
+	}
 }
 
 func (m *Manager) Register(provider AuthProvider) {

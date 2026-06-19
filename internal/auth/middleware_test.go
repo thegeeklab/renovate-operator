@@ -17,10 +17,7 @@ var _ = Describe("Middleware", func() {
 	)
 
 	BeforeEach(func() {
-		var err error
-
-		manager, err = NewManager("test-secret", false)
-		Expect(err).NotTo(HaveOccurred())
+		manager = NewManager(false)
 		manager.Register(&testAuthProvider{name: "gitea-prod", provType: ProviderTypeGitea})
 
 		handler = http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -35,10 +32,7 @@ var _ = Describe("Middleware", func() {
 
 	Describe("When auth is disabled", func() {
 		BeforeEach(func() {
-			var err error
-
-			manager, err = NewManager("test-secret", false)
-			Expect(err).NotTo(HaveOccurred())
+			manager = NewManager(false)
 		})
 
 		It("should pass through all requests", func() {

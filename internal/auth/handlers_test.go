@@ -21,10 +21,7 @@ var _ = Describe("Handlers", func() {
 	)
 
 	BeforeEach(func() {
-		var err error
-
-		manager, err = NewManager("test-secret", false)
-		Expect(err).NotTo(HaveOccurred())
+		manager = NewManager(false)
 		manager.Register(&testAuthProvider{
 			name:     "gitea-prod",
 			provType: ProviderTypeGitea,
@@ -149,8 +146,7 @@ var _ = Describe("Handlers", func() {
 
 	Describe("HandleAuthStatus", func() {
 		It("should return enabled=false when auth is disabled", func() {
-			disabledManager, err := NewManager("test-secret", false)
-			Expect(err).NotTo(HaveOccurred())
+			disabledManager := NewManager(false)
 
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/status", nil)
 			rec := httptest.NewRecorder()
@@ -160,7 +156,7 @@ var _ = Describe("Handlers", func() {
 
 			var status map[string]any
 
-			err = json.Unmarshal(rec.Body.Bytes(), &status)
+			err := json.Unmarshal(rec.Body.Bytes(), &status)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(status["enabled"]).To(BeFalse())
 		})
@@ -276,8 +272,7 @@ var _ = Describe("Handlers", func() {
 
 		It("should return 500 when provider callback fails", func() {
 			failingProvider := &failingAuthProvider{name: "gitea-fail"}
-			failingManager, err := NewManager("test-secret", false)
-			Expect(err).NotTo(HaveOccurred())
+			failingManager := NewManager(false)
 			failingManager.Register(failingProvider)
 
 			state, err := encodeState("gitea-fail")
@@ -294,8 +289,7 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should derive provider from state, not from query", func() {
-			spoofManager, err := NewManager("test-secret", false)
-			Expect(err).NotTo(HaveOccurred())
+			spoofManager := NewManager(false)
 			spoofManager.Register(&failingAuthProvider{name: "gitea-prod"})
 			spoofManager.Register(&testAuthProvider{
 				name:     "gitea-staging",

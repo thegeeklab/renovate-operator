@@ -27,10 +27,7 @@ var _ = Describe("AuthProvider Controller", func() {
 	BeforeEach(func() {
 		ctx = context.Background()
 
-		var err error
-
-		authManager, err = auth.NewManager("test-secret", false)
-		Expect(err).NotTo(HaveOccurred())
+		authManager = auth.NewManager(false)
 
 		reconciler = &Reconciler{
 			Client:        k8sClient,

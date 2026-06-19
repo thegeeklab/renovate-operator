@@ -4,14 +4,11 @@ import (
 	"context"
 	"crypto/rand"
 	"encoding/hex"
-	"errors"
 	"net/http"
 	"time"
 
 	"github.com/alexedwards/scs/v2"
 )
-
-var errSessionSecretRequired = errors.New("session secret must not be empty")
 
 const (
 	sessionCookieName   = "renovate_session"
@@ -32,11 +29,7 @@ type SessionData struct {
 	Provider    string
 }
 
-func NewSessionManager(secret string, secureCookies bool) (*scs.SessionManager, error) {
-	if secret == "" {
-		return nil, errSessionSecretRequired
-	}
-
+func NewSessionManager(secureCookies bool) *scs.SessionManager {
 	session := scs.New()
 	session.Lifetime = sessionDuration
 	session.Cookie.Name = sessionCookieName
@@ -45,7 +38,7 @@ func NewSessionManager(secret string, secureCookies bool) (*scs.SessionManager, 
 	session.Cookie.SameSite = http.SameSiteLaxMode
 	session.Cookie.Path = "/"
 
-	return session, nil
+	return session
 }
 
 func SetSessionData(ctx context.Context, session *scs.SessionManager, data SessionData) {

@@ -113,12 +113,7 @@ func main() {
 	}
 
 	sseBroker := frontend.NewSSEBroker()
-
-	authManager, err := setupAuth(cfg.SecureCookies)
-	if err != nil {
-		setupLog.Error(err, "Unable to initialize authentication")
-		os.Exit(1)
-	}
+	authManager := auth.NewManager(cfg.SecureCookies)
 
 	if err := setupControllers(mgr, cfg, sseBroker, authManager); err != nil {
 		setupLog.Error(err, "Unable to setup controllers")
@@ -528,17 +523,4 @@ func buildReceiverFactory() receiver.ReceiverFactory {
 			return nil
 		}
 	}
-}
-
-// setupAuth initializes the auth manager with session configuration.
-// Authentication providers are dynamically registered by the AuthProvider controller.
-func setupAuth(secureCookies bool) (*auth.Manager, error) {
-	manager, err := auth.NewManager(os.Getenv("OIDC_SESSION_SECRET"), secureCookies)
-	if err != nil {
-		return nil, fmt.Errorf("failed to initialize session manager: %w", err)
-	}
-
-	setupLog.Info("Auth manager initialized, waiting for AuthProvider resources")
-
-	return manager, nil
 }

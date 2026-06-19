@@ -13,10 +13,7 @@ var _ = Describe("Session", func() {
 	var sessionManager *scs.SessionManager
 
 	BeforeEach(func() {
-		var err error
-
-		sessionManager, err = NewSessionManager("test-secret", false)
-		Expect(err).NotTo(HaveOccurred())
+		sessionManager = NewSessionManager(false)
 	})
 
 	Describe("NewSessionManager", func() {
