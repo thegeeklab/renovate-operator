@@ -7,7 +7,7 @@ package viewmodel
 
 import "time"
 
-// Status represents the lifecycle state of a renovate run / job.
+// Status represents the lifecycle state of a renovate run.
 type Status string
 
 const (

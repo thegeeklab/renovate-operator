@@ -2,6 +2,8 @@ package authprovider
 
 import (
 	"context"
+	"errors"
+	"net/http"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -13,7 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 )
 
 var _ = Describe("AuthProvider Controller", func() {
@@ -46,7 +48,6 @@ var _ = Describe("AuthProvider Controller", func() {
 				Namespace: "default",
 			}
 
-			// Create the secret first
 			secret := &corev1.Secret{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-secret",
@@ -58,7 +59,6 @@ var _ = Describe("AuthProvider Controller", func() {
 			}
 			Expect(k8sClient.Create(ctx, secret)).To(Succeed())
 
-			// Create the AuthProvider resource
 			resource := &renovatev1beta1.AuthProvider{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      resourceName,
@@ -100,18 +100,15 @@ var _ = Describe("AuthProvider Controller", func() {
 		})
 
 		It("should handle OIDC discovery failure gracefully", func() {
-			// First reconcile adds the finalizer
 			result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(BeZero())
 
-			// Second reconcile attempts to create the auth provider and fails
 			result, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to create auth provider"))
 			Expect(result.RequeueAfter).To(BeZero())
 
-			// Verify the provider was NOT registered due to the error
 			_, ok := authManager.Get(resourceName)
 			Expect(ok).To(BeFalse())
 		})
@@ -158,13 +155,68 @@ var _ = Describe("AuthProvider Controller", func() {
 		})
 
 		It("should fail reconciliation", func() {
-			// First reconcile adds the finalizer
 			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).NotTo(HaveOccurred())
 
-			// Second reconcile attempts to get the secret and fails
 			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(HaveOccurred())
+		})
+	})
+
+	Context("When the secret is deleted after successful registration", func() {
+		const resourceName = "test-authprovider-secret-deleted"
+
+		BeforeEach(func() {
+			typeNamespacedName = types.NamespacedName{
+				Name:      resourceName,
+				Namespace: "default",
+			}
+
+			resource := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: "default",
+				},
+				Spec: renovatev1beta1.AuthProviderSpec{
+					Type:     "gitea",
+					Endpoint: "https://gitea.example.com",
+					ClientSecret: corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "non-existent-secret-deleted",
+						},
+						Key: "client-secret",
+					},
+					ClientID:    "test-client-id",
+					RedirectURL: "https://operator.example.com/auth/callback",
+				},
+			}
+			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			resource := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: "default",
+				},
+			}
+			_ = k8sClient.Delete(ctx, resource)
+		})
+
+		It("should unregister the provider when secret is missing", func() {
+			authManager.Register(&mockAuthProvider{name: resourceName})
+
+			_, ok := authManager.Get(resourceName)
+			Expect(ok).To(BeTrue())
+
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(HaveOccurred())
+
+			_, ok = authManager.Get(resourceName)
+			Expect(ok).To(BeFalse())
 		})
 	})
 
@@ -181,3 +233,35 @@ var _ = Describe("AuthProvider Controller", func() {
 		Expect(result).To(Equal(reconcile.Result{}))
 	})
 })
+
+type mockAuthProvider struct {
+	name string
+}
+
+func (m *mockAuthProvider) Type() string {
+	return "mock"
+}
+
+func (m *mockAuthProvider) Name() string {
+	return m.name
+}
+
+func (m *mockAuthProvider) LoginURL(_ string) string {
+	return ""
+}
+
+func (m *mockAuthProvider) HandleCallback(_ context.Context, _ string) (*auth.AuthenticatedUser, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockAuthProvider) RefreshToken(_ context.Context, _ string) (*auth.AuthenticatedUser, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockAuthProvider) GetUserRepos(_ context.Context, _ *http.Client) (map[string]bool, error) {
+	return nil, errors.New("not implemented")
+}
+
+func (m *mockAuthProvider) IsUserRepo(_ context.Context, _ *http.Client, _ string) (bool, error) {
+	return false, errors.New("not implemented")
+}

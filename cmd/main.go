@@ -16,13 +16,13 @@ import (
 
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/auth"
 	"github.com/thegeeklab/renovate-operator/internal/controller/authprovider"
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
 	"github.com/thegeeklab/renovate-operator/internal/controller/gitrepo"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
 	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/receiver"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
@@ -266,7 +266,6 @@ func setupManager(cfg Config) (manager.Manager, error) {
 
 // setupControllers registers all reconcilers with the Manager.
 func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBroker, authManager *auth.Manager) error {
-	// renovator
 	if err := (&renovator.Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -274,7 +273,6 @@ func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBr
 		return fmt.Errorf("unable to create controller %s: %w", renovator.ControllerName, err)
 	}
 
-	// discovery
 	if err := (&discovery.Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -282,7 +280,6 @@ func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBr
 		return fmt.Errorf("unable to create controller %s: %w", discovery.ControllerName, err)
 	}
 
-	// runner
 	if err := (&runner.Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),
@@ -291,7 +288,6 @@ func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBr
 		return fmt.Errorf("unable to create controller %s: %w", runner.ControllerName, err)
 	}
 
-	// gitrepo
 	if err := (&gitrepo.Reconciler{
 		Client:      mgr.GetClient(),
 		Scheme:      mgr.GetScheme(),
@@ -301,7 +297,6 @@ func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBr
 		return fmt.Errorf("unable to create controller %s: %w", gitrepo.ControllerName, err)
 	}
 
-	// authprovider
 	if err := (&authprovider.Reconciler{
 		Client:      mgr.GetClient(),
 		Scheme:      mgr.GetScheme(),

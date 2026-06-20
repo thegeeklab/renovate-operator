@@ -20,9 +20,9 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/auth"
-	auth_gitea "github.com/thegeeklab/renovate-operator/internal/auth/gitea"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
+	auth_gitea "github.com/thegeeklab/renovate-operator/internal/frontend/auth/gitea"
 )
 
 const (
@@ -79,12 +79,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 func (r *Reconciler) reconcile(
 	ctx context.Context, ap *renovatev1beta1.AuthProvider,
 ) controller.Outcome {
-	var authProviderList renovatev1beta1.AuthProviderList
-	if err := r.List(ctx, &authProviderList); err != nil {
-		return controller.Outcome{Err: fmt.Errorf("failed to list AuthProviders: %w", err)}
-	}
-
-	r.AuthManager.SetIntended(len(authProviderList.Items) > 0)
+	r.refreshIntended(ctx)
 
 	if !ap.DeletionTimestamp.IsZero() {
 		if controllerutil.ContainsFinalizer(ap, renovatev1beta1.FinalizerAuthProviderCleanup) {
@@ -115,6 +110,9 @@ func (r *Reconciler) reconcile(
 
 	secret, err := r.getSecret(ctx, ap)
 	if err != nil {
+		r.AuthManager.Unregister(ap.Name)
+		ap.Status.Registered = false
+
 		return controller.Outcome{Err: fmt.Errorf("failed to get secret: %w", err)}
 	}
 
@@ -124,11 +122,17 @@ func (r *Reconciler) reconcile(
 
 	clientSecret, err := r.extractClientSecret(ap, secret)
 	if err != nil {
+		r.AuthManager.Unregister(ap.Name)
+		ap.Status.Registered = false
+
 		return controller.Outcome{Err: fmt.Errorf("failed to extract client secret: %w", err)}
 	}
 
 	provider, err := r.createAuthProvider(ctx, ap, clientSecret)
 	if err != nil {
+		r.AuthManager.Unregister(ap.Name)
+		ap.Status.Registered = false
+
 		return controller.Outcome{Err: fmt.Errorf("failed to create auth provider: %w", err)}
 	}
 
@@ -271,39 +275,45 @@ func authProviderSecretRefIndexFn(rawObj client.Object) []string {
 	return []string{authProvider.Spec.ClientSecret.Name}
 }
 
-// isSecretReferenced checks if a secret is referenced by any AuthProvider.
-func (r *Reconciler) isSecretReferenced(secret client.Object) bool {
-	ctx := context.Background()
-
+// listAuthProvidersForSecret returns AuthProviders that reference the given secret.
+func (r *Reconciler) listAuthProvidersForSecret(
+	ctx context.Context, secret client.Object,
+) (*renovatev1beta1.AuthProviderList, error) {
 	authProviderList := &renovatev1beta1.AuthProviderList{}
 	if err := r.List(
 		ctx, authProviderList,
 		client.InNamespace(secret.GetNamespace()),
 		client.MatchingFields{secretRefIndexKey: secret.GetName()},
 	); err != nil {
+		return nil, err
+	}
+
+	return authProviderList, nil
+}
+
+// isSecretReferenced checks if a secret is referenced by any AuthProvider.
+func (r *Reconciler) isSecretReferenced(secret client.Object) bool {
+	list, err := r.listAuthProvidersForSecret(context.Background(), secret)
+	if err != nil {
 		return false
 	}
 
-	return len(authProviderList.Items) > 0
+	return len(list.Items) > 0
 }
 
 // mapSecretWithAuthProvider maps a Secret event to a Request for the AuthProvider(s) that reference it.
 func (r *Reconciler) mapSecretWithAuthProvider(ctx context.Context, obj client.Object) []ctrl.Request {
-	authProviderList := &renovatev1beta1.AuthProviderList{}
-	if err := r.List(
-		ctx, authProviderList,
-		client.InNamespace(obj.GetNamespace()),
-		client.MatchingFields{secretRefIndexKey: obj.GetName()},
-	); err != nil {
+	list, err := r.listAuthProvidersForSecret(ctx, obj)
+	if err != nil {
 		return nil
 	}
 
-	reqs := make([]ctrl.Request, len(authProviderList.Items))
-	for i := range authProviderList.Items {
+	reqs := make([]ctrl.Request, len(list.Items))
+	for i := range list.Items {
 		reqs[i] = ctrl.Request{
 			NamespacedName: client.ObjectKey{
-				Name:      authProviderList.Items[i].Name,
-				Namespace: authProviderList.Items[i].Namespace,
+				Name:      list.Items[i].Name,
+				Namespace: list.Items[i].Namespace,
 			},
 		}
 	}

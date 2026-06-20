@@ -2,13 +2,18 @@ package gitea
 
 import (
 	"context"
+	"crypto/rand"
+	"crypto/rsa"
 	"fmt"
 	"net/http"
 	"net/http/httptest"
 	"time"
 
+	"github.com/coreos/go-oidc/v3/oidc"
+	"github.com/coreos/go-oidc/v3/oidc/oidctest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"golang.org/x/oauth2"
 )
 
 func newTestProvider(forgeURL string, httpClient *http.Client) *GiteaProvider {
@@ -16,6 +21,33 @@ func newTestProvider(forgeURL string, httpClient *http.Client) *GiteaProvider {
 		forgeURL:   forgeURL,
 		httpClient: httpClient,
 	}
+}
+
+func newTestClient() *http.Client {
+	return &http.Client{}
+}
+
+func newTestClientWithToken(token string) *http.Client {
+	return &http.Client{
+		Transport: &tokenTransport{token: token},
+	}
+}
+
+type tokenTransport struct {
+	token string
+	base  http.RoundTripper
+}
+
+func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
+	req2 := req.Clone(req.Context())
+	req2.Header.Set("Authorization", "Bearer "+t.token)
+
+	base := t.base
+	if base == nil {
+		base = http.DefaultTransport
+	}
+
+	return base.RoundTrip(req2)
 }
 
 var _ = Describe("GiteaProvider", func() {
@@ -56,7 +88,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			repos, err := provider.GetUserRepos(ctx, "test-token")
+			repos, err := provider.GetUserRepos(ctx, newTestClient())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(repos).To(HaveKeyWithValue("owner/repo1", true))
 			Expect(repos).To(HaveKeyWithValue("owner/repo2", true))
@@ -74,9 +106,9 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			_, err := provider.GetUserRepos(ctx, "my-secret-token")
+			_, err := provider.GetUserRepos(ctx, newTestClientWithToken("my-secret-token"))
 			Expect(err).NotTo(HaveOccurred())
-			Expect(gotAuth).To(Equal("token my-secret-token"))
+			Expect(gotAuth).To(Equal("Bearer my-secret-token"))
 		})
 
 		It("returns an error for non-200 responses", func() {
@@ -86,7 +118,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			_, err := provider.GetUserRepos(ctx, "test-token")
+			_, err := provider.GetUserRepos(ctx, newTestClient())
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(errUnexpectedStatus))
 		})
@@ -102,7 +134,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			repos, err := provider.GetUserRepos(cancelCtx, "test-token")
+			repos, err := provider.GetUserRepos(cancelCtx, newTestClient())
 			Expect(err).To(HaveOccurred())
 			Expect(repos).To(BeEmpty())
 		})
@@ -124,11 +156,23 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			repos, err := provider.GetUserRepos(ctx, "test-token")
+			repos, err := provider.GetUserRepos(ctx, newTestClient())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(repos).To(HaveKeyWithValue("owner/write-access", true))
 			Expect(repos).NotTo(HaveKey("owner/read-only"))
 			Expect(repos).To(HaveLen(1))
+		})
+
+		It("returns an error for 401 response", func() {
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+			}))
+
+			provider := newTestProvider(server.URL, server.Client())
+
+			repos, err := provider.GetUserRepos(ctx, newTestClient())
+			Expect(err).To(HaveOccurred())
+			Expect(repos).To(BeEmpty())
 		})
 	})
 
@@ -145,7 +189,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			accessible, err := provider.IsUserRepo(ctx, "test-token", "owner/repo1")
+			accessible, err := provider.IsUserRepo(ctx, newTestClient(), "owner/repo1")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(accessible).To(BeTrue())
 		})
@@ -162,7 +206,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			accessible, err := provider.IsUserRepo(ctx, "test-token", "owner/repo1")
+			accessible, err := provider.IsUserRepo(ctx, newTestClient(), "owner/repo1")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(accessible).To(BeFalse())
 		})
@@ -174,7 +218,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			accessible, err := provider.IsUserRepo(ctx, "test-token", "owner/missing")
+			accessible, err := provider.IsUserRepo(ctx, newTestClient(), "owner/missing")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(accessible).To(BeFalse())
 		})
@@ -186,7 +230,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			accessible, err := provider.IsUserRepo(ctx, "test-token", "owner/private")
+			accessible, err := provider.IsUserRepo(ctx, newTestClient(), "owner/private")
 			Expect(err).NotTo(HaveOccurred())
 			Expect(accessible).To(BeFalse())
 		})
@@ -198,7 +242,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			_, err := provider.IsUserRepo(ctx, "test-token", "owner/repo1")
+			_, err := provider.IsUserRepo(ctx, newTestClient(), "owner/repo1")
 			Expect(err).To(HaveOccurred())
 			Expect(err).To(MatchError(errUnexpectedStatus))
 		})
@@ -217,9 +261,21 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := newTestProvider(server.URL, server.Client())
 
-			_, err := provider.IsUserRepo(ctx, "my-token", "owner/repo1")
+			_, err := provider.IsUserRepo(ctx, newTestClientWithToken("my-token"), "owner/repo1")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(gotAuth).To(Equal("token my-token"))
+			Expect(gotAuth).To(Equal("Bearer my-token"))
+		})
+
+		It("returns an error for 401 response", func() {
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+			}))
+
+			provider := newTestProvider(server.URL, server.Client())
+
+			accessible, err := provider.IsUserRepo(ctx, newTestClient(), "owner/repo1")
+			Expect(err).To(HaveOccurred())
+			Expect(accessible).To(BeFalse())
 		})
 	})
 
@@ -262,6 +318,115 @@ var _ = Describe("GiteaProvider", func() {
 
 			duration := provider.parseRetryAfter(resp)
 			Expect(duration).To(BeZero())
+		})
+	})
+
+	Describe("RefreshToken", func() {
+		It("returns error when refresh token is empty", func() {
+			provider := newTestProvider("http://example.com", &http.Client{})
+
+			user, err := provider.RefreshToken(ctx, "")
+			Expect(err).To(MatchError(errNoRefreshToken))
+			Expect(user).To(BeNil())
+		})
+	})
+
+	Describe("HandleCallback", func() {
+		var (
+			privKey *rsa.PrivateKey
+			oidcSrv *oidctest.Server
+			testSrv *httptest.Server
+		)
+
+		BeforeEach(func() {
+			var err error
+
+			privKey, err = rsa.GenerateKey(rand.Reader, 2048)
+			Expect(err).NotTo(HaveOccurred())
+
+			oidcSrv = &oidctest.Server{
+				PublicKeys: []oidctest.PublicKey{
+					{
+						PublicKey: privKey.Public(),
+						KeyID:     "test-key-id",
+						Algorithm: oidc.RS256,
+					},
+				},
+			}
+
+			testSrv = httptest.NewServer(oidcSrv)
+			oidcSrv.SetIssuer(testSrv.URL)
+		})
+
+		AfterEach(func() {
+			if testSrv != nil {
+				testSrv.Close()
+			}
+		})
+
+		It("successfully exchanges code and extracts user info", func() {
+			tokenSrv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path == "/token" {
+					claims := fmt.Sprintf(`{
+						"iss": "%s",
+						"aud": "test-client",
+						"sub": "user-123",
+						"email": "test@example.com",
+						"name": "Test User",
+						"exp": %d
+					}`, testSrv.URL, time.Now().Add(time.Hour).Unix())
+
+					idToken := oidctest.SignIDToken(privKey, "test-key-id", oidc.RS256, claims)
+
+					w.Header().Set("Content-Type", "application/json")
+					fmt.Fprintf(w, `{
+						"access_token": "test-access-token",
+						"token_type": "Bearer",
+						"refresh_token": "test-refresh-token",
+						"expires_in": 3600,
+						"id_token": "%s"
+					}`, idToken)
+
+					return
+				}
+
+				http.NotFound(w, r)
+			}))
+			defer tokenSrv.Close()
+
+			provider := &GiteaProvider{
+				name:         "test",
+				issuerURL:    testSrv.URL,
+				clientID:     "test-client",
+				clientSecret: "test-secret",
+				redirectURL:  "http://localhost/callback",
+				httpClient:   testSrv.Client(),
+				oauth2Config: &oauth2.Config{
+					ClientID:     "test-client",
+					ClientSecret: "test-secret",
+					RedirectURL:  "http://localhost/callback",
+					Endpoint: oauth2.Endpoint{
+						AuthURL:  testSrv.URL + "/auth",
+						TokenURL: tokenSrv.URL + "/token",
+					},
+					Scopes: []string{oidc.ScopeOpenID, "profile", "email"},
+				},
+			}
+
+			providerCtx := oidc.ClientContext(ctx, testSrv.Client())
+			oidcProvider, err := oidc.NewProvider(providerCtx, testSrv.URL)
+			Expect(err).NotTo(HaveOccurred())
+
+			provider.verifier = oidcProvider.Verifier(&oidc.Config{ClientID: "test-client"})
+
+			user, err := provider.HandleCallback(ctx, "test-code")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(user).NotTo(BeNil())
+			Expect(user.Email).To(Equal("test@example.com"))
+			Expect(user.Name).To(Equal("Test User"))
+			Expect(user.Subject).To(Equal("user-123"))
+			Expect(user.AccessToken).To(Equal("test-access-token"))
+			Expect(user.RefreshToken).To(Equal("test-refresh-token"))
 		})
 	})
 })

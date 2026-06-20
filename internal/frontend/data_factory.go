@@ -2,18 +2,17 @@ package frontend
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/maypok86/otter/v2"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
 	"golang.org/x/sync/singleflight"
@@ -48,13 +47,10 @@ const (
 	defaultAccessCacheMax               = 500
 	defaultAuthorizedRenovatorsCacheTTL = 30 * time.Second
 	defaultAuthorizedRenovatorsCacheMax = 500
+	defaultHTTPClientCacheTTL           = 24 * time.Hour
+	defaultHTTPClientCacheMax           = 1000
+	defaultHTTPClientTimeout            = 30 * time.Second
 )
-
-func hashAccessToken(token string) string {
-	hash := sha256.Sum256([]byte(token))
-
-	return hex.EncodeToString(hash[:])
-}
 
 func (df *DataFactory) deriveCacheKey(session auth.SessionData) string {
 	if session.Subject != "" {
@@ -62,7 +58,7 @@ func (df *DataFactory) deriveCacheKey(session auth.SessionData) string {
 	}
 
 	if session.AccessToken != "" {
-		return session.Provider + "|token:" + hashAccessToken(session.AccessToken)
+		return session.Provider + "|token:" + auth.HashAccessToken(session.AccessToken)
 	}
 
 	return ""
@@ -77,6 +73,7 @@ type DataFactory struct {
 	accessGroup               singleflight.Group
 	authorizedRenovatorsCache *otter.Cache[string, []string]
 	authorizedRenovatorsGroup singleflight.Group
+	httpClientCache           *otter.Cache[string, *http.Client]
 }
 
 // NewDataFactory creates a new DataFactory instance.
@@ -91,12 +88,18 @@ func NewDataFactory(client client.Client, clientset kubernetes.Interface, authMa
 		MaximumSize:      defaultAuthorizedRenovatorsCacheMax,
 	})
 
+	httpClientCache := otter.Must(&otter.Options[string, *http.Client]{
+		ExpiryCalculator: otter.ExpiryAccessing[string, *http.Client](defaultHTTPClientCacheTTL),
+		MaximumSize:      defaultHTTPClientCacheMax,
+	})
+
 	return &DataFactory{
 		client:                    client,
 		clientset:                 clientset,
 		authManager:               authManager,
 		accessCache:               accessCache,
 		authorizedRenovatorsCache: authorizedRenovatorsCache,
+		httpClientCache:           httpClientCache,
 	}
 }
 
@@ -134,7 +137,7 @@ func (df *DataFactory) getAuthorizedRenovatorUIDs(ctx context.Context) ([]string
 		return nil, nil
 	}
 
-	session, ok := auth.GetSessionData(ctx, df.authManager.Session)
+	session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
 	if !ok {
 		return nil, errNotAuthenticated
 	}
@@ -233,7 +236,7 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 
 	// If auth is enabled, filter by the user's AuthProvider
 	if df.authManager != nil && df.authManager.IsEnabled() {
-		session, ok := auth.GetSessionData(ctx, df.authManager.Session)
+		session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
 		if !ok {
 			return nil, errNotAuthenticated
 		}
@@ -586,7 +589,7 @@ func (df *DataFactory) getUserReposMap(ctx context.Context) (map[string]bool, er
 		return nil, errAuthNotEnabled
 	}
 
-	session, ok := auth.GetSessionData(ctx, df.authManager.Session)
+	session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
 	if !ok {
 		return nil, errNotAuthenticated
 	}
@@ -605,7 +608,48 @@ func (df *DataFactory) getUserReposMap(ctx context.Context) (map[string]bool, er
 		return nil, errUnableToDeriveCacheKey
 	}
 
-	return df.getUserRepos(ctx, provider, session.AccessToken, cacheKey)
+	// Create HTTP client with TokenSource once per session - this is the centralized approach
+	client, err := df.createAuthClient(&session)
+	if err != nil {
+		return nil, err
+	}
+
+	return df.getUserRepos(ctx, provider, client, cacheKey)
+}
+
+// createAuthClient creates an HTTP client with automatic token injection from the session.
+// The client is cached per session and reused across requests for connection pooling.
+// Tokens are read fresh from the session on each request, avoiding stale token issues.
+func (df *DataFactory) createAuthClient(session *auth.SessionData) (*http.Client, error) {
+	// Generate cache key from session
+	cacheKey := df.deriveCacheKey(*session)
+	if cacheKey == "" {
+		return nil, errUnableToDeriveCacheKey
+	}
+
+	// Check if we already have a cached client for this session
+	if cached, found := df.httpClientCache.GetIfPresent(cacheKey); found {
+		return cached, nil
+	}
+
+	// Create callback to read current session from the session store
+	sessionFunc := func(ctx context.Context) *auth.SessionData {
+		session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
+		if !ok {
+			return nil
+		}
+
+		return &session
+	}
+
+	// Create HTTP client that reads tokens from session on each request
+	httpClient := auth.NewAuthClient(sessionFunc)
+	httpClient.Timeout = defaultHTTPClientTimeout
+
+	// Cache the client for this session
+	df.httpClientCache.Set(cacheKey, httpClient)
+
+	return httpClient, nil
 }
 
 // ApplyAccessFilter filters repos by user access if auth is enabled, failing closed on error.
@@ -657,7 +701,7 @@ func (df *DataFactory) IsUserRepo(ctx context.Context, fullName string) bool {
 		return accessible
 	}
 
-	session, ok := auth.GetSessionData(ctx, df.authManager.Session)
+	session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
 	if !ok {
 		return false
 	}
@@ -667,7 +711,15 @@ func (df *DataFactory) IsUserRepo(ctx context.Context, fullName string) bool {
 		return false
 	}
 
-	accessible, err := provider.IsUserRepo(ctx, session.AccessToken, fullName)
+	// Create HTTP client with TokenSource once per session - centralized approach
+	client, err := df.createAuthClient(&session)
+	if err != nil {
+		frontendLog.Error(err, "Failed to create auth client", "repo", fullName)
+
+		return false
+	}
+
+	accessible, err := provider.IsUserRepo(ctx, client, fullName)
 	if err != nil {
 		frontendLog.Error(err, "Failed to check user repo", "repo", fullName)
 
@@ -681,11 +733,11 @@ func (df *DataFactory) IsUserRepo(ctx context.Context, fullName string) bool {
 func (df *DataFactory) getUserRepos(
 	ctx context.Context,
 	provider auth.AuthProvider,
-	token string,
+	client *http.Client,
 	cacheKey string,
 ) (map[string]bool, error) {
 	fetch := func() (map[string]bool, error) {
-		return provider.GetUserRepos(ctx, token)
+		return provider.GetUserRepos(ctx, client)
 	}
 
 	if cacheKey == "" {

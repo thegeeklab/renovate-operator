@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
 	corev1 "k8s.io/api/core/v1"
@@ -59,7 +59,7 @@ func DefaultServerConfig() ServerConfig {
 type Server struct {
 	config ServerConfig
 	client client.Client
-	router *mux.Router
+	router chi.Router
 	server *http.Server
 
 	providerFactory provider.ProviderFactory
@@ -70,13 +70,13 @@ func NewServer(config ServerConfig, k8sClient client.Client, receiverFactory Rec
 	s := &Server{
 		config: config,
 		client: k8sClient,
-		router: mux.NewRouter(),
+		router: chi.NewRouter(),
 
 		providerFactory: provider.DefaultProviderFactory,
 		receiverFactory: receiverFactory,
 	}
 
-	s.router.HandleFunc("/hooks/{namespace}/{name}", s.handleIncomingWebhook).Methods("POST")
+	s.router.Post("/hooks/{namespace}/{name}", s.handleIncomingWebhook)
 
 	s.server = &http.Server{
 		Addr:         config.Addr,
@@ -118,9 +118,8 @@ func (s *Server) Start(ctx context.Context) error {
 
 func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 	ctx := r.Context()
-	vars := mux.Vars(r)
-	namespace := vars["namespace"]
-	name := vars["name"]
+	namespace := chi.URLParam(r, "namespace")
+	name := chi.URLParam(r, "name")
 
 	r.Body = http.MaxBytesReader(w, r.Body, maxWebhookBodyBytes)
 	defer r.Body.Close()

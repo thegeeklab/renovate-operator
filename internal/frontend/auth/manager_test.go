@@ -3,6 +3,7 @@ package auth
 import (
 	"context"
 	"errors"
+	"net/http"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -28,19 +29,38 @@ func (p *testAuthProvider) LoginURL(state string) string {
 
 func (p *testAuthProvider) HandleCallback(ctx context.Context, code string) (*AuthenticatedUser, error) {
 	return &AuthenticatedUser{
-		Email:       "test@example.com",
-		Name:        "Test User",
-		Subject:     "sub-123",
-		AccessToken: "test-token",
-		Provider:    p.name,
+		Email:        "test@example.com",
+		Name:         "Test User",
+		Subject:      "sub-123",
+		AccessToken:  "test-token",
+		RefreshToken: "test-refresh-token",
+		Provider:     p.name,
 	}, nil
 }
 
-func (p *testAuthProvider) GetUserRepos(ctx context.Context, token string) (map[string]bool, error) {
+func (p *testAuthProvider) RefreshToken(ctx context.Context, refreshToken string) (*AuthenticatedUser, error) {
+	return &AuthenticatedUser{
+		Email:        "test@example.com",
+		Name:         "Test User",
+		Subject:      "sub-123",
+		AccessToken:  "refreshed-token",
+		RefreshToken: "refreshed-refresh-token",
+		Provider:     p.name,
+	}, nil
+}
+
+func (p *testAuthProvider) GetUserRepos(
+	ctx context.Context,
+	client *http.Client,
+) (map[string]bool, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (p *testAuthProvider) IsUserRepo(ctx context.Context, token, fullName string) (bool, error) {
+func (p *testAuthProvider) IsUserRepo(
+	ctx context.Context,
+	client *http.Client,
+	fullName string,
+) (bool, error) {
 	return false, errors.New("not implemented")
 }
 
@@ -119,6 +139,69 @@ var _ = Describe("Manager", func() {
 		It("should return true when providers registered", func() {
 			manager.Register(&testAuthProvider{name: "gitea-prod", provType: ProviderTypeGitea})
 			Expect(manager.IsEnabled()).To(BeTrue())
+		})
+	})
+
+	Describe("RefreshSessionToken", func() {
+		BeforeEach(func() {
+			manager.Register(&testAuthProvider{name: "gitea-prod", provType: ProviderTypeGitea})
+		})
+
+		It("should refresh token successfully", func() {
+			session := &SessionData{
+				Email:        "test@example.com",
+				AccessToken:  "old-token",
+				RefreshToken: "old-refresh-token",
+				Provider:     "gitea-prod",
+			}
+
+			refreshed, err := manager.RefreshSessionToken(context.Background(), session)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(refreshed.AccessToken).To(Equal("refreshed-token"))
+			Expect(refreshed.RefreshToken).To(Equal("refreshed-refresh-token"))
+			Expect(refreshed.Provider).To(Equal("gitea-prod"))
+		})
+
+		It("should return error when provider not found", func() {
+			session := &SessionData{
+				Email:        "test@example.com",
+				AccessToken:  "old-token",
+				RefreshToken: "old-refresh-token",
+				Provider:     "unknown-provider",
+			}
+
+			refreshed, err := manager.RefreshSessionToken(context.Background(), session)
+			Expect(err).To(Equal(ErrInvalidProvider))
+			Expect(refreshed).To(BeNil())
+		})
+
+		It("should return error when no refresh token", func() {
+			session := &SessionData{
+				Email:       "test@example.com",
+				AccessToken: "old-token",
+				Provider:    "gitea-prod",
+			}
+
+			refreshed, err := manager.RefreshSessionToken(context.Background(), session)
+			Expect(err).To(Equal(ErrNoRefreshToken))
+			Expect(refreshed).To(BeNil())
+		})
+
+		It("should return error when provider refresh fails", func() {
+			failingProvider := &failingAuthProvider{name: "gitea-fail"}
+			manager.Register(failingProvider)
+
+			session := &SessionData{
+				Email:        "test@example.com",
+				AccessToken:  "old-token",
+				RefreshToken: "bad-refresh-token",
+				Provider:     "gitea-fail",
+			}
+
+			refreshed, err := manager.RefreshSessionToken(context.Background(), session)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("refresh failed"))
+			Expect(refreshed).To(BeNil())
 		})
 	})
 })

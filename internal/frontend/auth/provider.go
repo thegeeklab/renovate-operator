@@ -2,13 +2,22 @@ package auth
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"sync"
+	"time"
 
 	"github.com/alexedwards/scs/v2"
+	"golang.org/x/sync/singleflight"
 )
 
 const (
 	ProviderTypeGitea = "gitea"
+)
+
+var (
+	ErrInvalidProvider = errors.New("invalid provider")
+	ErrNoRefreshToken  = errors.New("no refresh token available")
 )
 
 type ProviderConfig struct {
@@ -24,11 +33,13 @@ type ProviderConfig struct {
 }
 
 type AuthenticatedUser struct {
-	Email       string
-	Name        string
-	Subject     string
-	AccessToken string
-	Provider    string
+	Email        string
+	Name         string
+	Subject      string
+	AccessToken  string
+	RefreshToken string
+	TokenExpiry  time.Time
+	Provider     string
 }
 
 type AuthProvider interface {
@@ -36,15 +47,17 @@ type AuthProvider interface {
 	Name() string
 	LoginURL(state string) string
 	HandleCallback(ctx context.Context, code string) (*AuthenticatedUser, error)
-	GetUserRepos(ctx context.Context, token string) (map[string]bool, error)
-	IsUserRepo(ctx context.Context, token, fullName string) (bool, error)
+	RefreshToken(ctx context.Context, refreshToken string) (*AuthenticatedUser, error)
+	GetUserRepos(ctx context.Context, client *http.Client) (map[string]bool, error)
+	IsUserRepo(ctx context.Context, client *http.Client, fullName string) (bool, error)
 }
 
 type Manager struct {
-	mu        sync.RWMutex
-	providers map[string]AuthProvider
-	Session   *scs.SessionManager
-	intended  bool
+	mu           sync.RWMutex
+	providers    map[string]AuthProvider
+	session      *scs.SessionManager
+	intended     bool
+	refreshGroup singleflight.Group
 }
 
 func NewManager(secureCookies bool) *Manager {
@@ -52,8 +65,13 @@ func NewManager(secureCookies bool) *Manager {
 
 	return &Manager{
 		providers: make(map[string]AuthProvider),
-		Session:   session,
+		session:   session,
 	}
+}
+
+// SessionManager returns the session manager used by this auth manager.
+func (m *Manager) SessionManager() *scs.SessionManager {
+	return m.session
 }
 
 func (m *Manager) Register(provider AuthProvider) {
@@ -111,4 +129,35 @@ func (m *Manager) IsIntended() bool {
 	defer m.mu.RUnlock()
 
 	return m.intended
+}
+
+func (m *Manager) RefreshSessionToken(ctx context.Context, session *SessionData) (*SessionData, error) {
+	m.mu.RLock()
+
+	provider, ok := m.providers[session.Provider]
+
+	m.mu.RUnlock()
+
+	if !ok {
+		return nil, ErrInvalidProvider
+	}
+
+	if session.RefreshToken == "" {
+		return nil, ErrNoRefreshToken
+	}
+
+	user, err := provider.RefreshToken(ctx, session.RefreshToken)
+	if err != nil {
+		return nil, err
+	}
+
+	return &SessionData{
+		Email:        user.Email,
+		Name:         user.Name,
+		Subject:      user.Subject,
+		AccessToken:  user.AccessToken,
+		RefreshToken: user.RefreshToken,
+		TokenExpiry:  user.TokenExpiry,
+		Provider:     session.Provider,
+	}, nil
 }

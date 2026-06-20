@@ -8,7 +8,7 @@ import (
 	"net/http"
 	"strings"
 
-	"sigs.k8s.io/controller-runtime/pkg/log"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
 const (
@@ -20,7 +20,7 @@ const (
 	stateParts = 2
 )
 
-var authLog = log.Log.WithName("auth")
+var authLog = logf.Log.WithName("auth")
 
 // encodeState produces a state value of the form "<random-hex>:<base64url-provider-name>".
 // The random component serves as the CSRF token (compared against the cookie),
@@ -62,7 +62,7 @@ func isSecureRequest(r *http.Request, secureCookies bool) bool {
 func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if manager.IsIntended() && !manager.IsEnabled() {
-			writeNotReadyResponse(w)
+			writeNotReadyResponse(w, r)
 
 			return
 		}
@@ -104,6 +104,12 @@ func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
 
 func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
+		if manager.IsIntended() && !manager.IsEnabled() {
+			writeNotReadyResponse(w, r)
+
+			return
+		}
+
 		stateCookie, err := r.Cookie(stateCookieName)
 		if err != nil {
 			http.Error(w, "missing state cookie", http.StatusBadRequest)
@@ -148,20 +154,24 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 		}
 
 		session := SessionData{
-			Email:       user.Email,
-			Name:        user.Name,
-			Subject:     user.Subject,
-			AccessToken: user.AccessToken,
-			Provider:    providerName,
+			Email:        user.Email,
+			Name:         user.Name,
+			Subject:      user.Subject,
+			AccessToken:  user.AccessToken,
+			RefreshToken: user.RefreshToken,
+			TokenExpiry:  user.TokenExpiry,
+			Provider:     providerName,
 		}
 
-		if err := manager.Session.RenewToken(r.Context()); err != nil {
+		sessionManager := manager.SessionManager()
+
+		if err := sessionManager.RenewToken(r.Context()); err != nil {
 			authLog.Error(err, "Failed to renew session token")
 		}
 
-		SetSessionData(r.Context(), manager.Session, session)
+		SetSessionData(r.Context(), sessionManager, session)
 
-		if _, err := GenerateCSRFToken(r.Context(), manager.Session); err != nil {
+		if _, err := GenerateCSRFToken(r.Context(), sessionManager); err != nil {
 			authLog.Error(err, "Failed to generate CSRF token")
 		}
 
@@ -183,15 +193,17 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 
 func HandleLogout(manager *Manager) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		if IsAuthenticated(r.Context(), manager.Session) {
-			if !ValidateCSRFToken(r.Context(), manager.Session, r.FormValue(csrfFormName)) {
+		sessionManager := manager.SessionManager()
+
+		if IsAuthenticated(r.Context(), sessionManager) {
+			if !ValidateCSRFToken(r.Context(), sessionManager, r.FormValue(csrfFormName)) {
 				http.Error(w, "invalid CSRF token", http.StatusForbidden)
 
 				return
 			}
 		}
 
-		if err := DestroySession(r.Context(), manager.Session); err != nil {
+		if err := DestroySession(r.Context(), sessionManager); err != nil {
 			authLog.Error(err, "Failed to destroy session")
 		}
 
@@ -215,13 +227,15 @@ func HandleAuthStatus(manager *Manager) http.HandlerFunc {
 			return
 		}
 
-		if !IsAuthenticated(r.Context(), manager.Session) {
+		sessionManager := manager.SessionManager()
+
+		if !IsAuthenticated(r.Context(), sessionManager) {
 			_, _ = w.Write([]byte(`{"enabled":true,"authenticated":false}`))
 
 			return
 		}
 
-		session, _ := GetSessionData(r.Context(), manager.Session)
+		session, _ := GetSessionData(r.Context(), sessionManager)
 
 		provider, ok := manager.Get(session.Provider)
 		if !ok {

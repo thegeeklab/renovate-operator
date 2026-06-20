@@ -8,7 +8,7 @@ import (
 	"sync"
 
 	"github.com/a-h/templ"
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	"golang.org/x/sync/semaphore"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -17,7 +17,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
@@ -59,16 +59,16 @@ const (
 
 var errPodInitializing = errors.New("pods still initializing")
 
-func (h *WebHandler) RegisterRoutes(router *mux.Router) {
-	router.Handle("/events", h.Broker).Methods("GET")
+func (h *WebHandler) RegisterRoutes(router chi.Router) {
+	router.Handle("/events", h.Broker)
 
-	router.HandleFunc("/", h.HandleDashboard).Methods("GET")
-	router.HandleFunc("/login", h.HandleLogin).Methods("GET")
-	router.HandleFunc("/gitrepo", h.HandleGitRepoView).Methods("GET")
-	router.HandleFunc("/gitrepos", h.HandleGitReposPartial).Methods("GET")
-	router.HandleFunc("/renovators/count", h.HandleRenovatorCount).Methods("GET")
-	router.HandleFunc("/joblogs", h.HandleJobLogs).Methods("GET")
-	router.HandleFunc("/joblogs/download", h.HandleJobLogsDownload).Methods("GET")
+	router.Get("/", h.HandleDashboard)
+	router.Get("/login", h.HandleLogin)
+	router.Get("/gitrepo", h.HandleGitRepoView)
+	router.Get("/gitrepos", h.HandleGitReposPartial)
+	router.Get("/renovators/count", h.HandleRenovatorCount)
+	router.Get("/joblogs", h.HandleJobLogs)
+	router.Get("/joblogs/download", h.HandleJobLogsDownload)
 }
 
 func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, component templ.Component) {
@@ -106,7 +106,7 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) viewmodel.AuthInfo {
 		})
 	}
 
-	session, ok := auth.GetSessionData(r.Context(), h.authManager.Session)
+	session, ok := auth.GetSessionData(r.Context(), h.authManager.SessionManager())
 	if !ok {
 		return info
 	}
@@ -115,7 +115,7 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) viewmodel.AuthInfo {
 	info.Name = session.Name
 	info.Provider = session.Provider
 
-	csrfToken := auth.GetCSRFToken(r.Context(), h.authManager.Session)
+	csrfToken := auth.GetCSRFToken(r.Context(), h.authManager.SessionManager())
 	if csrfToken != "" {
 		info.CSRFToken = csrfToken
 	}

@@ -69,7 +69,9 @@
     "Eventf",
     "viewmodel",
     "errgroup",
-    "authprovider"
+    "authprovider",
+    "redisstore",
+    "memstore"
   ],
   "ignorePaths": [
     ".woodpecker",

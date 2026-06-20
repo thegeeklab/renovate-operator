@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"strconv"
 	"strings"
@@ -13,17 +14,22 @@ import (
 
 	"github.com/cenkalti/backoff/v6"
 	"github.com/coreos/go-oidc/v3/oidc"
-	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"golang.org/x/oauth2"
 )
 
-var errNoIDToken = errors.New("no id_token in token response")
+var (
+	errNoIDToken      = errors.New("no id_token in token response")
+	errNoRefreshToken = errors.New("no refresh_token in token response")
+)
 
 const (
 	defaultPageSize    = 50
 	maxFetchTimeout    = 2 * time.Minute
 	repoCheckTimeout   = 10 * time.Second
 	defaultHTTPTimeout = 30 * time.Second
+
+	maxRepoPages = 200
 
 	backoffInitial    = 200 * time.Millisecond
 	backoffMax        = 10 * time.Second
@@ -120,6 +126,27 @@ func (p *GiteaProvider) HandleCallback(ctx context.Context, code string) (*auth.
 		return nil, fmt.Errorf("failed to exchange token: %w", err)
 	}
 
+	return p.getUserFromToken(ctx, token)
+}
+
+func (p *GiteaProvider) RefreshToken(ctx context.Context, refreshToken string) (*auth.AuthenticatedUser, error) {
+	if refreshToken == "" {
+		return nil, errNoRefreshToken
+	}
+
+	ctx = oidc.ClientContext(ctx, p.httpClient)
+
+	tokenSource := p.oauth2Config.TokenSource(ctx, &oauth2.Token{RefreshToken: refreshToken})
+
+	newToken, err := tokenSource.Token()
+	if err != nil {
+		return nil, fmt.Errorf("failed to refresh token: %w", err)
+	}
+
+	return p.getUserFromToken(ctx, newToken)
+}
+
+func (p *GiteaProvider) getUserFromToken(ctx context.Context, token *oauth2.Token) (*auth.AuthenticatedUser, error) {
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok {
 		return nil, errNoIDToken
@@ -139,23 +166,23 @@ func (p *GiteaProvider) HandleCallback(ctx context.Context, code string) (*auth.
 	}
 
 	return &auth.AuthenticatedUser{
-		Email:       claims.Email,
-		Name:        claims.Name,
-		Subject:     idToken.Subject,
-		AccessToken: token.AccessToken,
-		Provider:    p.name,
+		Email:        claims.Email,
+		Name:         claims.Name,
+		Subject:      idToken.Subject,
+		AccessToken:  token.AccessToken,
+		RefreshToken: token.RefreshToken,
+		TokenExpiry:  token.Expiry,
+		Provider:     p.name,
 	}, nil
 }
 
-func (p *GiteaProvider) GetUserRepos(ctx context.Context, token string) (map[string]bool, error) {
+func (p *GiteaProvider) GetUserRepos(ctx context.Context, client *http.Client) (map[string]bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, maxFetchTimeout)
 	defer cancel()
 
 	result := make(map[string]bool)
 
-	page := 1
-
-	for {
+	for page := 1; page <= maxRepoPages; page++ {
 		if err := ctx.Err(); err != nil {
 			if len(result) > 0 {
 				return result, fmt.Errorf("fetch repos cancelled with partial results: %w", err)
@@ -164,7 +191,7 @@ func (p *GiteaProvider) GetUserRepos(ctx context.Context, token string) (map[str
 			return result, fmt.Errorf("fetch repos cancelled: %w", err)
 		}
 
-		data, err := p.fetchPageWithRetry(ctx, page, token)
+		data, err := p.fetchPageWithRetry(ctx, client, page)
 		if err != nil {
 			if len(result) > 0 {
 				return result, fmt.Errorf("fetch failed with partial results: %w", err)
@@ -179,17 +206,15 @@ func (p *GiteaProvider) GetUserRepos(ctx context.Context, token string) (map[str
 			}
 		}
 
-		if len(data) == 0 {
+		if len(data) < defaultPageSize {
 			break
 		}
-
-		page++
 	}
 
 	return result, nil
 }
 
-func (p *GiteaProvider) IsUserRepo(ctx context.Context, token, fullName string) (bool, error) {
+func (p *GiteaProvider) IsUserRepo(ctx context.Context, client *http.Client, fullName string) (bool, error) {
 	ctx, cancel := context.WithTimeout(ctx, repoCheckTimeout)
 	defer cancel()
 
@@ -199,19 +224,21 @@ func (p *GiteaProvider) IsUserRepo(ctx context.Context, token, fullName string) 
 		return false, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "token "+token)
-
-	resp, err := p.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return false, fmt.Errorf("failed to check repo access: %w", err)
 	}
 	defer resp.Body.Close()
 
 	if resp.StatusCode == http.StatusNotFound || resp.StatusCode == http.StatusForbidden {
+		_, _ = io.Copy(io.Discard, resp.Body)
+
 		return false, nil
 	}
 
 	if resp.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, resp.Body)
+
 		return false, fmt.Errorf("%w: %d", errUnexpectedStatus, resp.StatusCode)
 	}
 
@@ -223,14 +250,14 @@ func (p *GiteaProvider) IsUserRepo(ctx context.Context, token, fullName string) 
 	return repo.Permissions.Push, nil
 }
 
-func (p *GiteaProvider) fetchPageWithRetry(ctx context.Context, page int, token string) ([]giteaRepo, error) {
+func (p *GiteaProvider) fetchPageWithRetry(ctx context.Context, client *http.Client, page int) ([]giteaRepo, error) {
 	bo := backoff.NewExponentialBackOff()
 	bo.InitialInterval = backoffInitial
 	bo.MaxInterval = backoffMax
 	bo.Multiplier = backoffMultiplier
 
 	return backoff.Retry(ctx, func() ([]giteaRepo, error) {
-		data, statusCode, retryAfter, err := p.fetchPage(ctx, page, token)
+		data, statusCode, retryAfter, err := p.fetchPage(ctx, client, page)
 		if err != nil {
 			return nil, err
 		}
@@ -255,7 +282,7 @@ func (p *GiteaProvider) fetchPageWithRetry(ctx context.Context, page int, token 
 	}, backoff.WithBackOff(bo), backoff.WithMaxTries(backoffMaxTries))
 }
 
-func (p *GiteaProvider) fetchPage(ctx context.Context, page int, token string) (
+func (p *GiteaProvider) fetchPage(ctx context.Context, client *http.Client, page int) (
 	[]giteaRepo, int, time.Duration, error,
 ) {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet,
@@ -265,9 +292,7 @@ func (p *GiteaProvider) fetchPage(ctx context.Context, page int, token string) (
 		return nil, 0, 0, fmt.Errorf("failed to create request: %w", err)
 	}
 
-	req.Header.Set("Authorization", "token "+token)
-
-	resp, err := p.httpClient.Do(req)
+	resp, err := client.Do(req)
 	if err != nil {
 		return nil, 0, 0, fmt.Errorf("failed to fetch repos: %w", err)
 	}
@@ -277,6 +302,10 @@ func (p *GiteaProvider) fetchPage(ctx context.Context, page int, token string) (
 	retryAfter := p.parseRetryAfter(resp)
 
 	if resp.StatusCode != http.StatusOK {
+		// Drain the body so the underlying connection can be reused (keep-alive).
+		// This matters because non-200 responses (429/5xx) are retried with backoff.
+		_, _ = io.Copy(io.Discard, resp.Body)
+
 		return nil, resp.StatusCode, retryAfter, nil
 	}
 

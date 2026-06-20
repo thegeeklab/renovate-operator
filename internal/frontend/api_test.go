@@ -7,7 +7,7 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"github.com/gorilla/mux"
+	"github.com/go-chi/chi/v5"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -70,35 +70,30 @@ var _ = Describe("APIHandler", func() {
 
 	Describe("RegisterRoutes", func() {
 		It("should register API routes", func() {
-			router := mux.NewRouter()
+			router := chi.NewRouter()
 
 			handler.RegisterRoutes(router)
 
-			testCases := []string{
-				"/api/v1/version",
-				"/api/v1/renovators",
-				"/api/v1/gitrepos",
-				"/api/v1/runners",
-				"/api/v1/discoveries",
-				"/api/v1/discovery/start",
-				"/api/v1/discovery/status",
+			testCases := []struct {
+				method string
+				path   string
+			}{
+				{http.MethodGet, "/api/v1/version"},
+				{http.MethodGet, "/api/v1/renovators"},
+				{http.MethodGet, "/api/v1/gitrepos"},
+				{http.MethodGet, "/api/v1/runners"},
+				{http.MethodGet, "/api/v1/discoveries"},
+				{http.MethodPost, "/api/v1/discovery/start"},
+				{http.MethodGet, "/api/v1/discovery/status"},
 			}
 
-			for _, path := range testCases {
-				var found bool
+			for _, tc := range testCases {
+				req := httptest.NewRequest(tc.method, tc.path, nil)
+				w := httptest.NewRecorder()
 
-				_ = router.Walk(func(route *mux.Route, router *mux.Router, ancestors []*mux.Route) error {
-					routePath, err := route.GetPathTemplate()
-					Expect(err).NotTo(HaveOccurred())
+				router.ServeHTTP(w, req)
 
-					if routePath == path {
-						found = true
-					}
-
-					return nil
-				})
-
-				Expect(found).To(BeTrue(), "Route %s should be registered", path)
+				Expect(w.Code).NotTo(Equal(http.StatusNotFound), "Route %s %s should be registered", tc.method, tc.path)
 			}
 		})
 	})

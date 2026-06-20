@@ -20,12 +20,13 @@ templ RenovatorCountBadge(namespace, renovatorUID string, count int) {
 templ RenovatorList(data viewmodel.DashboardData) {
 	<div class="bg-white shadow mb-6 shrink-0">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-			<h2 class="text-2xl font-bold tracking-tight text-gray-900">Dashboard</h2>
+			<h2 class="text-2xl font-bold tracking-tight text-gray-900" data-focus-target>Dashboard</h2>
 			<div class="relative w-full sm:w-64">
 				<input
 					type="search"
 					name="search"
 					value={ data.SearchQuery }
+					autocomplete="off"
 					placeholder="Search all repositories..."
 					aria-label="Search all repositories"
 					hx-get="/"

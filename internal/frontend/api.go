@@ -5,8 +5,8 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/gorilla/mux"
-	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/go-chi/chi/v5"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -60,15 +60,16 @@ func NewAPIHandler(client client.Client, clientset kubernetes.Interface, authMan
 }
 
 // RegisterRoutes registers the API routes.
-func (h *APIHandler) RegisterRoutes(router *mux.Router) {
-	apiV1 := router.PathPrefix("/api/v1").Subrouter()
-	apiV1.HandleFunc("/version", h.getVersion).Methods("GET")
-	apiV1.HandleFunc("/renovators", h.getRenovators).Methods("GET")
-	apiV1.HandleFunc("/gitrepos", h.getGitRepos).Methods("GET")
-	apiV1.HandleFunc("/runners", h.getRunners).Methods("GET")
-	apiV1.HandleFunc("/discoveries", h.getDiscoveries).Methods("GET")
-	apiV1.HandleFunc("/discovery/start", h.startDiscovery).Methods("POST")
-	apiV1.HandleFunc("/discovery/status", h.getDiscoveryStatus).Methods("GET")
+func (h *APIHandler) RegisterRoutes(router chi.Router) {
+	router.Route("/api/v1", func(r chi.Router) {
+		r.Get("/version", h.getVersion)
+		r.Get("/renovators", h.getRenovators)
+		r.Get("/gitrepos", h.getGitRepos)
+		r.Get("/runners", h.getRunners)
+		r.Get("/discoveries", h.getDiscoveries)
+		r.Post("/discovery/start", h.startDiscovery)
+		r.Get("/discovery/status", h.getDiscoveryStatus)
+	})
 }
 
 func getOptionsFromRequest(r *http.Request) ListOptions {
