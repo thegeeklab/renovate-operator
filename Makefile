@@ -197,9 +197,9 @@ ifeq ($(FRONTEND_DEV),true)
 	@npm install
 	@npm run dev & VITE_PID=$$!; \
 	trap "kill $$VITE_PID 2>/dev/null" EXIT INT TERM; \
-	NODE_ENV=development ENABLE_WEBHOOKS=false $(AIR_BIN) -c .air.toml
+	NODE_ENV=development ENABLE_WEBHOOKS=false mirrord exec -n renovate-system --target deployment/renovate-operator-controller-manager --steal -- $(AIR_BIN) -c .air.toml
 else
-	ENABLE_WEBHOOKS=false $(GO) run ./cmd/main.go -zap-log-level=debug
+	ENABLE_WEBHOOKS=false mirrord exec -n renovate-system --target deployment/renovate-operator-controller-manager --steal -- $(GO) run ./cmd/main.go -zap-log-level=debug
 endif
 
 .PHONY: docker-build
