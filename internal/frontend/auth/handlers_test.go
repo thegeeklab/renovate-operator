@@ -21,10 +21,7 @@ var _ = Describe("Handlers", func() {
 	)
 
 	BeforeEach(func() {
-		var err error
-
-		manager, err = NewManager("test-secret", false)
-		Expect(err).NotTo(HaveOccurred())
+		manager = NewManager(false)
 		manager.Register(&testAuthProvider{
 			name:     "gitea-prod",
 			provType: ProviderTypeGitea,
@@ -94,7 +91,7 @@ var _ = Describe("Handlers", func() {
 			form.Set(csrfFormName, "any-token")
 			req.PostForm = form
 
-			handler := manager.Session.LoadAndSave(HandleLogout(manager))
+			handler := manager.SessionManager().LoadAndSave(HandleLogout(manager))
 			handler.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusFound))
@@ -111,8 +108,8 @@ var _ = Describe("Handlers", func() {
 				Provider: "gitea-prod",
 			}
 
-			handler := manager.Session.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				SetSessionData(r.Context(), manager.Session, session)
+			handler := manager.SessionManager().LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				SetSessionData(r.Context(), manager.SessionManager(), session)
 
 				HandleLogout(manager).ServeHTTP(w, r)
 			}))
@@ -135,9 +132,9 @@ var _ = Describe("Handlers", func() {
 				Provider: "gitea-prod",
 			}
 
-			handler := manager.Session.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				SetSessionData(r.Context(), manager.Session, session)
-				_, _ = GenerateCSRFToken(r.Context(), manager.Session)
+			handler := manager.SessionManager().LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				SetSessionData(r.Context(), manager.SessionManager(), session)
+				_, _ = GenerateCSRFToken(r.Context(), manager.SessionManager())
 
 				HandleLogout(manager).ServeHTTP(w, r)
 			}))
@@ -149,8 +146,7 @@ var _ = Describe("Handlers", func() {
 
 	Describe("HandleAuthStatus", func() {
 		It("should return enabled=false when auth is disabled", func() {
-			disabledManager, err := NewManager("test-secret", false)
-			Expect(err).NotTo(HaveOccurred())
+			disabledManager := NewManager(false)
 
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/status", nil)
 			rec := httptest.NewRecorder()
@@ -160,7 +156,7 @@ var _ = Describe("Handlers", func() {
 
 			var status map[string]any
 
-			err = json.Unmarshal(rec.Body.Bytes(), &status)
+			err := json.Unmarshal(rec.Body.Bytes(), &status)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(status["enabled"]).To(BeFalse())
 		})
@@ -168,7 +164,7 @@ var _ = Describe("Handlers", func() {
 		It("should return enabled=true, authenticated=false without session", func() {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/status", nil)
 
-			handler := manager.Session.LoadAndSave(HandleAuthStatus(manager))
+			handler := manager.SessionManager().LoadAndSave(HandleAuthStatus(manager))
 			handler.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusOK))
@@ -190,8 +186,8 @@ var _ = Describe("Handlers", func() {
 
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/auth/status", nil)
 
-			handler := manager.Session.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				SetSessionData(r.Context(), manager.Session, session)
+			handler := manager.SessionManager().LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				SetSessionData(r.Context(), manager.SessionManager(), session)
 				HandleAuthStatus(manager).ServeHTTP(w, r)
 			}))
 			handler.ServeHTTP(rec, req)
@@ -276,8 +272,7 @@ var _ = Describe("Handlers", func() {
 
 		It("should return 500 when provider callback fails", func() {
 			failingProvider := &failingAuthProvider{name: "gitea-fail"}
-			failingManager, err := NewManager("test-secret", false)
-			Expect(err).NotTo(HaveOccurred())
+			failingManager := NewManager(false)
 			failingManager.Register(failingProvider)
 
 			state, err := encodeState("gitea-fail")
@@ -294,8 +289,7 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should derive provider from state, not from query", func() {
-			spoofManager, err := NewManager("test-secret", false)
-			Expect(err).NotTo(HaveOccurred())
+			spoofManager := NewManager(false)
 			spoofManager.Register(&failingAuthProvider{name: "gitea-prod"})
 			spoofManager.Register(&testAuthProvider{
 				name:     "gitea-staging",
@@ -318,6 +312,33 @@ var _ = Describe("Handlers", func() {
 			HandleCallback(spoofManager, false).ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusInternalServerError))
+		})
+
+		It("should store refresh token and token expiry in session", func() {
+			state, err := encodeState("gitea-prod")
+			Expect(err).NotTo(HaveOccurred())
+
+			req := httptest.NewRequest(http.MethodGet, "/auth/callback?state="+state+"&code=valid-code", nil)
+			req.AddCookie(&http.Cookie{
+				Name:  stateCookieName,
+				Value: state,
+			})
+
+			var storedSession SessionData
+
+			var ok bool
+
+			handler := manager.SessionManager().LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				HandleCallback(manager, false).ServeHTTP(w, r)
+
+				storedSession, ok = GetSessionData(r.Context(), manager.SessionManager())
+			}))
+			handler.ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusFound))
+			Expect(ok).To(BeTrue())
+			Expect(storedSession.RefreshToken).To(Equal("test-refresh-token"))
+			Expect(storedSession.AccessToken).To(Equal("test-token"))
 		})
 	})
 })
@@ -342,10 +363,21 @@ func (p *failingAuthProvider) HandleCallback(ctx context.Context, code string) (
 	return nil, ErrCallbackFailed
 }
 
-func (p *failingAuthProvider) GetUserRepos(ctx context.Context, token string) (map[string]bool, error) {
+func (p *failingAuthProvider) RefreshToken(ctx context.Context, refreshToken string) (*AuthenticatedUser, error) {
+	return nil, errors.New("refresh failed")
+}
+
+func (p *failingAuthProvider) GetUserRepos(
+	ctx context.Context,
+	client *http.Client,
+) (map[string]bool, error) {
 	return nil, errors.New("not implemented")
 }
 
-func (p *failingAuthProvider) IsUserRepo(ctx context.Context, token, fullName string) (bool, error) {
+func (p *failingAuthProvider) IsUserRepo(
+	ctx context.Context,
+	client *http.Client,
+	fullName string,
+) (bool, error) {
 	return false, errors.New("not implemented")
 }

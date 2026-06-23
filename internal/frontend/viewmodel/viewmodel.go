@@ -7,7 +7,7 @@ package viewmodel
 
 import "time"
 
-// Status represents the lifecycle state of a renovate run / job.
+// Status represents the lifecycle state of a renovate run.
 type Status string
 
 const (
@@ -111,6 +111,7 @@ type GitRepoInfo struct {
 	LastRenovateAt     time.Time `json:"lastRenovateAt"`
 	LastRenovateStatus Status    `json:"lastRenovateStatus"`
 	CreatedAt          time.Time `json:"createdAt"`
+	RenovatorUID       string    `json:"renovatorUid"`
 }
 
 // JobInfo is the view-layer representation of a Kubernetes Job.

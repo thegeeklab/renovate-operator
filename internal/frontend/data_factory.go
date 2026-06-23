@@ -2,18 +2,17 @@ package frontend
 
 import (
 	"context"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"slices"
 	"strings"
 	"time"
 
 	"github.com/maypok86/otter/v2"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
 	"golang.org/x/sync/singleflight"
@@ -30,6 +29,7 @@ var (
 	errUnableToDeriveCacheKey = errors.New("unable to derive cache key for session")
 	errUnexpectedCacheResult  = errors.New("unexpected cache result type")
 	errAuthNotEnabled         = errors.New("auth not enabled")
+	errAuthNotReady           = errors.New("auth not ready")
 	errNotAuthenticated       = errors.New("not authenticated")
 )
 
@@ -43,15 +43,14 @@ type ListOptions struct {
 }
 
 const (
-	defaultAccessCacheTTL = 60 * time.Second
-	defaultAccessCacheMax = 500
+	defaultAccessCacheTTL               = 60 * time.Second
+	defaultAccessCacheMax               = 500
+	defaultAuthorizedRenovatorsCacheTTL = 30 * time.Second
+	defaultAuthorizedRenovatorsCacheMax = 500
+	defaultHTTPClientCacheTTL           = 24 * time.Hour
+	defaultHTTPClientCacheMax           = 1000
+	defaultHTTPClientTimeout            = 30 * time.Second
 )
-
-func hashAccessToken(token string) string {
-	hash := sha256.Sum256([]byte(token))
-
-	return hex.EncodeToString(hash[:])
-}
 
 func (df *DataFactory) deriveCacheKey(session auth.SessionData) string {
 	if session.Subject != "" {
@@ -59,7 +58,7 @@ func (df *DataFactory) deriveCacheKey(session auth.SessionData) string {
 	}
 
 	if session.AccessToken != "" {
-		return session.Provider + "|token:" + hashAccessToken(session.AccessToken)
+		return session.Provider + "|token:" + auth.HashAccessToken(session.AccessToken)
 	}
 
 	return ""
@@ -67,11 +66,14 @@ func (df *DataFactory) deriveCacheKey(session auth.SessionData) string {
 
 // DataFactory provides methods to fetch and transform data for both API and UI handlers.
 type DataFactory struct {
-	client      client.Client
-	clientset   kubernetes.Interface
-	authManager *auth.Manager
-	accessCache *otter.Cache[string, map[string]bool]
-	accessGroup singleflight.Group
+	client                    client.Client
+	clientset                 kubernetes.Interface
+	authManager               *auth.Manager
+	accessCache               *otter.Cache[string, map[string]bool]
+	accessGroup               singleflight.Group
+	authorizedRenovatorsCache *otter.Cache[string, []string]
+	authorizedRenovatorsGroup singleflight.Group
+	httpClientCache           *otter.Cache[string, *http.Client]
 }
 
 // NewDataFactory creates a new DataFactory instance.
@@ -81,11 +83,23 @@ func NewDataFactory(client client.Client, clientset kubernetes.Interface, authMa
 		MaximumSize:      defaultAccessCacheMax,
 	})
 
+	authorizedRenovatorsCache := otter.Must(&otter.Options[string, []string]{
+		ExpiryCalculator: otter.ExpiryWriting[string, []string](defaultAuthorizedRenovatorsCacheTTL),
+		MaximumSize:      defaultAuthorizedRenovatorsCacheMax,
+	})
+
+	httpClientCache := otter.Must(&otter.Options[string, *http.Client]{
+		ExpiryCalculator: otter.ExpiryAccessing[string, *http.Client](defaultHTTPClientCacheTTL),
+		MaximumSize:      defaultHTTPClientCacheMax,
+	})
+
 	return &DataFactory{
-		client:      client,
-		clientset:   clientset,
-		authManager: authManager,
-		accessCache: accessCache,
+		client:                    client,
+		clientset:                 clientset,
+		authManager:               authManager,
+		accessCache:               accessCache,
+		authorizedRenovatorsCache: authorizedRenovatorsCache,
+		httpClientCache:           httpClientCache,
 	}
 }
 
@@ -106,13 +120,133 @@ func buildListOptions(opt ListOptions) []client.ListOption {
 	return listOpts
 }
 
+// getAuthorizedRenovatorUIDs returns the UIDs of Renovators the user has access to.
+// Returns nil if auth is disabled (meaning all resources are accessible).
+// Returns error if auth is intended but not yet ready (fail closed).
+// Results are cached to avoid redundant API calls when fetching multiple resource types.
+func (df *DataFactory) getAuthorizedRenovatorUIDs(ctx context.Context) ([]string, error) {
+	if df.authManager == nil {
+		return nil, nil
+	}
+
+	if err := df.checkAuthReady(); err != nil {
+		return nil, err
+	}
+
+	if !df.authManager.IsEnabled() {
+		return nil, nil
+	}
+
+	session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
+	if !ok {
+		return nil, errNotAuthenticated
+	}
+
+	cacheKey := df.deriveCacheKey(session)
+	if cacheKey == "" {
+		return nil, errUnableToDeriveCacheKey
+	}
+
+	// Detach cancellation from the shared loader: singleflight shares one
+	// in-flight fetch across all callers with the same key. Using the first
+	// caller's context directly would let that caller's cancellation fail the
+	// fetch for every other concurrent caller. Values (including session data)
+	// are preserved so GetRenovators can still authenticate.
+	loaderCtx := context.WithoutCancel(ctx)
+
+	// Use singleflight to deduplicate concurrent requests for the same cache key
+	result, err, _ := df.authorizedRenovatorsGroup.Do(cacheKey, func() (any, error) {
+		loader := otter.LoaderFunc[string, []string](func(_ context.Context, _ string) ([]string, error) {
+			// Cache miss - fetch from API
+			renovators, err := df.GetRenovators(loaderCtx, ListOptions{})
+			if err != nil {
+				return nil, err
+			}
+
+			uidList := make([]string, 0, len(renovators))
+			for _, r := range renovators {
+				uidList = append(uidList, r.UID)
+			}
+
+			return uidList, nil
+		})
+
+		return df.authorizedRenovatorsCache.Get(loaderCtx, cacheKey, loader)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	uidList, ok := result.([]string)
+	if !ok {
+		return nil, errUnexpectedCacheResult
+	}
+
+	return uidList, nil
+}
+
+// authorizeAndFilter applies authorization filtering to a list of resources.
+// It checks if the user has access to the requested Renovator (if specified) and
+// filters the results to only include resources from authorized Renovators.
+// If authorizedUIDs is nil (auth disabled), all resources are returned.
+func authorizeAndFilter[T any](
+	opt ListOptions,
+	items []T,
+	getUID func(T) string,
+	authorizedUIDs []string,
+) []T {
+	// If a specific Renovator is requested, verify the user has access to it
+	if opt.Renovator != "" && authorizedUIDs != nil {
+		if !slices.Contains(authorizedUIDs, opt.Renovator) {
+			// User doesn't have access to this Renovator, return empty results
+			return []T{}
+		}
+	}
+
+	// Filter by authorized Renovators
+	if authorizedUIDs == nil {
+		return items
+	}
+
+	// Build the authorized UIDs set once
+	uidSet := make(map[string]bool, len(authorizedUIDs))
+	for _, uid := range authorizedUIDs {
+		uidSet[uid] = true
+	}
+
+	filtered := make([]T, 0, len(items))
+	for _, item := range items {
+		if uidSet[getUID(item)] {
+			filtered = append(filtered, item)
+		}
+	}
+
+	return filtered
+}
+
 // GetRenovators fetches Renovator resources and transforms them into RenovatorInfo.
+// When auth is enabled, it filters Renovators by the user's AuthProvider.
 func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) ([]RenovatorInfo, error) {
 	opt := getListOptions(opts)
 
 	var listOpts []client.ListOption
 	if opt.Namespace != "" {
 		listOpts = append(listOpts, client.InNamespace(opt.Namespace))
+	}
+
+	// If auth is enabled, filter by the user's AuthProvider
+	if df.authManager != nil && df.authManager.IsEnabled() {
+		session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
+		if !ok {
+			return nil, errNotAuthenticated
+		}
+
+		// Filter Renovators by AuthProvider label
+		listOpts = append(listOpts, client.MatchingLabels{
+			renovatev1beta1.LabelAuthProvider: session.Provider,
+		})
+	} else if err := df.checkAuthReady(); err != nil {
+		return nil, err
 	}
 
 	var list renovatev1beta1.RenovatorList
@@ -157,6 +291,11 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 	var result []viewmodel.GitRepoInfo
 
 	for _, gitrepo := range list.Items {
+		// Skip GitRepos that are being deleted
+		if !gitrepo.DeletionTimestamp.IsZero() {
+			continue
+		}
+
 		lastStatus, lastTime := getRenovateStatusFromConditions(&gitrepo)
 
 		result = append(result, viewmodel.GitRepoInfo{
@@ -167,8 +306,19 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 			LastRenovateAt:     lastTime,
 			LastRenovateStatus: lastStatus,
 			CreatedAt:          gitrepo.CreationTimestamp.Time,
+			RenovatorUID:       extractRenovatorUID(gitrepo.Labels),
 		})
 	}
+
+	// Apply authorization filtering when auth is enabled
+	authorizedUIDs, err := df.getAuthorizedRenovatorUIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result = authorizeAndFilter(opt, result, func(r viewmodel.GitRepoInfo) string {
+		return r.RenovatorUID
+	}, authorizedUIDs)
 
 	if opt.Search != "" {
 		term := strings.ToLower(opt.Search)
@@ -244,13 +394,25 @@ func (df *DataFactory) GetRunners(ctx context.Context, opts ...ListOptions) ([]R
 	}
 
 	var result []RunnerInfo
+
 	for _, runner := range list.Items {
 		result = append(result, RunnerInfo{
-			Name:      runner.Name,
-			Namespace: runner.Namespace,
-			CreatedAt: runner.CreationTimestamp.Time,
+			Name:         runner.Name,
+			Namespace:    runner.Namespace,
+			CreatedAt:    runner.CreationTimestamp.Time,
+			RenovatorUID: extractRenovatorUID(runner.Labels),
 		})
 	}
+
+	// Apply authorization filtering when auth is enabled
+	authorizedUIDs, err := df.getAuthorizedRenovatorUIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result = authorizeAndFilter(opt, result, func(r RunnerInfo) string {
+		return r.RenovatorUID
+	}, authorizedUIDs)
 
 	result = util.EmptyIfNil(result)
 
@@ -276,14 +438,26 @@ func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) 
 	}
 
 	var result []DiscoveryInfo
+
 	for _, discovery := range list.Items {
 		result = append(result, DiscoveryInfo{
-			Name:      discovery.Name,
-			Namespace: discovery.Namespace,
-			Schedule:  discovery.Spec.Schedule,
-			CreatedAt: discovery.CreationTimestamp.Time,
+			Name:         discovery.Name,
+			Namespace:    discovery.Namespace,
+			Schedule:     discovery.Spec.Schedule,
+			CreatedAt:    discovery.CreationTimestamp.Time,
+			RenovatorUID: extractRenovatorUID(discovery.Labels),
 		})
 	}
+
+	// Apply authorization filtering when auth is enabled
+	authorizedUIDs, err := df.getAuthorizedRenovatorUIDs(ctx)
+	if err != nil {
+		return nil, err
+	}
+
+	result = authorizeAndFilter(opt, result, func(d DiscoveryInfo) string {
+		return d.RenovatorUID
+	}, authorizedUIDs)
 
 	result = util.EmptyIfNil(result)
 
@@ -403,11 +577,19 @@ func (df *DataFactory) GetJobLogs(ctx context.Context, namespace, jobName string
 // getUserReposMap returns the user's accessible repo map, handling auth checks,
 // session extraction, provider lookup, and cache/fetch logic.
 func (df *DataFactory) getUserReposMap(ctx context.Context) (map[string]bool, error) {
-	if df.authManager == nil || !df.authManager.IsEnabled() {
+	if df.authManager == nil {
 		return nil, errAuthNotEnabled
 	}
 
-	session, ok := auth.GetSessionData(ctx, df.authManager.Session)
+	if err := df.checkAuthReady(); err != nil {
+		return nil, err
+	}
+
+	if !df.authManager.IsEnabled() {
+		return nil, errAuthNotEnabled
+	}
+
+	session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
 	if !ok {
 		return nil, errNotAuthenticated
 	}
@@ -426,7 +608,48 @@ func (df *DataFactory) getUserReposMap(ctx context.Context) (map[string]bool, er
 		return nil, errUnableToDeriveCacheKey
 	}
 
-	return df.getUserRepos(ctx, provider, session.AccessToken, cacheKey)
+	// Create HTTP client with TokenSource once per session - this is the centralized approach
+	client, err := df.createAuthClient(&session)
+	if err != nil {
+		return nil, err
+	}
+
+	return df.getUserRepos(ctx, provider, client, cacheKey)
+}
+
+// createAuthClient creates an HTTP client with automatic token injection from the session.
+// The client is cached per session and reused across requests for connection pooling.
+// Tokens are read fresh from the session on each request, avoiding stale token issues.
+func (df *DataFactory) createAuthClient(session *auth.SessionData) (*http.Client, error) {
+	// Generate cache key from session
+	cacheKey := df.deriveCacheKey(*session)
+	if cacheKey == "" {
+		return nil, errUnableToDeriveCacheKey
+	}
+
+	// Check if we already have a cached client for this session
+	if cached, found := df.httpClientCache.GetIfPresent(cacheKey); found {
+		return cached, nil
+	}
+
+	// Create callback to read current session from the session store
+	sessionFunc := func(ctx context.Context) *auth.SessionData {
+		session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
+		if !ok {
+			return nil
+		}
+
+		return &session
+	}
+
+	// Create HTTP client that reads tokens from session on each request
+	httpClient := auth.NewAuthClient(sessionFunc)
+	httpClient.Timeout = defaultHTTPClientTimeout
+
+	// Cache the client for this session
+	df.httpClientCache.Set(cacheKey, httpClient)
+
+	return httpClient, nil
 }
 
 // ApplyAccessFilter filters repos by user access if auth is enabled, failing closed on error.
@@ -478,7 +701,7 @@ func (df *DataFactory) IsUserRepo(ctx context.Context, fullName string) bool {
 		return accessible
 	}
 
-	session, ok := auth.GetSessionData(ctx, df.authManager.Session)
+	session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
 	if !ok {
 		return false
 	}
@@ -488,7 +711,15 @@ func (df *DataFactory) IsUserRepo(ctx context.Context, fullName string) bool {
 		return false
 	}
 
-	accessible, err := provider.IsUserRepo(ctx, session.AccessToken, fullName)
+	// Create HTTP client with TokenSource once per session - centralized approach
+	client, err := df.createAuthClient(&session)
+	if err != nil {
+		frontendLog.Error(err, "Failed to create auth client", "repo", fullName)
+
+		return false
+	}
+
+	accessible, err := provider.IsUserRepo(ctx, client, fullName)
 	if err != nil {
 		frontendLog.Error(err, "Failed to check user repo", "repo", fullName)
 
@@ -502,11 +733,11 @@ func (df *DataFactory) IsUserRepo(ctx context.Context, fullName string) bool {
 func (df *DataFactory) getUserRepos(
 	ctx context.Context,
 	provider auth.AuthProvider,
-	token string,
+	client *http.Client,
 	cacheKey string,
 ) (map[string]bool, error) {
 	fetch := func() (map[string]bool, error) {
-		return provider.GetUserRepos(ctx, token)
+		return provider.GetUserRepos(ctx, client)
 	}
 
 	if cacheKey == "" {
@@ -543,4 +774,20 @@ func getListOptions(opts []ListOptions) ListOptions {
 	}
 
 	return ListOptions{}
+}
+
+func extractRenovatorUID(labels map[string]string) string {
+	if labels == nil {
+		return ""
+	}
+
+	return labels[renovatev1beta1.LabelRenovator]
+}
+
+func (df *DataFactory) checkAuthReady() error {
+	if df.authManager != nil && df.authManager.IsIntended() && !df.authManager.IsEnabled() {
+		return errAuthNotReady
+	}
+
+	return nil
 }

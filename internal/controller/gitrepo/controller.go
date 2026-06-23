@@ -7,6 +7,7 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/gitrepo"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
+	"github.com/thegeeklab/renovate-operator/internal/frontend"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/tools/events"
@@ -22,6 +23,7 @@ type Reconciler struct {
 	client.Client
 	Scheme        *runtime.Scheme
 	ExternalURL   string
+	Broker        *frontend.SSEBroker
 	EventRecorder events.EventRecorder
 }
 
@@ -84,7 +86,7 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: err}
 	}
 
-	componentReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, gr, rc)
+	componentReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, r.Broker, gr, rc)
 	if err != nil {
 		return controller.Outcome{Err: err}
 	}

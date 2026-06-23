@@ -3,6 +3,7 @@ package auth
 import (
 	"net/http"
 	"net/http/httptest"
+	"time"
 
 	"github.com/alexedwards/scs/v2"
 	. "github.com/onsi/ginkgo/v2"
@@ -13,10 +14,7 @@ var _ = Describe("Session", func() {
 	var sessionManager *scs.SessionManager
 
 	BeforeEach(func() {
-		var err error
-
-		sessionManager, err = NewSessionManager("test-secret", false)
-		Expect(err).NotTo(HaveOccurred())
+		sessionManager = NewSessionManager(false)
 	})
 
 	Describe("NewSessionManager", func() {
@@ -35,11 +33,13 @@ var _ = Describe("Session", func() {
 
 			handler := sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				original := SessionData{
-					Email:       "test@example.com",
-					Name:        "Test User",
-					Subject:     "sub-123",
-					AccessToken: "access-token-123",
-					Provider:    "gitea-prod",
+					Email:        "test@example.com",
+					Name:         "Test User",
+					Subject:      "sub-123",
+					AccessToken:  "access-token-123",
+					RefreshToken: "refresh-token-123",
+					TokenExpiry:  time.Now().Add(1 * time.Hour).Truncate(time.Millisecond),
+					Provider:     "gitea-prod",
 				}
 
 				SetSessionData(r.Context(), sessionManager, original)
@@ -50,6 +50,8 @@ var _ = Describe("Session", func() {
 				Expect(retrieved.Name).To(Equal(original.Name))
 				Expect(retrieved.Subject).To(Equal(original.Subject))
 				Expect(retrieved.AccessToken).To(Equal(original.AccessToken))
+				Expect(retrieved.RefreshToken).To(Equal(original.RefreshToken))
+				Expect(retrieved.TokenExpiry).To(BeTemporally("~", original.TokenExpiry, time.Millisecond))
 				Expect(retrieved.Provider).To(Equal(original.Provider))
 
 				w.WriteHeader(http.StatusOK)
@@ -66,6 +68,30 @@ var _ = Describe("Session", func() {
 			handler := sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 				_, ok := GetSessionData(r.Context(), sessionManager)
 				Expect(ok).To(BeFalse())
+
+				w.WriteHeader(http.StatusOK)
+			}))
+
+			handler.ServeHTTP(rec, req)
+			Expect(rec.Code).To(Equal(http.StatusOK))
+		})
+
+		It("should handle empty refresh token and zero expiry", func() {
+			req := httptest.NewRequest(http.MethodGet, "/", nil)
+			rec := httptest.NewRecorder()
+
+			handler := sessionManager.LoadAndSave(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				original := SessionData{
+					Email:    "test@example.com",
+					Provider: "gitea-prod",
+				}
+
+				SetSessionData(r.Context(), sessionManager, original)
+
+				retrieved, ok := GetSessionData(r.Context(), sessionManager)
+				Expect(ok).To(BeTrue())
+				Expect(retrieved.RefreshToken).To(BeEmpty())
+				Expect(retrieved.TokenExpiry).To(BeZero())
 
 				w.WriteHeader(http.StatusOK)
 			}))
@@ -167,6 +193,41 @@ var _ = Describe("Session", func() {
 
 			handler.ServeHTTP(rec, req)
 			Expect(rec.Code).To(Equal(http.StatusOK))
+		})
+	})
+
+	Describe("TokenExpired", func() {
+		It("should return false when expiry is zero", func() {
+			data := SessionData{}
+			Expect(data.TokenExpired()).To(BeFalse())
+		})
+
+		It("should return false when token expires in the future", func() {
+			data := SessionData{
+				TokenExpiry: time.Now().Add(1 * time.Hour),
+			}
+			Expect(data.TokenExpired()).To(BeFalse())
+		})
+
+		It("should return true when token is expired", func() {
+			data := SessionData{
+				TokenExpiry: time.Now().Add(-1 * time.Hour),
+			}
+			Expect(data.TokenExpired()).To(BeTrue())
+		})
+
+		It("should return true when token expires within the buffer", func() {
+			data := SessionData{
+				TokenExpiry: time.Now().Add(10 * time.Second),
+			}
+			Expect(data.TokenExpired()).To(BeTrue())
+		})
+
+		It("should return false when token expires just outside the buffer", func() {
+			data := SessionData{
+				TokenExpiry: time.Now().Add(TokenExpiryBuffer + 10*time.Second),
+			}
+			Expect(data.TokenExpired()).To(BeFalse())
 		})
 	})
 })

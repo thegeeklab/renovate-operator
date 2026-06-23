@@ -1,15 +1,6 @@
 // Package sanitize provides escaping helpers that produce safe attribute
 // values for templ attributes that interpolate user-controlled strings into
-// either JavaScript expressions (Alpine x-data / @click) or URL query
-// parameters (htmx hx-get / href).
-//
-// Templ auto-escapes HTML attribute values for ordinary string interpolation,
-// but it does NOT inspect the contents of attribute values for JavaScript
-// or URL context. Passing a raw user-controlled string into an Alpine
-// expression or a query parameter is a stored-XSS vector: a value containing
-// ', ", <, >, or whitespace can break out of the surrounding JS string or
-// URL. The helpers in this package produce output that is always safe to
-// drop into the corresponding attribute, regardless of input.
+// either JavaScript expressions or URL query parameters.
 package sanitize
 
 import (
@@ -59,9 +50,8 @@ func JSValue(v any) string {
 }
 
 // QueryEscape escapes a string for use as an HTTP query parameter value,
-// safe to embed in an hx-get / href URL attribute. Reserved characters are
-// percent-encoded so that user-controlled values cannot inject additional
-// parameters or break out of the URL.
+// safe to embed. Reserved characters are percent-encoded so that user-controlled
+// values cannot inject additional parameters or break out of the URL.
 func QueryEscape(s string) string {
 	return url.QueryEscape(s)
 }
@@ -71,6 +61,12 @@ func QueryEscape(s string) string {
 // are therefore not included in the base URL.
 func GitreposURL(namespace, renovatorUID string) string {
 	return "/gitrepos?namespace=" + QueryEscape(namespace) +
+		"&renovator=" + QueryEscape(renovatorUID)
+}
+
+// RenovatorCountURL builds a /renovators/count URL with safely escaped query parameters.
+func RenovatorCountURL(namespace, renovatorUID string) string {
+	return "/renovators/count?namespace=" + QueryEscape(namespace) +
 		"&renovator=" + QueryEscape(renovatorUID)
 }
 

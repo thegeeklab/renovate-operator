@@ -1,16 +1,20 @@
 package frontend
 
 import (
+	"bufio"
+	"bytes"
 	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"time"
 
-	"github.com/gorilla/mux"
-	"github.com/thegeeklab/renovate-operator/internal/auth"
+	"github.com/go-chi/chi/v5"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -60,7 +64,7 @@ func DefaultServerConfig() ServerConfig {
 type Server struct {
 	config      ServerConfig
 	assets      FrontendAssets
-	router      *mux.Router
+	router      chi.Router
 	server      *http.Server
 	apiHandler  *APIHandler
 	webHandler  *WebHandler
@@ -77,7 +81,7 @@ func NewServer(
 ) *Server {
 	s := &Server{
 		config:      config,
-		router:      mux.NewRouter(),
+		router:      chi.NewRouter(),
 		authManager: authManager,
 	}
 
@@ -90,27 +94,28 @@ func NewServer(
 	s.apiHandler = NewAPIHandler(client, clientset, authManager)
 	s.webHandler = NewWebHandler(client, clientset, broker, s.assets, authManager)
 
+	s.router.Use(errorPageMiddleware(s.assets.Styles))
+
+	if authManager != nil {
+		s.router.Use(auth.Middleware(authManager))
+	}
+
 	s.apiHandler.RegisterRoutes(s.router)
 	s.webHandler.RegisterRoutes(s.router)
 
-	if authManager != nil && authManager.IsEnabled() {
+	if authManager != nil {
 		s.registerAuthRoutes()
 	}
 
 	if !s.config.DevMode {
 		staticDir := "internal/frontend/static/dist"
 		fs := http.FileServer(http.Dir(staticDir))
-		s.router.PathPrefix("/static/").Handler(http.StripPrefix("/static/", fs))
-	}
-
-	var handler http.Handler = s.router
-	if authManager != nil && authManager.IsEnabled() {
-		handler = auth.Middleware(authManager)(s.router)
+		s.router.Handle("/static/*", http.StripPrefix("/static/", fs))
 	}
 
 	s.server = &http.Server{
 		Addr:         config.Addr,
-		Handler:      handler,
+		Handler:      s.router,
 		ReadTimeout:  config.ReadTimeout,
 		WriteTimeout: config.WriteTimeout,
 		IdleTimeout:  config.IdleTimeout,
@@ -120,10 +125,183 @@ func NewServer(
 }
 
 func (s *Server) registerAuthRoutes() {
-	s.router.HandleFunc("/auth/login", auth.HandleLogin(s.authManager, s.config.SecureCookies)).Methods("GET")
-	s.router.HandleFunc("/auth/callback", auth.HandleCallback(s.authManager, s.config.SecureCookies)).Methods("GET")
-	s.router.HandleFunc("/auth/logout", auth.HandleLogout(s.authManager)).Methods("POST")
-	s.router.HandleFunc("/api/v1/auth/status", auth.HandleAuthStatus(s.authManager)).Methods("GET")
+	s.router.Get("/auth/login", auth.HandleLogin(s.authManager, s.config.SecureCookies))
+	s.router.Get("/auth/callback", auth.HandleCallback(s.authManager, s.config.SecureCookies))
+	s.router.Post("/auth/logout", auth.HandleLogout(s.authManager))
+	s.router.Get("/api/v1/auth/status", auth.HandleAuthStatus(s.authManager))
+}
+
+// ErrorPageInfo contains the content for a styled error page.
+type ErrorPageInfo struct {
+	Title   string
+	Message string
+}
+
+// defaultErrorPages provides fallback content for common HTTP error codes.
+// Handlers can override these by setting X-Error-Title and X-Error-Message headers.
+var defaultErrorPages = map[int]ErrorPageInfo{
+	http.StatusServiceUnavailable: {
+		Title:   "Service Unavailable",
+		Message: "The service is temporarily unavailable. Please try again later.",
+	},
+	http.StatusUnauthorized: {
+		Title:   "Unauthorized",
+		Message: "You need to log in to access this resource.",
+	},
+	http.StatusForbidden: {
+		Title:   "Forbidden",
+		Message: "You don't have permission to access this resource.",
+	},
+	http.StatusNotFound: {
+		Title:   "Not Found",
+		Message: "The requested resource could not be found.",
+	},
+}
+
+// errorPageMiddleware intercepts error responses and renders styled error pages for browser requests
+// while passing through responses unchanged for API requests. It uses a response writer wrapper to
+// buffer the body and capture the status code, then decides whether to render a styled page based
+// on the request path and status.
+func errorPageMiddleware(styles []string) func(http.Handler) http.Handler {
+	return func(next http.Handler) http.Handler {
+		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if auth.IsAPIPath(r.URL.Path) {
+				next.ServeHTTP(w, r)
+
+				return
+			}
+
+			rec := &errorStatusRecorder{
+				ResponseWriter: w,
+				body:           &bytes.Buffer{},
+			}
+
+			next.ServeHTTP(rec, r)
+
+			if rec.isStreaming() {
+				return
+			}
+
+			if rec.statusCode < http.StatusBadRequest {
+				rec.commit()
+
+				if _, err := w.Write(rec.body.Bytes()); err != nil {
+					frontendLog.Error(err, "Failed to write response body")
+				}
+
+				return
+			}
+
+			title, message := resolveErrorInfo(rec, rec.statusCode)
+
+			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			rec.commit()
+
+			if err := view.ErrorPage(rec.statusCode, title, message, styles).Render(r.Context(), w); err != nil {
+				frontendLog.Error(err, "Failed to render error page")
+			}
+		})
+	}
+}
+
+func resolveErrorInfo(rec *errorStatusRecorder, code int) (string, string) {
+	title := rec.Header().Get("X-Error-Title")
+	message := rec.Header().Get("X-Error-Message")
+
+	if title != "" || message != "" {
+		if title == "" {
+			title = http.StatusText(code)
+		}
+
+		return title, message
+	}
+
+	if info, ok := defaultErrorPages[code]; ok {
+		return info.Title, info.Message
+	}
+
+	return http.StatusText(code), "An unexpected error occurred."
+}
+
+// errorStatusRecorder wraps http.ResponseWriter to capture the status code and buffer the response body.
+// Streaming responses (text/event-stream) bypass buffering and write directly to the underlying writer.
+// It implements http.Hijacker to support WebSocket upgrades and other protocols requiring connection hijacking.
+type errorStatusRecorder struct {
+	http.ResponseWriter
+	statusCode int
+	body       *bytes.Buffer
+	committed  bool
+}
+
+func (r *errorStatusRecorder) isStreaming() bool {
+	return r.Header().Get("Content-Type") == "text/event-stream"
+}
+
+func (r *errorStatusRecorder) commit() {
+	if r.committed {
+		return
+	}
+
+	if r.statusCode == 0 {
+		r.statusCode = http.StatusOK
+	}
+
+	r.ResponseWriter.WriteHeader(r.statusCode)
+	r.committed = true
+}
+
+func (r *errorStatusRecorder) WriteHeader(code int) {
+	if r.statusCode == 0 {
+		r.statusCode = code
+	}
+
+	if r.isStreaming() {
+		r.commit()
+	}
+}
+
+func (r *errorStatusRecorder) Write(b []byte) (int, error) {
+	if r.isStreaming() {
+		r.commit()
+
+		return r.ResponseWriter.Write(b)
+	}
+
+	if r.statusCode == 0 {
+		r.statusCode = http.StatusOK
+	}
+
+	return r.body.Write(b)
+}
+
+func (r *errorStatusRecorder) Flush() {
+	r.commit()
+
+	if f, ok := r.ResponseWriter.(http.Flusher); ok {
+		f.Flush()
+	}
+}
+
+func (r *errorStatusRecorder) SetWriteDeadline(t time.Time) error {
+	type dl interface {
+		SetWriteDeadline(time.Time) error
+	}
+
+	if d, ok := r.ResponseWriter.(dl); ok {
+		return d.SetWriteDeadline(t)
+	}
+
+	return http.ErrNotSupported
+}
+
+// Hijack implements http.Hijacker to support WebSocket upgrades and other protocols
+// requiring connection hijacking. It delegates to the underlying ResponseWriter.
+func (r *errorStatusRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
+	if hijacker, ok := r.ResponseWriter.(http.Hijacker); ok {
+		return hijacker.Hijack()
+	}
+
+	return nil, nil, http.ErrNotSupported
 }
 
 // loadFrontendAssets populates the server's FrontendAssets struct based on the configuration.

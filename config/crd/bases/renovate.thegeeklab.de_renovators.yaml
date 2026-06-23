@@ -39,6 +39,12 @@ spec:
             spec:
               description: RenovatorSpec defines the desired state of Renovator.
               properties:
+                authProviderRef:
+                  description: |-
+                    AuthProviderRef is a reference to an AuthProvider resource in the same namespace.
+                    When set, this Renovator will use the referenced AuthProvider for authentication.
+                    Multiple Renovators can reference the same AuthProvider to share authentication configuration.
+                  type: string
                 backoffLimit:
                   description: BackoffLimit specifies the number of retries before marking this job as failed.
                   format: int32

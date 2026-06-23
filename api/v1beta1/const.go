@@ -9,6 +9,8 @@ const (
 	LabelRenovator = "renovate.thegeeklab.de/renovator"
 	// LabelGitRepo is the label used to associate resources with a specific Git repository.
 	LabelGitRepo = "renovate.thegeeklab.de/gitrepo"
+	// LabelAuthProvider is the label used to associate resources with an AuthProvider for access control.
+	LabelAuthProvider = "renovate.thegeeklab.de/auth-provider"
 	// LabelLogsCollected is the annotation used to mark jobs whose logs
 	// have already been archived to the persistent store.
 	LabelLogsCollected = "renovate.thegeeklab.de/logs-collected"
@@ -27,6 +29,10 @@ const (
 	// FinalizerGitRepoWebhook is the finalizer added to GitRepo resources to ensure
 	// remote webhooks are cleaned up before the resource is deleted.
 	FinalizerGitRepoWebhook = "renovate.thegeeklab.de/webhook-cleanup"
+
+	// FinalizerAuthProviderCleanup is the finalizer added to AuthProvider resources to ensure
+	// the provider is unregistered from the auth manager before the resource is deleted.
+	FinalizerAuthProviderCleanup = "renovate.thegeeklab.de/authprovider-cleanup"
 
 	// WebhookSecretDataKey is the key used in the webhook Secret to store the validation token.
 	WebhookSecretDataKey = "secret"

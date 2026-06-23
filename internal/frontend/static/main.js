@@ -114,6 +114,14 @@ Alpine.start()
 const scrollStates = new Map()
 let savedSearchSelection = null
 
+document.addEventListener("htmx:configRequest", (e) => {
+  const searchInput = e.target.closest('input[name="search"]')
+  if (searchInput && searchInput.value === "") {
+    e.detail.path = "/"
+    delete e.detail.parameters.search
+  }
+})
+
 document.addEventListener("htmx:beforeSwap", (e) => {
   const { target } = e.detail
 
@@ -171,7 +179,9 @@ document.addEventListener("htmx:afterSwap", (e) => {
 
   const boosted = xhr?.getResponseHeader("HX-Boosted") || target.closest("[hx-boost]")
   if (boosted || target.id === "dashboard-content") {
-    const focusable = target.querySelector("h1, h2, h3, [tabindex='-1']")
+    const focusable =
+      target.querySelector("[data-focus-target]") ||
+      target.querySelector("h1, h2, [tabindex='-1']")
     if (focusable) {
       focusable.setAttribute("tabindex", "-1")
       focusable.focus({ preventScroll: true })

@@ -68,7 +68,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		results.Collect(result)
 	}
 
-	if r.broker != nil {
+	if r.broker != nil && r.broker.ClientCount() > 0 {
 		r.broker.Broadcast("job-updated", "refresh")
 	}
 

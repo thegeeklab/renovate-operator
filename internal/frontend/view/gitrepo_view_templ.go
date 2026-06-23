@@ -40,7 +40,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-col h-full w-full\"><div class=\"bg-white shadow z-10 shrink-0\"><div class=\"w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between\"><div class=\"flex flex-col justify-center overflow-hidden pr-4\"><h2 class=\"text-2xl font-bold tracking-tight text-gray-900 truncate\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-col h-full w-full\"><div class=\"bg-white shadow z-10 shrink-0\"><div class=\"w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between\"><div class=\"flex flex-col justify-center overflow-hidden pr-4\"><h2 class=\"text-2xl font-bold tracking-tight text-gray-900 truncate\" data-focus-target>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

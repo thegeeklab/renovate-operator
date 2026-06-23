@@ -115,6 +115,12 @@ type RenovatorSpec struct {
 	Runner RunnerSpec `json:"runner"`
 
 	Renovate RenovateConfigSpec `json:"renovate,omitempty"`
+
+	// AuthProviderRef is a reference to an AuthProvider resource in the same namespace.
+	// When set, this Renovator will use the referenced AuthProvider for authentication.
+	// Multiple Renovators can reference the same AuthProvider to share authentication configuration.
+	// +kubebuilder:validation:Optional
+	AuthProviderRef string `json:"authProviderRef,omitempty"`
 }
 
 // RenovatorStatus defines the observed state of Renovator.
