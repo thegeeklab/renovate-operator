@@ -167,7 +167,6 @@ templ RenovatorList(data viewmodel.DashboardData) {
 									hx-get={ sanitize.GitreposURL(v.Namespace, v.Renovator) }
 									hx-trigger="revealed once, sse:job-updated, sort-changed"
 									hx-swap="innerHTML"
-									:hx-vals="JSON.stringify({ sort: sort, order: order })"
 									class="focus:outline-none"
 								>
 									<div class="flex justify-center py-4">

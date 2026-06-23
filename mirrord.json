@@ -1,0 +1,18 @@
+{
+  "target": {
+    "path": {
+      "deployment": "renovate-operator-controller-manager",
+      "namespace": "renovate-system"
+    }
+  },
+  "feature": {
+    "network": {
+      "incoming": {
+        "mode": "steal"
+      },
+      "outgoing": true
+    },
+    "env": true,
+    "fs": "read"
+  }
+}
