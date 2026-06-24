@@ -12,7 +12,7 @@ require (
 	github.com/go-chi/chi/v5 v5.3.0
 	github.com/maypok86/otter/v2 v2.3.0
 	github.com/netresearch/go-cron v0.15.0
-	github.com/onsi/ginkgo/v2 v2.31.0
+	github.com/onsi/ginkgo/v2 v2.32.0
 	github.com/onsi/gomega v1.42.1
 	github.com/open-policy-agent/cert-controller v0.16.0
 	github.com/stretchr/testify v1.11.1
