@@ -266,6 +266,10 @@ func setupManager(cfg Config) (manager.Manager, error) {
 
 // setupControllers registers all reconcilers with the Manager.
 func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBroker, authManager *auth.Manager) error {
+	if os.Getenv("ENABLE_CONTROLLERS") == "false" {
+		return nil
+	}
+
 	if err := (&renovator.Reconciler{
 		Client: mgr.GetClient(),
 		Scheme: mgr.GetScheme(),

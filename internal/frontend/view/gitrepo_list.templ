@@ -23,6 +23,7 @@ templ GitRepoList(repos []viewmodel.GitRepoInfo) {
 						hx-push-url="true"
 						hx-target="#dashboard-content"
 						hx-swap="innerHTML"
+						hx-params="not sort,order"
 						aria-label={ fmt.Sprintf("View repository %s in namespace %s", r.Name, r.Namespace) }
 						class={ getRepoClass(r.LastRenovateStatus) }
 					>
