@@ -1,11 +1,6 @@
 import { getPersisted, setPersisted } from "../lib/storage"
 import { getData, nextFrame } from "../lib/dom"
-
-interface HtmxWindow {
-  htmx: {
-    ajax: (method: string, url: string, options: { target: string | HTMLElement }) => void
-  }
-}
+import { registerComponent, componentRegistry } from "../lib/component-registry"
 
 export class JobListComponent {
   private el: HTMLElement
@@ -13,6 +8,7 @@ export class JobListComponent {
   private activeLogUrl: string
   private selectedJob: string
   private jobButtons: HTMLElement[]
+  private clearSelectedJobHandler: () => void
 
   constructor(el: HTMLElement) {
     this.el = el
@@ -21,32 +17,51 @@ export class JobListComponent {
     this.selectedJob = getPersisted(`selectedJob-${this.repoId}`, "")
     this.jobButtons = Array.from(el.querySelectorAll<HTMLElement>("[data-job-name]"))
 
-    this.bindEvents()
-    this.init()
-  }
-
-  private bindEvents(): void {
-    this.jobButtons.forEach((btn) => {
-      btn.addEventListener("click", () => {
-        const url = btn.getAttribute("hx-get") || ""
-        const name = getData(btn, "job-name")
-        this.selectJob(url, name)
-      })
-    })
-
-    window.addEventListener("clear-selected-job", () => {
+    this.clearSelectedJobHandler = () => {
       this.selectedJob = ""
       this.activeLogUrl = ""
       setPersisted(`selectedJob-${this.repoId}`, "")
       setPersisted(`activeLogUrl-${this.repoId}`, "")
       this.updateUI()
+    }
+
+    this.bindEvents()
+    this.init()
+  }
+
+  destroy(): void {
+    window.removeEventListener("clear-selected-job", this.clearSelectedJobHandler)
+  }
+
+  private bindEvents(): void {
+    this.el.addEventListener("click", (e: MouseEvent) => {
+      const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-job-name]")
+      if (btn && this.el.contains(btn)) {
+        const url = btn.getAttribute("hx-get") || ""
+        const name = getData(btn, "job-name")
+        this.selectJob(url, name)
+      }
     })
+
+    window.addEventListener("clear-selected-job", this.clearSelectedJobHandler)
   }
 
   private async init(): Promise<void> {
+    if (this.selectedJob) {
+      const stillExists = this.el.querySelector(
+        `[data-job-name="${CSS.escape(this.selectedJob)}"]`
+      )
+      if (!stillExists) {
+        this.selectedJob = ""
+        this.activeLogUrl = ""
+        setPersisted(`selectedJob-${this.repoId}`, "")
+        setPersisted(`activeLogUrl-${this.repoId}`, "")
+      }
+    }
+
     await nextFrame()
-    if (this.activeLogUrl && (window as unknown as HtmxWindow).htmx) {
-      ;(window as unknown as HtmxWindow).htmx.ajax("GET", this.activeLogUrl, {
+    if (this.activeLogUrl && window.htmx) {
+      window.htmx.ajax("get", this.activeLogUrl, {
         target: "#log-viewer"
       })
     }
@@ -83,10 +98,26 @@ export class JobListComponent {
       logViewer.classList.toggle("hidden", !this.selectedJob)
     }
   }
+
+  refresh(): void {
+    this.jobButtons = Array.from(this.el.querySelectorAll<HTMLElement>("[data-job-name]"))
+    this.updateUI()
+  }
 }
 
 export function initJobLists(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>('[data-component="job-list"]').forEach((el) => {
-    new JobListComponent(el)
+    const component = new JobListComponent(el)
+    registerComponent(el, component)
+  })
+}
+
+export function destroyJobLists(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLElement>('[data-component="job-list"]').forEach((el) => {
+    const component = componentRegistry.get(el)
+    if (component) {
+      component.destroy()
+      componentRegistry.delete(el)
+    }
   })
 }

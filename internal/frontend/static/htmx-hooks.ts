@@ -1,8 +1,10 @@
 import { initTooltips, hideActiveTooltip } from "./lib/tooltip"
-import { initJobLists } from "./components/job-list"
+import { initJobLists, destroyJobLists } from "./components/job-list"
 import { initLogViewers } from "./components/log-viewer"
 import { initRenovatorDetails } from "./components/renovator-details"
 import { initRepoSorts } from "./components/repo-sort"
+import { componentRegistry } from "./lib/component-registry"
+import { getPersisted } from "./lib/storage"
 
 const scrollStates = new Map<string, number>()
 let savedSearchSelection: { start: number; end: number } | null = null
@@ -38,6 +40,8 @@ export function initHtmxHooks(): void {
     const { detail } = e as CustomEvent
     const target = detail.target as HTMLElement
 
+    destroyJobLists(target)
+
     const scrollBox = target.querySelector<HTMLElement>('[data-ref="scrollBox"]')
     if (scrollBox) {
       scrollStates.set(scrollBox.id, scrollBox.scrollTop)
@@ -59,24 +63,25 @@ export function initHtmxHooks(): void {
   document.addEventListener("htmx:afterSettle", (e: Event) => {
     const { detail } = e as CustomEvent
     const target = detail.target as HTMLElement | null
-    if (!target) return
+    if (!target || target.id !== "job-list-container") return
 
-    if (target.id === "job-list-container") {
-      const jobListEl = document.querySelector<HTMLElement>('[data-component="job-list"]')
-      if (jobListEl) {
-        const selectedJob = jobListEl.querySelector<HTMLElement>(".\\!border-blue-400")
-        if (selectedJob) {
-          const jobName = selectedJob.getAttribute("data-job-name")
-          if (jobName) {
-            const stillExists = document.querySelector(
-              `#job-list-container [data-job-name="${jobName}"]`
-            )
-            if (!stillExists) {
-              window.dispatchEvent(new CustomEvent("clear-selected-job"))
-            }
-          }
-        }
-      }
+    const jobListEl = document.querySelector<HTMLElement>('[data-component="job-list"]')
+    if (!jobListEl) return
+
+    const repoId = jobListEl.getAttribute("data-repo-id")
+    if (!repoId) return
+
+    const selectedJob = getPersisted(`selectedJob-${repoId}`, "")
+    if (!selectedJob) return
+
+    const currentContainer = document.getElementById("job-list-container")
+    if (!currentContainer) return
+
+    const stillExists = currentContainer.querySelector(
+      `[data-job-name="${CSS.escape(selectedJob)}"]`
+    )
+    if (!stillExists) {
+      window.dispatchEvent(new CustomEvent("clear-selected-job"))
     }
   })
 
@@ -132,7 +137,35 @@ export function initHtmxHooks(): void {
       target.focus({ preventScroll: true })
     }
 
-    initComponents(target as ParentNode)
+    if (target.isConnected) {
+      initComponents(target as ParentNode)
+    }
+
+    // After outerHTML swap, the target is detached. Initialize components on the live DOM.
+    if (target.getAttribute("data-component") === "log-viewer") {
+      const jobId = target.id
+      const newLogViewer = document.getElementById(jobId)
+      if (newLogViewer) {
+        const parent = newLogViewer.parentElement
+        if (parent) {
+          initComponents(parent)
+        }
+      }
+    }
+
+    if (target.id === "job-list-container") {
+      const newContainer = document.getElementById("job-list-container")
+      if (newContainer) {
+        initComponents(newContainer)
+        const jobListEl = document.querySelector<HTMLElement>('[data-component="job-list"]')
+        if (jobListEl) {
+          const component = componentRegistry.get(jobListEl)
+          if (component && "refresh" in component) {
+            ;(component as { refresh: () => void }).refresh()
+          }
+        }
+      }
+    }
   })
 
   initComponents(document)

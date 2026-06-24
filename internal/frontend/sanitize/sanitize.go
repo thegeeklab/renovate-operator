@@ -4,37 +4,9 @@
 package sanitize
 
 import (
-	"encoding/json"
 	"net/url"
 	"strconv"
 )
-
-// mustMarshalString is json.Marshal restricted to the string type.
-func mustMarshalString(s string) string {
-	b, err := json.Marshal(s)
-	if err != nil {
-		panic("sanitize: json.Marshal(string) returned an error: " + err.Error())
-	}
-
-	return string(b)
-}
-
-// JSString returns a JavaScript string literal (with surrounding double
-// quotes and JSON-style escaping) safe to embed in inline expressions.
-func JSString(s string) string {
-	return mustMarshalString(s)
-}
-
-// JSValue returns a JavaScript literal (string, number, bool) safe to embed
-// in an inline expression.
-func JSValue(v any) string {
-	b, err := json.Marshal(v)
-	if err != nil {
-		panic("sanitize: json.Marshal returned an error for " + err.Error())
-	}
-
-	return string(b)
-}
 
 // BoolAttr returns "true" or "false" for use in a data attribute.
 func BoolAttr(b bool) string {

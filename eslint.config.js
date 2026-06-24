@@ -32,6 +32,7 @@ export default [
       "default-param-last": "error",
       "no-useless-constructor": "error",
       "no-duplicate-imports": "error",
+      "@typescript-eslint/no-explicit-any": "error",
       "prefer-destructuring": [
         "error",
         {

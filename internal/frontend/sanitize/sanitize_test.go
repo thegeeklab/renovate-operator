@@ -1,7 +1,6 @@
 package sanitize
 
 import (
-	"encoding/json"
 	"net/url"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -9,59 +8,6 @@ import (
 )
 
 var _ = Describe("sanitize helpers", func() {
-	Describe("JSString", func() {
-		DescribeTable(
-			"produces a valid JS string literal",
-			func(input, want string) {
-				Expect(JSString(input)).To(Equal(want))
-			},
-			Entry("empty", "", `""`),
-			Entry("plain", "foo", `"foo"`),
-			Entry("double-quote", `foo"bar`, `"foo\"bar"`),
-			Entry("single-quote", `foo'bar`, `"foo'bar"`),
-			Entry("backslash", `foo\bar`, `"foo\\bar"`),
-			Entry("newline", "foo\nbar", `"foo\nbar"`),
-			Entry("angle-bracket", "foo<bar>baz", `"foo\u003cbar\u003ebaz"`),
-			Entry("html-injection", `"><script>alert(1)</script>`, `"\"\u003e\u003cscript\u003ealert(1)\u003c/script\u003e"`),
-			Entry("unicode-separator", "foo\u2028bar", `"foo\u2028bar"`),
-		)
-
-		DescribeTable(
-			"always wraps in double quotes and never emits raw newlines",
-			func(input string) {
-				got := JSString(input)
-				Expect(got).NotTo(BeEmpty())
-				Expect(string(got[0])).To(Equal(`"`))
-				Expect(string(got[len(got)-1])).To(Equal(`"`))
-				Expect(got).NotTo(ContainSubstring("\n"))
-				Expect(got).NotTo(ContainSubstring("\r"))
-			},
-			Entry("simple", "simple"),
-			Entry("quotes", `with "double" and 'single' quotes`),
-			Entry("newline", "with\nnewline"),
-			Entry("tab", "with\ttab"),
-			Entry("tag", "with<tag>"),
-			Entry("script-tag", `</script><img src=x onerror=alert(1)>`),
-			Entry("unicode separator", "unicode\u2028separator"),
-			Entry("empty", ""),
-		)
-	})
-
-	Describe("JSValue", func() {
-		DescribeTable(
-			"serializes values as JS literals",
-			func(input any, want string) {
-				Expect(JSValue(input)).To(Equal(want))
-			},
-			Entry("string", "foo", `"foo"`),
-			Entry("string with quote", `a"b`, `"a\"b"`),
-			Entry("bool true", true, "true"),
-			Entry("bool false", false, "false"),
-			Entry("int", 42, "42"),
-			Entry("zero", 0, "0"),
-		)
-	})
-
 	Describe("BoolAttr", func() {
 		It("returns true for true", func() {
 			Expect(BoolAttr(true)).To(Equal("true"))
@@ -148,21 +94,6 @@ var _ = Describe("sanitize helpers", func() {
 })
 
 var _ = Describe("sanitize regression cases", func() {
-	It("JSString output always round-trips through json.Unmarshal to the input", func() {
-		inputs := []string{
-			`"`, `a"b`, `"<script>`, `'`, `<`, `>`, `&`, "\n", "\t", "\u2028", `\`, "",
-		}
-		for _, in := range inputs {
-			got := JSString(in)
-
-			var decoded string
-			Expect(json.Unmarshal([]byte(got), &decoded)).To(Succeed(),
-				"JSString(%q) = %s is not a valid JSON string", in, got)
-			Expect(decoded).To(Equal(in),
-				"JSString(%q) = %s did not round-trip (got %q)", in, got, decoded)
-		}
-	})
-
 	It("QueryEscape output is always safe to drop into a query string", func() {
 		dangerous := []string{`"`, `<`, `>`, `&`, `=`, `#`, ` `, `?`}
 		for _, in := range dangerous {

@@ -1,6 +1,7 @@
 import { computePosition, flip, offset, shift } from "@floating-ui/dom"
 
 const TOOLTIP_ATTR = "data-tooltip"
+const TOOLTIP_INIT_ATTR = "data-tooltip-init"
 let activeTooltip: HTMLElement | null = null
 
 function getTooltipContent(trigger: HTMLElement): HTMLElement | null {
@@ -37,8 +38,11 @@ function hideTooltip(trigger: HTMLElement): void {
 }
 
 export function initTooltips(root: ParentNode = document): void {
-  const triggers = root.querySelectorAll<HTMLElement>(`[${TOOLTIP_ATTR}]`)
+  const triggers = root.querySelectorAll<HTMLElement>(
+    `[${TOOLTIP_ATTR}]:not([${TOOLTIP_INIT_ATTR}])`
+  )
   triggers.forEach((trigger) => {
+    trigger.setAttribute(TOOLTIP_INIT_ATTR, "")
     trigger.addEventListener("mouseenter", () => showTooltip(trigger))
     trigger.addEventListener("mouseleave", () => hideTooltip(trigger))
     trigger.addEventListener("focusin", () => showTooltip(trigger))

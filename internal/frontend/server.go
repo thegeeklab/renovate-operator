@@ -309,7 +309,7 @@ func (s *Server) loadFrontendAssets() error {
 	if s.config.DevMode {
 		s.assets.Scripts = []string{
 			"http://localhost:5173/@vite/client",
-			"http://localhost:5173/internal/frontend/static/main.js",
+			"http://localhost:5173/internal/frontend/static/main.ts",
 		}
 
 		s.assets.Styles = []string{
@@ -331,7 +331,7 @@ func (s *Server) loadFrontendAssets() error {
 		return err
 	}
 
-	entry, ok := manifest["internal/frontend/static/main.js"]
+	entry, ok := manifest["internal/frontend/static/main.ts"]
 	if !ok {
 		return errMainEntryMissing
 	}
