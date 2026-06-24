@@ -62,6 +62,16 @@ var _ = Describe("sanitize helpers", func() {
 		)
 	})
 
+	Describe("BoolAttr", func() {
+		It("returns true for true", func() {
+			Expect(BoolAttr(true)).To(Equal("true"))
+		})
+
+		It("returns false for false", func() {
+			Expect(BoolAttr(false)).To(Equal("false"))
+		})
+	})
+
 	Describe("QueryEscape", func() {
 		DescribeTable(
 			"percent-encodes special characters",
@@ -74,10 +84,10 @@ var _ = Describe("sanitize helpers", func() {
 			Entry("simple", "simple", "simple"),
 			Entry("space", "with space", "with+space"),
 			Entry("ampersand and equals", `a&b=c`, "a%26b%3Dc"),
-			Entry("slash", `a/b`, "a%2Fb"),
-			Entry("plus", `a+b`, "a%2Bb"),
-			Entry("html", `<script>`, "%3Cscript%3E"),
-			Entry("injection", `name";alert(1)`, "name%22%3Balert%281%29"),
+			Entry("slash", "a/b", "a%2Fb"),
+			Entry("plus", "a+b", "a%2Bb"),
+			Entry("html", "<script>", "%3Cscript%3E"),
+			Entry("injection", "name\";alert(1)", "name%22%3Balert%281%29"),
 		)
 	})
 
@@ -112,49 +122,32 @@ var _ = Describe("sanitize helpers", func() {
 		})
 	})
 
-	Describe("RenovatorOpenXData", func() {
-		It("builds an Alpine expression with a JSON-escaped key", func() {
-			Expect(RenovatorOpenXData("simple")).
-				To(Equal(`{ open: $persist(false).as("renovator-simple") }`))
-		})
-
-		It("escapes injection attempts in the name", func() {
-			got := RenovatorOpenXData(`evil"injection`)
-			Expect(got).NotTo(ContainSubstring(`evil"injection`))
-			Expect(got).To(ContainSubstring(`\"`))
+	Describe("PersistKey", func() {
+		It("builds a key from namespace and name", func() {
+			Expect(PersistKey("ns", "name")).To(Equal("repo-ns-name"))
 		})
 	})
 
-	Describe("JobListXData", func() {
-		It("builds an Alpine expression that references jobList by composite key", func() {
-			Expect(JobListXData("ns", "name")).To(Equal(`jobList("ns-name")`))
+	Describe("RenovatorPersistKey", func() {
+		It("builds a key from the renovator name", func() {
+			Expect(RenovatorPersistKey("simple")).To(Equal("renovator-simple"))
 		})
 	})
 
-	Describe("LogViewerXData", func() {
-		It("builds an Alpine expression with all four arguments", func() {
-			Expect(LogViewerXData("ns", "runner", "job", true)).
-				To(Equal(`logViewer("ns", "runner", "job", true)`))
-		})
-
-		It("escapes injection attempts in the arguments", func() {
-			got := LogViewerXData(`n"s`, `r'`, `j\`, false)
-			Expect(got).NotTo(ContainSubstring(`n"s`))
+	Describe("SortFieldPersistKey", func() {
+		It("builds a key from the renovator name", func() {
+			Expect(SortFieldPersistKey("my-renovator")).To(Equal("sort-field-my-renovator"))
 		})
 	})
 
-	Describe("SelectJobExpr", func() {
-		It("builds an Alpine expression that selects a job and reads the URL from hx-get", func() {
-			Expect(SelectJobExpr("name")).
-				To(Equal(`selectJob($event.currentTarget.getAttribute('hx-get'), "name")`))
+	Describe("SortOrderPersistKey", func() {
+		It("builds a key from the renovator name", func() {
+			Expect(SortOrderPersistKey("my-renovator")).To(Equal("sort-order-my-renovator"))
 		})
 	})
 })
 
 var _ = Describe("sanitize regression cases", func() {
-	// Lock-in: ensure none of the helpers reintroduce unsafe string interpolation
-	// by silently passing through characters that would break out of a JS string
-	// or a URL query.
 	It("JSString output always round-trips through json.Unmarshal to the input", func() {
 		inputs := []string{
 			`"`, `a"b`, `"<script>`, `'`, `<`, `>`, `&`, "\n", "\t", "\u2028", `\`, "",
@@ -171,9 +164,6 @@ var _ = Describe("sanitize regression cases", func() {
 	})
 
 	It("QueryEscape output is always safe to drop into a query string", func() {
-		// Characters that, if emitted unescaped, would either change URL
-		// structure or carry HTML/JS semantics. (`+` is the SAFE encoding of
-		// space in application/x-www-form-urlencoded, so it is not dangerous.)
 		dangerous := []string{`"`, `<`, `>`, `&`, `=`, `#`, ` `, `?`}
 		for _, in := range dangerous {
 			got := QueryEscape(in)

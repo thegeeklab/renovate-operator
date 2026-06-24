@@ -1,17 +1,15 @@
 // Package sanitize provides escaping helpers that produce safe attribute
 // values for templ attributes that interpolate user-controlled strings into
-// either JavaScript expressions or URL query parameters.
+// either data attributes or URL query parameters.
 package sanitize
 
 import (
 	"encoding/json"
 	"net/url"
+	"strconv"
 )
 
-// mustMarshalString is json.Marshal restricted to the string type. The
-// encoding/json package documents that marshalling a string never returns an
-// error, so any error here is a programmer bug rather than a runtime
-// condition. Panicking surfaces that bug immediately at the call site.
+// mustMarshalString is json.Marshal restricted to the string type.
 func mustMarshalString(s string) string {
 	b, err := json.Marshal(s)
 	if err != nil {
@@ -21,11 +19,15 @@ func mustMarshalString(s string) string {
 	return string(b)
 }
 
-// mustMarshalValue is json.Marshal for arbitrary JSON-serializable values.
-// For the value types the package passes through (string, bool, int, float)
-// marshalling never fails. Any other type would indicate a programmer error
-// and is surfaced via panic.
-func mustMarshalValue(v any) string {
+// JSString returns a JavaScript string literal (with surrounding double
+// quotes and JSON-style escaping) safe to embed in inline expressions.
+func JSString(s string) string {
+	return mustMarshalString(s)
+}
+
+// JSValue returns a JavaScript literal (string, number, bool) safe to embed
+// in an inline expression.
+func JSValue(v any) string {
 	b, err := json.Marshal(v)
 	if err != nil {
 		panic("sanitize: json.Marshal returned an error for " + err.Error())
@@ -34,19 +36,9 @@ func mustMarshalValue(v any) string {
 	return string(b)
 }
 
-// JSString returns a JavaScript string literal (with surrounding double
-// quotes and JSON-style escaping) safe to embed in an inline Alpine x-data,
-// @click, or hx-vals expression. The output is itself a valid JS string and
-// is safe even when the input contains ', ", <, >, newlines, or other
-// characters that would otherwise break out of the surrounding JS string.
-func JSString(s string) string {
-	return mustMarshalString(s)
-}
-
-// JSValue returns a JavaScript literal (string, number, bool) safe to embed
-// in an inline Alpine expression.
-func JSValue(v any) string {
-	return mustMarshalValue(v)
+// BoolAttr returns "true" or "false" for use in a data attribute.
+func BoolAttr(b bool) string {
+	return strconv.FormatBool(b)
 }
 
 // QueryEscape escapes a string for use as an HTTP query parameter value,
@@ -57,8 +49,6 @@ func QueryEscape(s string) string {
 }
 
 // GitreposURL builds a /gitrepos URL with safely escaped query parameters.
-// The sort and order parameters are supplied at request time via hx-vals and
-// are therefore not included in the base URL.
 func GitreposURL(namespace, renovatorUID string) string {
 	return "/gitrepos?namespace=" + QueryEscape(namespace) +
 		"&renovator=" + QueryEscape(renovatorUID)
@@ -89,42 +79,27 @@ func JobLogsDownloadURL(namespace, job string) string {
 		"&job=" + QueryEscape(job)
 }
 
-// RenovatorOpenXData returns an Alpine x-data expression that persists the
-// open/closed state of a Renovator details element. The key is namespaced
-// and the namespace segment is JSON-escaped so a Renovator whose name
-// contains quotes, slashes, or unicode separators cannot break out of the
-// JS string.
-func RenovatorOpenXData(name string) string {
-	return "{ open: $persist(false).as(" + JSString("renovator-"+name) + ") }"
+// PersistKey returns a storage key for per-repo persisted state. The key
+// is a plain string; templ handles HTML escaping when rendering it into
+// a data attribute.
+func PersistKey(namespace, name string) string {
+	return "repo-" + namespace + "-" + name
 }
 
-// RepoSortXData returns an Alpine x-data expression that persists the sort
-// field and order for a Renovator's repository list. Keys are scoped per
-// Renovator so each panel remembers its own sort state across page reloads.
-func RepoSortXData(name string) string {
-	return "{ sort: $persist(" + JSString("name") + ").as(" + JSString("sort-field-"+name) + "), " +
-		"order: $persist(" + JSString("asc") + ").as(" + JSString("sort-order-"+name) + ") }"
+// RenovatorPersistKey returns a storage key for the open/closed state of a
+// Renovator details element.
+func RenovatorPersistKey(name string) string {
+	return "renovator-" + name
 }
 
-// JobListXData returns an Alpine x-data expression that references the
-// per-repo jobList Alpine component. The composite key is JSON-escaped.
-func JobListXData(repoNamespace, repoName string) string {
-	return "jobList(" + JSString(repoNamespace+"-"+repoName) + ")"
+// SortFieldPersistKey returns a storage key for the sort field of a
+// Renovator's repository list.
+func SortFieldPersistKey(name string) string {
+	return "sort-field-" + name
 }
 
-// LogViewerXData returns an Alpine x-data expression that initializes the
-// logViewer component for a specific job. All four arguments are
-// JSON-escaped.
-func LogViewerXData(namespace, runner, jobName string, isRunning bool) string {
-	return "logViewer(" + JSString(namespace) + ", " +
-		JSString(runner) + ", " +
-		JSString(jobName) + ", " +
-		JSValue(isRunning) + ")"
-}
-
-// SelectJobExpr returns an Alpine @click expression that selects a job. The
-// job's log URL is read from the button's hx-get attribute (rendered
-// server-side by JobLogsURL) so the URL schema lives in one place.
-func SelectJobExpr(name string) string {
-	return "selectJob($event.currentTarget.getAttribute('hx-get'), " + JSString(name) + ")"
+// SortOrderPersistKey returns a storage key for the sort order of a
+// Renovator's repository list.
+func SortOrderPersistKey(name string) string {
+	return "sort-order-" + name
 }
