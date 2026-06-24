@@ -1,18 +1,23 @@
 {
   "target": {
-    "path": {
-      "deployment": "renovate-operator-controller-manager",
-      "namespace": "renovate-system"
-    }
+    "path": "deployment/renovate-operator-controller-manager",
+    "namespace": "renovate-system"
+  },
+  "agent": {
+    "namespace": "renovate-system"
   },
   "feature": {
     "network": {
       "incoming": {
-        "mode": "steal"
+        "mode": "steal",
+        "ignore_ports": [8081]
       },
-      "outgoing": true
+      "outgoing": {
+        "ignore_localhost": true
+      }
     },
-    "env": true,
-    "fs": "read"
+    "fs": {
+      "mode": "local"
+    }
   }
 }

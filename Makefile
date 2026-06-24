@@ -189,17 +189,15 @@ build-go: ## Build the Go binaries.
 build: manifests generate fmt vet frontend-build build-go ## Build binaries and frontend assets.
 
 .PHONY: run
-run: manifests generate fmt vet air-bin ## Run a controller from your host. Use FRONTEND_DEV=true to start Vite dev server and air for live reload.
-	@echo "Disabling cluster-side webhooks..."
-	$(KUBECTL) delete mutatingwebhookconfigurations renovate-operator-webhook-configuration --ignore-not-found
-	$(KUBECTL) delete validatingwebhookconfigurations renovate-operator-webhook-configuration --ignore-not-found
+run: manifests generate fmt vet air-bin ## Run a controller from your host.
+	@$(KUBECTL) set env deployments -n renovate-system renovate-operator-controller-manager ENABLE_CONTROLLERS=false
 ifeq ($(FRONTEND_DEV),true)
 	@npm install
 	@npm run dev & VITE_PID=$$!; \
 	trap "kill $$VITE_PID 2>/dev/null" EXIT INT TERM; \
-	NODE_ENV=development ENABLE_WEBHOOKS=false mirrord exec -n renovate-system --target deployment/renovate-operator-controller-manager --steal -- $(AIR_BIN) -c .air.toml
+	NODE_ENV=development mirrord exec -f mirrord.json -- $(AIR_BIN) -c .air.toml
 else
-	ENABLE_WEBHOOKS=false mirrord exec -n renovate-system --target deployment/renovate-operator-controller-manager --steal -- $(GO) run ./cmd/main.go -zap-log-level=debug
+	mirrord exec -f mirrord.json -- $(AIR_BIN) -c .air.toml
 endif
 
 .PHONY: docker-build
