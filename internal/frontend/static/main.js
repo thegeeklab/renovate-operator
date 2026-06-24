@@ -143,6 +143,26 @@ document.addEventListener("htmx:beforeSwap", (e) => {
   }
 })
 
+document.addEventListener("htmx:afterSettle", (e) => {
+  const { target } = e.detail
+  if (!target) return
+
+  if (target.id === "job-list-container") {
+    const alpineEl = document.querySelector('[x-data*="jobList"]')
+    if (alpineEl) {
+      const data = Alpine.$data(alpineEl)
+      if (data && data.selectedJob) {
+        const stillExists = document.querySelector(
+          `#job-list-container [data-job-name="${data.selectedJob}"]`
+        )
+        if (!stillExists) {
+          window.dispatchEvent(new CustomEvent("clear-selected-job"))
+        }
+      }
+    }
+  }
+})
+
 document.addEventListener("htmx:afterSwap", (e) => {
   if (scrollStates.size > 0) {
     requestAnimationFrame(() => {
