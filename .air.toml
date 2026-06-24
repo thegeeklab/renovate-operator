@@ -2,8 +2,6 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-# Generate templ files and build the binary on every change. Output to bin/ to
-# match the `build-go` Make target and reuse the existing gitignored bin/ dir.
 cmd = "make templ && make build-go"
 full_bin = "ENABLE_CONTROLLERS=true ENABLE_WEBHOOKS=true ./bin/manager -zap-log-level=debug"
 
