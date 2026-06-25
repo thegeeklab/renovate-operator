@@ -1,9 +1,9 @@
 import { initTooltips, hideActiveTooltip } from "./lib/tooltip"
-import { initJobLists, destroyJobLists } from "./components/job-list"
-import { initLogViewers } from "./components/log-viewer"
-import { initRenovatorDetails } from "./components/renovator-details"
-import { initRepoSorts } from "./components/repo-sort"
-import { componentRegistry } from "./lib/component-registry"
+import { initJobLists, destroyJobLists } from "./components/job.list"
+import { initLogViewers } from "./components/log.viewer"
+import { initRenovatorDetails } from "./components/renovator.details"
+import { initRepoSorts } from "./components/repo.sort"
+import { componentRegistry } from "./lib/component.registry"
 import { getPersisted } from "./lib/storage"
 
 const scrollStates = new Map<string, number>()

@@ -1,6 +1,6 @@
 import { getPersisted, setPersisted } from "../lib/storage"
 import { getData, nextFrame } from "../lib/dom"
-import { registerComponent, componentRegistry } from "../lib/component-registry"
+import { registerComponent, componentRegistry } from "../lib/component.registry"
 
 export class JobListComponent {
   private el: HTMLElement
