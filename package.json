@@ -19,7 +19,7 @@
     "node": ">=22 <=24"
   },
   "dependencies": {
-    "@floating-ui/dom": "1.6.13",
+    "@floating-ui/dom": "1.7.6",
     "htmx-ext-sse": "2.2.4",
     "htmx.org": "2.0.10",
     "store2": "2.14.4"
