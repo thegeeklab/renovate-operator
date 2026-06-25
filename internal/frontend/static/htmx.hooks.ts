@@ -3,6 +3,7 @@ import { initJobLists, destroyJobLists } from "./components/job.list"
 import { initLogViewers } from "./components/log.viewer"
 import { initRenovatorDetails } from "./components/renovator.details"
 import { initRepoSorts } from "./components/repo.sort"
+import { initAvatarDropdown } from "./components/avatar.dropdown"
 import { componentRegistry } from "./lib/component.registry"
 import { getPersisted } from "./lib/storage"
 
@@ -14,6 +15,7 @@ function initComponents(root: ParentNode): void {
   initLogViewers(root)
   initRenovatorDetails(root)
   initRepoSorts(root)
+  initAvatarDropdown(root)
   initTooltips(root)
   removeCloak(root)
 }

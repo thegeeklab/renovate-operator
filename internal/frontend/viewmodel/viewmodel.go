@@ -66,6 +66,7 @@ type AuthInfo struct {
 	Enabled       bool
 	Authenticated bool
 	Name          string
+	AvatarURL     string
 	Provider      string
 	Providers     []AuthProviderInfo
 	CSRFToken     string
