@@ -22,6 +22,7 @@ const (
 	sessionKeyTokenExpiry  = "tokenExpiry"
 	sessionKeyIssuedAt     = "issuedAt"
 	sessionKeyProvider     = "provider"
+	sessionKeyAvatarURL    = "avatarURL"
 	sessionKeyCSRFToken    = "_csrf"
 
 	TokenExpiryBuffer = 30 * time.Second
@@ -36,6 +37,7 @@ type SessionData struct {
 	Email        string
 	Name         string
 	Subject      string
+	AvatarURL    string
 	AccessToken  string
 	RefreshToken string
 	TokenExpiry  time.Time
@@ -113,6 +115,7 @@ func SetSessionData(ctx context.Context, session *scs.SessionManager, data Sessi
 	session.Put(ctx, sessionKeyIssuedAt, issuedAt.Format(time.RFC3339Nano))
 
 	session.Put(ctx, sessionKeyProvider, data.Provider)
+	session.Put(ctx, sessionKeyAvatarURL, data.AvatarURL)
 }
 
 func GetSessionData(ctx context.Context, session *scs.SessionManager) (SessionData, bool) {
@@ -124,6 +127,7 @@ func GetSessionData(ctx context.Context, session *scs.SessionManager) (SessionDa
 		Email:        session.GetString(ctx, sessionKeyEmail),
 		Name:         session.GetString(ctx, sessionKeyName),
 		Subject:      session.GetString(ctx, sessionKeySubject),
+		AvatarURL:    session.GetString(ctx, sessionKeyAvatarURL),
 		AccessToken:  session.GetString(ctx, sessionKeyToken),
 		RefreshToken: session.GetString(ctx, sessionKeyRefreshToken),
 		Provider:     session.GetString(ctx, sessionKeyProvider),

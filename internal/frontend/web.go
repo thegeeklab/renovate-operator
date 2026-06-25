@@ -115,6 +115,7 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) viewmodel.AuthInfo {
 
 	info.Authenticated = true
 	info.Name = session.Name
+	info.AvatarURL = session.AvatarURL
 	info.Provider = session.Provider
 
 	csrfToken := auth.GetCSRFToken(r.Context(), h.authManager.SessionManager())

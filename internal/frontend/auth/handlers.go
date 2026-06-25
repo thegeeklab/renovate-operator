@@ -157,6 +157,7 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 			Email:        user.Email,
 			Name:         user.Name,
 			Subject:      user.Subject,
+			AvatarURL:    user.AvatarURL,
 			AccessToken:  user.AccessToken,
 			RefreshToken: user.RefreshToken,
 			TokenExpiry:  user.TokenExpiry,
@@ -249,6 +250,7 @@ func HandleAuthStatus(manager *Manager) http.HandlerFunc {
 			"authenticated": true,
 			"email":         session.Email,
 			"name":          session.Name,
+			"avatarURL":     session.AvatarURL,
 			"provider":      provider.Name(),
 			"providerType":  provider.Type(),
 		}

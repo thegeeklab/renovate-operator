@@ -38,6 +38,7 @@ type AuthenticatedUser struct {
 	Email        string
 	Name         string
 	Subject      string
+	AvatarURL    string
 	AccessToken  string
 	RefreshToken string
 	TokenExpiry  time.Time
@@ -159,6 +160,7 @@ func (m *Manager) RefreshSessionToken(ctx context.Context, session *SessionData)
 		Email:        user.Email,
 		Name:         user.Name,
 		Subject:      user.Subject,
+		AvatarURL:    user.AvatarURL,
 		AccessToken:  user.AccessToken,
 		RefreshToken: user.RefreshToken,
 		TokenExpiry:  user.TokenExpiry,

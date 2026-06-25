@@ -179,8 +179,9 @@ func (p *GiteaProvider) getUserFromToken(ctx context.Context, token *oauth2.Toke
 	}
 
 	var claims struct {
-		Email string `json:"email"`
-		Name  string `json:"name"`
+		Email   string `json:"email"`
+		Name    string `json:"name"`
+		Picture string `json:"picture"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
 		return nil, fmt.Errorf("failed to parse claims: %w", err)
@@ -190,6 +191,7 @@ func (p *GiteaProvider) getUserFromToken(ctx context.Context, token *oauth2.Toke
 		Email:        claims.Email,
 		Name:         claims.Name,
 		Subject:      idToken.Subject,
+		AvatarURL:    claims.Picture,
 		AccessToken:  token.AccessToken,
 		RefreshToken: token.RefreshToken,
 		TokenExpiry:  token.Expiry,

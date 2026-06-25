@@ -1,6 +1,12 @@
 @import "tailwindcss";
 
 @layer base {
+  button,
+  [role="button"],
+  a,
+  [data-avatar-button] {
+    cursor: pointer;
+  }
   details > summary {
     list-style: none;
   }
