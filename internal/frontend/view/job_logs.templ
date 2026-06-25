@@ -99,17 +99,29 @@ templ JobLogs(data viewmodel.JobLogData) {
 					<p class="text-sm font-mono text-center px-4">{ data.Message }</p>
 				</div>
 			} else if data.Parsed != nil {
-				<pre class="text-xs font-mono whitespace-pre-wrap break-all leading-relaxed text-gray-300">
+				<div class="text-xs font-mono whitespace-pre-wrap break-all leading-relaxed text-gray-300">
 					for _, line := range data.Parsed.Lines {
-						<div>
-							if line.Time != "" {
-								<span class="text-gray-500 mr-2">{ line.Time }</span>
-							}
-							<span class={ "inline-block w-14 " + line.Class }>{ line.LevelLabel() }</span>
-							{ line.Message }
+						<div
+							class="log-line cursor-pointer hover:bg-gray-800/50 px-1 py-1.5 rounded"
+							data-action="toggle-raw"
+							data-raw={ line.Raw }
+						>
+							<div class="flex items-baseline gap-2">
+								if line.Time != "" {
+									<span class="text-gray-500 shrink-0 tabular-nums">{ line.Time }</span>
+								}
+								<span class={ "font-bold shrink-0 w-11 " + line.Class }>{ line.LevelLabel() }</span>
+								<span class="text-gray-300 break-all">{ line.Message }</span>
+								<svg class="log-chevron h-4 w-4 ml-auto shrink-0 self-center text-gray-500 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+									<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
+								</svg>
+							</div>
+							<div class="hidden log-raw-content mt-1 ml-[4.25rem] text-gray-500 whitespace-pre-wrap break-all text-[0.7rem] leading-relaxed">
+								<pre class="log-raw-text"></pre>
+							</div>
 						</div>
 					}
-				</pre>
+				</div>
 			} else {
 				<pre class="text-xs font-mono text-gray-300 whitespace-pre-wrap break-all leading-relaxed">
 					<code>{ data.Content }</code>

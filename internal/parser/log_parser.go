@@ -87,6 +87,7 @@ type FormattedLine struct {
 	Message string
 	Class   string
 	Time    string
+	Raw     string
 }
 
 type ParseResult struct {
@@ -223,7 +224,7 @@ func ParseRenovateLogs(logs string) *ParseResult {
 		parsedAnyLine = true
 		level := LogLevel(entry.Level)
 
-		lines = append(lines, formatLogLine(level, entry.Msg, entry.Time))
+		lines = append(lines, formatLogLine(level, entry.Msg, entry.Time, line))
 
 		if entry.Level >= levelWarn {
 			result.HasIssues = true
@@ -512,7 +513,7 @@ func buildPRActivity(branchMap map[string]*PRDetail) *PRActivity {
 	return activity
 }
 
-func formatLogLine(level LogLevel, msg, time string) FormattedLine {
+func formatLogLine(level LogLevel, msg, time, raw string) FormattedLine {
 	class := levelClassMap[level]
 	if class == "" {
 		class = "text-gray-300"
@@ -528,6 +529,7 @@ func formatLogLine(level LogLevel, msg, time string) FormattedLine {
 		Message: escaped,
 		Class:   class,
 		Time:    formatTime(time),
+		Raw:     raw,
 	}
 }
 
@@ -553,6 +555,7 @@ func formatRawLine(line string) FormattedLine {
 		Level:   0,
 		Message: escaped,
 		Class:   "text-gray-500",
+		Raw:     line,
 	}
 }
 
