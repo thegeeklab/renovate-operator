@@ -27,9 +27,8 @@ function removeCloak(root: ParentNode): void {
 export function initHtmxHooks(): void {
   document.addEventListener("htmx:configRequest", (e: Event) => {
     const { detail } = e as CustomEvent
-    const searchInput = (e.target as HTMLElement).closest(
-      'input[name="search"]'
-    ) as HTMLInputElement | null
+    const target = e.target as HTMLElement
+    const searchInput = target.closest('input[name="search"]') as HTMLInputElement | null
     if (searchInput && searchInput.value === "") {
       detail.path = "/"
       delete detail.parameters.search
@@ -113,28 +112,31 @@ export function initHtmxHooks(): void {
       })
     }
 
+    let focusRestored = false
     if (target.id === "dashboard-content") {
       const searchInput = target.querySelector<HTMLInputElement>('input[name="search"]')
       if (searchInput && savedSearchSelection !== null) {
         searchInput.focus({ preventScroll: true })
         searchInput.setSelectionRange(savedSearchSelection.start, savedSearchSelection.end)
         savedSearchSelection = null
-        return
+        focusRestored = true
       }
     }
 
-    const boosted = xhr?.getResponseHeader("HX-Boosted") || target.closest("[hx-boost]")
-    if (boosted || target.id === "dashboard-content") {
-      const focusable =
-        target.querySelector<HTMLElement>("[data-focus-target]") ||
-        target.querySelector<HTMLElement>("h1, h2, [tabindex='-1']")
-      if (focusable) {
-        focusable.setAttribute("tabindex", "-1")
-        focusable.focus({ preventScroll: true })
+    if (!focusRestored) {
+      const boosted = xhr?.getResponseHeader("HX-Boosted") || target.closest("[hx-boost]")
+      if (boosted || target.id === "dashboard-content") {
+        const focusable =
+          target.querySelector<HTMLElement>("[data-focus-target]") ||
+          target.querySelector<HTMLElement>("h1, h2, [tabindex='-1']")
+        if (focusable) {
+          focusable.setAttribute("tabindex", "-1")
+          focusable.focus({ preventScroll: true })
+        }
+      } else if (target.id === "log-viewer") {
+        target.setAttribute("tabindex", "-1")
+        target.focus({ preventScroll: true })
       }
-    } else if (target.id === "log-viewer") {
-      target.setAttribute("tabindex", "-1")
-      target.focus({ preventScroll: true })
     }
 
     if (target.isConnected) {
