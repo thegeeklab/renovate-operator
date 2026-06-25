@@ -70,7 +70,10 @@
     "errgroup",
     "authprovider",
     "redisstore",
-    "memstore"
+    "memstore",
+    "automerged",
+    "PRURL",
+    "HTMLURL"
   ],
   "ignorePaths": [
     ".woodpecker",

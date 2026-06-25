@@ -64,7 +64,7 @@ templ GitRepoView(data viewmodel.GitRepoViewData) {
 								<li>
 									<button
 										type="button"
-										hx-get={ sanitize.JobLogsURL(job.Namespace, job.Runner, job.Name) }
+										hx-get={ sanitize.JobLogsURL(job.Namespace, job.Runner, job.Name, data.Repo.Platform, data.Repo.RepoURL) }
 										hx-target="#log-viewer"
 										hx-swap="innerHTML show:#log-viewer:top"
 										aria-label={ fmt.Sprintf("View logs for job %s in namespace %s", job.Name, job.Namespace) }

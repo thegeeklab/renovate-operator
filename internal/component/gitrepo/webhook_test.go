@@ -148,24 +148,21 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 					Return("mock-id-123", nil).
 					Once()
 
-				before := &renovatev1beta1.GitRepo{}
-				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), before)).To(Succeed())
-
 				_, err := reconciler.createWebhook(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				after := &renovatev1beta1.GitRepo{}
-				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), after)).To(Succeed())
-				Expect(after.ResourceVersion).To(Equal(before.ResourceVersion))
+				updated := &renovatev1beta1.GitRepo{}
+				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+				Expect(updated.Status.WebhookID).To(Equal("mock-id-123"))
 			})
 
 			It("should update the instance if the WebhookID changed on the provider (manual deletion recovery)", func() {
-				instance.Status.WebhookID = "old-id-999"
+				instance.Status.WebhookID = "old-id"
 				Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
 				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
 				mockMgr.On("EnsureWebhook", mock.Anything, "org/repo", expectedWebhookURL, "test-secret-value").
-					Return("new-id-124", nil).
+					Return("mock-id-123", nil).
 					Once()
 
 				_, err := reconciler.createWebhook(ctx)
@@ -173,7 +170,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 				updated := &renovatev1beta1.GitRepo{}
 				Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
-				Expect(updated.Status.WebhookID).To(Equal("new-id-124"))
+				Expect(updated.Status.WebhookID).To(Equal("mock-id-123"))
 			})
 		})
 

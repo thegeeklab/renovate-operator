@@ -1,6 +1,7 @@
 import { initTooltips, hideActiveTooltip } from "./lib/tooltip"
 import { initJobLists, destroyJobLists } from "./components/job.list"
 import { initLogViewers } from "./components/log.viewer"
+import { initLogSummaries } from "./components/log.summary"
 import { initRenovatorDetails } from "./components/renovator.details"
 import { initRepoSorts } from "./components/repo.sort"
 import { initAvatarDropdown } from "./components/avatar.dropdown"
@@ -13,6 +14,7 @@ let savedSearchSelection: { start: number; end: number } | null = null
 function initComponents(root: ParentNode): void {
   initJobLists(root)
   initLogViewers(root)
+  initLogSummaries(root)
   initRenovatorDetails(root)
   initRepoSorts(root)
   initAvatarDropdown(root)
@@ -79,7 +81,7 @@ export function initHtmxHooks(): void {
     if (!currentContainer) return
 
     const stillExists = currentContainer.querySelector(
-      `[data-job-name="${CSS.escape(selectedJob)}"]`
+      `button[data-job-name="${CSS.escape(selectedJob)}"]`
     )
     if (!stillExists) {
       window.dispatchEvent(new CustomEvent("clear-selected-job"))

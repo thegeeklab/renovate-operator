@@ -52,6 +52,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 		reconcileFuncs = []func(context.Context) (*ctrl.Result, error){
 			r.reconcileGitRepo,
 			r.reconcileWebhookSecret,
+			r.reconcilePlatformInfo,
 			r.reconcileWebhook,
 		}
 	} else {

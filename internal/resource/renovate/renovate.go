@@ -33,6 +33,10 @@ var (
 func DefaultEnvVars(renovate *renovatev1beta1.RenovateConfigSpec) []corev1.EnvVar {
 	containerVars := []corev1.EnvVar{
 		{
+			Name:  "LOG_FORMAT",
+			Value: "json",
+		},
+		{
 			Name:  "LOG_LEVEL",
 			Value: string(renovate.Logging.Level),
 		},

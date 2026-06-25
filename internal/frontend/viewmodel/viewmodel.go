@@ -5,7 +5,11 @@
 // serialization tags.
 package viewmodel
 
-import "time"
+import (
+	"time"
+
+	"github.com/thegeeklab/renovate-operator/internal/parser"
+)
 
 // Status represents the lifecycle state of a renovate run.
 type Status string
@@ -111,6 +115,8 @@ type GitRepoInfo struct {
 	FullName           string    `json:"fullName"`
 	Namespace          string    `json:"namespace"`
 	WebhookID          string    `json:"webhookId"`
+	Platform           string    `json:"platform"`
+	RepoURL            string    `json:"repoUrl"`
 	LastRenovateAt     time.Time `json:"lastRenovateAt"`
 	LastRenovateStatus Status    `json:"lastRenovateStatus"`
 	CreatedAt          time.Time `json:"createdAt"`
@@ -150,4 +156,7 @@ type JobLogData struct {
 	IsRunning bool
 	Content   string
 	Message   string
+	Parsed    *parser.ParseResult
+	Platform  string
+	RepoURL   string
 }

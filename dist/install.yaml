@@ -465,6 +465,16 @@ spec:
                     This field is managed by the operator and should not be set manually.
                   format: date-time
                   type: string
+                platform:
+                  description: |-
+                    Platform is the type of the Git provider (e.g., "github", "gitea").
+                    This field is managed by the operator and should not be set manually.
+                  type: string
+                repoUrl:
+                  description: |-
+                    RepoURL is the web-accessible URL for the repository (e.g., https://github.com/owner/repo).
+                    This field is managed by the operator and should not be set manually.
+                  type: string
                 webhookId:
                   description: |-
                     WebhookID is the ID of the webhook registered on the remote Git provider.

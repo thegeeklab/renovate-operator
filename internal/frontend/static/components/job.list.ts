@@ -15,7 +15,7 @@ export class JobListComponent {
     this.repoId = getData(el, "repo-id")
     this.activeLogUrl = getPersisted(`activeLogUrl-${this.repoId}`, "")
     this.selectedJob = getPersisted(`selectedJob-${this.repoId}`, "")
-    this.jobButtons = Array.from(el.querySelectorAll<HTMLElement>("[data-job-name]"))
+    this.jobButtons = Array.from(el.querySelectorAll<HTMLElement>("button[data-job-name]"))
 
     this.clearSelectedJobHandler = () => {
       this.selectedJob = ""
@@ -35,7 +35,7 @@ export class JobListComponent {
 
   private bindEvents(): void {
     this.el.addEventListener("click", (e: MouseEvent) => {
-      const btn = (e.target as HTMLElement).closest<HTMLElement>("[data-job-name]")
+      const btn = (e.target as HTMLElement).closest<HTMLElement>("button[data-job-name]")
       if (btn && this.el.contains(btn)) {
         const url = btn.getAttribute("hx-get") || ""
         const name = getData(btn, "job-name")
@@ -49,7 +49,7 @@ export class JobListComponent {
   private async init(): Promise<void> {
     if (this.selectedJob) {
       const stillExists = this.el.querySelector(
-        `[data-job-name="${CSS.escape(this.selectedJob)}"]`
+        `button[data-job-name="${CSS.escape(this.selectedJob)}"]`
       )
       if (!stillExists) {
         this.selectedJob = ""
@@ -100,7 +100,7 @@ export class JobListComponent {
   }
 
   refresh(): void {
-    this.jobButtons = Array.from(this.el.querySelectorAll<HTMLElement>("[data-job-name]"))
+    this.jobButtons = Array.from(this.el.querySelectorAll<HTMLElement>("button[data-job-name]"))
     this.updateUI()
   }
 }

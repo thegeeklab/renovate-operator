@@ -5,7 +5,11 @@ import tailwindcss from "@tailwindcss/vite"
 export default defineConfig({
   plugins: [
     tailwindcss({
-      content: ["./internal/frontend/view/**/*.templ", "./internal/frontend/view/**/*.go"]
+      content: [
+        "./internal/frontend/view/**/*.templ",
+        "./internal/frontend/view/**/*.go",
+        "./internal/parser/**/*.go"
+      ]
     })
   ],
   build: {
