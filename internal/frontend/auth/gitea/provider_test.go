@@ -396,7 +396,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider := &GiteaProvider{
 				name:         "test",
-				issuerURL:    testSrv.URL,
+				endpoint:     testSrv.URL,
 				clientID:     "test-client",
 				clientSecret: "test-secret",
 				redirectURL:  "http://localhost/callback",

@@ -40,7 +40,7 @@ spec:
               description: AuthProviderSpec defines the desired state of AuthProvider.
               properties:
                 authUrl:
-                  description: AuthURL is a custom OAuth2 authorization URL.
+                  description: AuthURL is a custom OAuth2 authorization URL. Derived from Type and Endpoint if not specified.
                   type: string
                 clientId:
                   description: ClientID is the OAuth2 client ID.
@@ -67,18 +67,25 @@ spec:
                     - key
                   type: object
                   x-kubernetes-map-type: atomic
+                displayName:
+                  description: |-
+                    DisplayName is a human-readable name shown in the login UI.
+                    Derived from the Endpoint hostname when empty.
+                  type: string
                 endpoint:
                   description: Endpoint is the base URL of the Git platform.
                   type: string
                 forgeUrl:
-                  description: ForgeURL is the API URL for the Git platform. If empty, the controller will use Endpoint.
+                  description: ForgeURL is the API URL for the Git platform. Defaults to Endpoint.
+                  type: string
+                iconUrl:
+                  description: |-
+                    IconURL is the URL of an icon shown next to the provider in the login UI.
+                    Defaults to the Endpoint's favicon.ico when empty.
                   type: string
                 insecure:
                   description: Insecure disables TLS verification (not recommended for production).
                   type: boolean
-                issuerUrl:
-                  description: IssuerURL is the OIDC issuer URL for authentication.
-                  type: string
                 redirectUrl:
                   description: RedirectURL is the OAuth2 callback URL.
                   type: string
@@ -92,7 +99,6 @@ spec:
                 - clientId
                 - clientSecret
                 - endpoint
-                - issuerUrl
                 - redirectUrl
                 - type
               type: object

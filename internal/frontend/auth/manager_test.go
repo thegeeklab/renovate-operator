@@ -23,6 +23,14 @@ func (p *testAuthProvider) Name() string {
 	return p.name
 }
 
+func (p *testAuthProvider) DisplayName() string {
+	return p.name
+}
+
+func (p *testAuthProvider) IconURL() string {
+	return ""
+}
+
 func (p *testAuthProvider) LoginURL(state string) string {
 	return p.loginURL + "?state=" + state
 }

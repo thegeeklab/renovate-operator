@@ -355,6 +355,14 @@ func (p *failingAuthProvider) Name() string {
 	return p.name
 }
 
+func (p *failingAuthProvider) DisplayName() string {
+	return p.name
+}
+
+func (p *failingAuthProvider) IconURL() string {
+	return ""
+}
+
 func (p *failingAuthProvider) LoginURL(state string) string {
 	return "https://fail.example.com/login?state=" + url.QueryEscape(state)
 }

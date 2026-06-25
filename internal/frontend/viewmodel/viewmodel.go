@@ -74,7 +74,9 @@ type AuthInfo struct {
 // AuthProviderInfo describes a single OAuth/OIDC provider that the user can
 // sign in with on the login page.
 type AuthProviderInfo struct {
-	Name string
+	Name        string
+	DisplayName string
+	IconURL     string
 }
 
 // GitRepoFieldLabel defines the human-readable label for a repository field

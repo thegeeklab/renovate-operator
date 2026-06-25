@@ -102,7 +102,9 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) viewmodel.AuthInfo {
 
 	for _, p := range h.authManager.List() {
 		info.Providers = append(info.Providers, viewmodel.AuthProviderInfo{
-			Name: p.Name(),
+			Name:        p.Name(),
+			DisplayName: p.DisplayName(),
+			IconURL:     p.IconURL(),
 		})
 	}
 

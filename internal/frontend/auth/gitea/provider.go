@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"net/url"
 	"strconv"
 	"strings"
 	"time"
@@ -53,7 +54,9 @@ type giteaRepo struct {
 
 type GiteaProvider struct {
 	name         string
-	issuerURL    string
+	displayName  string
+	iconURL      string
+	endpoint     string
 	clientID     string
 	clientSecret string
 	redirectURL  string
@@ -74,7 +77,7 @@ func NewGiteaProvider(ctx context.Context, cfg auth.ProviderConfig) (*GiteaProvi
 
 	ctx = oidc.ClientContext(ctx, httpClient)
 
-	provider, err := oidc.NewProvider(ctx, cfg.IssuerURL)
+	provider, err := oidc.NewProvider(ctx, cfg.Endpoint)
 	if err != nil {
 		return nil, fmt.Errorf("failed to discover OIDC provider: %w", err)
 	}
@@ -82,13 +85,23 @@ func NewGiteaProvider(ctx context.Context, cfg auth.ProviderConfig) (*GiteaProvi
 	oidcConfig := &oidc.Config{ClientID: cfg.ClientID}
 
 	endpoint := provider.Endpoint()
-	if cfg.AuthURL != "" {
-		endpoint.AuthURL = cfg.AuthURL
+	endpoint.AuthURL = resolveAuthURL(cfg.AuthURL, cfg.Endpoint)
+
+	displayName := cfg.DisplayName
+	if displayName == "" {
+		displayName = hostFromURL(resolveAuthURL(cfg.AuthURL, cfg.Endpoint))
+	}
+
+	iconURL := cfg.IconURL
+	if iconURL == "" {
+		iconURL = faviconURL(resolveAuthURL(cfg.AuthURL, cfg.Endpoint))
 	}
 
 	return &GiteaProvider{
 		name:         cfg.Name,
-		issuerURL:    cfg.IssuerURL,
+		displayName:  displayName,
+		iconURL:      iconURL,
+		endpoint:     cfg.Endpoint,
 		clientID:     cfg.ClientID,
 		clientSecret: cfg.ClientSecret,
 		redirectURL:  cfg.RedirectURL,
@@ -112,6 +125,14 @@ func (p *GiteaProvider) Type() string {
 
 func (p *GiteaProvider) Name() string {
 	return p.name
+}
+
+func (p *GiteaProvider) DisplayName() string {
+	return p.displayName
+}
+
+func (p *GiteaProvider) IconURL() string {
+	return p.iconURL
 }
 
 func (p *GiteaProvider) LoginURL(state string) string {
@@ -332,4 +353,30 @@ func (p *GiteaProvider) parseRetryAfter(resp *http.Response) time.Duration {
 	}
 
 	return 0
+}
+
+func hostFromURL(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return rawURL
+	}
+
+	return u.Host
+}
+
+func faviconURL(rawURL string) string {
+	u, err := url.Parse(rawURL)
+	if err != nil {
+		return ""
+	}
+
+	return fmt.Sprintf("%s://%s/favicon.ico", u.Scheme, u.Host)
+}
+
+func resolveAuthURL(override, issuerURL string) string {
+	if override != "" {
+		return override
+	}
+
+	return strings.TrimRight(issuerURL, "/") + "/login/oauth/authorize"
 }

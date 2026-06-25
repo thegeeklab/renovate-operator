@@ -14,9 +14,6 @@ type AuthProviderSpec struct {
 	// Endpoint is the base URL of the Git platform.
 	Endpoint string `json:"endpoint"`
 
-	// IssuerURL is the OIDC issuer URL for authentication.
-	IssuerURL string `json:"issuerUrl"`
-
 	// ClientID is the OAuth2 client ID.
 	ClientID string `json:"clientId"`
 
@@ -26,17 +23,27 @@ type AuthProviderSpec struct {
 	// RedirectURL is the OAuth2 callback URL.
 	RedirectURL string `json:"redirectUrl"`
 
-	// ForgeURL is the API URL for the Git platform. If empty, the controller will use Endpoint.
+	// ForgeURL is the API URL for the Git platform. Defaults to Endpoint.
 	// +kubebuilder:validation:Optional
 	ForgeURL string `json:"forgeUrl,omitempty"`
 
-	// AuthURL is a custom OAuth2 authorization URL.
+	// AuthURL is a custom OAuth2 authorization URL. Derived from Type and Endpoint if not specified.
 	// +kubebuilder:validation:Optional
 	AuthURL string `json:"authUrl,omitempty"`
 
 	// Insecure disables TLS verification (not recommended for production).
 	// +kubebuilder:validation:Optional
 	Insecure bool `json:"insecure,omitempty"`
+
+	// DisplayName is a human-readable name shown in the login UI.
+	// Derived from the Endpoint hostname when empty.
+	// +kubebuilder:validation:Optional
+	DisplayName string `json:"displayName,omitempty"`
+
+	// IconURL is the URL of an icon shown next to the provider in the login UI.
+	// Defaults to the Endpoint's favicon.ico when empty.
+	// +kubebuilder:validation:Optional
+	IconURL string `json:"iconUrl,omitempty"`
 }
 
 // AuthProviderStatus defines the observed state of AuthProvider.
