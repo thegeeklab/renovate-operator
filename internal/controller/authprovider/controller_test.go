@@ -65,9 +65,8 @@ var _ = Describe("AuthProvider Controller", func() {
 					Namespace: "default",
 				},
 				Spec: renovatev1beta1.AuthProviderSpec{
-					Type:      "gitea",
-					Endpoint:  "https://gitea.example.com",
-					IssuerURL: "https://gitea.example.com",
+					Type:     "gitea",
+					Endpoint: "https://gitea.example.com",
 					ClientSecret: corev1.SecretKeySelector{
 						LocalObjectReference: corev1.LocalObjectReference{
 							Name: "test-secret",
@@ -244,6 +243,14 @@ func (m *mockAuthProvider) Type() string {
 
 func (m *mockAuthProvider) Name() string {
 	return m.name
+}
+
+func (m *mockAuthProvider) DisplayName() string {
+	return m.name
+}
+
+func (m *mockAuthProvider) IconURL() string {
+	return ""
 }
 
 func (m *mockAuthProvider) LoginURL(_ string) string {

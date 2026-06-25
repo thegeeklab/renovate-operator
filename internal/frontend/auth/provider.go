@@ -22,13 +22,15 @@ var (
 
 type ProviderConfig struct {
 	Name         string
+	DisplayName  string
 	Type         string
-	IssuerURL    string
+	Endpoint     string
 	ClientID     string
 	ClientSecret string
 	RedirectURL  string
 	ForgeURL     string
 	AuthURL      string
+	IconURL      string
 	Insecure     bool
 }
 
@@ -45,6 +47,8 @@ type AuthenticatedUser struct {
 type AuthProvider interface {
 	Type() string
 	Name() string
+	DisplayName() string
+	IconURL() string
 	LoginURL(state string) string
 	HandleCallback(ctx context.Context, code string) (*AuthenticatedUser, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*AuthenticatedUser, error)

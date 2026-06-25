@@ -207,13 +207,15 @@ func (r *Reconciler) createAuthProvider(
 
 	cfg := auth.ProviderConfig{
 		Name:         ap.Name,
+		DisplayName:  ap.Spec.DisplayName,
 		Type:         string(ap.Spec.Type),
-		IssuerURL:    ap.Spec.IssuerURL,
+		Endpoint:     ap.Spec.Endpoint,
 		ClientID:     ap.Spec.ClientID,
 		ClientSecret: clientSecret,
 		RedirectURL:  ap.Spec.RedirectURL,
 		ForgeURL:     forgeURL,
 		AuthURL:      ap.Spec.AuthURL,
+		IconURL:      ap.Spec.IconURL,
 		Insecure:     ap.Spec.Insecure,
 	}
 
