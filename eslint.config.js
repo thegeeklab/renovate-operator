@@ -1,5 +1,6 @@
 import eslint from "@eslint/js"
 import globals from "globals"
+import tseslint from "typescript-eslint"
 import eslintPluginPrettierRecommended from "eslint-plugin-prettier/recommended"
 
 export default [
@@ -7,6 +8,7 @@ export default [
     ignores: ["internal/frontend/static/dist/**"]
   },
   eslint.configs.recommended,
+  ...tseslint.configs.recommended,
   {
     languageOptions: {
       globals: {
@@ -30,6 +32,7 @@ export default [
       "default-param-last": "error",
       "no-useless-constructor": "error",
       "no-duplicate-imports": "error",
+      "@typescript-eslint/no-explicit-any": "error",
       "prefer-destructuring": [
         "error",
         {

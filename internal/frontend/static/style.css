@@ -27,21 +27,22 @@
   }
 }
 
-/* Tooltip: each .tooltip wrapper scopes its own :hover state.
-   The tooltip-text element uses position:fixed so it is never
-   clipped by ancestor overflow. Positioning is handled via a
-   mouseenter listener that sets --tt-x/--tt-y on hover. */
+[data-cloak] {
+  display: none !important;
+}
+
 .tooltip {
   display: inline-flex;
   align-items: center;
 }
 .tooltip > .tooltip-text {
   position: fixed;
-  left: var(--tt-x, -9999px);
-  top: var(--tt-y, -9999px);
+  left: -9999px;
+  top: -9999px;
   opacity: 0;
   transition: opacity 150ms ease-in-out;
   transition-delay: 100ms;
+  pointer-events: none;
 }
 .tooltip:hover > .tooltip-text {
   opacity: 1;

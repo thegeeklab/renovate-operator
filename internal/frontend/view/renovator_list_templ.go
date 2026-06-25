@@ -176,20 +176,20 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				for _, v := range data.Renovators {
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<details x-cloak x-data=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<details data-cloak data-component=\"renovator-details\" data-persist-key=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var6 string
-					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.RenovatorOpenXData(v.Name))
+					templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.RenovatorPersistKey(v.Name))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 86, Col: 51}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 87, Col: 62}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" :open=\"open\" @toggle=\"open = $el.open\" class=\"group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200\"><summary class=\"cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out\"><div class=\"flex items-center justify-between\"><div class=\"flex items-center gap-4\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" class=\"group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200\"><summary class=\"cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out\"><div class=\"flex items-center justify-between\"><div class=\"flex items-center gap-4\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -204,7 +204,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					var templ_7745c5c3_Var7 string
 					templ_7745c5c3_Var7, templ_7745c5c3_Err = templ.JoinStringErrs(v.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 97, Col: 20}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 96, Col: 20}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var7))
 					if templ_7745c5c3_Err != nil {
@@ -217,7 +217,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					var templ_7745c5c3_Var8 string
 					templ_7745c5c3_Var8, templ_7745c5c3_Err = templ.JoinStringErrs(v.Namespace)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 101, Col: 65}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 100, Col: 65}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var8))
 					if templ_7745c5c3_Err != nil {
@@ -238,7 +238,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					var templ_7745c5c3_Var9 string
 					templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.JoinStringErrs(v.RunnerName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 112, Col: 73}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 111, Col: 73}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var9))
 					if templ_7745c5c3_Err != nil {
@@ -251,91 +251,104 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					var templ_7745c5c3_Var10 string
 					templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.JoinStringErrs(v.DiscoveryName)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 116, Col: 76}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 115, Col: 76}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var10))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span></div></div></div></summary><div class=\"border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6\" x-data=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 23, "</span></div></div></div></summary><div class=\"border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6\" data-component=\"repo-sort\" data-sort-key=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var11 string
-					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.RepoSortXData(v.Name))
+					templ_7745c5c3_Var11, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.SortFieldPersistKey(v.Name))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 123, Col: 47}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 123, Col: 60}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var11)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\"><div class=\"flex items-center justify-end mb-4 gap-2\"><label for=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "\" data-order-key=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var12 string
-					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue("sort-" + v.Name)
+					templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.SortOrderPersistKey(v.Name))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 126, Col: 38}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 124, Col: 61}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\" class=\"sr-only\">Sort repositories</label><div class=\"relative\"><select id=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\"><div class=\"flex items-center justify-end mb-4 gap-2\"><label for=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var13 string
 					templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue("sort-" + v.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 129, Col: 32}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 127, Col: 38}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" name=\"sort\" x-model=\"sort\" aria-label=\"Sort repositories\" class=\"appearance-none rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-700 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer\" @change=\"$nextTick(() => $refs.repoList.dispatchEvent(new Event('sort-changed')))\"><option value=\"name\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "\" class=\"sr-only\">Sort repositories</label><div class=\"relative\"><select id=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var14 string
-					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.JoinStringErrs(string(viewmodel.GitRepoFieldName))
+					templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue("sort-" + v.Name)
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 136, Col: 68}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 130, Col: 32}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var14))
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</option> <option value=\"date\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" name=\"sort\" aria-label=\"Sort repositories\" class=\"appearance-none rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-700 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer\"><option value=\"name\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var15 string
-					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(string(viewmodel.GitRepoFieldCreated))
+					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(string(viewmodel.GitRepoFieldName))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 137, Col: 71}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 135, Col: 68}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</option> <option value=\"last_update\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 28, "</option> <option value=\"date\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 					var templ_7745c5c3_Var16 string
-					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(string(viewmodel.GitRepoFieldLastRun))
+					templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(string(viewmodel.GitRepoFieldCreated))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 138, Col: 78}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 136, Col: 71}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</option></select><div class=\"pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 29, "</option> <option value=\"last_update\">")
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					var templ_7745c5c3_Var17 string
+					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.JoinStringErrs(string(viewmodel.GitRepoFieldLastRun))
+					if templ_7745c5c3_Err != nil {
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 137, Col: 78}
+					}
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var17))
+					if templ_7745c5c3_Err != nil {
+						return templ_7745c5c3_Err
+					}
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</option></select><div class=\"pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -343,7 +356,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 30, "</div></div><span class=\"tooltip\" x-tooltip><button type=\"button\" x-cloak @click=\"order = order === 'asc' ? 'desc' : 'asc'; $nextTick(() => $refs.repoList.dispatchEvent(new Event('sort-changed')))\" :aria-label=\"order === 'asc' ? 'Switch to descending order' : 'Switch to ascending order'\" class=\"inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer transition-colors self-stretch\"><span x-show=\"order === 'asc'\" style=\"display:none\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</div></div><span class=\"tooltip\" data-tooltip><button type=\"button\" data-cloak data-action=\"toggle-order\" class=\"inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer transition-colors self-stretch\"><span data-role=\"sort-asc\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -351,7 +364,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</span> <span x-show=\"order === 'desc'\" style=\"display:none\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</span> <span data-role=\"sort-desc\" style=\"display:none\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -359,20 +372,20 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</span></button> <span class=\"tooltip-text pointer-events-none -translate-x-1/2 -translate-y-full z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100\" x-text=\"order === 'asc' ? 'Sort ascending' : 'Sort descending'\"></span></span></div><div x-ref=\"repoList\" hx-get=\"")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "</span></button> <span class=\"tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100\">Sort ascending</span></span></div><div data-ref=\"repoList\" hx-get=\"")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					var templ_7745c5c3_Var17 string
-					templ_7745c5c3_Var17, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.GitreposURL(v.Namespace, v.Renovator))
+					var templ_7745c5c3_Var18 string
+					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.GitreposURL(v.Namespace, v.Renovator))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 167, Col: 64}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 164, Col: 64}
 					}
-					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var17)
+					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var18)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 33, "\" hx-trigger=\"revealed once, sse:job-updated, sort-changed\" hx-swap=\"innerHTML\" :hx-vals=\"JSON.stringify({ sort: sort, order: order })\" class=\"focus:outline-none\"><div class=\"flex justify-center py-4\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "\" hx-trigger=\"revealed once, sse:job-updated, sort-changed\" hx-swap=\"innerHTML\" class=\"focus:outline-none\"><div class=\"flex justify-center py-4\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -380,18 +393,18 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 34, "<span class=\"ml-2 text-sm text-gray-500\">Loading Repositories...</span></div></div></div></details>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "<span class=\"ml-2 text-sm text-gray-500\">Loading Repositories...</span></div></div></div></details>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 35, "</div>")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</div>")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 36, "</div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 37, "</div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

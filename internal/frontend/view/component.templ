@@ -31,10 +31,10 @@ func statusCardBase() string {
 templ Tooltip(text string) {
 	<span
 		class="tooltip"
-		x-tooltip
+		data-tooltip
 	>
 		{ children... }
-		<span class="tooltip-text pointer-events-none -translate-x-1/2 -translate-y-full z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100">
+		<span class="tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100">
 			{ text }
 		</span>
 	</span>

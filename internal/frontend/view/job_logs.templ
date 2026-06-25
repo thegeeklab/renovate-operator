@@ -6,8 +6,12 @@ import "github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 templ JobLogs(data viewmodel.JobLogData) {
 	<div
 		id={ "logs-" + data.JobName }
-		x-cloak
-		x-data={ sanitize.LogViewerXData(data.Namespace, data.Runner, data.JobName, data.IsRunning) }
+		data-cloak
+		data-component="log-viewer"
+		data-namespace={ data.Namespace }
+		data-runner={ data.Runner }
+		data-job-name={ data.JobName }
+		data-is-running={ sanitize.BoolAttr(data.IsRunning) }
 		class="rounded-lg bg-gray-900 shadow-lg overflow-hidden flex flex-col border border-gray-700 w-full h-full"
 		if data.IsRunning {
 			hx-get={ sanitize.JobLogsURL(data.Namespace, data.Runner, data.JobName) }
@@ -29,32 +33,35 @@ templ JobLogs(data viewmodel.JobLogData) {
 			</div>
 			<div class="flex items-center gap-4">
 				if data.IsRunning {
-					<span
-						class="tooltip"
-						x-tooltip
-					>
+					<span class="tooltip" data-tooltip>
 						<button
 							type="button"
-							@click="toggleAutoscroll()"
-							:aria-pressed="autoscroll.toString()"
+							data-action="toggle-autoscroll"
 							aria-label="Toggle auto-scroll"
 							class={ btnGhostIcon() }
 						>
-							<span x-show="autoscroll" style="display:none">
+							<span data-role="autoscroll-icon-on" style="display:none">
 								@IconEye("h-4 w-4")
 							</span>
-							<span x-show="!autoscroll" style="display:none">
+							<span data-role="autoscroll-icon-off">
 								@IconEyeSlash("h-4 w-4")
 							</span>
 						</button>
-						<span class="tooltip-text pointer-events-none -translate-x-1/2 -translate-y-full z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100" x-text="autoscroll ? 'Auto-scroll enabled' : 'Auto-scroll disabled'"></span>
+						<span
+							data-role="autoscroll-label"
+							class="tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100"
+						>
+							Auto-scroll disabled
+						</span>
 					</span>
 				}
 				if !data.IsRunning {
 					@Tooltip("Download full log") {
 						<button
 							type="button"
-							@click={ "downloadLog(" + sanitize.JSString(sanitize.JobLogsDownloadURL(data.Namespace, data.JobName)) + ", " + sanitize.JSString(data.JobName+".log") + ")" }
+							data-action="download-log"
+							data-url={ sanitize.JobLogsDownloadURL(data.Namespace, data.JobName) }
+							data-filename={ data.JobName + ".log" }
 							aria-label="Download full log"
 							class={ btnGhostIcon() }
 						>
@@ -65,7 +72,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 				@Tooltip("Close logs") {
 					<button
 						type="button"
-						@click="closeLogs()"
+						data-action="close-logs"
 						aria-label="Close logs"
 						class={ btnGhostIcon() }
 					>
@@ -75,7 +82,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 			</div>
 		</div>
 		<div
-			x-ref="scrollBox"
+			data-ref="scrollBox"
 			id={ "scroll-" + data.JobName }
 			class="p-4 overflow-x-auto overflow-y-auto relative flex-1"
 		>

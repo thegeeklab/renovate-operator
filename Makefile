@@ -77,6 +77,10 @@ frontend-deps: ## Install frontend dependencies.
 eslint: ## Run eslint.
 	npm run lint
 
+.PHONY: typecheck
+typecheck: ## Run TypeScript type checking.
+	npm run typecheck
+
 .PHONY: frontend-build
 frontend-build: frontend-deps ## Build the frontend assets for production.
 	@echo "Building Vite assets for production..."
@@ -166,7 +170,7 @@ golangci-lint: golangci-lint-bin ## Run golangci-lint.
 	$(GOLANGCI_LINT) run
 
 .PHONY: lint
-lint: yamlfmt-dry golangci-lint eslint
+lint: yamlfmt-dry golangci-lint eslint typecheck
 
 .PHONY: helm-docs
 helm-docs: helm-docs-bin ## Generate helm documentation.
