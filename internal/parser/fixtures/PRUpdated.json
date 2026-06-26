@@ -1,0 +1,2 @@
+{"level":30,"msg":"Updating PR","branch":"renovate/lodash-4.x","title":"Update lodash"}
+{"level":20,"msg":"git push","branch":"renovate/lodash-4.x","result":{"remoteMessages":{"all":["https://github.com/org/repo/pull/99"]}}}

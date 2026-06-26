@@ -19,7 +19,8 @@ var (
 )
 
 type Provider struct {
-	client *gitea.Client
+	client  *gitea.Client
+	baseURL string
 }
 
 // NewProvider initializes a new Gitea provider.
@@ -28,14 +29,14 @@ type Provider struct {
 // for every reconciliation loop. Do not cache the Provider or Client, as subsequent
 // reconciles would fail with "context canceled" errors.
 func NewProvider(ctx context.Context, endpoint, token string) (*Provider, error) {
-	cleanEndpoint := sanitizeEndpoint(endpoint)
+	baseURL := sanitizeEndpoint(endpoint)
 
-	client, err := gitea.NewClient(cleanEndpoint, gitea.SetContext(ctx), gitea.SetToken(token))
+	client, err := gitea.NewClient(baseURL, gitea.SetContext(ctx), gitea.SetToken(token))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gitea client: %w", err)
 	}
 
-	return &Provider{client: client}, nil
+	return &Provider{client: client, baseURL: baseURL}, nil
 }
 
 func (p *Provider) GetIdentity() (string, error) {
@@ -153,6 +154,24 @@ func (p *Provider) DeleteWebhook(ctx context.Context, repoName, webhookID string
 	}
 
 	return nil
+}
+
+func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error) {
+	owner, repo, err := parseRepoName(repoName)
+	if err != nil {
+		return "", err
+	}
+
+	repoData, _, err := p.client.GetRepo(owner, repo)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch repository: %w", err)
+	}
+
+	if repoData.HTMLURL != "" {
+		return repoData.HTMLURL, nil
+	}
+
+	return fmt.Sprintf("%s/%s/%s", p.baseURL, owner, repo), nil
 }
 
 // sanitizeEndpoint removes trailing slashes and the API suffix

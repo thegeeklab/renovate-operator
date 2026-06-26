@@ -34,6 +34,10 @@ export class LogViewerComponent {
         this.downloadLog(url, filename)
       })
     })
+
+    this.el.querySelectorAll<HTMLElement>('[data-action="toggle-raw"]').forEach((line) => {
+      line.addEventListener("click", () => this.toggleRawLine(line))
+    })
   }
 
   private async init(): Promise<void> {
@@ -77,6 +81,28 @@ export class LogViewerComponent {
       logViewer.innerHTML = ""
     }
     window.dispatchEvent(new CustomEvent("clear-selected-job"))
+  }
+
+  private toggleRawLine(line: HTMLElement): void {
+    const rawContent = line.querySelector<HTMLElement>(".log-raw-content")
+    const rawText = line.querySelector<HTMLElement>(".log-raw-text")
+    const chevron = line.querySelector<HTMLElement>(".log-chevron")
+    if (!rawContent || !rawText || !chevron) return
+
+    const isExpanded = !rawContent.classList.contains("hidden")
+
+    if (!isExpanded) {
+      const raw = getData(line, "raw")
+      try {
+        const parsed = JSON.parse(raw)
+        rawText.textContent = JSON.stringify(parsed, null, 2)
+      } catch {
+        rawText.textContent = raw
+      }
+    }
+
+    rawContent.classList.toggle("hidden")
+    chevron.style.transform = isExpanded ? "rotate(0deg)" : "rotate(90deg)"
   }
 
   private async downloadLog(url: string, filename: string): Promise<void> {

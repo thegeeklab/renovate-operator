@@ -146,9 +146,9 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var9 string
-				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.JobLogsURL(job.Namespace, job.Runner, job.Name))
+				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.JobLogsURL(job.Namespace, job.Runner, job.Name, data.Repo.Platform, data.Repo.RepoURL))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 67, Col: 75}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 67, Col: 114}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 				if templ_7745c5c3_Err != nil {

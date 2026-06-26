@@ -18,6 +18,8 @@ type ProviderManager interface {
 	EnsureWebhook(ctx context.Context, repoName, webhookURL, secret string) (string, error)
 	// DeleteWebhook removes the webhook from the remote provider.
 	DeleteWebhook(ctx context.Context, repoName, webhookID string) error
+	// RepoURL returns the web-accessible URL for a repository.
+	RepoURL(ctx context.Context, repoName string) (string, error)
 }
 
 type PlatformConfig struct {

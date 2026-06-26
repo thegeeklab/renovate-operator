@@ -1,0 +1,1 @@
+{"level":20,"msg":"branches info extended","branchesInformation":[{"branchName":"renovate/lodash-4.x","prNo":10,"prTitle":"Update lodash","result":"done"},{"branchName":"renovate/stale","prNo":5,"prTitle":"Stale PR","result":"already-existed"},{"branchName":"renovate/approval","prNo":null,"prTitle":"Needs review","result":"needs-approval"}]}

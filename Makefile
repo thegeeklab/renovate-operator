@@ -271,7 +271,7 @@ ENVTEST_VERSION ?= $(shell go list -m -f "{{ .Version }}" sigs.k8s.io/controller
 ENVTEST_K8S_VERSION ?= $(shell go list -m -f "{{ .Version }}" k8s.io/api | awk -F'[v.]' '{printf "1.%d", $$3}')
 
 # go-install-tool will 'go install' any package if the target binary is missing or not executable
-# $1 - target path with name of binary (e.g., $(LOCALBIN)/yamlfmt)
+# $1 - target path with name of binary
 # $2 - package url which can be installed
 # $3 - specific version of package
 define go-install-tool

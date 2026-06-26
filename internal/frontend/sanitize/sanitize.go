@@ -39,10 +39,12 @@ func GitrepoURL(namespace, name string) string {
 }
 
 // JobLogsURL builds a /joblogs URL with safely escaped query parameters.
-func JobLogsURL(namespace, runner, job string) string {
+func JobLogsURL(namespace, runner, job, platform, repoURL string) string {
 	return "/joblogs?namespace=" + QueryEscape(namespace) +
 		"&runner=" + QueryEscape(runner) +
-		"&job=" + QueryEscape(job)
+		"&job=" + QueryEscape(job) +
+		"&platform=" + QueryEscape(platform) +
+		"&repoUrl=" + QueryEscape(repoURL)
 }
 
 // JobLogsDownloadURL builds a /joblogs/download URL with safely escaped query parameters.

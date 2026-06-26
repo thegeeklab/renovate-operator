@@ -20,6 +20,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+	"github.com/thegeeklab/renovate-operator/internal/parser"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 )
 
@@ -354,6 +355,8 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		FullName:  repo.Spec.Name,
 		Namespace: repo.Namespace,
 		WebhookID: repo.Status.WebhookID,
+		Platform:  repo.Status.Platform,
+		RepoURL:   repo.Status.RepoURL,
 		CreatedAt: repo.CreationTimestamp.Time,
 	}
 
@@ -399,7 +402,9 @@ func (h *WebHandler) getJobLogStream(
 	return stream, nil
 }
 
-func (h *WebHandler) buildJobLogData(ctx context.Context, namespace, runner, job string) viewmodel.JobLogData {
+func (h *WebHandler) buildJobLogData(
+	ctx context.Context, namespace, runner, job, platform, repoURL string,
+) viewmodel.JobLogData {
 	isRunning := h.isJobRunning(ctx, namespace, job)
 
 	data := viewmodel.JobLogData{
@@ -407,6 +412,8 @@ func (h *WebHandler) buildJobLogData(ctx context.Context, namespace, runner, job
 		Namespace: namespace,
 		Runner:    runner,
 		IsRunning: isRunning,
+		Platform:  platform,
+		RepoURL:   repoURL,
 	}
 
 	stream, err := h.getJobLogStream(ctx, namespace, job, isRunning)
@@ -443,6 +450,11 @@ func (h *WebHandler) buildJobLogData(ctx context.Context, namespace, runner, job
 		data.Content += "\n--- Log truncated at 2MB ---"
 	}
 
+	parsed := parser.ParseRenovateLogs(data.Content)
+	if parsed != nil && (parsed.PRActivity != nil || parsed.LogIssues != nil || len(parsed.Lines) > 0) {
+		data.Parsed = parsed
+	}
+
 	return data
 }
 
@@ -452,6 +464,8 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 	namespace := r.URL.Query().Get("namespace")
 	runner := r.URL.Query().Get("runner")
 	job := r.URL.Query().Get("job")
+	platform := r.URL.Query().Get("platform")
+	repoURL := r.URL.Query().Get("repoUrl")
 
 	if namespace == "" || runner == "" || job == "" {
 		http.Error(w, "Missing required parameters", http.StatusBadRequest)
@@ -459,7 +473,7 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := h.buildJobLogData(ctx, namespace, runner, job)
+	data := h.buildJobLogData(ctx, namespace, runner, job, platform, repoURL)
 
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/html")

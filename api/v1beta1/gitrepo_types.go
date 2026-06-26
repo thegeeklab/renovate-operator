@@ -38,6 +38,16 @@ type GitRepoStatus struct {
 	// This field is managed by the operator and should not be set manually.
 	// +kubebuilder:validation:Optional
 	WebhookID string `json:"webhookId,omitempty"`
+
+	// Platform is the type of the Git provider.
+	// This field is managed by the operator and should not be set manually.
+	// +kubebuilder:validation:Optional
+	Platform string `json:"platform,omitempty"`
+
+	// RepoURL is the web-accessible URL for the repository.
+	// This field is managed by the operator and should not be set manually.
+	// +kubebuilder:validation:Optional
+	RepoURL string `json:"repoUrl,omitempty"`
 }
 
 // +kubebuilder:object:root=true

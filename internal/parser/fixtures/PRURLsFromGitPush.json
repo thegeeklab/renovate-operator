@@ -1,0 +1,4 @@
+{"level":30,"msg":"Creating PR","branch":"renovate/lodash-4.x","title":"Update dependency lodash to v4.17.21"}
+{"level":30,"msg":"PR created","branch":"renovate/lodash-4.x","pr":42,"prTitle":"Update dependency lodash to v4.17.21"}
+{"level":20,"msg":"git push","branch":"renovate/lodash-4.x","result":{"remoteMessages":{"all":["https://github.com/org/repo/pull/42"]}}}
+{"level":20,"msg":"git push","branch":"renovate/other","result":{"remoteMessages":{"all":["https://gitlab.com/org/repo/-/merge_requests/99"]}}}
