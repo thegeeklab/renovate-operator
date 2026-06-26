@@ -29,14 +29,14 @@ type Provider struct {
 // for every reconciliation loop. Do not cache the Provider or Client, as subsequent
 // reconciles would fail with "context canceled" errors.
 func NewProvider(ctx context.Context, endpoint, token string) (*Provider, error) {
-	cleanEndpoint := sanitizeEndpoint(endpoint)
+	baseURL := sanitizeEndpoint(endpoint)
 
-	client, err := gitea.NewClient(cleanEndpoint, gitea.SetContext(ctx), gitea.SetToken(token))
+	client, err := gitea.NewClient(baseURL, gitea.SetContext(ctx), gitea.SetToken(token))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gitea client: %w", err)
 	}
 
-	return &Provider{client: client, baseURL: cleanEndpoint}, nil
+	return &Provider{client: client, baseURL: baseURL}, nil
 }
 
 func (p *Provider) GetIdentity() (string, error) {
