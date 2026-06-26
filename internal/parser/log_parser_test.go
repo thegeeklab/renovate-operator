@@ -6,6 +6,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/thegeeklab/renovate-operator/internal/parser/fixtures"
 )
 
 var _ = Describe("LogParser", func() {
@@ -33,13 +35,7 @@ var _ = Describe("LogParser", func() {
 		})
 
 		It("detects warnings and errors", func() {
-			logs := strings.Join([]string{
-				`{"level":30,"msg":"Starting renovation"}`,
-				`{"level":40,"msg":"Configuration warning"}`,
-				`{"level":50,"msg":"Failed to fetch dependency"}`,
-			}, "\n")
-
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.WarnAndError)
 			Expect(result.HasIssues).To(BeTrue())
 			Expect(result.LogIssues).NotTo(BeNil())
 			Expect(result.LogIssues.WarnCount).To(Equal(1))
@@ -65,13 +61,7 @@ var _ = Describe("LogParser", func() {
 		})
 
 		It("deduplicates issue messages", func() {
-			logs := strings.Join([]string{
-				`{"level":40,"msg":"Same warning"}`,
-				`{"level":40,"msg":"Same warning"}`,
-				`{"level":40,"msg":"Same warning"}`,
-			}, "\n")
-
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.DuplicateWarnings)
 			Expect(result.LogIssues).NotTo(BeNil())
 			Expect(result.LogIssues.WarnCount).To(Equal(3))
 			Expect(result.LogIssues.Issues).To(HaveLen(1))
@@ -83,35 +73,16 @@ var _ = Describe("LogParser", func() {
 				result := ParseRenovateLogs(log)
 				Expect(result.RenovateResultStatus).To(Equal(expected))
 			},
-			Entry("disabled-by-config",
-				`{"level":30,"msg":"Repository finished","result":"disabled-by-config"}`,
-				"Disabled"),
-			Entry("disabled-closed-onboarding",
-				`{"level":30,"msg":"Repository finished","result":"disabled-closed-onboarding"}`,
-				"Onboarding Closed"),
-			Entry("disabled-no-config",
-				`{"level":30,"msg":"Repository finished","result":"disabled-no-config"}`,
-				"No Config"),
-			Entry("onboarding status",
-				`{"level":30,"msg":"Repository finished","status":"onboarding"}`,
-				"Onboarding"),
-			Entry("unknown empty",
-				`{"level":30,"msg":"Repository finished"}`,
-				"Unknown"),
-			Entry("custom result",
-				`{"level":30,"msg":"Repository finished","result":"done"}`,
-				"done"),
+			Entry("disabled-by-config", fixtures.RepoFinishedDisabledByConfig, "Disabled"),
+			Entry("disabled-closed-onboarding", fixtures.RepoFinishedDisabledClosedOnboarding, "Onboarding Closed"),
+			Entry("disabled-no-config", fixtures.RepoFinishedDisabledNoConfig, "No Config"),
+			Entry("onboarding status", fixtures.RepoFinishedOnboarding, "Onboarding"),
+			Entry("unknown empty", fixtures.RepoFinishedUnknown, "Unknown"),
+			Entry("custom result", fixtures.RepoFinishedDone, "done"),
 		)
 
 		It("extracts PR created activity", func() {
-			logs := strings.Join([]string{
-				`{"level":30,"msg":"Creating PR","branch":"renovate/lodash-4.x",` +
-					`"title":"Update dependency lodash to v4.17.21"}`,
-				`{"level":30,"msg":"PR created","branch":"renovate/lodash-4.x",` +
-					`"pr":42,"prTitle":"Update dependency lodash to v4.17.21"}`,
-			}, "\n")
-
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.PRCreated)
 			Expect(result.PRActivity).NotTo(BeNil())
 			Expect(result.PRActivity.Created).To(Equal(1))
 			Expect(result.PRActivity.PRs).To(HaveLen(1))
@@ -122,13 +93,7 @@ var _ = Describe("LogParser", func() {
 		})
 
 		It("extracts PR updated activity", func() {
-			logs := strings.Join([]string{
-				`{"level":30,"msg":"Updating PR","branch":"renovate/lodash-4.x","title":"Update lodash"}`,
-				`{"level":20,"msg":"git push","branch":"renovate/lodash-4.x",` +
-					`"result":{"remoteMessages":{"all":["https://github.com/org/repo/pull/99"]}}}`,
-			}, "\n")
-
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.PRUpdated)
 			Expect(result.PRActivity).NotTo(BeNil())
 			Expect(result.PRActivity.Updated).To(Equal(1))
 			Expect(result.PRActivity.PRs).To(HaveLen(1))
@@ -136,8 +101,7 @@ var _ = Describe("LogParser", func() {
 		})
 
 		It("extracts PR automerged activity", func() {
-			logs := `{"level":30,"msg":"PR automerged","branch":"renovate/lodash-4.x","pr":55,"prTitle":"Auto merge"}`
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.PRAutomerged)
 			Expect(result.PRActivity).NotTo(BeNil())
 			Expect(result.PRActivity.Automerged).To(Equal(1))
 			Expect(result.PRActivity.PRs).To(HaveLen(1))
@@ -146,8 +110,7 @@ var _ = Describe("LogParser", func() {
 		})
 
 		It("extracts PR unchanged activity", func() {
-			logs := `{"level":30,"msg":"Pull Request #12 does not need updating","branch":"renovate/eslint-8.x"}`
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.PRUnchanged)
 			Expect(result.PRActivity).NotTo(BeNil())
 			Expect(result.PRActivity.Unchanged).To(Equal(1))
 			Expect(result.PRActivity.PRs).To(HaveLen(1))
@@ -156,12 +119,7 @@ var _ = Describe("LogParser", func() {
 		})
 
 		It("processes branches info extended", func() {
-			logs := `{"level":20,"msg":"branches info extended","branchesInformation":[` +
-				`{"branchName":"renovate/lodash-4.x","prNo":10,"prTitle":"Update lodash","result":"done"},` +
-				`{"branchName":"renovate/stale","prNo":5,"prTitle":"Stale PR","result":"already-existed"},` +
-				`{"branchName":"renovate/approval","prNo":null,"prTitle":"Needs review","result":"needs-approval"}]}`
-
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.BranchesInfoExtended)
 			Expect(result.PRActivity).NotTo(BeNil())
 			Expect(result.PRActivity.NeedsApproval).To(Equal(1))
 			Expect(result.PRActivity.Unchanged).To(Equal(1))
@@ -183,14 +141,7 @@ var _ = Describe("LogParser", func() {
 		})
 
 		It("formats log lines with correct levels", func() {
-			logs := strings.Join([]string{
-				`{"level":30,"msg":"Info message"}`,
-				`{"level":40,"msg":"Warn message"}`,
-				`{"level":50,"msg":"Error message"}`,
-				"not json at all",
-			}, "\n")
-
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.MixedLevels)
 			Expect(result.Lines).To(HaveLen(4))
 			Expect(result.Lines[0].LevelLabel()).To(Equal("INFO"))
 			Expect(result.Lines[0].Class).To(Equal("text-white"))
@@ -206,21 +157,14 @@ var _ = Describe("LogParser", func() {
 		})
 
 		It("escapes HTML in messages", func() {
-			logs := `{"level":30,"msg":"<script>alert('xss')</script>"}`
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.HTMLInMessage)
 			Expect(result.Lines).To(HaveLen(1))
 			Expect(result.Lines[0].Message).NotTo(ContainSubstring("<script>"))
 			Expect(result.Lines[0].Message).To(ContainSubstring("&lt;script&gt;"))
 		})
 
 		It("handles mixed JSON and non-JSON lines", func() {
-			logs := strings.Join([]string{
-				`{"level":30,"msg":"Info message"}`,
-				"this is not json",
-				`{"level":40,"msg":"Warn message"}`,
-			}, "\n")
-
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.MixedJSONAndPlain)
 			Expect(result.Lines).To(HaveLen(3))
 			Expect(result.Lines[0].LevelLabel()).To(Equal("INFO"))
 			Expect(result.Lines[0].Message).To(Equal("Info message"))
@@ -231,13 +175,7 @@ var _ = Describe("LogParser", func() {
 		})
 
 		It("sorts PRs by action priority then branch name", func() {
-			logs := strings.Join([]string{
-				`{"level":30,"msg":"Creating PR","branch":"renovate/b-package","title":"B"}`,
-				`{"level":30,"msg":"PR automerged","branch":"renovate/a-package","pr":1,"prTitle":"A"}`,
-				`{"level":30,"msg":"Creating PR","branch":"renovate/c-package","title":"C"}`,
-			}, "\n")
-
-			result := ParseRenovateLogs(logs)
+			result := ParseRenovateLogs(fixtures.SortedPRs)
 			Expect(result.PRActivity).NotTo(BeNil())
 			Expect(result.PRActivity.PRs).To(HaveLen(3))
 			Expect(result.PRActivity.PRs[0].Action).To(Equal(PRActionAutomerged))
@@ -247,19 +185,9 @@ var _ = Describe("LogParser", func() {
 			Expect(result.PRActivity.PRs[2].Action).To(Equal(PRActionCreated))
 			Expect(result.PRActivity.PRs[2].Branch).To(Equal("renovate/c-package"))
 		})
-		It("extracts PR URLs from git push remote messages", func() {
-			logs := strings.Join([]string{
-				`{"level":30,"msg":"Creating PR","branch":"renovate/lodash-4.x",` +
-					`"title":"Update dependency lodash to v4.17.21"}`,
-				`{"level":30,"msg":"PR created","branch":"renovate/lodash-4.x",` +
-					`"pr":42,"prTitle":"Update dependency lodash to v4.17.21"}`,
-				`{"level":20,"msg":"git push","branch":"renovate/lodash-4.x",` +
-					`"result":{"remoteMessages":{"all":["https://github.com/org/repo/pull/42"]}}}`,
-				`{"level":20,"msg":"git push","branch":"renovate/other",` +
-					`"result":{"remoteMessages":{"all":["https://gitlab.com/org/repo/-/merge_requests/99"]}}}`,
-			}, "\n")
 
-			result := ParseRenovateLogs(logs)
+		It("extracts PR URLs from git push remote messages", func() {
+			result := ParseRenovateLogs(fixtures.PRURLsFromGitPush)
 			Expect(result.PRActivity).NotTo(BeNil())
 			Expect(result.PRActivity.PRs).To(HaveLen(2))
 

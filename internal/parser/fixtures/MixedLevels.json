@@ -1,0 +1,4 @@
+{"level":30,"msg":"Info message"}
+{"level":40,"msg":"Warn message"}
+{"level":50,"msg":"Error message"}
+not json at all
