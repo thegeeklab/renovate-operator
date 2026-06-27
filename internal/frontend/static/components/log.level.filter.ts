@@ -1,100 +1,47 @@
-import { computePosition, flip, offset, shift } from "@floating-ui/dom"
+import { Dropdown } from "../lib/dropdown"
 import { registerComponent } from "../lib/component.registry"
 import { getData } from "../lib/dom"
 import { getPersisted, setPersisted } from "../lib/storage"
 
 const ALL_LEVELS = [10, 20, 30, 40, 50, 60]
 
-export class LogLevelFilter {
-  private el: HTMLElement
-  private button: HTMLButtonElement
-  private menu: HTMLDivElement
-  private isOpen = false
+export class LogLevelFilter extends Dropdown {
+  private logViewer: Element | null
   private activeLevels: Set<number>
   private storageKey: string
-
-  private boundToggle: (e: Event) => void
-  private boundOutside: (e: Event) => void
-  private boundKeydown: (e: KeyboardEvent) => void
+  private boundCheckboxChanges: Map<HTMLInputElement, () => void> = new Map()
 
   constructor(el: HTMLElement) {
-    this.el = el
-    this.button = el.querySelector<HTMLButtonElement>('[data-action="toggle-level-filter"]')!
-    this.menu = el.querySelector<HTMLDivElement>('[data-role="level-menu"]')!
+    super(el, {
+      buttonSelector: '[data-action="toggle-level-filter"]',
+      menuSelector: '[data-role="level-menu"]',
+      placement: "bottom-start",
+      strategy: "fixed",
+      offset: 4,
+      focusOnClose: true
+    })
 
-    const logViewer = el.closest('[data-component="log-viewer"]')
-    const namespace = logViewer ? getData(logViewer, "namespace") : ""
-    const runner = logViewer ? getData(logViewer, "runner") : ""
-    const jobName = logViewer ? getData(logViewer, "job-name") : ""
-    this.storageKey = `loglevels-${namespace}-${runner}-${jobName}`
+    this.logViewer = el.closest('[data-component="log-viewer"]')
+    const namespace = this.logViewer ? getData(this.logViewer, "namespace") : ""
+    const runner = this.logViewer ? getData(this.logViewer, "runner") : ""
+    const jobName = this.logViewer ? getData(this.logViewer, "job-name") : ""
+    this.storageKey = `logLevels-${namespace}-${runner}-${jobName}`
 
     const stored = getPersisted<number[] | null>(this.storageKey, null)
-    this.activeLevels = new Set(stored && stored.length > 0 ? stored : ALL_LEVELS)
-
-    this.boundToggle = this.handleToggle.bind(this)
-    this.boundOutside = this.handleOutsideClick.bind(this)
-    this.boundKeydown = this.handleKeydown.bind(this)
+    this.activeLevels = new Set(stored !== null ? stored : ALL_LEVELS)
 
     this.syncCheckboxes()
     this.applyFilter()
     this.updateCount()
-    this.bindEvents()
+    this.bindCheckboxEvents()
   }
 
-  private bindEvents(): void {
-    this.button.addEventListener("click", this.boundToggle)
-    document.addEventListener("click", this.boundOutside)
-    document.addEventListener("keydown", this.boundKeydown)
-
+  private bindCheckboxEvents(): void {
     this.menu.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((cb) => {
-      cb.addEventListener("change", () => this.handleLevelChange(cb))
+      const handler = () => this.handleLevelChange(cb)
+      this.boundCheckboxChanges.set(cb, handler)
+      cb.addEventListener("change", handler)
     })
-  }
-
-  private handleToggle(e: Event): void {
-    e.stopPropagation()
-    if (this.isOpen) {
-      this.close()
-    } else {
-      this.open()
-    }
-  }
-
-  private handleOutsideClick(e: Event): void {
-    if (this.isOpen && !this.el.contains(e.target as Node)) {
-      this.close()
-    }
-  }
-
-  private handleKeydown(e: KeyboardEvent): void {
-    if (e.key === "Escape" && this.isOpen) {
-      this.close()
-      this.button.focus()
-    }
-  }
-
-  private async open(): Promise<void> {
-    this.isOpen = true
-    this.menu.classList.remove("hidden")
-    this.button.setAttribute("aria-expanded", "true")
-
-    const { x, y } = await computePosition(this.button, this.menu, {
-      placement: "bottom-start",
-      strategy: "fixed",
-      middleware: [offset(4), flip(), shift({ padding: 8 })]
-    })
-
-    Object.assign(this.menu.style, {
-      left: `${x}px`,
-      top: `${y}px`,
-      position: "fixed"
-    })
-  }
-
-  private close(): void {
-    this.isOpen = false
-    this.menu.classList.add("hidden")
-    this.button.setAttribute("aria-expanded", "false")
   }
 
   private handleLevelChange(checkbox: HTMLInputElement): void {
@@ -120,10 +67,9 @@ export class LogLevelFilter {
   }
 
   private applyFilter(): void {
-    const logViewer = this.el.closest('[data-component="log-viewer"]')
-    if (!logViewer) return
+    if (!this.logViewer) return
 
-    logViewer.querySelectorAll<HTMLElement>(".log-line[data-level]").forEach((line) => {
+    this.logViewer.querySelectorAll<HTMLElement>(".log-line[data-level]").forEach((line) => {
       const level = parseInt(line.dataset.level || "0", 10)
       line.classList.toggle("hidden", !this.activeLevels.has(level))
     })
@@ -141,9 +87,13 @@ export class LogLevelFilter {
   }
 
   destroy(): void {
-    this.button.removeEventListener("click", this.boundToggle)
-    document.removeEventListener("click", this.boundOutside)
-    document.removeEventListener("keydown", this.boundKeydown)
+    super.destroy()
+
+    this.boundCheckboxChanges.forEach((handler, cb) => {
+      cb.removeEventListener("change", handler)
+    })
+
+    this.boundCheckboxChanges.clear()
   }
 }
 

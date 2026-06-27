@@ -1,12 +1,12 @@
 import { initTooltips, hideActiveTooltip } from "./lib/tooltip"
-import { initJobLists, destroyJobLists } from "./components/job.list"
+import { initJobLists } from "./components/job.list"
 import { initLogViewers } from "./components/log.viewer"
 import { initLogSummaries } from "./components/log.summary"
 import { initLogLevelFilters } from "./components/log.level.filter"
 import { initRenovatorDetails } from "./components/renovator.details"
 import { initRepoSorts } from "./components/repo.sort"
 import { initAvatarDropdown } from "./components/avatar.dropdown"
-import { componentRegistry } from "./lib/component.registry"
+import { componentRegistry, destroyComponents } from "./lib/component.registry"
 import { getPersisted } from "./lib/storage"
 
 const scrollStates = new Map<string, number>()
@@ -45,7 +45,7 @@ export function initHtmxHooks(): void {
     const { detail } = e as CustomEvent
     const target = detail.target as HTMLElement
 
-    destroyJobLists(target)
+    destroyComponents(target)
 
     const scrollBox = target.querySelector<HTMLElement>('[data-ref="scrollBox"]')
     if (scrollBox) {

@@ -1,6 +1,6 @@
 import { getPersisted, setPersisted } from "../lib/storage"
 import { getRefs, getData, getBoolData, nextFrame } from "../lib/dom"
-import { registerComponent } from "../lib/component.registry"
+import { registerComponent, destroyComponents } from "../lib/component.registry"
 
 export class LogViewerComponent {
   private el: HTMLElement
@@ -11,6 +11,7 @@ export class LogViewerComponent {
   private boundToggleAutoscroll: () => void
   private boundCloseLogs: () => void
   private boundToggleRawLines: Map<HTMLElement, () => void> = new Map()
+  private boundDownloadLogs: Map<HTMLElement, () => void> = new Map()
 
   constructor(el: HTMLElement) {
     this.el = el
@@ -36,11 +37,13 @@ export class LogViewerComponent {
     })
 
     this.el.querySelectorAll<HTMLElement>('[data-action="download-log"]').forEach((btn) => {
-      btn.addEventListener("click", () => {
+      const handler = () => {
         const url = getData(btn, "url")
         const filename = getData(btn, "filename")
         this.downloadLog(url, filename)
-      })
+      }
+      this.boundDownloadLogs.set(btn, handler)
+      btn.addEventListener("click", handler)
     })
 
     this.el.querySelectorAll<HTMLElement>('[data-action="toggle-raw"]').forEach((line) => {
@@ -62,6 +65,13 @@ export class LogViewerComponent {
     this.boundToggleRawLines.forEach((handler, line) => {
       line.removeEventListener("click", handler)
     })
+
+    this.boundDownloadLogs.forEach((handler, btn) => {
+      btn.removeEventListener("click", handler)
+    })
+
+    this.boundToggleRawLines.clear()
+    this.boundDownloadLogs.clear()
   }
 
   private async init(): Promise<void> {
@@ -102,6 +112,7 @@ export class LogViewerComponent {
   private closeLogs(): void {
     const logViewer = document.getElementById("log-viewer")
     if (logViewer) {
+      destroyComponents(logViewer)
       logViewer.innerHTML = ""
     }
     window.dispatchEvent(new CustomEvent("clear-selected-job"))

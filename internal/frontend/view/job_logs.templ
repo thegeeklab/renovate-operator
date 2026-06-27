@@ -61,7 +61,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 							data-action="toggle-level-filter"
 							aria-expanded="false"
 							aria-haspopup="listbox"
-							class="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+							class={ btnGhostLabel() }
 						>
 							@IconFunnel("h-4 w-4")
 							<span>Levels</span>
@@ -99,7 +99,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 							type="button"
 							data-action="toggle-autoscroll"
 							aria-label="Toggle auto-scroll"
-							class="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+							class={ btnGhostIcon() }
 						>
 							<span data-role="autoscroll-icon-on" class="hidden">
 								@IconEye("h-4 w-4")
@@ -124,7 +124,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 							data-url={ sanitize.JobLogsDownloadURL(data.Namespace, data.JobName) }
 							data-filename={ data.JobName + ".log" }
 							aria-label="Download full log"
-							class="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+							class={ btnGhostIcon() }
 						>
 							@IconArrowDownTray("h-4 w-4")
 						</button>
@@ -135,7 +135,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 						type="button"
 						data-action="close-logs"
 						aria-label="Close logs"
-						class="inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+						class={ btnGhostIcon() }
 					>
 						@IconXMark("h-4 w-4")
 					</button>
@@ -219,7 +219,7 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 				<button
 					type="button"
 					data-action="toggle-details"
-					class="inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+					class={ btnGhostLabel() }
 					aria-expanded="false"
 				>
 					<span>Details</span>

@@ -11,12 +11,12 @@ func btnBase() string {
 	return "cursor-pointer focus:outline-none"
 }
 
-func btnGhost() string {
-	return btnBase() + " transition-colors"
+func btnGhostIcon() string {
+	return "inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
 }
 
-func btnGhostIcon() string {
-	return btnGhost() + " text-gray-400 hover:text-white"
+func btnGhostLabel() string {
+	return "inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
 }
 
 func btnOutline() string {
