@@ -158,19 +158,19 @@ func NavBar(auth viewmodel.AuthInfo) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if auth.Enabled && auth.Authenticated {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"relative\" data-component=\"avatar-dropdown\"><button type=\"button\" data-avatar-button class=\"flex items-center gap-2 rounded-full focus:outline-none\" aria-expanded=\"false\" aria-haspopup=\"true\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<div class=\"relative\" data-component=\"avatar-dropdown\"><button type=\"button\" data-avatar-button class=\"flex items-center gap-2 rounded-full\" aria-expanded=\"false\" aria-haspopup=\"true\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			if auth.AvatarURL != "" {
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<img class=\"h-8 w-8 rounded-full\" src=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 14, "<img class=\"h-8 w-8 rounded-full hidden\" src=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.ResolveAttributeValue(auth.AvatarURL)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 70, Col: 62}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 70, Col: 69}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var5)
 				if templ_7745c5c3_Err != nil {
@@ -183,13 +183,13 @@ func NavBar(auth viewmodel.AuthInfo) templ.Component {
 				var templ_7745c5c3_Var6 string
 				templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.ResolveAttributeValue(auth.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 70, Col: 80}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `layout.templ`, Line: 70, Col: 87}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var6)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" style=\"display:none\" onload=\"this.style.display='';this.nextElementSibling.style.display='none'\" onerror=\"this.nextElementSibling.style.display='flex'\"><div class=\"h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "\" onload=\"this.classList.remove('hidden');this.nextElementSibling.classList.add('hidden')\" onerror=\"this.nextElementSibling.style.display='flex'\"><div class=\"h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

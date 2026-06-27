@@ -34,7 +34,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 					hx-target="#dashboard-content"
 					hx-swap="innerHTML"
 					hx-trigger="input changed delay:500ms, search"
-					class="block w-full rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600"
+					class="block w-full rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400"
 				/>
 				if data.SearchQuery == "" {
 					<div class="absolute inset-y-0 right-0 flex items-center pr-2 pointer-events-none">
@@ -130,7 +130,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 											id={ "sort-" + v.Name }
 											name="sort"
 											aria-label="Sort repositories"
-											class="appearance-none rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-700 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer"
+											class="appearance-none rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-700 ring-1 ring-inset ring-gray-300 bg-white cursor-pointer"
 										>
 											<option value="name">{ string(viewmodel.GitRepoFieldName) }</option>
 											<option value="date">{ string(viewmodel.GitRepoFieldCreated) }</option>
@@ -145,12 +145,12 @@ templ RenovatorList(data viewmodel.DashboardData) {
 											type="button"
 											data-cloak
 											data-action="toggle-order"
-											class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer transition-colors self-stretch"
+											class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors self-stretch"
 										>
 											<span data-role="sort-asc">
 												@IconBarsArrowDown("h-4 w-4")
 											</span>
-											<span data-role="sort-desc" style="display:none">
+											<span data-role="sort-desc" class="hidden">
 												@IconBarsArrowUp("h-4 w-4")
 											</span>
 										</button>

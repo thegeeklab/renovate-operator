@@ -2,6 +2,7 @@ import { initTooltips, hideActiveTooltip } from "./lib/tooltip"
 import { initJobLists, destroyJobLists } from "./components/job.list"
 import { initLogViewers } from "./components/log.viewer"
 import { initLogSummaries } from "./components/log.summary"
+import { initLogLevelFilters } from "./components/log.level.filter"
 import { initRenovatorDetails } from "./components/renovator.details"
 import { initRepoSorts } from "./components/repo.sort"
 import { initAvatarDropdown } from "./components/avatar.dropdown"
@@ -15,6 +16,7 @@ function initComponents(root: ParentNode): void {
   initJobLists(root)
   initLogViewers(root)
   initLogSummaries(root)
+  initLogLevelFilters(root)
   initRenovatorDetails(root)
   initRepoSorts(root)
   initAvatarDropdown(root)

@@ -127,7 +127,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(data.Jobs) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<ul class=\"flex flex-col gap-3 overflow-y-auto pr-2 pb-4 flex-1\" role=\"list\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<ul class=\"flex flex-col gap-3 overflow-y-auto p-1 -m-1 pr-2 pb-4 flex-1\" role=\"list\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

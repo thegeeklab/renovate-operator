@@ -59,7 +59,7 @@ templ GitRepoView(data viewmodel.GitRepoViewData) {
 					aria-atomic="false"
 				>
 					if len(data.Jobs) > 0 {
-						<ul class="flex flex-col gap-3 overflow-y-auto pr-2 pb-4 flex-1" role="list">
+						<ul class="flex flex-col gap-3 overflow-y-auto p-1 -m-1 pr-2 pb-4 flex-1" role="list">
 							for _, job := range data.Jobs {
 								<li>
 									<button

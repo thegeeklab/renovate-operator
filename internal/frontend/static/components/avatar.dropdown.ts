@@ -1,4 +1,5 @@
 import { computePosition, flip, offset, shift } from "@floating-ui/dom"
+import { registerComponent } from "../lib/component.registry"
 
 export class AvatarDropdown {
   private element: HTMLElement
@@ -6,14 +7,22 @@ export class AvatarDropdown {
   private menu: HTMLDivElement
   private isOpen = false
 
+  private boundHandleButtonClick: (e: Event) => void
+  private boundHandleDocumentClick: (e: Event) => void
+  private boundHandleKeydown: (e: KeyboardEvent) => void
+
   constructor(element: HTMLElement) {
     this.element = element
     this.button = element.querySelector("[data-avatar-button]")!
     this.menu = element.querySelector("[data-avatar-menu]")!
 
-    this.button.addEventListener("click", this.handleButtonClick.bind(this))
-    document.addEventListener("click", this.handleDocumentClick.bind(this))
-    document.addEventListener("keydown", this.handleKeydown.bind(this))
+    this.boundHandleButtonClick = this.handleButtonClick.bind(this)
+    this.boundHandleDocumentClick = this.handleDocumentClick.bind(this)
+    this.boundHandleKeydown = this.handleKeydown.bind(this)
+
+    this.button.addEventListener("click", this.boundHandleButtonClick)
+    document.addEventListener("click", this.boundHandleDocumentClick)
+    document.addEventListener("keydown", this.boundHandleKeydown)
   }
 
   private handleButtonClick(e: Event) {
@@ -64,14 +73,15 @@ export class AvatarDropdown {
   }
 
   destroy() {
-    this.button.removeEventListener("click", this.handleButtonClick.bind(this))
-    document.removeEventListener("click", this.handleDocumentClick.bind(this))
-    document.removeEventListener("keydown", this.handleKeydown.bind(this))
+    this.button.removeEventListener("click", this.boundHandleButtonClick)
+    document.removeEventListener("click", this.boundHandleDocumentClick)
+    document.removeEventListener("keydown", this.boundHandleKeydown)
   }
 }
 
 export function initAvatarDropdown(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>('[data-component="avatar-dropdown"]').forEach((el) => {
-    new AvatarDropdown(el)
+    const component = new AvatarDropdown(el)
+    registerComponent(el, component)
   })
 }

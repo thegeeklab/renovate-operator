@@ -62,12 +62,12 @@ templ NavBar(auth viewmodel.AuthInfo) {
 						<button
 							type="button"
 							data-avatar-button
-							class="flex items-center gap-2 rounded-full focus:outline-none"
+							class="flex items-center gap-2 rounded-full"
 							aria-expanded="false"
 							aria-haspopup="true"
 						>
 							if auth.AvatarURL != "" {
-								<img class="h-8 w-8 rounded-full" src={ auth.AvatarURL } alt={ auth.Name } style="display:none" onload="this.style.display='';this.nextElementSibling.style.display='none'" onerror="this.nextElementSibling.style.display='flex'"/>
+								<img class="h-8 w-8 rounded-full hidden" src={ auth.AvatarURL } alt={ auth.Name } onload="this.classList.remove('hidden');this.nextElementSibling.classList.add('hidden')" onerror="this.nextElementSibling.style.display='flex'"/>
 								<div class="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium">{ avatarInitial(auth.Name) }</div>
 							} else {
 								<div class="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium">{ avatarInitial(auth.Name) }</div>
