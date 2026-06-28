@@ -71,7 +71,7 @@ steps:
       - helm-docs -c dist/chart/
 
   - name: prettier
-    image: docker.io/jauderho/prettier:3.8.5
+    image: docker.io/jauderho/prettier:3.9.1
     commands:
       - prettier -w dist/chart/README.md
       - cat dist/chart/README.md
