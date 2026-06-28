@@ -22,28 +22,33 @@ steps:
 
   - name: yaml-lint
     image: docker.io/library/golang:1.26.4
+    depends_on: []
     commands:
       - make yamlfmt-lint
 
   - name: spellcheck
     image: ghcr.io/streetsidesoftware/cspell
+    depends_on: []
     commands:
       - cspell-cli lint . --gitignore --color
 
   - name: golangci-lint
     image: docker.io/golangci/golangci-lint:v2.12.2
+    depends_on: []
     commands:
       - go mod download
       - golangci-lint run
 
   - name: installer-verify
     image: docker.io/library/golang:1.26.4
+    depends_on: []
     commands:
       - make build-installer
       - git diff --exit-code
 
   - name: helm-lint
     image: quay.io/helmpack/chart-testing:v3.14.0
+    depends_on: []
     commands:
       - ct list-changed --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist
       - ct lint --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist --validate-maintainers=false
