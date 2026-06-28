@@ -88,6 +88,7 @@ func main() {
 		}
 
 		b.WriteString(templ)
+
 		if i < len(icons)-1 {
 			b.WriteString("\n\n")
 		} else {
