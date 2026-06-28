@@ -98,8 +98,13 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object paths="./..."
 	$(GO) run $(MOCKERY_PACKAGE)
+	@$(MAKE) --no-print-directory gen-icons
 	@$(MAKE) --no-print-directory templ
 	@$(MAKE) --no-print-directory yamlfmt
+
+.PHONY: gen-icons
+gen-icons: ## Generate icons.templ from heroicons npm package.
+	$(GO) run ./hack/gen-icons.go internal/frontend/view/icons.templ
 
 .PHONY: templ
 templ: templ-bin ## Generate templ components.

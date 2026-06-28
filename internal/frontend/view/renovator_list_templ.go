@@ -110,7 +110,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = IconSearch("h-4 w-4 text-gray-400").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = IconMagnifyingGlass("h-4 w-4 text-gray-400").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -193,7 +193,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = IconChevron("chevron h-5 w-5 text-gray-400 group-open:rotate-90 transition-transform duration-200").Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = IconChevronRight("chevron h-5 w-5 text-gray-400 group-open:rotate-90 transition-transform duration-200").Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -389,7 +389,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = IconSpinner("animate-spin h-5 w-5 text-indigo-600").Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = IconArrowPath("animate-spin h-5 w-5 text-indigo-600").Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
