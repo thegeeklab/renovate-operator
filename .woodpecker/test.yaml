@@ -9,7 +9,7 @@ steps:
   - name: test
     image: docker.io/library/golang:1.26.4
     commands:
-      - make test-ci
+      - make test
 
   - name: helm-test
     image: quay.io/thegeeklab/kube-tools

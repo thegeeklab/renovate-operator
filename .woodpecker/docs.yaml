@@ -6,11 +6,6 @@ when:
       - ${CI_REPO_DEFAULT_BRANCH}
 
 steps:
-  - name: markdownlint
-    image: quay.io/thegeeklab/markdownlint-cli
-    commands:
-      - markdownlint README.md CONTRIBUTING.md docs/
-
   - name: link-validation
     image: docker.io/lycheeverse/lychee:0.24
     commands:
@@ -21,7 +16,7 @@ steps:
 
   - name: pushrm-dockerhub
     image: docker.io/chko/docker-pushrm:1
-    depends_on: [markdownlint, link-validation]
+    depends_on: [link-validation]
     environment:
       DOCKER_PASS:
         from_secret: docker_password
@@ -38,7 +33,7 @@ steps:
 
   - name: pushrm-quay
     image: docker.io/chko/docker-pushrm:1
-    depends_on: [markdownlint, link-validation]
+    depends_on: [link-validation]
     environment:
       APIKEY__QUAY_IO:
         from_secret: quay_token

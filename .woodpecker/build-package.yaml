@@ -69,12 +69,16 @@ steps:
     image: docker.io/jnorwood/helm-docs:v1.14.2
     commands:
       - helm-docs -c dist/chart/
+    when:
+      - event: [tag]
 
   - name: prettier
     image: docker.io/jauderho/prettier:3.8.5
     commands:
       - prettier -w dist/chart/README.md
       - cat dist/chart/README.md
+    when:
+      - event: [tag]
 
   - name: publish
     image: quay.io/thegeeklab/wp-git-action
