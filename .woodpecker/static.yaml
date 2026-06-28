@@ -46,7 +46,6 @@ steps:
     image: docker.io/library/golang:1.26.4
     depends_on: [frontend-deps]
     commands:
-      - make frontend-deps
       - make generate
       - git diff --exit-code
 
