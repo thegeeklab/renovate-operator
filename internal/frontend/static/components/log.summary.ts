@@ -5,19 +5,21 @@ class LogSummaryComponent {
   private chevron: HTMLElement | null
   private toggleBtn: HTMLElement | null
   private isOpen: boolean
+  private boundToggle: () => void
 
   constructor(el: HTMLElement) {
     this.detailsContent = el.querySelector<HTMLElement>('[data-role="details-content"]')
     this.chevron = el.querySelector<HTMLElement>('[data-role="details-chevron"]')
     this.toggleBtn = el.querySelector<HTMLElement>('[data-action="toggle-details"]')
     this.isOpen = false
+    this.boundToggle = this.toggle.bind(this)
 
     this.bindEvents()
   }
 
   private bindEvents(): void {
     if (this.toggleBtn) {
-      this.toggleBtn.addEventListener("click", () => this.toggle())
+      this.toggleBtn.addEventListener("click", this.boundToggle)
     }
   }
 
@@ -33,11 +35,7 @@ class LogSummaryComponent {
     }
 
     if (this.chevron) {
-      if (this.isOpen) {
-        this.chevron.style.transform = "rotate(90deg)"
-      } else {
-        this.chevron.style.transform = "rotate(0deg)"
-      }
+      this.chevron.classList.toggle("rotate-90", this.isOpen)
     }
 
     if (this.toggleBtn) {
@@ -46,7 +44,9 @@ class LogSummaryComponent {
   }
 
   destroy(): void {
-    // Cleanup if needed
+    if (this.toggleBtn) {
+      this.toggleBtn.removeEventListener("click", this.boundToggle)
+    }
   }
 }
 

@@ -8,6 +8,23 @@ import "github.com/thegeeklab/renovate-operator/internal/frontend/sanitize"
 import "github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 import "github.com/thegeeklab/renovate-operator/internal/parser"
 
+type levelOption struct {
+	Value int
+	Label string
+	Class string
+}
+
+func logLevelOptions() []levelOption {
+	return []levelOption{
+		{10, "TRACE", "text-gray-500"},
+		{20, "DEBUG", "text-purple-400"},
+		{30, "INFO", "text-white"},
+		{40, "WARN", "text-yellow-400"},
+		{50, "ERROR", "text-red-500"},
+		{60, "FATAL", "text-red-300"},
+	}
+}
+
 templ JobLogs(data viewmodel.JobLogData) {
 	<div
 		id={ "logs-" + data.JobName }
@@ -36,7 +53,46 @@ templ JobLogs(data viewmodel.JobLogData) {
 					}
 				}
 			</div>
-			<div class="flex items-center gap-4">
+			<div class="flex items-center gap-1">
+				if data.Parsed != nil && !data.IsRunning {
+					<div data-component="log-level-filter" class="relative">
+						<button
+							type="button"
+							data-action="toggle-level-filter"
+							aria-expanded="false"
+							aria-haspopup="listbox"
+							class={ btnGhostLabel() }
+						>
+							@IconFunnel("h-4 w-4")
+							<span>Levels</span>
+							<span
+								data-role="level-count"
+								class="text-gray-500 tabular-nums"
+							>
+								{ strconv.Itoa(len(logLevelOptions())) }/{ strconv.Itoa(len(logLevelOptions())) }
+							</span>
+							@IconChevronUpDown("h-3.5 w-3.5 text-gray-500")
+						</button>
+						<div
+							data-role="level-menu"
+							class="hidden fixed z-50 min-w-[9rem] rounded-md bg-gray-800 border border-gray-700 shadow-lg py-1 focus:outline-none"
+							role="listbox"
+							aria-multiselectable="true"
+						>
+							for _, level := range logLevelOptions() {
+								<label class="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-700/50 cursor-pointer text-xs transition-colors">
+									<input
+										type="checkbox"
+										data-level={ strconv.Itoa(level.Value) }
+										checked
+										class="log-level-checkbox"
+									/>
+									<span class={ "font-mono font-medium " + level.Class }>{ level.Label }</span>
+								</label>
+							}
+						</div>
+					</div>
+				}
 				if data.IsRunning {
 					<span class="tooltip" data-tooltip>
 						<button
@@ -45,7 +101,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 							aria-label="Toggle auto-scroll"
 							class={ btnGhostIcon() }
 						>
-							<span data-role="autoscroll-icon-on" style="display:none">
+							<span data-role="autoscroll-icon-on" class="hidden">
 								@IconEye("h-4 w-4")
 							</span>
 							<span data-role="autoscroll-icon-off">
@@ -70,7 +126,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 							aria-label="Download full log"
 							class={ btnGhostIcon() }
 						>
-							@IconArrowDownTray("h-5 w-5")
+							@IconArrowDownTray("h-4 w-4")
 						</button>
 					}
 				}
@@ -81,7 +137,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 						aria-label="Close logs"
 						class={ btnGhostIcon() }
 					>
-						@IconXMark("h-5 w-5")
+						@IconXMark("h-4 w-4")
 					</button>
 				}
 			</div>
@@ -106,6 +162,9 @@ templ JobLogs(data viewmodel.JobLogData) {
 							class="log-line cursor-pointer hover:bg-gray-800/50 px-1 py-1.5 rounded"
 							data-action="toggle-raw"
 							data-raw={ line.Raw }
+							if line.Level > 0 {
+								data-level={ strconv.Itoa(int(line.Level)) }
+							}
 						>
 							<div class="flex items-baseline gap-2">
 								if line.Time != "" {
@@ -156,14 +215,14 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 					</div>
 				}
 			</div>
-			<div class="flex items-center gap-2">
+			<div class="flex items-center gap-1">
 				<button
 					type="button"
 					data-action="toggle-details"
-					class="flex items-center gap-1 text-gray-500 hover:text-gray-300 transition-colors"
+					class={ btnGhostLabel() }
 					aria-expanded="false"
 				>
-					<span class="text-xs">Details</span>
+					<span>Details</span>
 					<svg class="h-4 w-4 transition-transform" data-role="details-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
 						<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
 					</svg>

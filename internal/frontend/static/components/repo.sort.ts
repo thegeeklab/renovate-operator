@@ -58,8 +58,8 @@ export class RepoSortComponent {
     const iconDesc = this.el.querySelector<HTMLElement>('[data-role="sort-desc"]')
     const orderBtn = this.el.querySelector<HTMLElement>('[data-action="toggle-order"]')
 
-    if (iconAsc) iconAsc.style.display = this.order === "asc" ? "" : "none"
-    if (iconDesc) iconDesc.style.display = this.order === "desc" ? "" : "none"
+    if (iconAsc) iconAsc.classList.toggle("hidden", this.order !== "asc")
+    if (iconDesc) iconDesc.classList.toggle("hidden", this.order !== "desc")
     if (orderBtn) {
       orderBtn.setAttribute(
         "aria-label",

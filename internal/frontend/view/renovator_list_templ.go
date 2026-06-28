@@ -101,7 +101,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" autocomplete=\"off\" placeholder=\"Search all repositories...\" aria-label=\"Search all repositories\" hx-get=\"/\" hx-push-url=\"true\" hx-target=\"#dashboard-content\" hx-swap=\"innerHTML\" hx-trigger=\"input changed delay:500ms, search\" class=\"block w-full rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600\"> ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 5, "\" autocomplete=\"off\" placeholder=\"Search all repositories...\" aria-label=\"Search all repositories\" hx-get=\"/\" hx-push-url=\"true\" hx-target=\"#dashboard-content\" hx-swap=\"innerHTML\" hx-trigger=\"input changed delay:500ms, search\" class=\"block w-full rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400\"> ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -309,7 +309,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" name=\"sort\" aria-label=\"Sort repositories\" class=\"appearance-none rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-700 ring-1 ring-inset ring-gray-300 focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer\"><option value=\"name\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "\" name=\"sort\" aria-label=\"Sort repositories\" class=\"appearance-none rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-700 ring-1 ring-inset ring-gray-300 bg-white cursor-pointer\"><option value=\"name\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -356,7 +356,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</div></div><span class=\"tooltip\" data-tooltip><button type=\"button\" data-cloak data-action=\"toggle-order\" class=\"inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-indigo-600 bg-white cursor-pointer transition-colors self-stretch\"><span data-role=\"sort-asc\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 31, "</div></div><span class=\"tooltip\" data-tooltip><button type=\"button\" data-cloak data-action=\"toggle-order\" class=\"inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors self-stretch\"><span data-role=\"sort-asc\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -364,7 +364,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</span> <span data-role=\"sort-desc\" style=\"display:none\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "</span> <span data-role=\"sort-desc\" class=\"hidden\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

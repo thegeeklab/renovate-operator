@@ -1,11 +1,17 @@
 import { getPersisted, setPersisted } from "../lib/storage"
 import { getRefs, getData, getBoolData, nextFrame } from "../lib/dom"
+import { registerComponent, destroyComponents } from "../lib/component.registry"
 
 export class LogViewerComponent {
   private el: HTMLElement
   private autoscroll: boolean
   private isRunning: boolean
   private refs: Record<string, HTMLElement>
+
+  private boundToggleAutoscroll: () => void
+  private boundCloseLogs: () => void
+  private boundToggleRawLines: Map<HTMLElement, () => void> = new Map()
+  private boundDownloadLogs: Map<HTMLElement, () => void> = new Map()
 
   constructor(el: HTMLElement) {
     this.el = el
@@ -14,30 +20,58 @@ export class LogViewerComponent {
     this.autoscroll = getPersisted(key, false)
     this.refs = getRefs(el)
 
+    this.boundToggleAutoscroll = this.toggleAutoscroll.bind(this)
+    this.boundCloseLogs = this.closeLogs.bind(this)
+
     this.bindEvents()
     this.init()
   }
 
   private bindEvents(): void {
     this.el.querySelectorAll<HTMLElement>('[data-action="toggle-autoscroll"]').forEach((btn) => {
-      btn.addEventListener("click", () => this.toggleAutoscroll())
+      btn.addEventListener("click", this.boundToggleAutoscroll)
     })
 
     this.el.querySelectorAll<HTMLElement>('[data-action="close-logs"]').forEach((btn) => {
-      btn.addEventListener("click", () => this.closeLogs())
+      btn.addEventListener("click", this.boundCloseLogs)
     })
 
     this.el.querySelectorAll<HTMLElement>('[data-action="download-log"]').forEach((btn) => {
-      btn.addEventListener("click", () => {
+      const handler = () => {
         const url = getData(btn, "url")
         const filename = getData(btn, "filename")
         this.downloadLog(url, filename)
-      })
+      }
+      this.boundDownloadLogs.set(btn, handler)
+      btn.addEventListener("click", handler)
     })
 
     this.el.querySelectorAll<HTMLElement>('[data-action="toggle-raw"]').forEach((line) => {
-      line.addEventListener("click", () => this.toggleRawLine(line))
+      const handler = () => this.toggleRawLine(line)
+      this.boundToggleRawLines.set(line, handler)
+      line.addEventListener("click", handler)
     })
+  }
+
+  destroy(): void {
+    this.el.querySelectorAll<HTMLElement>('[data-action="toggle-autoscroll"]').forEach((btn) => {
+      btn.removeEventListener("click", this.boundToggleAutoscroll)
+    })
+
+    this.el.querySelectorAll<HTMLElement>('[data-action="close-logs"]').forEach((btn) => {
+      btn.removeEventListener("click", this.boundCloseLogs)
+    })
+
+    this.boundToggleRawLines.forEach((handler, line) => {
+      line.removeEventListener("click", handler)
+    })
+
+    this.boundDownloadLogs.forEach((handler, btn) => {
+      btn.removeEventListener("click", handler)
+    })
+
+    this.boundToggleRawLines.clear()
+    this.boundDownloadLogs.clear()
   }
 
   private async init(): Promise<void> {
@@ -69,8 +103,8 @@ export class LogViewerComponent {
     const label = this.el.querySelector<HTMLElement>('[data-role="autoscroll-label"]')
     const toggleBtn = this.el.querySelector<HTMLElement>('[data-action="toggle-autoscroll"]')
 
-    if (iconOn) iconOn.style.display = this.autoscroll ? "" : "none"
-    if (iconOff) iconOff.style.display = this.autoscroll ? "none" : ""
+    if (iconOn) iconOn.classList.toggle("hidden", !this.autoscroll)
+    if (iconOff) iconOff.classList.toggle("hidden", this.autoscroll)
     if (label) label.textContent = this.autoscroll ? "Auto-scroll enabled" : "Auto-scroll disabled"
     if (toggleBtn) toggleBtn.setAttribute("aria-pressed", String(this.autoscroll))
   }
@@ -78,6 +112,7 @@ export class LogViewerComponent {
   private closeLogs(): void {
     const logViewer = document.getElementById("log-viewer")
     if (logViewer) {
+      destroyComponents(logViewer)
       logViewer.innerHTML = ""
     }
     window.dispatchEvent(new CustomEvent("clear-selected-job"))
@@ -102,7 +137,7 @@ export class LogViewerComponent {
     }
 
     rawContent.classList.toggle("hidden")
-    chevron.style.transform = isExpanded ? "rotate(0deg)" : "rotate(90deg)"
+    chevron.classList.toggle("rotate-90", !isExpanded)
   }
 
   private async downloadLog(url: string, filename: string): Promise<void> {
@@ -144,6 +179,7 @@ export class LogViewerComponent {
 
 export function initLogViewers(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>('[data-component="log-viewer"]').forEach((el) => {
-    new LogViewerComponent(el)
+    const component = new LogViewerComponent(el)
+    registerComponent(el, component)
   })
 }
