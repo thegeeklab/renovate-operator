@@ -284,9 +284,11 @@ define go-install-tool
 set -e; \
 package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
-rm -f $(1) || true ;\
-GOBIN=$(LOCALBIN) $(GO) install $${package} ;\
-mv $(1) $(1)-$(3) ;\
+tmpdir=$$(mktemp -d) ;\
+GOBIN=$${tmpdir} $(GO) install $${package} ;\
+binary_name=$$(basename $(1)) ;\
+mv $${tmpdir}/$${binary_name} $(1)-$(3) ;\
+rm -rf $${tmpdir} ;\
 } ;\
 ln -sf $(1)-$(3) $(1)
 endef
