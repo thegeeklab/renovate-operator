@@ -98,8 +98,13 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
 	$(CONTROLLER_GEN) object paths="./..."
 	$(GO) run $(MOCKERY_PACKAGE)
+	@$(MAKE) --no-print-directory gen-icons
 	@$(MAKE) --no-print-directory templ
 	@$(MAKE) --no-print-directory yamlfmt
+
+.PHONY: gen-icons
+gen-icons: ## Generate icons.templ from heroicons npm package.
+	$(GO) run ./hack/gen-icons.go internal/frontend/view/icons.templ
 
 .PHONY: templ
 templ: templ-bin ## Generate templ components.
@@ -279,9 +284,11 @@ define go-install-tool
 set -e; \
 package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
-rm -f $(1) || true ;\
-GOBIN=$(LOCALBIN) $(GO) install $${package} ;\
-mv $(1) $(1)-$(3) ;\
+tmpdir=$$(mktemp -d) ;\
+GOBIN=$${tmpdir} $(GO) install $${package} ;\
+binary_name=$$(basename $(1)) ;\
+mv $${tmpdir}/$${binary_name} $(1)-$(3) ;\
+rm -rf $${tmpdir} ;\
 } ;\
 ln -sf $(1)-$(3) $(1)
 endef

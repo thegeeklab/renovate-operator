@@ -73,7 +73,8 @@
     "memstore",
     "automerged",
     "PRURL",
-    "HTMLURL"
+    "HTMLURL",
+    "heroicons"
   ],
   "ignorePaths": [
     ".woodpecker",

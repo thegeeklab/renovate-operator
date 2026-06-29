@@ -2,12 +2,12 @@ root = "."
 tmp_dir = "tmp"
 
 [build]
-cmd = "make templ && make build-go"
+cmd = "make gen-icons && make templ && make build-go"
 full_bin = "ENABLE_CONTROLLERS=true ENABLE_WEBHOOKS=false ./bin/manager -zap-log-level=debug"
 
 include_ext = ["go", "templ"]
 exclude_dir = ["tmp", "vendor", "node_modules", "dist", "test", "config"]
-include_dir = ["cmd", "internal"]
+include_dir = ["cmd", "internal", "hack"]
 
 [log]
 time = true

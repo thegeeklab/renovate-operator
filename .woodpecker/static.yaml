@@ -6,49 +6,59 @@ when:
       - ${CI_REPO_DEFAULT_BRANCH}
 
 steps:
+  - name: frontend-deps
+    image: docker.io/library/node:lts
+    commands:
+      - make frontend-deps
+
   - name: eslint
     image: docker.io/library/node:lts
-    depends_on: []
+    depends_on: [frontend-deps]
     commands:
-      - make frontend-deps eslint typecheck
-    environment:
-      FORCE_COLOR: "true"
+      - make eslint typecheck
 
   - name: markdownlint
     image: quay.io/thegeeklab/markdownlint-cli
-    depends_on: []
+    depends_on: [frontend-deps]
     commands:
       - markdownlint 'docs/*.md' 'dist/chart/README.md' 'README.md' 'CONTRIBUTING.md'
 
   - name: yaml-lint
     image: docker.io/library/golang:1.26.4
-    depends_on: []
+    depends_on: [frontend-deps]
     commands:
       - make yamlfmt-lint
 
   - name: spellcheck
     image: ghcr.io/streetsidesoftware/cspell
-    depends_on: []
+    depends_on: [frontend-deps]
     commands:
       - cspell-cli lint . --gitignore --color
 
   - name: golangci-lint
     image: docker.io/golangci/golangci-lint:v2.12.2
-    depends_on: []
+    depends_on: [frontend-deps]
     commands:
       - go mod download
       - golangci-lint run
 
+  - name: generate-verify
+    image: docker.io/library/golang:1.26.4
+    depends_on: [frontend-deps]
+    commands:
+      - make generate
+      - git diff --exit-code
+
   - name: installer-verify
     image: docker.io/library/golang:1.26.4
-    depends_on: []
+    depends_on: [frontend-deps]
     commands:
       - make build-installer
       - git diff --exit-code
 
   - name: helm-lint
     image: quay.io/helmpack/chart-testing:v3.14.0
-    depends_on: []
+    depends_on: [frontend-deps]
     commands:
       - ct list-changed --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist
       - ct lint --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist --validate-maintainers=false
