@@ -38,9 +38,13 @@ steps:
   - name: golangci-lint
     image: docker.io/golangci/golangci-lint:v2.12.2
     depends_on: [frontend-deps]
+    environment:
+      GOTOOLCHAIN: local
+      GOMAXPROCS: "2"
+      GOGC: "500"
     commands:
       - go mod download
-      - golangci-lint run
+      - golangci-lint run --concurrency=2
 
   - name: generate-verify
     image: docker.io/library/golang:1.26.4
