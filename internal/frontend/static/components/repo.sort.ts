@@ -57,6 +57,7 @@ export class RepoSortComponent {
     const iconAsc = this.el.querySelector<HTMLElement>('[data-role="sort-asc"]')
     const iconDesc = this.el.querySelector<HTMLElement>('[data-role="sort-desc"]')
     const orderBtn = this.el.querySelector<HTMLElement>('[data-action="toggle-order"]')
+    const tooltipText = this.el.querySelector<HTMLElement>(".tooltip-text")
 
     if (iconAsc) iconAsc.classList.toggle("hidden", this.order !== "asc")
     if (iconDesc) iconDesc.classList.toggle("hidden", this.order !== "desc")
@@ -65,6 +66,9 @@ export class RepoSortComponent {
         "aria-label",
         this.order === "asc" ? "Switch to descending order" : "Switch to ascending order"
       )
+    }
+    if (tooltipText) {
+      tooltipText.textContent = this.order === "asc" ? "Sort ascending" : "Sort descending"
     }
 
     const repoList = this.el.querySelector<HTMLElement>('[data-ref="repoList"]')

@@ -28,6 +28,10 @@ func statusCardBase() string {
 }
 
 // Tooltip wraps content with a styled tooltip.
+templ Kbd(text string) {
+	<kbd>{ text }</kbd>
+}
+
 templ Tooltip(text string) {
 	<span
 		class="tooltip"

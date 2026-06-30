@@ -28,7 +28,7 @@ templ GitRepoList(repos []viewmodel.GitRepoInfo) {
 						class={ getRepoClass(r.LastRenovateStatus) }
 					>
 						<div class="min-w-0 flex-1">
-							<p class="text-sm font-medium text-gray-900 truncate">{ r.Name }</p>
+							<p class="text-sm font-medium text-gray-900 truncate">{ r.FullName }</p>
 							<p class="mt-1 flex items-center gap-3 text-xs text-gray-500">
 								@Tooltip(r.CreatedAt.Format("Jan 02, 2006 15:04")) {
 									<span>
