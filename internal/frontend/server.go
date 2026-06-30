@@ -107,11 +107,13 @@ func NewServer(
 		s.registerAuthRoutes()
 	}
 
-	if !s.config.DevMode {
-		staticDir := "internal/frontend/static/dist"
-		fs := http.FileServer(http.Dir(staticDir))
-		s.router.Handle("/static/*", http.StripPrefix("/static/", fs))
+	staticDir := "internal/frontend/static/dist"
+	if s.config.DevMode {
+		staticDir = "internal/frontend/static/public"
 	}
+
+	fs := http.FileServer(http.Dir(staticDir))
+	s.router.Handle("/static/*", http.StripPrefix("/static/", fs))
 
 	s.server = &http.Server{
 		Addr:         config.Addr,

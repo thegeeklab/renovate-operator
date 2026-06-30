@@ -22,6 +22,8 @@ templ Layout(styles []string, scripts []string, auth viewmodel.AuthInfo, content
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>Renovate Operator Dashboard</title>
+			<link rel="icon" type="image/svg+xml" href="/static/logo.svg" sizes="any"/>
+			<link rel="preload" href="/static/logo.svg" as="image"/>
 			<style>
 				[data-cloak] {
 					display: none !important;
@@ -86,8 +88,9 @@ templ NavBar(auth viewmodel.AuthInfo) {
 									<input type="hidden" name="csrf_token" value={ auth.CSRFToken }/>
 									<button
 										type="submit"
-										class="block w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-b-md"
+										class="flex items-center gap-2 w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-b-md"
 									>
+										@IconArrowRightOnRectangle("h-4 w-4")
 										Sign out
 									</button>
 								</form>
