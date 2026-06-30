@@ -120,6 +120,9 @@ linters:
       - third_party$
       - builtin$
       - examples$
+      - "zz_generated\\..*\\.go$"
+      - ".*_templ\\.go$"
+      - ".*mock_.*\\.go$"
 
 formatters:
   enable:
@@ -132,6 +135,11 @@ formatters:
   exclusions:
     generated: lax
     paths:
+      - node_modules
       - third_party$
       - builtin$
       - examples$
+      - examples$
+      - "zz_generated\\..*\\.go$"
+      - ".*_templ\\.go$"
+      - ".*mock_.*\\.go$"
