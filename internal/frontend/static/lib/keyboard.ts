@@ -43,16 +43,23 @@ let u: Unsubscribe | null = null
 let slashHandler: ((e: KeyboardEvent) => void) | null = null
 let searchEscHandler: ((e: KeyboardEvent) => void) | null = null
 
-export function initKeyboard(): void {
+function cleanup(): void {
   if (u) {
     u()
+    u = null
   }
   if (slashHandler) {
     window.removeEventListener("keydown", slashHandler)
+    slashHandler = null
   }
   if (searchEscHandler) {
     document.removeEventListener("keydown", searchEscHandler, true)
+    searchEscHandler = null
   }
+}
+
+export function initKeyboard(): void {
+  cleanup()
 
   slashHandler = (e: KeyboardEvent) => {
     if (isEditableTarget()) return
@@ -80,16 +87,5 @@ export function initKeyboard(): void {
 }
 
 export function destroyKeyboard(): void {
-  if (u) {
-    u()
-    u = null
-  }
-  if (slashHandler) {
-    window.removeEventListener("keydown", slashHandler)
-    slashHandler = null
-  }
-  if (searchEscHandler) {
-    document.removeEventListener("keydown", searchEscHandler, true)
-    searchEscHandler = null
-  }
+  cleanup()
 }
