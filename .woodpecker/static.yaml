@@ -39,7 +39,6 @@ steps:
     image: docker.io/golangci/golangci-lint:v2.12.2
     depends_on: [frontend-deps]
     environment:
-      GOTOOLCHAIN: local
       GOMAXPROCS: "2"
       GOGC: "500"
     commands:
