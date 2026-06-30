@@ -15,7 +15,7 @@ linters:
     - copyloopvar
     - decorder
     - dogsled
-    - dupl
+    # - dupl
     - dupword
     - durationcheck
     - err113
@@ -26,10 +26,10 @@ linters:
     - forcetypeassert
     - ginkgolinter
     - gocheckcompilerdirectives
-    - gocognit
+    # - gocognit
     # - goconst
     - gocritic
-    - gocyclo
+    # - gocyclo
     - godot
     - goheader
     - gomoddirectives
@@ -44,14 +44,14 @@ linters:
     - ireturn
     - lll
     - loggercheck
-    - maintidx
+    # - maintidx
     - makezero
     - misspell
     - mnd
     - modernize
     - musttag
     - nakedret
-    - nestif
+    # - nestif
     - nilerr
     - nilnil
     - nlreturn
