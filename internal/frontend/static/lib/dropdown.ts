@@ -26,6 +26,7 @@ export class Dropdown {
   private boundButtonClick: (e: Event) => void
   private boundDocumentClick: (e: Event) => void
   private boundKeydown: (e: KeyboardEvent) => void
+  private boundFocusOut: (e: FocusEvent) => void
 
   constructor(el: HTMLElement, config: DropdownConfig) {
     this.el = el
@@ -43,10 +44,12 @@ export class Dropdown {
     this.boundButtonClick = this.handleButtonClick.bind(this)
     this.boundDocumentClick = this.handleDocumentClick.bind(this)
     this.boundKeydown = this.handleKeydown.bind(this)
+    this.boundFocusOut = this.handleFocusOut.bind(this)
 
     this.button.addEventListener("click", this.boundButtonClick)
     document.addEventListener("click", this.boundDocumentClick)
     document.addEventListener("keydown", this.boundKeydown)
+    this.el.addEventListener("focusout", this.boundFocusOut)
   }
 
   private handleButtonClick(e: Event): void {
@@ -62,10 +65,17 @@ export class Dropdown {
 
   private handleKeydown(e: KeyboardEvent): void {
     if (e.key === "Escape" && this.isOpen) {
+      e.preventDefault()
       this.close()
       if (this.cfg.focusOnClose) {
         this.button.focus()
       }
+    }
+  }
+
+  private handleFocusOut(e: FocusEvent): void {
+    if (this.isOpen && !this.el.contains(e.relatedTarget as Node)) {
+      this.close()
     }
   }
 
@@ -105,5 +115,6 @@ export class Dropdown {
     this.button.removeEventListener("click", this.boundButtonClick)
     document.removeEventListener("click", this.boundDocumentClick)
     document.removeEventListener("keydown", this.boundKeydown)
+    this.el.removeEventListener("focusout", this.boundFocusOut)
   }
 }

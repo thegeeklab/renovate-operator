@@ -57,7 +57,7 @@ templ NavBar(auth viewmodel.AuthInfo) {
 				<div class="flex items-center">
 					<div class="flex-shrink-0 flex items-center gap-2">
 						@Tooltip("Go home [g h]") {
-							<a href="/" class="flex items-center gap-4">
+							<a href="/" class="flex items-center gap-4 rounded-md py-1">
 								<img src="/static/logo.svg" alt="Logo" class="h-10 w-10 rounded bg-gray-800" loading="eager" decoding="async"/>
 								<span class="text-white font-bold text-xl">Renovate Operator</span>
 							</a>
@@ -82,18 +82,18 @@ templ NavBar(auth viewmodel.AuthInfo) {
 						</button>
 						<div
 							data-avatar-menu
-							class="hidden fixed w-48 rounded-md bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none overflow-hidden z-50"
+							class="hidden fixed w-48 rounded-md bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none z-50"
 						>
-							<div class="px-4 py-3">
+							<div class="px-4 py-2 rounded-t-md">
 								<p class="text-sm text-gray-900 font-medium">{ auth.Name }</p>
 								<p class="text-xs text-gray-500 truncate">{ auth.Provider }</p>
 							</div>
-							<div class="border-t border-gray-100">
-								<form method="POST" action="/auth/logout">
+							<div class="p-2 border-t border-gray-100">
+								<form method="POST" action="/auth/logout" hx-boost="false">
 									<input type="hidden" name="csrf_token" value={ auth.CSRFToken }/>
 									<button
 										type="submit"
-										class="flex items-center gap-2 w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-b-md"
+										class="flex items-center gap-2 w-full px-2 py-1 rounded-md text-left text-sm text-gray-700 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset rounded-b-md"
 									>
 										@IconArrowRightOnRectangle("h-4 w-4")
 										Sign out

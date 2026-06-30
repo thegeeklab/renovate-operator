@@ -169,7 +169,7 @@ func NavBar(auth viewmodel.AuthInfo) templ.Component {
 				}()
 			}
 			ctx = templ.InitializeContext(ctx)
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<a href=\"/\" class=\"flex items-center gap-4\"><img src=\"/static/logo.svg\" alt=\"Logo\" class=\"h-10 w-10 rounded bg-gray-800\" loading=\"eager\" decoding=\"async\"> <span class=\"text-white font-bold text-xl\">Renovate Operator</span></a>")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 13, "<a href=\"/\" class=\"flex items-center gap-4 rounded-md py-1\"><img src=\"/static/logo.svg\" alt=\"Logo\" class=\"h-10 w-10 rounded bg-gray-800\" loading=\"eager\" decoding=\"async\"> <span class=\"text-white font-bold text-xl\">Renovate Operator</span></a>")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -251,7 +251,7 @@ func NavBar(auth viewmodel.AuthInfo) templ.Component {
 					return templ_7745c5c3_Err
 				}
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</button><div data-avatar-menu class=\"hidden fixed w-48 rounded-md bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none overflow-hidden z-50\"><div class=\"px-4 py-3\"><p class=\"text-sm text-gray-900 font-medium\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</button><div data-avatar-menu class=\"hidden fixed w-48 rounded-md bg-white shadow-lg ring-1 ring-gray-200 focus:outline-none z-50\"><div class=\"px-4 py-2 rounded-t-md\"><p class=\"text-sm text-gray-900 font-medium\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -277,7 +277,7 @@ func NavBar(auth viewmodel.AuthInfo) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</p></div><div class=\"border-t border-gray-100\"><form method=\"POST\" action=\"/auth/logout\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</p></div><div class=\"p-2 border-t border-gray-100\"><form method=\"POST\" action=\"/auth/logout\" hx-boost=\"false\"><input type=\"hidden\" name=\"csrf_token\" value=\"")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -290,7 +290,7 @@ func NavBar(auth viewmodel.AuthInfo) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\"> <button type=\"submit\" class=\"flex items-center gap-2 w-full px-4 py-2 text-left text-sm text-gray-700 hover:bg-gray-100 rounded-b-md\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "\"> <button type=\"submit\" class=\"flex items-center gap-2 w-full px-2 py-1 rounded-md text-left text-sm text-gray-700 hover:bg-gray-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-500 focus-visible:ring-inset rounded-b-md\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
