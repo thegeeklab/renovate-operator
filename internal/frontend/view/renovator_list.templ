@@ -141,7 +141,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 											@IconChevronUpDown("h-4 w-4 text-gray-400")
 										</div>
 									</div>
-									<span class="tooltip" data-tooltip>
+									@Tooltip("Sort ascending", "sort-order") {
 										<button
 											type="button"
 											data-cloak
@@ -155,10 +155,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 												@IconBarsArrowUp("h-4 w-4")
 											</span>
 										</button>
-										<span class="tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100">
-											Sort ascending
-										</span>
-									</span>
+									}
 								</div>
 								<div
 									data-ref="repoList"

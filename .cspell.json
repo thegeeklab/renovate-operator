@@ -92,6 +92,7 @@
     "go.mod",
     ".npmrc",
     "**/fixtures/**/*",
+    "*.svg",
     // generated
     "go.sum",
     "renovate.json",

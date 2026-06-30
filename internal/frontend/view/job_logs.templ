@@ -94,7 +94,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 					</div>
 				}
 				if data.IsRunning {
-					<span class="tooltip" data-tooltip>
+					@Tooltip("Auto-scroll disabled", "autoscroll") {
 						<button
 							type="button"
 							data-action="toggle-autoscroll"
@@ -108,13 +108,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 								@IconEyeSlash("h-4 w-4")
 							</span>
 						</button>
-						<span
-							data-role="autoscroll-label"
-							class="tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100"
-						>
-							Auto-scroll disabled
-						</span>
-					</span>
+					}
 				}
 				if !data.IsRunning {
 					@Tooltip("Download full log") {

@@ -57,7 +57,9 @@ export class RepoSortComponent {
     const iconAsc = this.el.querySelector<HTMLElement>('[data-role="sort-asc"]')
     const iconDesc = this.el.querySelector<HTMLElement>('[data-role="sort-desc"]')
     const orderBtn = this.el.querySelector<HTMLElement>('[data-action="toggle-order"]')
-    const tooltipText = this.el.querySelector<HTMLElement>(".tooltip-text")
+    const tooltipText = this.el.querySelector<HTMLElement>(
+      '[data-role="sort-order"] .tooltip-text span:first-child'
+    )
 
     if (iconAsc) iconAsc.classList.toggle("hidden", this.order !== "asc")
     if (iconDesc) iconDesc.classList.toggle("hidden", this.order !== "desc")

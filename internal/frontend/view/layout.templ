@@ -56,17 +56,12 @@ templ NavBar(auth viewmodel.AuthInfo) {
 			<div class="flex h-16 items-center justify-between">
 				<div class="flex items-center">
 					<div class="flex-shrink-0 flex items-center gap-2">
-						<span class="tooltip" data-tooltip>
+						@Tooltip("Go home [g h]") {
 							<a href="/" class="flex items-center gap-4">
 								<img src="/static/logo.svg" alt="Logo" class="h-10 w-10 rounded bg-gray-800" loading="eager" decoding="async"/>
 								<span class="text-white font-bold text-xl">Renovate Operator</span>
 							</a>
-							<span class="tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 flex items-center gap-1.5">
-								<span>Go home</span>
-								@Kbd("g")
-								@Kbd("h")
-							</span>
-						</span>
+						}
 					</div>
 				</div>
 				if auth.Enabled && auth.Authenticated {
