@@ -68,6 +68,7 @@ export class RepoSortComponent {
         "aria-label",
         this.order === "asc" ? "Switch to descending order" : "Switch to ascending order"
       )
+      orderBtn.setAttribute("aria-pressed", this.order === "asc" ? "true" : "false")
     }
     if (tooltipText) {
       tooltipText.textContent = this.order === "asc" ? "Sort ascending" : "Sort descending"
