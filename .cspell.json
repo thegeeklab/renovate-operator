@@ -74,7 +74,9 @@
     "automerged",
     "PRURL",
     "HTMLURL",
-    "heroicons"
+    "heroicons",
+    "Forgejo",
+    "tinykeys"
   ],
   "ignorePaths": [
     ".woodpecker",
@@ -90,6 +92,7 @@
     "go.mod",
     ".npmrc",
     "**/fixtures/**/*",
+    "*.svg",
     // generated
     "go.sum",
     "renovate.json",

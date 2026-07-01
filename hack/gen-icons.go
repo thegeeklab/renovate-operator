@@ -18,6 +18,7 @@ var icons = []iconDef{
 	{fileName: "arrow-down-tray"},
 	{fileName: "arrow-left"},
 	{fileName: "arrow-path"},
+	{fileName: "arrow-right-on-rectangle"},
 	{fileName: "arrow-top-right-on-square"},
 	{fileName: "bars-arrow-down"},
 	{fileName: "bars-arrow-up"},

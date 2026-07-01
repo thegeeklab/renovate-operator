@@ -100,12 +100,15 @@ export class LogViewerComponent {
   private updateAutoscrollUI(): void {
     const iconOn = this.el.querySelector<HTMLElement>('[data-role="autoscroll-icon-on"]')
     const iconOff = this.el.querySelector<HTMLElement>('[data-role="autoscroll-icon-off"]')
-    const label = this.el.querySelector<HTMLElement>('[data-role="autoscroll-label"]')
+    const tooltipText = this.el.querySelector<HTMLElement>(
+      '[data-role="autoscroll"] .tooltip-text span:first-child'
+    )
     const toggleBtn = this.el.querySelector<HTMLElement>('[data-action="toggle-autoscroll"]')
 
     if (iconOn) iconOn.classList.toggle("hidden", !this.autoscroll)
     if (iconOff) iconOff.classList.toggle("hidden", this.autoscroll)
-    if (label) label.textContent = this.autoscroll ? "Auto-scroll enabled" : "Auto-scroll disabled"
+    if (tooltipText)
+      tooltipText.textContent = this.autoscroll ? "Auto-scroll enabled" : "Auto-scroll disabled"
     if (toggleBtn) toggleBtn.setAttribute("aria-pressed", String(this.autoscroll))
   }
 

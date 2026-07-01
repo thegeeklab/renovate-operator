@@ -3,6 +3,7 @@ import { resolve } from "path"
 import tailwindcss from "@tailwindcss/vite"
 
 export default defineConfig({
+  publicDir: "internal/frontend/static/public",
   plugins: [
     tailwindcss({
       content: [

@@ -117,9 +117,7 @@ kubectl port-forward -n renovate-system \
   deployment/renovate-operator-controller-manager 8082:8082
 ```
 
-Then open <http://localhost:8082> in your browser.
-
-See [Web UI Guide](https://github.com/thegeeklab/renovate-operator/blob/main/docs/user-guides/web-ui.md) for details.
+Then open `<http://localhost:8082>` in your browser.
 
 ## Uninstallation
 

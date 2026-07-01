@@ -1,5 +1,7 @@
 package view
 
+import "strings"
+
 func btnBase() string {
 	return "cursor-pointer focus:outline-none"
 }
@@ -28,14 +30,28 @@ func statusCardBase() string {
 }
 
 // Tooltip wraps content with a styled tooltip.
-templ Tooltip(text string) {
+templ Kbd(text string) {
+	<kbd>{ text }</kbd>
+}
+
+templ Tooltip(text string, opts ...string) {
 	<span
 		class="tooltip"
 		data-tooltip
+		if len(opts) > 0 && opts[0] != "" {
+			data-role={ opts[0] }
+		}
 	>
 		{ children... }
-		<span class="tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100">
-			{ text }
+		<span class="tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 flex items-center gap-1.5">
+			if strings.Contains(text, " [") && strings.HasSuffix(text, "]") {
+				<span>{ strings.Split(text, " [")[0] }</span>
+				for _, kbd := range strings.Split(strings.TrimSuffix(strings.Split(text, " [")[1], "]"), " ") {
+					@Kbd(kbd)
+				}
+			} else {
+				<span>{ text }</span>
+			}
 		</span>
 	</span>
 }
