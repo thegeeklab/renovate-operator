@@ -15,6 +15,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -94,7 +95,7 @@ func NewServer(
 	s.apiHandler = NewAPIHandler(client, clientset, authManager)
 	s.webHandler = NewWebHandler(client, clientset, broker, s.assets, authManager)
 
-	s.router.Use(errorPageMiddleware(s.assets.Styles))
+	s.router.Use(errorPageMiddleware(s.assets.Styles, s.assets.Scripts, authManager))
 
 	if authManager != nil {
 		s.router.Use(auth.Middleware(authManager))
@@ -164,7 +165,11 @@ var defaultErrorPages = map[int]ErrorPageInfo{
 // while passing through responses unchanged for API requests. It uses a response writer wrapper to
 // buffer the body and capture the status code, then decides whether to render a styled page based
 // on the request path and status.
-func errorPageMiddleware(styles []string) func(http.Handler) http.Handler {
+func errorPageMiddleware(
+	styles []string,
+	scripts []string,
+	authManager *auth.Manager,
+) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			if auth.IsAPIPath(r.URL.Path) {
@@ -199,11 +204,54 @@ func errorPageMiddleware(styles []string) func(http.Handler) http.Handler {
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			rec.commit()
 
-			if err := view.ErrorPage(rec.statusCode, title, message, styles).Render(r.Context(), w); err != nil {
+			authInfo := buildErrorAuthInfo(r, authManager)
+
+			if err := view.ErrorPage(
+				rec.statusCode, title, message, styles, scripts, authInfo,
+			).Render(r.Context(), w); err != nil {
 				frontendLog.Error(err, "Failed to render error page")
 			}
 		})
 	}
+}
+
+func buildErrorAuthInfo(r *http.Request, authManager *auth.Manager) viewmodel.AuthInfo {
+	info := viewmodel.AuthInfo{}
+
+	if authManager == nil || !authManager.IsEnabled() {
+		return info
+	}
+
+	info.Enabled = true
+
+	sessionManager := authManager.SessionManager()
+
+	var token string
+	if cookie, err := r.Cookie(sessionManager.Cookie.Name); err == nil {
+		token = cookie.Value
+	}
+
+	ctx, err := sessionManager.Load(r.Context(), token)
+	if err != nil {
+		return info
+	}
+
+	session, ok := auth.GetSessionData(ctx, sessionManager)
+	if !ok {
+		return info
+	}
+
+	info.Authenticated = true
+	info.Name = session.Name
+	info.AvatarURL = session.AvatarURL
+	info.Provider = session.Provider
+
+	csrfToken := auth.GetCSRFToken(ctx, sessionManager)
+	if csrfToken != "" {
+		info.CSRFToken = csrfToken
+	}
+
+	return info
 }
 
 func resolveErrorInfo(rec *errorStatusRecorder, code int) (string, string) {
