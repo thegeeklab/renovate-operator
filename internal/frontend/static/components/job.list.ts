@@ -90,11 +90,9 @@ export class JobListComponent {
     const logViewer = this.el.querySelector<HTMLElement>('[data-role="log-viewer"]')
 
     if (placeholder) {
-      placeholder.style.display = this.selectedJob ? "none" : ""
       placeholder.classList.toggle("hidden", !!this.selectedJob)
     }
     if (logViewer) {
-      logViewer.style.display = this.selectedJob ? "" : "none"
       logViewer.classList.toggle("hidden", !this.selectedJob)
     }
   }

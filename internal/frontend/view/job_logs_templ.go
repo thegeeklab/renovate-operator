@@ -142,7 +142,7 @@ func JobLogs(data viewmodel.JobLogData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "><div class=\"flex items-center justify-between bg-gray-800 px-4 py-2 border-b border-gray-700 shrink-0\"><div class=\"flex items-center gap-3\"><span class=\"text-xs font-mono text-gray-400\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "><div class=\"flex flex-wrap items-center justify-between gap-2 bg-gray-800 px-4 py-2 border-b border-gray-700 shrink-0\"><div class=\"flex items-center gap-3\"><span class=\"text-xs font-mono text-gray-400\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
