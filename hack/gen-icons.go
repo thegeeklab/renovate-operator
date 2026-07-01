@@ -34,7 +34,6 @@ var icons = []iconDef{
 	{fileName: "information-circle"},
 	{fileName: "key"},
 	{fileName: "magnifying-glass"},
-	{fileName: "server"},
 	{fileName: "x-circle"},
 	{fileName: "x-mark"},
 }

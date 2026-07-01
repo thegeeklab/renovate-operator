@@ -267,7 +267,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = IconServer("mx-auto h-12 w-12 text-gray-400").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = IconInbox("mx-auto h-12 w-12 text-gray-400").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
