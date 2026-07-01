@@ -267,7 +267,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = IconServer("mx-auto h-12 w-12 text-gray-400").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = IconInbox("mx-auto h-12 w-12 text-gray-400").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -276,7 +276,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div><div class=\"lg:col-span-8 xl:col-span-9 flex flex-col h-full min-h-0\"><div data-cloak data-role=\"placeholder\" class=\"hidden lg:flex flex-col items-center justify-center h-full text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 24, "</div><div class=\"lg:col-span-8 xl:col-span-9 flex flex-col h-full min-h-0\"><div data-cloak data-role=\"placeholder\" class=\"flex flex-col items-center justify-center h-full text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -284,7 +284,15 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm\">Select a job from the list to view its logs</p></div><div data-cloak data-role=\"log-viewer\" id=\"log-viewer\" class=\"hidden h-full flex flex-col\" aria-live=\"off\"></div></div></div></div></div>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 25, "<p class=\"text-sm\">Select a job from the list to view its logs</p></div><div data-cloak data-role=\"log-viewer\" id=\"log-viewer\" class=\"hidden h-full flex flex-col\" aria-live=\"polite\"><div class=\"flex flex-col items-center justify-center h-full text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50\">")
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = IconArrowPath("animate-spin h-8 w-8 mb-3").Render(ctx, templ_7745c5c3_Buffer)
+		if templ_7745c5c3_Err != nil {
+			return templ_7745c5c3_Err
+		}
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 26, "<p class=\"text-sm\">Loading logs...</p></div></div></div></div></div></div>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

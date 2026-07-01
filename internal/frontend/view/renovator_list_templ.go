@@ -193,7 +193,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" class=\"group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200\"><summary class=\"cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out\"><div class=\"flex items-center justify-between\"><div class=\"flex items-center gap-4\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" class=\"group bg-white shadow rounded-lg overflow-hidden border border-gray-200\"><summary class=\"cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out\"><div class=\"flex items-center justify-between\"><div class=\"flex items-center gap-4\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
@@ -376,7 +376,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 							}()
 						}
 						ctx = templ.InitializeContext(ctx)
-						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<button type=\"button\" data-cloak data-action=\"toggle-order\" class=\"inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors self-stretch\"><span data-role=\"sort-asc\">")
+						templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "<button type=\"button\" data-cloak data-action=\"toggle-order\" aria-pressed=\"false\" class=\"inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors self-stretch\"><span data-role=\"sort-asc\">")
 						if templ_7745c5c3_Err != nil {
 							return templ_7745c5c3_Err
 						}
@@ -409,7 +409,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					var templ_7745c5c3_Var19 string
 					templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.GitreposURL(v.Namespace, v.Renovator))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 162, Col: 64}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `renovator_list.templ`, Line: 163, Col: 64}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 					if templ_7745c5c3_Err != nil {
@@ -419,7 +419,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = IconArrowPath("animate-spin h-5 w-5 text-indigo-600").Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = IconArrowPath("animate-spin h-5 w-5").Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}

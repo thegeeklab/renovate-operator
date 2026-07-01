@@ -90,7 +90,7 @@ templ GitRepoView(data viewmodel.GitRepoViewData) {
 						</ul>
 					} else {
 						<div class="text-center py-6 border-2 border-dashed border-gray-300 rounded-lg">
-							@IconServer("mx-auto h-12 w-12 text-gray-400")
+							@IconInbox("mx-auto h-12 w-12 text-gray-400")
 							<h3 class="mt-2 text-sm font-semibold text-gray-900">No Jobs Found</h3>
 							<p class="mt-1 text-sm text-gray-500">
 								Renovate hasn't triggered any runs for this repository yet.
@@ -102,7 +102,7 @@ templ GitRepoView(data viewmodel.GitRepoViewData) {
 					<div
 						data-cloak
 						data-role="placeholder"
-						class="hidden lg:flex flex-col items-center justify-center h-full text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50"
+						class="flex flex-col items-center justify-center h-full text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50"
 					>
 						@IconDocumentText("h-12 w-12 mb-3 text-gray-300")
 						<p class="text-sm">Select a job from the list to view its logs</p>
@@ -112,8 +112,13 @@ templ GitRepoView(data viewmodel.GitRepoViewData) {
 						data-role="log-viewer"
 						id="log-viewer"
 						class="hidden h-full flex flex-col"
-						aria-live="off"
-					></div>
+						aria-live="polite"
+					>
+						<div class="flex flex-col items-center justify-center h-full text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50">
+							@IconArrowPath("animate-spin h-8 w-8 mb-3")
+							<p class="text-sm">Loading logs...</p>
+						</div>
+					</div>
 				</div>
 			</div>
 		</div>

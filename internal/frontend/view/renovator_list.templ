@@ -86,7 +86,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 							data-cloak
 							data-component="renovator-details"
 							data-persist-key={ sanitize.RenovatorPersistKey(v.Name) }
-							class="group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200"
+							class="group bg-white shadow rounded-lg overflow-hidden border border-gray-200"
 						>
 							<summary class="cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out">
 								<div class="flex items-center justify-between">
@@ -146,6 +146,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 											type="button"
 											data-cloak
 											data-action="toggle-order"
+											aria-pressed="false"
 											class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors self-stretch"
 										>
 											<span data-role="sort-asc">
@@ -165,7 +166,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 									class="focus:outline-none"
 								>
 									<div class="flex justify-center py-4">
-										@IconArrowPath("animate-spin h-5 w-5 text-indigo-600")
+										@IconArrowPath("animate-spin h-5 w-5")
 										<span class="ml-2 text-sm text-gray-500">Loading Repositories...</span>
 									</div>
 								</div>
