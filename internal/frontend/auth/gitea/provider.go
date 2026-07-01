@@ -295,7 +295,7 @@ func (p *GiteaProvider) fetchPageWithRetry(ctx context.Context, client *http.Cli
 
 		if statusCode == http.StatusTooManyRequests {
 			if retryAfter > 0 {
-				return nil, backoff.RetryAfter(int(retryAfter.Seconds()))
+				return nil, backoff.RetryAfter(retryAfter, fmt.Errorf("%w: %d", errRateLimited, statusCode))
 			}
 
 			return nil, fmt.Errorf("%w: %d", errRateLimited, statusCode)
