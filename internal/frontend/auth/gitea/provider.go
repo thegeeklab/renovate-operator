@@ -13,7 +13,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cenkalti/backoff/v6"
+	"github.com/cenkalti/backoff/v7"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"golang.org/x/oauth2"
@@ -295,7 +295,7 @@ func (p *GiteaProvider) fetchPageWithRetry(ctx context.Context, client *http.Cli
 
 		if statusCode == http.StatusTooManyRequests {
 			if retryAfter > 0 {
-				return nil, backoff.RetryAfter(int(retryAfter.Seconds()))
+				return nil, backoff.RetryAfter(retryAfter, fmt.Errorf("%w: %d", errRateLimited, statusCode))
 			}
 
 			return nil, fmt.Errorf("%w: %d", errRateLimited, statusCode)
