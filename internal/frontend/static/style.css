@@ -63,10 +63,6 @@
   transition-delay: 100ms;
   pointer-events: none;
 }
-.tooltip:hover > .tooltip-text {
-  opacity: 1;
-  transition-delay: 600ms;
-}
 
 .log-level-checkbox {
   appearance: none;
