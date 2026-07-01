@@ -16,7 +16,7 @@ import (
 )
 
 func getRepoClass(status viewmodel.Status) string {
-	return statusCardBase() + " px-6 py-5 " + status.LeftBorderClass()
+	return statusCardBase() + " px-4 py-3 " + status.LeftBorderClass()
 }
 
 func GitRepoList(repos []viewmodel.GitRepoInfo) templ.Component {

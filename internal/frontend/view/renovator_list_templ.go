@@ -193,7 +193,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" class=\"group bg-white shadow sm:rounded-lg overflow-hidden border border-gray-200\"><summary class=\"cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out\"><div class=\"flex items-center justify-between\"><div class=\"flex items-center gap-4\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "\" class=\"group bg-white shadow rounded-lg overflow-hidden border border-gray-200\"><summary class=\"cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out\"><div class=\"flex items-center justify-between\"><div class=\"flex items-center gap-4\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
