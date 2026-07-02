@@ -20,9 +20,11 @@ templ Login(auth viewmodel.AuthInfo) {
 							<a href={ "/auth/login?provider=" + p.Name } hx-boost="false" class="flex items-center justify-center gap-3 w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition duration-150 ease-in-out">
 								<div class="w-5 h-5 shrink-0">
 									if p.IconURL != "" {
-										<img src={ p.IconURL } alt="" class="w-5 h-5" onerror="this.style.display='none';this.nextElementSibling.style.display='block'"/>
-										<div class="hidden w-5 h-5 text-gray-400">
-											@IconKey("w-5 h-5")
+										<div data-component="progressive-image" data-cloak>
+											<img class="hidden" src={ p.IconURL } alt=""/>
+											<div data-fallback class="w-5 h-5 text-gray-400">
+												@IconKey("w-5 h-5")
+											</div>
 										</div>
 									} else {
 										<div class="w-5 h-5 text-gray-400">

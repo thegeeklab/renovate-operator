@@ -68,8 +68,10 @@ templ NavBar(auth viewmodel.AuthInfo) {
 							aria-haspopup="true"
 						>
 							if auth.AvatarURL != "" {
-								<img class="h-8 w-8 rounded-full hidden" src={ auth.AvatarURL } alt={ auth.Name } onload="this.classList.remove('hidden');this.nextElementSibling.classList.add('hidden')" onerror="this.nextElementSibling.style.display='flex'"/>
-								<div class="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium">{ avatarInitial(auth.Name) }</div>
+								<div data-component="progressive-image" data-cloak class="relative">
+									<img class="h-8 w-8 rounded-full hidden" src={ auth.AvatarURL } alt={ auth.Name }/>
+									<div data-fallback class="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium">{ avatarInitial(auth.Name) }</div>
+								</div>
 							} else {
 								<div class="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium">{ avatarInitial(auth.Name) }</div>
 							}

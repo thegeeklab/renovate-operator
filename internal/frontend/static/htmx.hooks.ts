@@ -6,11 +6,13 @@ import { initLogLevelFilters } from "./components/log.level.filter"
 import { initRenovatorDetails } from "./components/renovator.details"
 import { initRepoSorts } from "./components/repo.sort"
 import { initAvatarDropdown } from "./components/avatar.dropdown"
+import { initProgressiveImages } from "./components/progressive.image"
 import { componentRegistry, destroyComponents } from "./lib/component.registry"
 import { getPersisted } from "./lib/storage"
 
 const scrollStates = new Map<string, number>()
 let savedSearchSelection: { start: number; end: number } | null = null
+let savedJobListFocus: string | null = null
 
 function initComponents(root: ParentNode): void {
   initJobLists(root)
@@ -20,6 +22,7 @@ function initComponents(root: ParentNode): void {
   initRenovatorDetails(root)
   initRepoSorts(root)
   initAvatarDropdown(root)
+  initProgressiveImages(root)
   initTooltips(root)
   removeCloak(root)
 }
@@ -61,6 +64,15 @@ export function initHtmxHooks(): void {
         }
       } else {
         savedSearchSelection = null
+      }
+    }
+
+    if (target.id === "job-list-container") {
+      const focused = document.activeElement as HTMLElement | null
+      if (focused && focused.hasAttribute("data-job-name")) {
+        savedJobListFocus = focused.getAttribute("data-job-name")
+      } else {
+        savedJobListFocus = null
       }
     }
   })
@@ -171,6 +183,16 @@ export function initHtmxHooks(): void {
           if (component && "refresh" in component) {
             ;(component as { refresh: () => void }).refresh()
           }
+        }
+
+        if (savedJobListFocus !== null) {
+          const focusedBtn = newContainer.querySelector<HTMLElement>(
+            `button[data-job-name="${CSS.escape(savedJobListFocus)}"]`
+          )
+          if (focusedBtn) {
+            focusedBtn.focus({ preventScroll: true })
+          }
+          savedJobListFocus = null
         }
       }
     }
