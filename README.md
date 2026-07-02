@@ -1,7 +1,6 @@
 # renovate-operator
 
 [![Build Status](https://ci.thegeeklab.de/api/badges/thegeeklab/renovate-operator/status.svg)](https://ci.thegeeklab.de/repos/thegeeklab/renovate-operator)
-[![Go Report Card](https://goreportcard.com/badge/github.com/thegeeklab/renovate-operator)](https://goreportcard.com/report/github.com/thegeeklab/renovate-operator)
 [![GitHub contributors](https://img.shields.io/github/contributors/thegeeklab/renovate-operator)](https://github.com/thegeeklab/renovate-operator/graphs/contributors)
 [![License: MIT](https://img.shields.io/github/license/thegeeklab/renovate-operator)](https://github.com/thegeeklab/renovate-operator/blob/main/LICENSE)
 
