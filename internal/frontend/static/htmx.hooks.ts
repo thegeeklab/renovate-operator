@@ -9,10 +9,13 @@ import { initAvatarDropdown } from "./components/avatar.dropdown"
 import { initProgressiveImages } from "./components/progressive.image"
 import { componentRegistry, destroyComponents } from "./lib/component.registry"
 import { getPersisted } from "./lib/storage"
+import { toast } from "./lib/toast"
 
 const scrollStates = new Map<string, number>()
 let savedSearchSelection: { start: number; end: number } | null = null
 let savedJobListFocus: string | null = null
+let pageHiding = false
+let swapping = false
 
 function initComponents(root: ParentNode): void {
   initJobLists(root)
@@ -44,7 +47,21 @@ export function initHtmxHooks(): void {
     }
   })
 
+  document.addEventListener("htmx:sendError", () => {
+    toast.error("Network error. Please check your connection.")
+  })
+
+  document.addEventListener("htmx:responseError", (e: Event) => {
+    const { detail } = e as CustomEvent
+    const xhr = detail.xhr as XMLHttpRequest
+    if (xhr.status === 0) return // Already handled by sendError
+
+    const statusText = xhr.statusText || `HTTP ${xhr.status}`
+    toast.error(`Request failed: ${statusText}`)
+  })
+
   document.addEventListener("htmx:beforeSwap", (e: Event) => {
+    swapping = true
     const { detail } = e as CustomEvent
     const target = detail.target as HTMLElement
 
@@ -107,6 +124,12 @@ export function initHtmxHooks(): void {
     const target = detail.target as HTMLElement
     const xhr = detail.xhr as XMLHttpRequest | undefined
     if (!target) return
+
+    // Defer clearing the swap flag to next tick so that any synchronous error
+    // event fired on an SSE source that was just removed can be suppressed.
+    requestAnimationFrame(() => {
+      swapping = false
+    })
 
     hideActiveTooltip()
 
@@ -199,4 +222,41 @@ export function initHtmxHooks(): void {
   })
 
   initComponents(document)
+
+  const htmxWithSSE = window.htmx as typeof window.htmx & {
+    createEventSource?: (url: string) => EventSource
+  }
+  if (htmxWithSSE && typeof htmxWithSSE.createEventSource === "function") {
+    const originalCreate = htmxWithSSE.createEventSource
+    htmxWithSSE.createEventSource = function (url: string): EventSource {
+      const source = originalCreate(url)
+      let connectedAt: number | null = null
+
+      window.addEventListener("pagehide", () => {
+        pageHiding = true
+      })
+
+      source.addEventListener("open", () => {
+        connectedAt = Date.now()
+      })
+
+      source.addEventListener("error", () => {
+        // Skip disconnect toasts during full-page navigation/tab close or
+        // while htmx is actively swapping boosted content.
+        if (pageHiding || swapping) return
+
+        // Only show toast if connection was established and stable for > 3s.
+        // The time gate is a fallback for cases where we don't have element
+        // lifecycle information; once open, htmx-ext-sse normally closes the
+        // source when its element is removed, so filtering by 3s avoids most
+        // spurious toasts on rapid teardown after a successful connect.
+        if (connectedAt && Date.now() - connectedAt > 3000) {
+          toast.error("Live updates disconnected")
+          connectedAt = null
+        }
+      })
+
+      return source
+    }
+  }
 }
