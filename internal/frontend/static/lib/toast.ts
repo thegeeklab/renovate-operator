@@ -1,8 +1,14 @@
+import checkCircleSvg from "heroicons/24/outline/check-circle.svg?raw"
+import xCircleSvg from "heroicons/24/outline/x-circle.svg?raw"
+import exclamationTriangleSvg from "heroicons/24/outline/exclamation-triangle.svg?raw"
+import informationCircleSvg from "heroicons/24/outline/information-circle.svg?raw"
+import xMarkSvg from "heroicons/24/outline/x-mark.svg?raw"
+
 const TOAST_DURATION = 5000
 const TOAST_LIMIT = 5
 const ANIM_DURATION = 300
+const GAP = 12
 
-// Ensure Tailwind generates these classes for the progress bar
 const _twSafelist = ["bg-emerald-600", "bg-red-600", "bg-amber-600", "bg-blue-600"]
 void _twSafelist
 
@@ -25,7 +31,7 @@ function getContainer(): HTMLElement {
   toastContainer = document.createElement("div")
   toastContainer.setAttribute("aria-live", "polite")
   toastContainer.setAttribute("aria-atomic", "true")
-  toastContainer.className = "fixed bottom-4 right-4 z-50 flex flex-col-reverse gap-3 w-96"
+  toastContainer.className = "fixed bottom-4 right-4 z-50 w-96"
 
   toastContainer.addEventListener("mouseenter", () => {
     for (const t of activeToasts) {
@@ -46,13 +52,48 @@ function getContainer(): HTMLElement {
   return toastContainer
 }
 
-function removeToast(el: HTMLElement, animate = true): void {
+function recomputeOffsets(): void {
+  if (!toastContainer) return
+  const children = Array.from(toastContainer.children) as HTMLElement[]
+  let totalHeight = 0
+  for (let i = 0; i < children.length; i++) {
+    let offset = 0
+    for (let j = i + 1; j < children.length; j++) {
+      offset += children[j].offsetHeight + GAP
+    }
+    children[i].style.setProperty("--offset", `${offset}px`)
+    totalHeight += children[i].offsetHeight
+  }
+  if (children.length > 0) {
+    totalHeight += (children.length - 1) * GAP
+  }
+  toastContainer.style.height = `${totalHeight}px`
+}
+
+function cleanupContainer(): void {
+  if (toastContainer && toastContainer.children.length === 0) {
+    toastContainer.remove()
+    toastContainer = null
+  }
+}
+
+function removeToast(state: ToastState, animate = true): void {
+  const idx = activeToasts.indexOf(state)
+  if (idx !== -1) activeToasts.splice(idx, 1)
+  clearTimeout(state.timer)
+
   if (animate) {
-    el.style.transform = "translateY(120%)"
-    el.style.opacity = "0"
-    setTimeout(() => el.remove(), ANIM_DURATION)
+    state.el.style.opacity = "0"
+    const { el } = state
+    setTimeout(() => {
+      el.remove()
+      recomputeOffsets()
+      cleanupContainer()
+    }, ANIM_DURATION)
   } else {
-    el.remove()
+    state.el.remove()
+    recomputeOffsets()
+    cleanupContainer()
   }
 }
 
@@ -77,16 +118,7 @@ function resumeAll(): void {
   for (const t of activeToasts) {
     if (t.remaining === Infinity || t.hovered) continue
     t.startTime = Date.now() - (TOAST_DURATION - t.remaining)
-    t.timer = setTimeout(() => dismissToast(t), t.remaining)
-  }
-}
-
-function dismissToast(t: ToastState): void {
-  const idx = activeToasts.indexOf(t)
-  if (idx !== -1) activeToasts.splice(idx, 1)
-  removeToast(t.el)
-  if (activeToasts.length === 0) {
-    toastContainer = null
+    t.timer = setTimeout(() => removeToast(t), t.remaining)
   }
 }
 
@@ -102,7 +134,7 @@ function tick(): void {
     t.remaining = Math.max(0, TOAST_DURATION - elapsed)
     t.progressIndicator.style.transform = `scaleX(${t.remaining / TOAST_DURATION})`
     if (t.remaining <= 0) {
-      dismissToast(t)
+      removeToast(t)
     }
   }
   if (activeToasts.some((t) => t.remaining !== Infinity)) {
@@ -113,16 +145,9 @@ function tick(): void {
 function createToast(message: string, type: "success" | "error" | "info" | "warning"): void {
   const container = getContainer()
 
-  while (container.children.length >= TOAST_LIMIT) {
-    const oldest = container.firstElementChild as HTMLElement
-    if (!oldest) continue
-
-    const idx = activeToasts.findIndex((t) => t.el === oldest)
-    if (idx !== -1) {
-      const state = activeToasts[idx]
-      clearTimeout(state.timer)
-      activeToasts.splice(idx, 1)
-    }
+  while (activeToasts.length >= TOAST_LIMIT) {
+    const oldest = activeToasts.shift()
+    if (!oldest) break
     removeToast(oldest, false)
   }
 
@@ -131,22 +156,22 @@ function createToast(message: string, type: "success" | "error" | "info" | "warn
 
   const typeConfig: Record<string, { icon: string; color: string; barBg: string }> = {
     success: {
-      icon: "✓",
+      icon: checkCircleSvg,
       color: "text-emerald-600",
       barBg: "bg-emerald-600"
     },
     error: {
-      icon: "✕",
+      icon: xCircleSvg,
       color: "text-red-600",
       barBg: "bg-red-600"
     },
     warning: {
-      icon: "",
+      icon: exclamationTriangleSvg,
       color: "text-amber-600",
       barBg: "bg-amber-600"
     },
     info: {
-      icon: "ℹ",
+      icon: informationCircleSvg,
       color: "text-blue-600",
       barBg: "bg-blue-600"
     }
@@ -154,22 +179,21 @@ function createToast(message: string, type: "success" | "error" | "info" | "warn
 
   const config = typeConfig[type] || typeConfig.info
 
-  el.className = `pointer-events-auto relative group overflow-hidden bg-white shadow-lg rounded-lg border border-gray-200 flex items-center gap-2.5 p-4 transition-all ease-out`
-  el.style.transitionDuration = `${ANIM_DURATION}ms`
-  el.style.transform = "translateY(120%)"
+  el.className =
+    "pointer-events-auto absolute bottom-0 left-0 right-0 group overflow-hidden bg-white shadow-lg rounded-lg border border-gray-200 flex items-center gap-2.5 p-4"
+  el.style.transition = `transform ${ANIM_DURATION}ms ease-out, opacity ${ANIM_DURATION}ms ease-out`
+  el.style.transform = "translateY(calc(-1 * var(--offset, 0px)))"
   el.style.opacity = "0"
 
   el.innerHTML = `
-    <div class="shrink-0 w-5 h-5 ${config.color} flex items-center justify-center text-sm font-semibold">
+    <div class="shrink-0 w-5 h-5 ${config.color} flex items-center justify-center [&>svg]:w-full [&>svg]:h-full">
       ${config.icon}
     </div>
     <div class="w-0 flex-1 flex flex-col">
       <p class="text-sm font-medium text-gray-900 break-words leading-snug">${escapeHtml(message)}</p>
     </div>
     <button class="shrink-0 p-0 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors" aria-label="Dismiss">
-      <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"></path>
-      </svg>
+      <span class="block w-4 h-4">${xMarkSvg}</span>
     </button>
     <div class="absolute inset-x-0 bottom-0 h-1 overflow-hidden">
       <div class="absolute inset-0 bg-gray-200"></div>
@@ -178,10 +202,10 @@ function createToast(message: string, type: "success" | "error" | "info" | "warn
   `
 
   container.appendChild(el)
+  recomputeOffsets()
 
   requestAnimationFrame(() => {
     requestAnimationFrame(() => {
-      el.style.transform = "translateY(0)"
       el.style.opacity = "1"
     })
   })
@@ -192,7 +216,7 @@ function createToast(message: string, type: "success" | "error" | "info" | "warn
     progressIndicator,
     remaining: TOAST_DURATION,
     startTime: Date.now(),
-    timer: setTimeout(() => dismissToast(state), TOAST_DURATION),
+    timer: setTimeout(() => removeToast(state), TOAST_DURATION),
     hovered: false
   }
 
@@ -210,7 +234,7 @@ function createToast(message: string, type: "success" | "error" | "info" | "warn
 
   el.querySelector("button")?.addEventListener("click", (e) => {
     e.stopPropagation()
-    dismissToast(state)
+    removeToast(state)
   })
 }
 
