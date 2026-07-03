@@ -124,9 +124,9 @@ templ RenovatorList(data viewmodel.DashboardData) {
 								data-sort-key={ sanitize.SortFieldPersistKey(v.Name) }
 								data-order-key={ sanitize.SortOrderPersistKey(v.Name) }
 							>
-								<div class="flex items-center justify-end mb-4 gap-2">
+								<div class="flex flex-col sm:flex-row items-stretch sm:items-center justify-end mb-4 gap-2">
 									<label for={ "sort-" + v.Name } class="sr-only">Sort repositories</label>
-									<div class="relative">
+									<div class="relative w-full sm:w-auto">
 										<select
 											id={ "sort-" + v.Name }
 											name="sort"

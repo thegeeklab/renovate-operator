@@ -9,6 +9,7 @@ import (
 	"fmt"
 	"net"
 	"net/http"
+	"net/url"
 	"os"
 	"time"
 
@@ -202,12 +203,13 @@ func errorPageMiddleware(
 			title, message := resolveErrorInfo(rec, rec.statusCode)
 
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
+			w.Header().Set("X-Page-Title", url.PathEscape(title))
 			rec.commit()
 
 			authInfo := buildErrorAuthInfo(r, authManager)
 
 			if err := view.ErrorPage(
-				rec.statusCode, title, message, styles, scripts, authInfo,
+				rec.statusCode, title, message, title, styles, scripts, authInfo,
 			).Render(r.Context(), w); err != nil {
 				frontendLog.Error(err, "Failed to render error page")
 			}
