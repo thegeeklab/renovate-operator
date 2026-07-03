@@ -5,6 +5,7 @@ import (
 	"errors"
 	"io"
 	"net/http"
+	"net/url"
 	"sync"
 
 	"github.com/a-h/templ"
@@ -72,11 +73,12 @@ func (h *WebHandler) RegisterRoutes(router chi.Router) {
 	router.Get("/joblogs/download", h.HandleJobLogsDownload)
 }
 
-func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, component templ.Component) {
+func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, title string, component templ.Component) {
 	isHxRequest := r.Header.Get("HX-Request") == "true"
 	isHxBoosted := r.Header.Get("HX-Boosted") == "true"
 
 	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("X-Page-Title", url.PathEscape(title))
 
 	authInfo := h.buildAuthInfo(r)
 
@@ -84,7 +86,7 @@ func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, component te
 	if isHxRequest && !isHxBoosted {
 		renderErr = component.Render(r.Context(), w)
 	} else {
-		renderErr = view.Layout(h.assets.Styles, h.assets.Scripts, authInfo, component).Render(r.Context(), w)
+		renderErr = view.Layout(title, h.assets.Styles, h.assets.Scripts, authInfo, component).Render(r.Context(), w)
 	}
 
 	if renderErr != nil {
@@ -165,7 +167,7 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 		repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
-		h.render(w, r, view.RenovatorList(viewmodel.DashboardData{
+		h.render(w, r, "Search", view.RenovatorList(viewmodel.DashboardData{
 			SearchQuery:   searchQuery,
 			SearchResults: repos,
 		}))
@@ -183,7 +185,7 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	summaries := h.buildRenovatorSummaries(ctx, renovators, opts)
 
-	h.render(w, r, view.RenovatorList(viewmodel.DashboardData{
+	h.render(w, r, "Dashboard", view.RenovatorList(viewmodel.DashboardData{
 		SearchQuery: searchQuery,
 		Renovators:  summaries,
 	}))
@@ -281,7 +283,7 @@ func (h *WebHandler) buildRenovatorSummaries(
 }
 
 func (h *WebHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
-	h.render(w, r, view.Login(h.buildAuthInfo(r)))
+	h.render(w, r, "Sign in", view.Login(h.buildAuthInfo(r)))
 }
 
 func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Request) {
@@ -381,7 +383,7 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		Jobs: jobs,
 	}
 
-	h.render(w, r, view.GitRepoView(data))
+	h.render(w, r, "Repository · "+repoInfo.FullName, view.GitRepoView(data))
 }
 
 // getJobLogStream fetches the log stream for a job. When the job is still

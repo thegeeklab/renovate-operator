@@ -64,6 +64,12 @@ export function initHtmxHooks(): void {
     swapping = true
     const { detail } = e as CustomEvent
     const target = detail.target as HTMLElement
+    const xhr = detail.xhr as XMLHttpRequest | undefined
+
+    const title = xhr?.getResponseHeader("X-Page-Title")
+    if (title) {
+      document.title = decodeURIComponent(title)
+    }
 
     destroyComponents(target)
 
