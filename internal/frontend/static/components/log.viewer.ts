@@ -1,6 +1,7 @@
 import { getPersisted, setPersisted } from "../lib/storage"
 import { getRefs, getData, getBoolData, nextFrame } from "../lib/dom"
 import { registerComponent, destroyComponents } from "../lib/component.registry"
+import { toast } from "../lib/toast"
 
 export class LogViewerComponent {
   private el: HTMLElement
@@ -174,7 +175,7 @@ export class LogViewerComponent {
       }
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
-        console.error("Download failed:", err)
+        toast.error("Failed to download log file")
       }
     }
   }

@@ -9,6 +9,7 @@ import { initAvatarDropdown } from "./components/avatar.dropdown"
 import { initProgressiveImages } from "./components/progressive.image"
 import { componentRegistry, destroyComponents } from "./lib/component.registry"
 import { getPersisted } from "./lib/storage"
+import { toast } from "./lib/toast"
 
 const scrollStates = new Map<string, number>()
 let savedSearchSelection: { start: number; end: number } | null = null
@@ -41,6 +42,29 @@ export function initHtmxHooks(): void {
     if (searchInput && searchInput.value === "") {
       detail.path = "/"
       delete detail.parameters.search
+    }
+  })
+
+  document.addEventListener("htmx:sendError", () => {
+    toast.error("Network error. Please check your connection.")
+  })
+
+  document.addEventListener("htmx:responseError", (e: Event) => {
+    const { detail } = e as CustomEvent
+    const xhr = detail.xhr as XMLHttpRequest
+    if (xhr.status === 0) return // Already handled by sendError
+
+    const statusText = xhr.statusText || `HTTP ${xhr.status}`
+    toast.error(`Request failed: ${statusText}`)
+  })
+
+  document.addEventListener("htmx:afterRequest", (e: Event) => {
+    const { detail } = e as CustomEvent
+    const xhr = detail.xhr as XMLHttpRequest
+    if (detail.successful) return
+
+    if (xhr.status >= 500) {
+      toast.error("Server error. Please try again later.")
     }
   })
 
@@ -199,4 +223,30 @@ export function initHtmxHooks(): void {
   })
 
   initComponents(document)
+
+  const htmxWithSSE = window.htmx as typeof window.htmx & {
+    createEventSource?: (url: string) => EventSource
+  }
+  if (htmxWithSSE && typeof htmxWithSSE.createEventSource === "function") {
+    const originalCreate = htmxWithSSE.createEventSource
+    htmxWithSSE.createEventSource = function (url: string): EventSource {
+      const source = originalCreate(url)
+      let connectedAt: number | null = null
+
+      source.addEventListener("open", () => {
+        connectedAt = Date.now()
+      })
+
+      source.addEventListener("error", () => {
+        // Only show toast if connection was established and stable for > 3s
+        // This filters out initial connection errors and navigation closures
+        if (connectedAt && Date.now() - connectedAt > 3000) {
+          toast.error("Live updates disconnected")
+          connectedAt = null
+        }
+      })
+
+      return source
+    }
+  }
 }
