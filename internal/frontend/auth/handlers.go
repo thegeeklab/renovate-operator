@@ -62,7 +62,19 @@ func isSecureRequest(r *http.Request, secureCookies bool) bool {
 func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if manager.IsIntended() && !manager.IsEnabled() {
-			writeNotReadyResponse(w, r)
+			WriteNotReadyResponse(w, r)
+
+			return
+		}
+
+		if !manager.IsEnabled() {
+			http.Redirect(w, r, "/", http.StatusFound)
+
+			return
+		}
+
+		if IsAuthenticated(r.Context(), manager.SessionManager()) {
+			http.Redirect(w, r, "/", http.StatusFound)
 
 			return
 		}
@@ -105,7 +117,7 @@ func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
 func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		if manager.IsIntended() && !manager.IsEnabled() {
-			writeNotReadyResponse(w, r)
+			WriteNotReadyResponse(w, r)
 
 			return
 		}

@@ -36,7 +36,8 @@ var _ = Describe("Handlers", func() {
 	Describe("HandleLogin", func() {
 		It("should redirect to provider login URL with state", func() {
 			req := httptest.NewRequest(http.MethodGet, "/auth/login?provider=gitea-prod", nil)
-			HandleLogin(manager, false).ServeHTTP(rec, req)
+			handler := manager.SessionManager().LoadAndSave(HandleLogin(manager, false))
+			handler.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusFound))
 
@@ -50,21 +51,24 @@ var _ = Describe("Handlers", func() {
 
 		It("should return 400 when provider is missing", func() {
 			req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
-			HandleLogin(manager, false).ServeHTTP(rec, req)
+			handler := manager.SessionManager().LoadAndSave(HandleLogin(manager, false))
+			handler.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusBadRequest))
 		})
 
 		It("should return 404 for unknown provider", func() {
 			req := httptest.NewRequest(http.MethodGet, "/auth/login?provider=unknown", nil)
-			HandleLogin(manager, false).ServeHTTP(rec, req)
+			handler := manager.SessionManager().LoadAndSave(HandleLogin(manager, false))
+			handler.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusNotFound))
 		})
 
 		It("should set Secure cookie when secureCookies is true", func() {
 			req := httptest.NewRequest(http.MethodGet, "/auth/login?provider=gitea-prod", nil)
-			HandleLogin(manager, true).ServeHTTP(rec, req)
+			handler := manager.SessionManager().LoadAndSave(HandleLogin(manager, true))
+			handler.ServeHTTP(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusFound))
 

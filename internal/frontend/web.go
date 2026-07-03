@@ -283,6 +283,30 @@ func (h *WebHandler) buildRenovatorSummaries(
 }
 
 func (h *WebHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
+	if h.authManager == nil {
+		http.Redirect(w, r, "/", http.StatusFound)
+
+		return
+	}
+
+	if h.authManager.IsIntended() && !h.authManager.IsEnabled() {
+		auth.WriteNotReadyResponse(w, r)
+
+		return
+	}
+
+	if !h.authManager.IsEnabled() {
+		http.Redirect(w, r, "/", http.StatusFound)
+
+		return
+	}
+
+	if auth.IsAuthenticated(r.Context(), h.authManager.SessionManager()) {
+		http.Redirect(w, r, "/", http.StatusFound)
+
+		return
+	}
+
 	h.render(w, r, "Sign in", view.Login(h.buildAuthInfo(r)))
 }
 
