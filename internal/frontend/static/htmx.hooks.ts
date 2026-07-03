@@ -58,16 +58,6 @@ export function initHtmxHooks(): void {
     toast.error(`Request failed: ${statusText}`)
   })
 
-  document.addEventListener("htmx:afterRequest", (e: Event) => {
-    const { detail } = e as CustomEvent
-    const xhr = detail.xhr as XMLHttpRequest
-    if (detail.successful) return
-
-    if (xhr.status >= 500) {
-      toast.error("Server error. Please try again later.")
-    }
-  })
-
   document.addEventListener("htmx:beforeSwap", (e: Event) => {
     const { detail } = e as CustomEvent
     const target = detail.target as HTMLElement

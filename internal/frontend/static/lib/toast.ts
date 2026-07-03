@@ -60,6 +60,12 @@ function anyHovered(): boolean {
   return activeToasts.some((t) => t.hovered)
 }
 
+function escapeHtml(unsafe: string): string {
+  const div = document.createElement("div")
+  div.textContent = unsafe
+  return div.innerHTML
+}
+
 function pauseAll(): void {
   for (const t of activeToasts) {
     if (t.remaining === Infinity) continue
@@ -109,7 +115,15 @@ function createToast(message: string, type: "success" | "error" | "info" | "warn
 
   while (container.children.length >= TOAST_LIMIT) {
     const oldest = container.firstElementChild as HTMLElement
-    if (oldest) removeToast(oldest, false)
+    if (!oldest) continue
+
+    const idx = activeToasts.findIndex((t) => t.el === oldest)
+    if (idx !== -1) {
+      const state = activeToasts[idx]
+      clearTimeout(state.timer)
+      activeToasts.splice(idx, 1)
+    }
+    removeToast(oldest, false)
   }
 
   const el = document.createElement("div")
@@ -150,7 +164,7 @@ function createToast(message: string, type: "success" | "error" | "info" | "warn
       ${config.icon}
     </div>
     <div class="w-0 flex-1 flex flex-col">
-      <p class="text-sm font-medium text-gray-900 break-words leading-snug">${message}</p>
+      <p class="text-sm font-medium text-gray-900 break-words leading-snug">${escapeHtml(message)}</p>
     </div>
     <button class="shrink-0 p-0 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors" aria-label="Dismiss">
       <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
