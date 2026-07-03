@@ -9,9 +9,6 @@ const TOAST_LIMIT = 5
 const ANIM_DURATION = 300
 const GAP = 12
 
-const _twSafelist = ["bg-emerald-600", "bg-red-600", "bg-amber-600", "bg-blue-600"]
-void _twSafelist
-
 let toastContainer: HTMLElement | null = null
 
 interface ToastState {
