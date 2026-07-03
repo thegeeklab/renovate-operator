@@ -48,7 +48,7 @@ func authCheckMiddleware(manager *Manager) func(http.Handler) http.Handler {
 			}
 
 			if manager.IsIntended() && !manager.IsEnabled() {
-				writeNotReadyResponse(w, r)
+				WriteNotReadyResponse(w, r)
 
 				return
 			}
@@ -240,7 +240,7 @@ func IsAPIPath(path string) bool {
 	return strings.HasPrefix(path, "/api/")
 }
 
-func writeNotReadyResponse(w http.ResponseWriter, r *http.Request) {
+func WriteNotReadyResponse(w http.ResponseWriter, r *http.Request) {
 	if IsAPIPath(r.URL.Path) {
 		w.Header().Set("Content-Type", "application/json")
 		w.WriteHeader(http.StatusServiceUnavailable)

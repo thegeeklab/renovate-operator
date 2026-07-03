@@ -436,12 +436,12 @@ var _ = Describe("Middleware", func() {
 		})
 	})
 
-	Describe("writeNotReadyResponse", func() {
+	Describe("WriteNotReadyResponse", func() {
 		It("returns JSON for API paths", func() {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
 			rec := httptest.NewRecorder()
 
-			writeNotReadyResponse(rec, req)
+			WriteNotReadyResponse(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusServiceUnavailable))
 			Expect(rec.Header().Get("Content-Type")).To(Equal("application/json"))
@@ -452,7 +452,7 @@ var _ = Describe("Middleware", func() {
 			req := httptest.NewRequest(http.MethodGet, "/", nil)
 			rec := httptest.NewRecorder()
 
-			writeNotReadyResponse(rec, req)
+			WriteNotReadyResponse(rec, req)
 
 			Expect(rec.Code).To(Equal(http.StatusServiceUnavailable))
 			Expect(rec.Header().Get("X-Error-Title")).To(Equal("Service Unavailable"))
