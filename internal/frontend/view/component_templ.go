@@ -14,11 +14,11 @@ func btnBase() string {
 }
 
 func btnGhostIcon() string {
-	return "inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+	return "inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
 }
 
 func btnGhostLabel() string {
-	return "inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+	return "inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
 }
 
 func btnOutline() string {
@@ -36,7 +36,14 @@ func statusCardBase() string {
 	return "relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white shadow-sm border-l-4 hover:border-blue-400"
 }
 
-// Tooltip wraps content with a styled tooltip.
+func dropdownMenu() string {
+	return "hidden fixed z-50 min-w-36 rounded-md ring-1 ring-gray-200 shadow-lg py-1 focus:outline-none"
+}
+
+func dropdownMenuItem() string {
+	return "flex items-center gap-2 w-full px-3 py-1 cursor-pointer text-xs transition-colors"
+}
+
 func Kbd(text string) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
@@ -65,7 +72,7 @@ func Kbd(text string) templ.Component {
 		var templ_7745c5c3_Var2 string
 		templ_7745c5c3_Var2, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 34, Col: 12}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 41, Col: 12}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var2))
 		if templ_7745c5c3_Err != nil {
@@ -112,7 +119,7 @@ func Tooltip(text string, opts ...string) templ.Component {
 			var templ_7745c5c3_Var4 string
 			templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.ResolveAttributeValue(opts[0])
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 42, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 49, Col: 22}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var4)
 			if templ_7745c5c3_Err != nil {
@@ -131,7 +138,7 @@ func Tooltip(text string, opts ...string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span class=\"tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 flex items-center gap-1.5\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 7, "<span class=\"tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 flex items-center gap-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -143,7 +150,7 @@ func Tooltip(text string, opts ...string) templ.Component {
 			var templ_7745c5c3_Var5 string
 			templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(strings.Split(text, " [")[0])
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 48, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 55, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 			if templ_7745c5c3_Err != nil {
@@ -167,7 +174,7 @@ func Tooltip(text string, opts ...string) templ.Component {
 			var templ_7745c5c3_Var6 string
 			templ_7745c5c3_Var6, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 53, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 60, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var6))
 			if templ_7745c5c3_Err != nil {
