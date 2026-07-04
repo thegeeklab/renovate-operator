@@ -26,21 +26,50 @@ const sections: ShortcutSection[] = [
 ]
 
 class KeyboardHelpModal {
-  private modal: HTMLElement | null = null
+  private previouslyFocused: HTMLElement | null = null
 
-  constructor() {
-    this.createModal()
+  constructor(private modal: HTMLElement) {
+    this.bindEvents()
   }
 
-  private createModal(): void {
-    this.modal = document.createElement("div")
-    this.modal.id = "keyboard-help-modal"
-    this.modal.className = "hidden"
-    this.modal.setAttribute("role", "dialog")
-    this.modal.setAttribute("aria-modal", "true")
-    this.modal.setAttribute("aria-labelledby", "keyboard-help-title")
+  private bindEvents(): void {
+    this.modal.querySelectorAll("[data-close]").forEach((el) => {
+      el.addEventListener("click", () => this.hide())
+    })
+  }
 
-    this.modal.innerHTML = `
+  show(): void {
+    this.previouslyFocused = document.activeElement as HTMLElement | null
+    this.modal.classList.remove("hidden")
+    document.body.style.overflow = "hidden"
+    const closeBtn = this.modal.querySelector<HTMLButtonElement>("[data-autofocus]")
+    closeBtn?.focus()
+  }
+
+  hide(): void {
+    this.modal.classList.add("hidden")
+    document.body.style.overflow = ""
+    this.previouslyFocused?.focus()
+    this.previouslyFocused = null
+  }
+
+  destroy(): void {
+    this.modal.remove()
+  }
+}
+
+const instances = new Map<HTMLElement, KeyboardHelpModal>()
+
+function ensureInstance(): void {
+  let el = document.getElementById("keyboard-help-modal")
+  if (!el) {
+    el = document.createElement("div")
+    el.id = "keyboard-help-modal"
+    el.className = "hidden"
+    el.setAttribute("role", "dialog")
+    el.setAttribute("aria-modal", "true")
+    el.setAttribute("aria-labelledby", "keyboard-help-title")
+    el.innerHTML = `
       <div class="fixed inset-0 z-[100] overflow-y-auto">
         <div class="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
           <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" data-close aria-hidden="true"></div>
@@ -48,28 +77,30 @@ class KeyboardHelpModal {
           <div class="relative inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-2xl sm:w-full z-10">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
               <h3 id="keyboard-help-title" class="text-base font-semibold text-gray-900">Keyboard shortcuts</h3>
-              <button type="button" data-close class="text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer rounded-md p-1.5 hover:bg-gray-100 transition-colors" aria-label="Close">
+              <button type="button" data-close data-autofocus class="text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer rounded-md p-1.5 hover:bg-gray-100 transition-colors" aria-label="Close">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
-              ${this.renderSections()}
+              ${renderSections()}
             </div>
           </div>
         </div>
       </div>
     `
-
-    document.body.appendChild(this.modal)
-    this.bindEvents()
+    document.body.appendChild(el)
   }
+  if (!instances.has(el)) {
+    instances.set(el, new KeyboardHelpModal(el))
+  }
+}
 
-  private renderSections(): string {
-    return sections
-      .map(
-        (section) => `
+function renderSections(): string {
+  return sections
+    .map(
+      (section) => `
         <div class="rounded-lg border border-gray-200 overflow-hidden">
           <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
             <h4 class="text-sm font-semibold text-gray-900">${section.title}</h4>
@@ -81,7 +112,7 @@ class KeyboardHelpModal {
               <div class="flex items-center justify-between gap-4 px-4 py-2 border-b border-gray-100 last:border-b-0">
                 <span class="text-sm text-gray-700">${shortcut.description}</span>
                 <div class="flex items-center gap-1 shrink-0">
-                  ${this.renderKeys(shortcut.keys)}
+                  ${renderKeys(shortcut.keys)}
                 </div>
               </div>
             `
@@ -90,57 +121,33 @@ class KeyboardHelpModal {
           </div>
         </div>
       `
-      )
-      .join("")
-  }
-
-  private renderKeys(keys: string): string {
-    return keys
-      .split(" ")
-      .map((key) => `<kbd>${key}</kbd>`)
-      .join("")
-  }
-
-  private bindEvents(): void {
-    if (!this.modal) return
-
-    this.modal.querySelectorAll("[data-close]").forEach((el) => {
-      el.addEventListener("click", () => hide())
-    })
-  }
-
-  destroy(): void {
-    if (this.modal) {
-      this.modal.remove()
-      this.modal = null
-    }
-  }
+    )
+    .join("")
 }
 
-let instance: KeyboardHelpModal | null = null
-
-function ensureInstance(): KeyboardHelpModal {
-  if (!instance) {
-    instance = new KeyboardHelpModal()
-  }
-  return instance
+function renderKeys(keys: string): string {
+  return keys
+    .split(" ")
+    .map((key) => `<kbd>${key}</kbd>`)
+    .join("")
 }
 
 export function show(): void {
-  const modal = ensureInstance()
+  ensureInstance()
   const el = document.getElementById("keyboard-help-modal")
-  if (el) {
-    el.classList.remove("hidden")
-    document.body.style.overflow = "hidden"
+  if (!el) return
+  const modal = instances.get(el) ?? null
+  if (modal) {
+    modal.show()
   }
-  void modal
 }
 
 export function hide(): void {
   const el = document.getElementById("keyboard-help-modal")
-  if (el) {
-    el.classList.add("hidden")
-    document.body.style.overflow = ""
+  if (!el) return
+  const modal = instances.get(el) ?? null
+  if (modal) {
+    modal.hide()
   }
 }
 
@@ -159,8 +166,8 @@ export function isVisible(): boolean {
 }
 
 export function destroy(): void {
-  if (instance) {
-    instance.destroy()
-    instance = null
+  for (const modal of instances.values()) {
+    modal.destroy()
   }
+  instances.clear()
 }

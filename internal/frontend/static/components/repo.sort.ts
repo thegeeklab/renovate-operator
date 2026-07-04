@@ -77,7 +77,10 @@ export class RepoSortComponent extends Dropdown {
   }
 
   private updateUI(): void {
-    const activeOption = this.menu.querySelector<HTMLButtonElement>(`[data-value="${this.sort}"]`)
+    const options = Array.from(
+      this.menu.querySelectorAll<HTMLButtonElement>('[data-role="sort-option"]')
+    )
+    const activeOption = options.find((btn) => btn.dataset.value === this.sort)
     if (activeOption) {
       const labelEl = this.el.querySelector<HTMLElement>('[data-role="sort-label"]')
       if (labelEl) {
@@ -85,7 +88,7 @@ export class RepoSortComponent extends Dropdown {
       }
     }
 
-    this.menu.querySelectorAll<HTMLButtonElement>('[data-role="sort-option"]').forEach((btn) => {
+    options.forEach((btn) => {
       const isActive = btn.dataset.value === this.sort
       btn.classList.toggle("font-semibold", isActive)
       btn.setAttribute("aria-selected", isActive ? "true" : "false")

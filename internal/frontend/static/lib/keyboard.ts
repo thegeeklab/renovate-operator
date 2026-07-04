@@ -105,7 +105,3 @@ export function initKeyboard(): void {
     })
   })
 }
-
-export function destroyKeyboard(): void {
-  cleanup()
-}
