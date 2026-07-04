@@ -1,0 +1,115 @@
+{
+  "ref": "refs/heads/main",
+  "before": "2f780193b136b72bfea4eeb640786a8c4450c7a2",
+  "after": "366701fde727cb7a9e7f21eb88264f59f6f9b89c",
+  "repository": {
+    "id": 179344069,
+    "name": "woodpecker",
+    "full_name": "woodpecker-ci/woodpecker",
+    "private": false,
+    "owner": {
+      "name": "woodpecker-ci",
+      "login": "woodpecker-ci",
+      "id": 84780935
+    },
+    "html_url": "https://github.com/woodpecker-ci/woodpecker",
+    "description": "Woodpecker is a simple, yet powerful CI/CD engine with great extensibility.",
+    "fork": false,
+    "url": "https://github.com/woodpecker-ci/woodpecker",
+    "created_at": 1554314798,
+    "updated_at": "2022-01-16T20:19:33Z",
+    "pushed_at": 1642370257,
+    "git_url": "git://github.com/woodpecker-ci/woodpecker.git",
+    "ssh_url": "git@github.com:woodpecker-ci/woodpecker.git",
+    "clone_url": "https://github.com/woodpecker-ci/woodpecker.git",
+    "svn_url": "https://github.com/woodpecker-ci/woodpecker",
+    "size": 81324,
+    "stargazers_count": 659,
+    "watchers_count": 659,
+    "language": "Go",
+    "has_issues": true,
+    "has_projects": false,
+    "has_downloads": true,
+    "has_wiki": false,
+    "has_pages": false,
+    "forks_count": 84,
+    "mirror_url": null,
+    "archived": false,
+    "disabled": false,
+    "open_issues_count": 123,
+    "license": {
+      "key": "apache-2.0",
+      "name": "Apache License 2.0",
+      "spdx_id": "Apache-2.0"
+    },
+    "allow_forking": true,
+    "is_template": false,
+    "topics": ["ci", "devops", "docker"],
+    "visibility": "public",
+    "forks": 84,
+    "open_issues": 123,
+    "watchers": 659,
+    "default_branch": "main",
+    "stargazers": 659,
+    "main_branch": "main",
+    "organization": "woodpecker-ci"
+  },
+  "pusher": {
+    "name": "6543",
+    "email": "noreply@6543.de"
+  },
+  "sender": {
+    "login": "6543",
+    "id": 24977596,
+    "type": "User"
+  },
+  "created": false,
+  "deleted": false,
+  "forced": false,
+  "base_ref": null,
+  "compare": "https://github.com/woodpecker-ci/woodpecker/compare/2f780193b136...366701fde727",
+  "commits": [
+    {
+      "id": "366701fde727cb7a9e7f21eb88264f59f6f9b89c",
+      "tree_id": "638e046f1e1e15dbed1ddf40f9471bf1af4d64ce",
+      "distinct": true,
+      "message": "Fix multiline secrets replacer (#700)\n\n* Fix multiline secrets replacer\r\n\r\n* Add tests",
+      "timestamp": "2022-01-16T22:57:37+01:00",
+      "url": "https://github.com/woodpecker-ci/woodpecker/commit/366701fde727cb7a9e7f21eb88264f59f6f9b89c",
+      "author": {
+        "name": "Philipp",
+        "email": "noreply@philipp.xzy",
+        "username": "nupplaphil"
+      },
+      "committer": {
+        "name": "GitHub",
+        "email": "noreply@github.com",
+        "username": "web-flow"
+      },
+      "added": [],
+      "removed": [],
+      "modified": ["pipeline/shared/replace_secrets.go", "pipeline/shared/replace_secrets_test.go"]
+    }
+  ],
+  "head_commit": {
+    "id": "366701fde727cb7a9e7f21eb88264f59f6f9b89c",
+    "tree_id": "638e046f1e1e15dbed1ddf40f9471bf1af4d64ce",
+    "distinct": true,
+    "message": "Fix multiline secrets replacer (#700)\n\n* Fix multiline secrets replacer\r\n\r\n* Add tests",
+    "timestamp": "2022-01-16T22:57:37+01:00",
+    "url": "https://github.com/woodpecker-ci/woodpecker/commit/366701fde727cb7a9e7f21eb88264f59f6f9b89c",
+    "author": {
+      "name": "Philipp",
+      "email": "admin@philipp.info",
+      "username": "nupplaphil"
+    },
+    "committer": {
+      "name": "GitHub",
+      "email": "noreply@github.com",
+      "username": "web-flow"
+    },
+    "added": [],
+    "removed": [],
+    "modified": ["pipeline/shared/replace_secrets.go", "pipeline/shared/replace_secrets_test.go"]
+  }
+}

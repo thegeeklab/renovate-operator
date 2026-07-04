@@ -1,0 +1,41 @@
+{
+  "ref": "refs/tags/v1.0.0",
+  "before": "0000000000000000000000000000000000000000",
+  "after": "67012991d6c69b1c58378346fca366b864d8d1a1",
+  "repository": {
+    "id": 1028609128,
+    "name": "test_ci_tmp",
+    "full_name": "6543/test_ci_tmp",
+    "private": false,
+    "owner": {
+      "name": "6543",
+      "login": "6543",
+      "id": 24977596
+    },
+    "html_url": "https://github.com/6543/test_ci_tmp",
+    "default_branch": "main"
+  },
+  "pusher": {
+    "name": "6543",
+    "email": "6543@obermui.de"
+  },
+  "sender": {
+    "login": "6543",
+    "id": 24977596
+  },
+  "created": true,
+  "deleted": false,
+  "forced": false,
+  "base_ref": "refs/heads/main",
+  "compare": "https://github.com/6543/test_ci_tmp/compare/v1.0.0",
+  "commits": [],
+  "head_commit": {
+    "id": "67012991d6c69b1c58378346fca366b864d8d1a1",
+    "message": "Update .woodpecker.yml",
+    "author": {
+      "name": "6543",
+      "email": "6543@obermui.de",
+      "username": "6543"
+    }
+  }
+}

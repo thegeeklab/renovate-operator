@@ -12,7 +12,8 @@ import (
 )
 
 const (
-	ProviderTypeGitea = "gitea"
+	ProviderTypeGitea  = "gitea"
+	ProviderTypeGitHub = "github"
 )
 
 var (
