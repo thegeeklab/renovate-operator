@@ -71,25 +71,27 @@ templ JobLogs(data viewmodel.JobLogData) {
 							>
 								{ strconv.Itoa(len(logLevelOptions())) }/{ strconv.Itoa(len(logLevelOptions())) }
 							</span>
-							@IconChevronUpDown("h-3.5 w-3.5 text-gray-500")
+							@IconChevronUpDown("h-4 w-4 text-gray-500")
 						</button>
 						<div
 							data-role="level-menu"
-							class="hidden fixed z-50 min-w-[9rem] rounded-md bg-gray-800 border border-gray-700 shadow-lg py-1 focus:outline-none"
+							class={ dropdownMenu() + " bg-gray-800 ring-gray-700" }
 							role="listbox"
 							aria-multiselectable="true"
 						>
-							for _, level := range logLevelOptions() {
-								<label class="flex items-center gap-2.5 px-3 py-1.5 hover:bg-gray-700/50 cursor-pointer text-xs transition-colors">
-									<input
-										type="checkbox"
-										data-level={ strconv.Itoa(level.Value) }
-										checked
-										class="log-level-checkbox"
-									/>
-									<span class={ "font-mono font-medium " + level.Class }>{ level.Label }</span>
-								</label>
-							}
+							<div class="px-1">
+								for _, level := range logLevelOptions() {
+									<label class={ dropdownMenuItem() + " hover:bg-gray-700/50 rounded-md" }>
+										<input
+											type="checkbox"
+											data-level={ strconv.Itoa(level.Value) }
+											checked
+											class="log-level-checkbox"
+										/>
+										<span class={ "font-mono font-medium " + level.Class }>{ level.Label }</span>
+									</label>
+								}
+							</div>
 						</div>
 					</div>
 				}
@@ -153,7 +155,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 				<div class="text-xs font-mono whitespace-pre-wrap break-all leading-relaxed text-gray-300">
 					for _, line := range data.Parsed.Lines {
 						<div
-							class="log-line cursor-pointer hover:bg-gray-800/50 px-1 py-1.5 rounded"
+							class="log-line cursor-pointer hover:bg-gray-800/50 px-1 py-1 rounded"
 							data-action="toggle-raw"
 							data-raw={ line.Raw }
 							if line.Level > 0 {
@@ -164,13 +166,13 @@ templ JobLogs(data viewmodel.JobLogData) {
 								if line.Time != "" {
 									<span class="text-gray-500 shrink-0 tabular-nums">{ line.Time }</span>
 								}
-								<span class={ "font-bold shrink-0 w-11 " + line.Class }>{ line.LevelLabel() }</span>
+								<span class={ "font-bold shrink-0 w-10 " + line.Class }>{ line.LevelLabel() }</span>
 								<span class="text-gray-300 break-all">{ line.Message }</span>
 								<svg class="log-chevron h-4 w-4 ml-auto shrink-0 self-center text-gray-500 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
 									<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
 								</svg>
 							</div>
-							<div class="hidden log-raw-content mt-1 ml-[4.25rem] text-gray-500 whitespace-pre-wrap break-all text-[0.7rem] leading-relaxed">
+							<div class="hidden log-raw-content mt-1 ml-16 text-gray-500 whitespace-pre-wrap break-all text-xs leading-relaxed">
 								<pre class="log-raw-text"></pre>
 							</div>
 						</div>
@@ -231,9 +233,9 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 						for _, issue := range parsed.LogIssues.Issues {
 							<li class="flex items-start gap-2 text-xs">
 								if issue.Level >= 50 {
-									@IconXCircle("h-3.5 w-3.5 text-red-400 mt-0.5 shrink-0")
+									@IconXCircle("h-4 w-4 text-red-400 mt-0.5 shrink-0")
 								} else {
-									@IconExclamationTriangle("h-3.5 w-3.5 text-yellow-400 mt-0.5 shrink-0")
+									@IconExclamationTriangle("h-4 w-4 text-yellow-400 mt-0.5 shrink-0")
 								}
 								<span class="text-gray-300">{ issue.Message }</span>
 							</li>
@@ -285,27 +287,27 @@ templ prActionIcon(action parser.PRAction) {
 	switch action {
 		case parser.PRActionAutomerged:
 			@Tooltip("Automerged") {
-				@IconCheckCircle("h-3.5 w-3.5 text-green-400 shrink-0")
+				@IconCheckCircle("h-4 w-4 text-green-400 shrink-0")
 			}
 		case parser.PRActionCreated:
 			@Tooltip("Created (new PR)") {
-				<svg class="h-3.5 w-3.5 text-blue-400 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+				<svg class="h-4 w-4 text-blue-400 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
 					<path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"></path>
 				</svg>
 			}
 		case parser.PRActionUpdated:
 			@Tooltip("Updated") {
-				<svg class="h-3.5 w-3.5 text-yellow-400 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+				<svg class="h-4 w-4 text-yellow-400 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
 					<path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H4.598a.75.75 0 00-.75.75v3.634a.75.75 0 001.5 0v-2.033l.312.311a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm-1.675-5.274a7 7 0 00-11.712 3.138.75.75 0 001.449.39 5.5 5.5 0 019.201-2.466l.312.311H9.75a.75.75 0 000 1.5h3.634a.75.75 0 00.75-.75V4.598a.75.75 0 00-1.5 0v2.033l-.312-.311z" clip-rule="evenodd"></path>
 				</svg>
 			}
 		case parser.PRActionNeedsApproval:
 			@Tooltip("Needs approval") {
-				@IconExclamationTriangle("h-3.5 w-3.5 text-orange-400 shrink-0")
+				@IconExclamationTriangle("h-4 w-4 text-orange-400 shrink-0")
 			}
 		case parser.PRActionUnchanged:
 			@Tooltip("Unchanged (no updates needed)") {
-				<svg class="h-3.5 w-3.5 text-gray-400 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
+				<svg class="h-4 w-4 text-gray-400 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
 					<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" clip-rule="evenodd"></path>
 				</svg>
 			}

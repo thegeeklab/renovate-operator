@@ -42,9 +42,9 @@ func (s Status) BadgeClass() string {
 	case StatusRunning:
 		return base + "bg-blue-50 text-blue-700 ring-blue-600/20"
 	case StatusFailed:
-		return base + "bg-red-50 text-red-700 ring-red-600/10"
+		return base + "bg-red-50 text-red-700 ring-red-600/20"
 	default:
-		return base + "bg-gray-50 text-gray-600 ring-gray-500/10"
+		return base + "bg-gray-50 text-gray-600 ring-gray-500/20"
 	}
 }
 

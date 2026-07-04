@@ -7,11 +7,11 @@ func btnBase() string {
 }
 
 func btnGhostIcon() string {
-	return "inline-flex items-center justify-center rounded-md p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+	return "inline-flex items-center justify-center rounded-md p-2 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
 }
 
 func btnGhostLabel() string {
-	return "inline-flex items-center gap-1.5 rounded-md px-2 py-1.5 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+	return "inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
 }
 
 func btnOutline() string {
@@ -29,7 +29,14 @@ func statusCardBase() string {
 	return "relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white shadow-sm border-l-4 hover:border-blue-400"
 }
 
-// Tooltip wraps content with a styled tooltip.
+func dropdownMenu() string {
+	return "hidden fixed z-50 min-w-36 rounded-md ring-1 ring-gray-200 shadow-lg py-1 focus:outline-none"
+}
+
+func dropdownMenuItem() string {
+	return "flex items-center gap-2 w-full px-3 py-1 cursor-pointer text-xs transition-colors"
+}
+
 templ Kbd(text string) {
 	<kbd>{ text }</kbd>
 }
@@ -43,7 +50,7 @@ templ Tooltip(text string, opts ...string) {
 		}
 	>
 		{ children... }
-		<span class="tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 flex items-center gap-1.5">
+		<span class="tooltip-text z-50 whitespace-nowrap rounded bg-gray-800 px-2 py-1 text-xs text-gray-100 flex items-center gap-1">
 			if strings.Contains(text, " [") && strings.HasSuffix(text, "]") {
 				<span>{ strings.Split(text, " [")[0] }</span>
 				for _, kbd := range strings.Split(strings.TrimSuffix(strings.Split(text, " [")[1], "]"), " ") {

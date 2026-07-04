@@ -30,7 +30,7 @@ func Login(auth viewmodel.AuthInfo) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8\"><div class=\"max-w-md w-full space-y-8\"><div class=\"text-center\"><h2 class=\"text-2xl font-bold tracking-tight text-gray-900\">Sign in to your account</h2><p class=\"mt-2 text-sm text-gray-500\">Choose a provider to continue</p></div><div class=\"bg-white shadow sm:rounded-lg\"><div class=\"px-4 py-5 sm:p-6\"><div class=\"space-y-3\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8\"><div class=\"max-w-md w-full space-y-8\"><div class=\"text-center\"><h2 class=\"text-2xl font-bold tracking-tight text-gray-900\">Sign in to your account</h2><p class=\"mt-2 text-sm text-gray-500\">Choose a provider to continue</p></div><div class=\"bg-white shadow-sm sm:rounded-lg\"><div class=\"px-4 py-5 sm:p-6\"><div class=\"space-y-3\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -48,7 +48,7 @@ func Login(auth viewmodel.AuthInfo) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-boost=\"false\" class=\"flex items-center justify-center gap-3 w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition duration-150 ease-in-out\"><div class=\"w-5 h-5 shrink-0\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "\" hx-boost=\"false\" class=\"flex items-center justify-center gap-3 w-full px-4 py-3 border border-gray-300 rounded-md shadow-sm text-sm font-medium text-gray-700 bg-white hover:bg-gray-50 transition-colors\"><div class=\"w-5 h-5 shrink-0\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

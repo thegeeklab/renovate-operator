@@ -1,4 +1,5 @@
 import { tinykeys } from "tinykeys"
+import * as keyboardHelp from "./keyboard.help"
 
 type Unsubscribe = () => void
 
@@ -41,6 +42,7 @@ function navigate(path: string): void {
 
 let u: Unsubscribe | null = null
 let slashHandler: ((e: KeyboardEvent) => void) | null = null
+let questionHandler: ((e: KeyboardEvent) => void) | null = null
 let searchEscHandler: ((e: KeyboardEvent) => void) | null = null
 
 function cleanup(): void {
@@ -52,10 +54,15 @@ function cleanup(): void {
     window.removeEventListener("keydown", slashHandler)
     slashHandler = null
   }
+  if (questionHandler) {
+    window.removeEventListener("keydown", questionHandler)
+    questionHandler = null
+  }
   if (searchEscHandler) {
     document.removeEventListener("keydown", searchEscHandler, true)
     searchEscHandler = null
   }
+  keyboardHelp.destroy()
 }
 
 export function initKeyboard(): void {
@@ -70,8 +77,21 @@ export function initKeyboard(): void {
   }
   window.addEventListener("keydown", slashHandler)
 
+  questionHandler = (e: KeyboardEvent) => {
+    if (isEditableTarget()) return
+    if (e.key === "?") {
+      e.preventDefault()
+      keyboardHelp.toggle()
+    }
+  }
+  window.addEventListener("keydown", questionHandler)
+
   searchEscHandler = (e: KeyboardEvent) => {
     if (e.key !== "Escape") return
+    if (keyboardHelp.isVisible()) {
+      keyboardHelp.hide()
+      return
+    }
     const target = e.target as HTMLElement | null
     if (target && (target.tagName === "INPUT" || target.tagName === "TEXTAREA")) {
       target.blur()
@@ -84,8 +104,4 @@ export function initKeyboard(): void {
       navigate("/")
     })
   })
-}
-
-export function destroyKeyboard(): void {
-  cleanup()
 }

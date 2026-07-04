@@ -18,7 +18,7 @@ templ RenovatorCountBadge(namespace, renovatorUID string, count int) {
 }
 
 templ RenovatorList(data viewmodel.DashboardData) {
-	<div class="bg-white shadow mb-6 shrink-0">
+	<div class="bg-white shadow-sm mb-6 shrink-0">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 			<h2 class="hidden sm:block text-2xl font-bold tracking-tight text-gray-900" data-focus-target>Dashboard</h2>
 			<div class="relative w-full sm:w-64">
@@ -34,10 +34,10 @@ templ RenovatorList(data viewmodel.DashboardData) {
 					hx-target="#dashboard-content"
 					hx-swap="innerHTML"
 					hx-trigger="input changed delay:500ms, search"
-					class="block w-full rounded-md border-0 py-1.5 pl-3 pr-16 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400"
+					class="block w-full rounded-md border-0 py-2 pl-3 pr-16 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400"
 				/>
 				if data.SearchQuery == "" {
-					<div class="absolute inset-y-0 right-0 flex items-center gap-1.5 pr-2 pointer-events-none">
+					<div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2 pointer-events-none">
 						@Kbd("/")
 						@IconMagnifyingGlass("h-4 w-4 text-gray-400")
 					</div>
@@ -86,9 +86,9 @@ templ RenovatorList(data viewmodel.DashboardData) {
 							data-cloak
 							data-component="renovator-details"
 							data-persist-key={ sanitize.RenovatorPersistKey(v.Name) }
-							class="group bg-white shadow rounded-lg overflow-hidden border border-gray-200"
+							class="group bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200"
 						>
-							<summary class="cursor-pointer bg-white px-4 py-5 sm:px-6 hover:bg-gray-50 transition duration-150 ease-in-out">
+							<summary class="cursor-pointer bg-white px-4 py-5 sm:p-6 hover:bg-gray-50 transition-colors">
 								<div class="flex items-center justify-between">
 									<div class="flex items-center gap-4">
 										@IconChevronRight("chevron h-5 w-5 text-gray-400 group-open:rotate-90 transition-transform duration-200")
@@ -126,19 +126,33 @@ templ RenovatorList(data viewmodel.DashboardData) {
 							>
 								<div class="flex items-center justify-end mb-4 gap-2">
 									<label for={ "sort-" + v.Name } class="sr-only">Sort repositories</label>
-									<div class="relative flex-1 sm:flex-none">
-										<select
-											id={ "sort-" + v.Name }
-											name="sort"
-											aria-label="Sort repositories"
-											class="appearance-none w-full rounded-md border-0 py-1.5 pl-3 pr-8 text-sm text-gray-700 ring-1 ring-inset ring-gray-300 bg-white cursor-pointer"
+									<div class="relative">
+										<button
+											type="button"
+											data-action="toggle-sort"
+											aria-expanded="false"
+											aria-haspopup="listbox"
+											class="inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
 										>
-											<option value="name">{ string(viewmodel.GitRepoFieldName) }</option>
-											<option value="date">{ string(viewmodel.GitRepoFieldCreated) }</option>
-											<option value="last_update">{ string(viewmodel.GitRepoFieldLastRun) }</option>
-										</select>
-										<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center pr-2">
-											@IconChevronUpDown("h-4 w-4 text-gray-400")
+											<span data-role="sort-label">{ string(viewmodel.GitRepoFieldName) }</span>
+											@IconChevronUpDown("h-4 w-4 text-gray-500")
+										</button>
+										<div
+											data-role="sort-menu"
+											class={ dropdownMenu() + " bg-white" }
+											role="listbox"
+										>
+											<div class="px-1">
+												<button type="button" data-value="name" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+													{ string(viewmodel.GitRepoFieldName) }
+												</button>
+												<button type="button" data-value="date" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+													{ string(viewmodel.GitRepoFieldCreated) }
+												</button>
+												<button type="button" data-value="last_update" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+													{ string(viewmodel.GitRepoFieldLastRun) }
+												</button>
+											</div>
 										</div>
 									</div>
 									@Tooltip("Sort ascending", "sort-order") {
@@ -147,7 +161,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 											data-cloak
 											data-action="toggle-order"
 											aria-pressed="false"
-											class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors self-stretch"
+											class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors"
 										>
 											<span data-role="sort-asc">
 												@IconBarsArrowDown("h-4 w-4")
