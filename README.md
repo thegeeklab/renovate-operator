@@ -6,6 +6,14 @@
 
 A Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com/) deployments. This operator manages Renovate runs across repositories discovered from Git platforms, with a built-in web dashboard for monitoring.
 
+<!-- markdownlint-disable MD033 -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/thegeeklab/renovate-operator/main/images/dashboard.png" alt="Dashboard" width="45%" />
+  &nbsp;
+  <img src="https://raw.githubusercontent.com/thegeeklab/renovate-operator/main/images/gitrepo.png" alt="GitRepo View" width="45%" />
+</p>
+<!-- markdownlint-enable MD033 -->
+
 ## Features
 
 - **Automated Scheduling**: Cron-based scheduling for discovery and Renovate runs
@@ -14,14 +22,6 @@ A Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com
 - **Web Dashboard**: Real-time monitoring with Server-Sent Events, job log viewer
 - **OAuth2 Login**: Secure web UI access via platform OIDC
 - **Webhook Triggers**: Trigger Renovate runs from platform webhook events
-
-<!-- markdownlint-disable MD033 -->
-<p align="center">
-  <img src="https://raw.githubusercontent.com/thegeeklab/renovate-operator/main/images/dashboard.png" alt="Dashboard" width="45%" />
-  &nbsp;
-  <img src="https://raw.githubusercontent.com/thegeeklab/renovate-operator/main/images/gitrepo.png" alt="GitRepo View" width="45%" />
-</p>
-<!-- markdownlint-enable MD033 -->
 
 ### Supported Platforms
 

@@ -77,6 +77,17 @@
   transition: background 150ms ease-in-out;
 }
 
+.log-search-hidden {
+  display: none !important;
+}
+
+mark.log-search-mark {
+  background-color: rgb(250 204 21);
+  color: rgb(17 24 39) !important;
+  border-radius: 0.125rem;
+  padding: 0 0.0625rem;
+}
+
 .log-level-checkbox:checked {
   background-color: rgb(59 130 246);
   border-color: rgb(37 99 235);
