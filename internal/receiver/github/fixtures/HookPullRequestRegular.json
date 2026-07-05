@@ -1,0 +1,58 @@
+{
+  "action": "edited",
+  "number": 3,
+  "pull_request": {
+    "url": "https://api.github.com/repos/gordon/hello-world/pulls/3",
+    "id": 3,
+    "html_url": "https://github.com/gordon/hello-world/pull/3",
+    "number": 3,
+    "state": "open",
+    "title": "Add new feature",
+    "user": {
+      "login": "contributor",
+      "id": 3
+    },
+    "body": "This PR adds a new feature to the application.\r\n\r\n## Changes\r\n\r\n- Added new endpoint\r\n- Updated tests\r\n- Documentation updated",
+    "created_at": "2026-05-18T10:00:00Z",
+    "updated_at": "2026-05-18T10:00:00Z",
+    "closed_at": null,
+    "merged_at": null,
+    "head": {
+      "label": "gordon:feature",
+      "ref": "feature",
+      "sha": "abc123"
+    },
+    "base": {
+      "label": "gordon:main",
+      "ref": "main",
+      "sha": "def456"
+    },
+    "merged": false,
+    "mergeable": true,
+    "rebaseable": true,
+    "mergeable_state": "clean",
+    "comments": 0,
+    "review_comments": 0,
+    "commits": 1,
+    "additions": 10,
+    "deletions": 2,
+    "changed_files": 3
+  },
+  "repository": {
+    "id": 1,
+    "name": "hello-world",
+    "full_name": "gordon/hello-world",
+    "private": true,
+    "owner": {
+      "login": "gordon",
+      "id": 1
+    },
+    "html_url": "https://github.com/gordon/hello-world",
+    "description": "A hello world repository",
+    "default_branch": "main"
+  },
+  "sender": {
+    "login": "contributor",
+    "id": 3
+  }
+}

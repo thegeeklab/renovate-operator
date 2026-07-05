@@ -81,7 +81,7 @@ var _ = Describe("Server", func() {
 		It("should return default server configuration", func() {
 			defaultConfig := DefaultServerConfig()
 
-			Expect(defaultConfig.Addr).To(Equal(":8080"))
+			Expect(defaultConfig.Addr).To(Equal(":8082"))
 			Expect(defaultConfig.ReadTimeout).To(Equal(10 * time.Second))
 			Expect(defaultConfig.WriteTimeout).To(Equal(30 * time.Second))
 			Expect(defaultConfig.IdleTimeout).To(Equal(120 * time.Second))

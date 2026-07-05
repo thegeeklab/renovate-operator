@@ -1,0 +1,41 @@
+{
+  "action": "edited",
+  "issue": {
+    "url": "https://api.github.com/repos/gordon/hello-world/issues/2",
+    "id": 2,
+    "number": 2,
+    "title": "Dependency Dashboard",
+    "user": {
+      "login": "renovate[bot]",
+      "id": 1,
+      "type": "Bot"
+    },
+    "body": "This issue lists Renovate updates and detected dependencies.\n\n## Rebase/Retry\n\nClick on a checkbox below to rebase/retry:\n\n - [ ] <!-- rebase-branch=renovate/golangci-lint-1.x -->Update dependency golangci/golangci-lint to v1.60\n\n## Detected Dependencies\n\n| Manager | File | Detected deps |\n|---|---|---|\n| gomod | go.mod | golang 1.21 |\n\n<!--renovate-debug:eyJjcmVhdGVkSW5WZXIiOiI0My4xODUuMSJ9-->",
+    "state": "open",
+    "locked": false,
+    "assignee": null,
+    "assignees": [],
+    "milestone": null,
+    "comments": 0,
+    "created_at": "2026-05-20T10:00:00Z",
+    "updated_at": "2026-05-21T08:30:00Z",
+    "closed_at": null
+  },
+  "repository": {
+    "id": 1,
+    "name": "hello-world",
+    "full_name": "gordon/hello-world",
+    "private": true,
+    "owner": {
+      "login": "gordon",
+      "id": 1
+    },
+    "html_url": "https://github.com/gordon/hello-world",
+    "description": "A hello world repository",
+    "default_branch": "main"
+  },
+  "sender": {
+    "login": "gordon",
+    "id": 2
+  }
+}

@@ -25,6 +25,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/receiver"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea"
+	"github.com/thegeeklab/renovate-operator/internal/receiver/github"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -519,6 +520,8 @@ func buildReceiverFactory() receiver.ReceiverFactory {
 		switch platformType {
 		case renovatev1beta1.PlatformType_GITEA:
 			return gitea.NewReceiver()
+		case renovatev1beta1.PlatformType_GITHUB:
+			return github.NewReceiver()
 		default:
 			return nil
 		}

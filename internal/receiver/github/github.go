@@ -1,4 +1,4 @@
-package gitea
+package github
 
 import (
 	"crypto/hmac"
@@ -7,14 +7,17 @@ import (
 	"encoding/json"
 	"errors"
 	"net/http"
+	"strings"
 
 	"github.com/thegeeklab/renovate-operator/internal/receiver"
 )
 
 var (
 	ErrInvalidSignature = errors.New("invalid webhook signature")
-	ErrMissingSignature = errors.New("missing X-Gitea-Signature header")
+	ErrMissingSignature = errors.New("missing X-Hub-Signature-256 header")
 )
+
+const signatureParts = 2
 
 type Receiver struct{}
 
@@ -22,7 +25,7 @@ func NewReceiver() *Receiver {
 	return &Receiver{}
 }
 
-//nolint:tagliatelle // Gitea API uses snake_case
+//nolint:tagliatelle // GitHub API uses snake_case
 type pushRepository struct {
 	DefaultBranch string `json:"default_branch"`
 }
@@ -37,11 +40,10 @@ type pullRequestUser struct {
 }
 
 type pullRequest struct {
-	Description string          `json:"body"`
-	User        pullRequestUser `json:"user"`
+	Body string `json:"body"`
 }
 
-//nolint:tagliatelle // Gitea API uses snake_case
+//nolint:tagliatelle // GitHub API uses snake_case
 type pullRequestPayload struct {
 	Action      string          `json:"action"`
 	PullRequest pullRequest     `json:"pull_request"`
@@ -49,8 +51,7 @@ type pullRequestPayload struct {
 }
 
 type issue struct {
-	Body string          `json:"body"`
-	User pullRequestUser `json:"user"`
+	Body string `json:"body"`
 }
 
 type issuePayload struct {
@@ -60,16 +61,21 @@ type issuePayload struct {
 }
 
 func (p *Receiver) Validate(req *http.Request, secretToken, body []byte) error {
-	signature := req.Header.Get("X-Gitea-Signature")
+	signature := req.Header.Get("X-Hub-Signature-256")
 	if signature == "" {
 		return ErrMissingSignature
+	}
+
+	parts := strings.SplitN(signature, "=", signatureParts)
+	if len(parts) != signatureParts || parts[0] != "sha256" {
+		return ErrInvalidSignature
 	}
 
 	mac := hmac.New(sha256.New, secretToken)
 	mac.Write(body)
 	expectedMAC := hex.EncodeToString(mac.Sum(nil))
 
-	if !hmac.Equal([]byte(expectedMAC), []byte(signature)) {
+	if !hmac.Equal([]byte(expectedMAC), []byte(parts[1])) {
 		return ErrInvalidSignature
 	}
 
@@ -77,7 +83,7 @@ func (p *Receiver) Validate(req *http.Request, secretToken, body []byte) error {
 }
 
 func (p *Receiver) Parse(req *http.Request, body []byte) (receiver.ParseResult, error) {
-	event := req.Header.Get("X-Gitea-Event")
+	event := req.Header.Get("X-GitHub-Event")
 
 	switch event {
 	case "push":
@@ -133,7 +139,7 @@ func (p *Receiver) parsePullRequestEvent(body []byte) (receiver.ParseResult, err
 		return receiver.ParseResult{}, nil
 	}
 
-	if !receiver.IsRenovateCheckboxChecked(payload.PullRequest.Description) {
+	if !receiver.IsRenovateCheckboxChecked(payload.PullRequest.Body) {
 		return receiver.ParseResult{}, nil
 	}
 
