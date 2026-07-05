@@ -15,13 +15,26 @@ A Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com
 - **OAuth2 Login**: Secure web UI access via platform OIDC
 - **Webhook Triggers**: Trigger Renovate runs from platform webhook events
 
+<!-- markdownlint-disable MD033 -->
+<p align="center">
+  <img src="https://raw.githubusercontent.com/thegeeklab/renovate-operator/main/images/dashboard.png" alt="Dashboard" width="45%" />
+  &nbsp;
+  <img src="https://raw.githubusercontent.com/thegeeklab/renovate-operator/main/images/gitrepo.png" alt="GitRepo View" width="45%" />
+</p>
+<!-- markdownlint-enable MD033 -->
+
 ### Supported Platforms
 
-| Feature               | Implemented | Planned                 |
-| --------------------- | ----------- | ----------------------- |
-| Renovate platform     | Gitea       | Forgejo, GitLab, GitHub |
-| Webhook receiver      | Gitea       | Forgejo, GitLab, GitHub |
-| OAuth2 authentication | Gitea       | Forgejo, GitLab, GitHub |
+- [x] Renovate platform
+  - [x] Gitea
+  - [x] GitHub
+  - [ ] Forgejo
+  - [ ] GitLab
+- [x] OAuth2 authentication
+  - [x] Gitea
+  - [x] GitHub
+  - [ ] Forgejo
+  - [ ] GitLab
 
 ## Quick Start
 
