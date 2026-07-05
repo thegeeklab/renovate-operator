@@ -62,9 +62,7 @@ type GitHubProvider struct {
 	displayName  string
 	iconURL      string
 	endpoint     string
-	clientID     string
-	clientSecret string
-	redirectURL  string
+	forgeURL     string
 	oauth2Config *oauth2.Config
 	httpClient   *http.Client
 }
@@ -93,17 +91,16 @@ func NewGitHubProvider(ctx context.Context, cfg auth.ProviderConfig) (*GitHubPro
 	}
 
 	if cfg.Endpoint != "" && cfg.Endpoint != "https://github.com" {
+		endpoint.AuthURL = strings.TrimRight(cfg.Endpoint, "/") + "/login/oauth/authorize"
 		endpoint.TokenURL = strings.TrimRight(cfg.Endpoint, "/") + "/login/oauth/access_token"
 	}
 
 	return &GitHubProvider{
-		name:         cfg.Name,
-		displayName:  displayName,
-		iconURL:      iconURL,
-		endpoint:     cfg.Endpoint,
-		clientID:     cfg.ClientID,
-		clientSecret: cfg.ClientSecret,
-		redirectURL:  cfg.RedirectURL,
+		name:        cfg.Name,
+		displayName: displayName,
+		iconURL:     iconURL,
+		endpoint:    cfg.Endpoint,
+		forgeURL:    cfg.ForgeURL,
 		oauth2Config: &oauth2.Config{
 			ClientID:     cfg.ClientID,
 			ClientSecret: cfg.ClientSecret,
@@ -270,11 +267,15 @@ func (p *GitHubProvider) fetchPrimaryEmail(ctx context.Context, client *http.Cli
 }
 
 func (p *GitHubProvider) apiURL() string {
-	if p.endpoint != "" && p.endpoint != "https://github.com" {
-		return strings.TrimRight(p.endpoint, "/") + "/api/v3"
+	if p.forgeURL != "" {
+		return strings.TrimRight(p.forgeURL, "/")
 	}
 
-	return "https://api.github.com"
+	if p.endpoint == "" || p.endpoint == "https://github.com" || p.endpoint == "https://api.github.com" {
+		return "https://api.github.com"
+	}
+
+	return strings.TrimRight(p.endpoint, "/") + "/api/v3"
 }
 
 func (p *GitHubProvider) GetUserRepos(ctx context.Context, client *http.Client) (map[string]bool, error) {

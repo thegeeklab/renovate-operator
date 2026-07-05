@@ -43,8 +43,9 @@ type pullRequest struct {
 
 //nolint:tagliatelle // Gitea API uses snake_case
 type pullRequestPayload struct {
-	Action      string      `json:"action"`
-	PullRequest pullRequest `json:"pull_request"`
+	Action      string          `json:"action"`
+	PullRequest pullRequest     `json:"pull_request"`
+	Sender      pullRequestUser `json:"sender"`
 }
 
 type issue struct {
@@ -139,6 +140,6 @@ func (p *Receiver) parsePullRequestEvent(body []byte) (receiver.ParseResult, err
 	return receiver.ParseResult{
 		ShouldTrigger:    true,
 		RequireUserCheck: true,
-		User:             payload.PullRequest.User.Login,
+		User:             payload.Sender.Login,
 	}, nil
 }

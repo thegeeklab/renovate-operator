@@ -40,8 +40,7 @@ type pullRequestUser struct {
 }
 
 type pullRequest struct {
-	Body string          `json:"body"`
-	User pullRequestUser `json:"user"`
+	Body string `json:"body"`
 }
 
 //nolint:tagliatelle // GitHub API uses snake_case
@@ -52,8 +51,7 @@ type pullRequestPayload struct {
 }
 
 type issue struct {
-	Body string          `json:"body"`
-	User pullRequestUser `json:"user"`
+	Body string `json:"body"`
 }
 
 type issuePayload struct {

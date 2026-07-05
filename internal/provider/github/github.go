@@ -24,7 +24,6 @@ var (
 
 type Provider struct {
 	client   *github.Client
-	baseURL  string
 	forgeURL string
 }
 
@@ -50,7 +49,7 @@ func NewProvider(ctx context.Context, endpoint, token string) (*Provider, error)
 		return nil, fmt.Errorf("failed to create github client: %w", err)
 	}
 
-	return &Provider{client: client, baseURL: baseURL, forgeURL: forgeURL}, nil
+	return &Provider{client: client, forgeURL: forgeURL}, nil
 }
 
 func (p *Provider) GetIdentity() (string, error) {
