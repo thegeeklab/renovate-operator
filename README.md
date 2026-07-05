@@ -72,57 +72,57 @@ kubectl apply -f install.yaml
 
 1. **Create a Gitea token secret**:
 
-```bash
-kubectl create secret generic gitea-token \
-  --from-literal=token=your_gitea_token_here \
-  --namespace renovate-system
-```
+   ```bash
+   kubectl create secret generic gitea-token \
+     --from-literal=token=your_gitea_token_here \
+     --namespace renovate-system
+   ```
 
 1. **Create a Renovator resource**:
 
-```yaml
-apiVersion: renovate.thegeeklab.de/v1beta1
-kind: Renovator
-metadata:
-  name: my-renovator
-  namespace: renovate-system
-spec:
-  schedule: "0 2 * * *"
+   ```yaml
+   apiVersion: renovate.thegeeklab.de/v1beta1
+   kind: Renovator
+   metadata:
+     name: my-renovator
+     namespace: renovate-system
+   spec:
+     schedule: "0 2 * * *"
 
-  renovate:
-    platform:
-      type: gitea
-      endpoint: https://gitea.example.com
-      token:
-        secretKeyRef:
-          name: gitea-token
-          key: token
+     renovate:
+       platform:
+         type: gitea
+         endpoint: https://gitea.example.com
+         token:
+           secretKeyRef:
+             name: gitea-token
+             key: token
 
-  discovery:
-    schedule: "0 */2 * * *"
-    filter:
-      - "your-org/*"
-      - "!your-org/archived-*"
+     discovery:
+       schedule: "0 */2 * * *"
+       filter:
+         - "your-org/*"
+         - "!your-org/archived-*"
 
-  runner:
-    schedule: "0 3 * * *"
-```
+     runner:
+       schedule: "0 3 * * *"
+   ```
 
-```bash
-kubectl apply -f renovator.yaml
-```
+   ```bash
+   kubectl apply -f renovator.yaml
+   ```
 
 1. **Verify**:
 
-```bash
-kubectl get renovator my-renovator -n renovate-system
-kubectl get gitrepos -n renovate-system
-kubectl logs -n renovate-system deployment/renovate-operator-controller-manager
-```
+   ```bash
+   kubectl get renovator my-renovator -n renovate-system
+   kubectl get gitrepos -n renovate-system
+   kubectl logs -n renovate-system deployment/renovate-operator-controller-manager
+   ```
 
 ### Access the Web UI
 
-The frontend is served by the manager pod on port `8082`. There is no dedicated Kubernetes Service for the frontend in the default installation, so use port-forward directly to the pod:
+The frontend is served by the manager pod on port `8082` by default (configurable via `--frontend-bind-address`). There is no dedicated Kubernetes Service for the frontend in the default installation, so use port-forward directly to the pod:
 
 ```bash
 kubectl port-forward -n renovate-system \
@@ -133,7 +133,7 @@ Then open `<http://localhost:8082>` in your browser.
 
 ## Uninstallation
 
-> **WARNING:** `GitRepo` and `AuthProvider` resources carry finalizers that call the Git platform API to deregister webhooks and auth providers on deletion. The operator must be running and able to reach the Git platform while these resources are deleted. Removing the operator before they are fully deleted will permanently block them in `Terminating` state and leave orphaned webhooks registered on the platform.
+> **WARNING:** `GitRepo` and `AuthProvider` resources have finalizers, so the operator must be running while they are deleted. `GitRepo` resources also call the Git platform API to deregister webhooks. Deleting them with the operator unreachable can block deletion and leave orphaned webhooks registered on the platform.
 
 Delete resources in this order:
 

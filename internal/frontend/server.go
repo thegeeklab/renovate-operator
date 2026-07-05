@@ -54,7 +54,7 @@ type assetManifest map[string]struct {
 // DefaultServerConfig returns default server configuration.
 func DefaultServerConfig() ServerConfig {
 	return ServerConfig{
-		Addr:         ":8080",
+		Addr:         ":8082",
 		ReadTimeout:  DefaultReadTimeout,
 		WriteTimeout: DefaultWriteTimeout,
 		IdleTimeout:  DefaultIdleTimeout,
