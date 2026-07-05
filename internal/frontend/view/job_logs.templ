@@ -191,7 +191,6 @@ templ JobLogs(data viewmodel.JobLogData) {
 							class="log-line cursor-pointer hover:bg-gray-800/50 px-1 py-1 rounded"
 							data-action="toggle-raw"
 							data-raw={ line.Raw }
-							data-message={ line.Message }
 							if line.Level > 0 {
 								data-level={ strconv.Itoa(int(line.Level)) }
 							}

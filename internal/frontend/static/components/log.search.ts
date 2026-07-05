@@ -1,6 +1,7 @@
 import { getData } from "../lib/dom"
 import { getPersisted, setPersisted } from "../lib/storage"
 import { registerComponent } from "../lib/component.registry"
+import { setRawExpanded } from "../lib/log.raw"
 
 const DEBOUNCE_MS = 100
 const HIGHLIGHT_CLASS = "log-search-mark"
@@ -31,7 +32,8 @@ export class LogSearch {
     this.countEl = el.querySelector<HTMLElement>('[data-role="log-search-count"]')
     this.clearBtn = el.querySelector<HTMLButtonElement>('[data-action="log-search-clear"]')
     this.iconEl = el.querySelector<HTMLElement>('[data-role="log-search-icon"]')
-    this.emptyEl = el.querySelector<HTMLElement>('[data-role="log-search-empty"]')
+    this.emptyEl =
+      this.logViewer?.querySelector<HTMLElement>('[data-role="log-search-empty"]') ?? null
 
     this.boundInput = this.handleInput.bind(this)
     this.boundClear = this.handleClear.bind(this)
@@ -105,14 +107,15 @@ export class LogSearch {
     if (!this.logViewer) return
 
     const lines = Array.from(this.logViewer.querySelectorAll<HTMLElement>(".log-line"))
-    const lcQuery = query.toLowerCase()
+    const matchRegex = query === "" ? null : buildMatchRegex(query)
     let matchCount = 0
 
     for (const line of lines) {
-      const message = line.dataset.message ?? ""
+      const messageEl = line.querySelector<HTMLElement>("[data-role='log-line-message']")
+      const message = messageEl?.textContent ?? ""
       const raw = line.dataset.raw ?? ""
-      const messageMatches = query !== "" && message.toLowerCase().includes(lcQuery)
-      const rawMatches = query !== "" && raw.toLowerCase().includes(lcQuery)
+      const messageMatches = matchRegex !== null && matchRegex.test(message)
+      const rawMatches = matchRegex !== null && matchRegex.test(raw)
       const isMatch = query === "" || messageMatches || rawMatches
 
       if (isMatch) {
@@ -146,44 +149,16 @@ export class LogSearch {
     userToggled: boolean,
     query: string
   ): void {
-    const rawContent = line.querySelector<HTMLElement>(".log-raw-content")
-    const rawText = line.querySelector<HTMLElement>(".log-raw-text")
-    const chevron = line.querySelector<HTMLElement>(".log-chevron")
-    if (!rawContent || !rawText || !chevron) return
-
     if (query === "") {
       if (!userToggled) {
-        if (!rawContent.classList.contains("hidden")) {
-          rawContent.classList.add("hidden")
-        }
-        if (chevron.classList.contains("rotate-90")) {
-          chevron.classList.remove("rotate-90")
-        }
+        setRawExpanded(line, false)
       }
       return
     }
 
     if (userToggled) return
 
-    if (isDetailsOnlyMatch) {
-      this.populateRawText(line, rawText)
-      rawContent.classList.remove("hidden")
-      chevron.classList.add("rotate-90")
-    } else {
-      rawContent.classList.add("hidden")
-      chevron.classList.remove("rotate-90")
-    }
-  }
-
-  private populateRawText(line: HTMLElement, rawText: HTMLElement): void {
-    if (rawText.textContent && rawText.textContent.length > 0) return
-    const raw = line.dataset.raw ?? ""
-    try {
-      const parsed = JSON.parse(raw)
-      rawText.textContent = JSON.stringify(parsed, null, 2)
-    } catch {
-      rawText.textContent = raw
-    }
+    setRawExpanded(line, isDetailsOnlyMatch)
   }
 
   private unmarkAll(): void {
@@ -220,6 +195,7 @@ export class LogSearch {
         const parent = node.parentNode
         if (!parent || parent.nodeType !== Node.ELEMENT_NODE) return NodeFilter.FILTER_REJECT
         if (!node.nodeValue || node.nodeValue.trim() === "") return NodeFilter.FILTER_REJECT
+        regex.lastIndex = 0
         return regex.test(node.nodeValue) ? NodeFilter.FILTER_ACCEPT : NodeFilter.FILTER_REJECT
       }
     })
@@ -329,8 +305,18 @@ export class LogSearch {
   }
 }
 
+function escapeRegex(value: string): string {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+}
+
+function buildMatchRegex(query: string): RegExp | null {
+  const escaped = escapeRegex(query)
+  if (escaped.length === 0) return null
+  return new RegExp(escaped, "i")
+}
+
 function buildSearchRegex(query: string): RegExp | null {
-  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")
+  const escaped = escapeRegex(query)
   if (escaped.length === 0) return null
   return new RegExp(escaped, "gi")
 }

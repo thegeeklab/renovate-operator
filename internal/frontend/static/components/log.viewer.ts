@@ -1,6 +1,7 @@
 import { getPersisted, setPersisted } from "../lib/storage"
 import { getRefs, getData, getBoolData, nextFrame } from "../lib/dom"
 import { registerComponent, destroyComponents } from "../lib/component.registry"
+import { toggleRawLine } from "../lib/log.raw"
 import { toast } from "../lib/toast"
 
 export class LogViewerComponent {
@@ -48,7 +49,7 @@ export class LogViewerComponent {
     })
 
     this.el.querySelectorAll<HTMLElement>('[data-action="toggle-raw"]').forEach((line) => {
-      const handler = () => this.toggleRawLine(line)
+      const handler = () => toggleRawLine(line)
       this.boundToggleRawLines.set(line, handler)
       line.addEventListener("click", handler)
     })
@@ -120,28 +121,6 @@ export class LogViewerComponent {
       logViewer.innerHTML = ""
     }
     window.dispatchEvent(new CustomEvent("clear-selected-job"))
-  }
-
-  private toggleRawLine(line: HTMLElement): void {
-    const rawContent = line.querySelector<HTMLElement>(".log-raw-content")
-    const rawText = line.querySelector<HTMLElement>(".log-raw-text")
-    const chevron = line.querySelector<HTMLElement>(".log-chevron")
-    if (!rawContent || !rawText || !chevron) return
-
-    const isExpanded = !rawContent.classList.contains("hidden")
-
-    if (!isExpanded) {
-      const raw = getData(line, "raw")
-      try {
-        const parsed = JSON.parse(raw)
-        rawText.textContent = JSON.stringify(parsed, null, 2)
-      } catch {
-        rawText.textContent = raw
-      }
-    }
-
-    rawContent.classList.toggle("hidden")
-    chevron.classList.toggle("rotate-90", !isExpanded)
   }
 
   private async downloadLog(url: string, filename: string): Promise<void> {
