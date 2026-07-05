@@ -503,15 +503,15 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" hx-trigger=\"revealed once, sse:job-updated, sort-changed\" hx-swap=\"innerHTML\" class=\"focus:outline-none\"><div class=\"flex justify-center py-4\">")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 44, "\" hx-trigger=\"revealed once, sse:job-updated, sort-changed\" hx-swap=\"innerHTML\" class=\"focus:outline-none\">")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = IconArrowPath("animate-spin h-5 w-5").Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = SkeletonRepoList().Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "<span class=\"ml-2 text-sm text-gray-500\">Loading Repositories...</span></div></div></div></details>")
+					templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 45, "</div></div></details>")
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
