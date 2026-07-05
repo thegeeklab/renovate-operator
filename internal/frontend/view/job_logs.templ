@@ -53,6 +53,39 @@ templ JobLogs(data viewmodel.JobLogData) {
 					}
 				}
 			</div>
+			if data.Parsed != nil && !data.IsRunning {
+				<div data-component="log-search" class="relative flex-1 min-w-[12rem] max-w-md">
+					<input
+						type="search"
+						name="log-search"
+						placeholder="Search logs…"
+						autocomplete="off"
+						spellcheck="false"
+						data-role="log-search-input"
+						class="block w-full rounded-md border border-gray-700 bg-gray-900 pl-3 pr-20 py-1.5 text-xs font-mono text-gray-200 placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+					/>
+					<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-1.5 pr-2">
+						<span
+							data-role="log-search-count"
+							class="hidden text-xs font-mono tabular-nums text-gray-500"
+						></span>
+						<button
+							type="button"
+							data-action="log-search-clear"
+							aria-label="Clear search"
+							class="hidden pointer-events-auto rounded text-gray-400 hover:text-gray-200"
+						>
+							@IconXMark("h-4 w-4")
+						</button>
+						<span data-role="log-search-icon" class="flex items-center gap-1.5 text-gray-500">
+							@Kbd("/")
+							@IconMagnifyingGlass("h-4 w-4")
+						</span>
+					</div>
+				</div>
+			} else {
+				<div class="flex-1 min-w-[1rem]"></div>
+			}
 			<div class="flex items-center gap-1">
 				if data.Parsed != nil && !data.IsRunning {
 					<div data-component="log-level-filter" class="relative">
@@ -167,7 +200,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 									<span class="text-gray-500 shrink-0 tabular-nums">{ line.Time }</span>
 								}
 								<span class={ "font-bold shrink-0 w-10 " + line.Class }>{ line.LevelLabel() }</span>
-								<span class="text-gray-300 break-all">{ line.Message }</span>
+								<span class="text-gray-300 break-all" data-role="log-line-message">{ line.Message }</span>
 								<svg class="log-chevron h-4 w-4 ml-auto shrink-0 self-center text-gray-500 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
 									<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
 								</svg>
@@ -177,6 +210,12 @@ templ JobLogs(data viewmodel.JobLogData) {
 							</div>
 						</div>
 					}
+					<div
+						data-role="log-search-empty"
+						class="hidden flex flex-col items-center justify-center py-8 text-gray-500 h-full"
+					>
+						<p class="text-sm font-mono text-center px-4">No log entries match your search.</p>
+					</div>
 				</div>
 			} else {
 				<pre class="text-xs font-mono text-gray-300 whitespace-pre-wrap break-all leading-relaxed">

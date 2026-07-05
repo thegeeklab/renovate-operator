@@ -3,6 +3,7 @@ import { initJobLists } from "./components/job.list"
 import { initLogViewers } from "./components/log.viewer"
 import { initLogSummaries } from "./components/log.summary"
 import { initLogLevelFilters } from "./components/log.level.filter"
+import { initLogSearches } from "./components/log.search"
 import { initRenovatorDetails } from "./components/renovator.details"
 import { initRepoSorts } from "./components/repo.sort"
 import { initAvatarDropdown } from "./components/avatar.dropdown"
@@ -22,6 +23,7 @@ function initComponents(root: ParentNode): void {
   initLogViewers(root)
   initLogSummaries(root)
   initLogLevelFilters(root)
+  initLogSearches(root)
   initRenovatorDetails(root)
   initRepoSorts(root)
   initAvatarDropdown(root)
