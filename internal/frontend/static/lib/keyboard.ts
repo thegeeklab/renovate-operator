@@ -24,6 +24,15 @@ function guard(
 }
 
 function focusSearch(): void {
+  const logViewer = document.getElementById("log-viewer")
+  if (logViewer && !logViewer.classList.contains("hidden")) {
+    const logSearch = logViewer.querySelector<HTMLInputElement>('input[name="log-search"]')
+    if (logSearch) {
+      logSearch.focus()
+      logSearch.select()
+      return
+    }
+  }
   const input = document.querySelector<HTMLInputElement>('input[name="search"]')
   if (!input) return
   input.focus()

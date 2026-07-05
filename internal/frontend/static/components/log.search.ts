@@ -76,6 +76,7 @@ export class LogSearch {
       e.stopPropagation()
       this.input.value = ""
       this.applyQuery("")
+      this.input.focus()
     }
   }
 
