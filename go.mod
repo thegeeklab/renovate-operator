@@ -9,7 +9,7 @@ require (
 	github.com/cenkalti/backoff/v7 v7.0.0
 	github.com/coreos/go-oidc/v3 v3.19.0
 	github.com/dustin/go-humanize v1.0.1
-	github.com/go-chi/chi/v5 v5.3.0
+	github.com/go-chi/chi/v5 v5.3.1
 	github.com/google/go-github/v88 v88.0.0
 	github.com/maypok86/otter/v2 v2.3.0
 	github.com/netresearch/go-cron v0.15.0
