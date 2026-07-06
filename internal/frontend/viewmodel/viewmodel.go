@@ -6,6 +6,8 @@
 package viewmodel
 
 import (
+	"strconv"
+	"strings"
 	"time"
 
 	"github.com/thegeeklab/renovate-operator/internal/parser"
@@ -159,4 +161,103 @@ type JobLogData struct {
 	Parsed    *parser.ParseResult
 	Platform  string
 	RepoURL   string
+}
+
+// FormatCount returns "N label" with proper pluralization (e.g. "1 error",
+// "3 warnings"). Used by log summary rendering.
+func FormatCount(count int, label string) string {
+	if count == 1 {
+		return "1 " + label
+	}
+
+	return strconv.Itoa(count) + " " + label + "s"
+}
+
+// HasPRActivity reports whether the activity struct carries any non-zero
+// counters, so callers can decide whether to render a summary.
+func HasPRActivity(activity *parser.PRActivity) bool {
+	if activity == nil {
+		return false
+	}
+
+	return activity.Automerged > 0 || activity.Created > 0 || activity.Updated > 0 ||
+		activity.NeedsApproval > 0 || activity.Unchanged > 0
+}
+
+// IssueSummaryText renders a short human-readable summary of the issue counts
+// suitable for the log viewer header, e.g. "3 errors, 1 warning". Returns an
+// empty string if there is nothing meaningful to display.
+func IssueSummaryText(issues *parser.LogIssues) string {
+	if issues == nil {
+		return ""
+	}
+
+	parts := []string{}
+	if issues.ErrorCount > 0 {
+		parts = append(parts, FormatCount(issues.ErrorCount, "error"))
+	}
+
+	if issues.WarnCount > 0 {
+		parts = append(parts, FormatCount(issues.WarnCount, "warning"))
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// PRActivitySummary renders a short human-readable summary of the activity
+// counters, e.g. "2 automerged, 3 created". Returns an empty string if there
+// is nothing meaningful to display.
+func PRActivitySummary(activity *parser.PRActivity) string {
+	if activity == nil {
+		return ""
+	}
+
+	parts := []string{}
+	if activity.Automerged > 0 {
+		parts = append(parts, FormatCount(activity.Automerged, "automerged"))
+	}
+
+	if activity.Created > 0 {
+		parts = append(parts, FormatCount(activity.Created, "created"))
+	}
+
+	if activity.Updated > 0 {
+		parts = append(parts, FormatCount(activity.Updated, "updated"))
+	}
+
+	if activity.NeedsApproval > 0 {
+		parts = append(parts, FormatCount(activity.NeedsApproval, "needs approval"))
+	}
+
+	if activity.Unchanged > 0 {
+		parts = append(parts, FormatCount(activity.Unchanged, "unchanged"))
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// PRURLPatterns maps a platform name (GitHub, Gitea, ...) to the URL template
+// used to deep-link a PR number. Supported placeholders are {repo} and
+// {number}.
+var PRURLPatterns = map[string]string{
+	"github": "{repo}/pull/{number}",
+	"gitea":  "{repo}/pulls/{number}",
+}
+
+// BuildPRURL returns a deep link to a PR for the given platform and repo, or
+// an empty string when the platform is unsupported or inputs are missing.
+func BuildPRURL(platform, repoURL string, prNumber int) string {
+	if repoURL == "" || prNumber <= 0 {
+		return ""
+	}
+
+	pattern, ok := PRURLPatterns[platform]
+	if !ok {
+		return ""
+	}
+
+	url := strings.ReplaceAll(pattern, "{repo}", repoURL)
+	url = strings.ReplaceAll(url, "{number}", strconv.Itoa(prNumber))
+
+	return url
 }

@@ -62,134 +62,128 @@ templ RenovatorList(data viewmodel.DashboardData) {
 			if len(data.SearchResults) > 0 {
 				@GitRepoList(data.SearchResults)
 			} else {
-				<div class="text-center py-12">
-					@IconInbox("mx-auto h-12 w-12 text-gray-400")
-					<h3 class="mt-2 text-sm font-semibold text-gray-900">No Results Found</h3>
-					<p class="mt-1 text-sm text-gray-500">
-						No repositories match your search query.
-					</p>
-				</div>
+				@EmptyState("No Results Found", "No repositories match your search query.")
 			}
+		} else if len(data.Renovators) == 0 {
+			@EmptyState("No Renovators Found", "Get started by creating a Renovator custom resource.")
 		} else {
-			if len(data.Renovators) == 0 {
-				<div class="text-center py-12">
-					@IconInbox("mx-auto h-12 w-12 text-gray-400")
-					<h3 class="mt-2 text-sm font-semibold text-gray-900">No Renovators Found</h3>
-					<p class="mt-1 text-sm text-gray-500">
-						Get started by creating a Renovator custom resource.
-					</p>
+			<div class="space-y-4">
+				for _, v := range data.Renovators {
+					@RenovatorCard(v)
+				}
+			</div>
+		}
+	</div>
+}
+
+templ RenovatorCard(v viewmodel.WebView) {
+	<details
+		data-cloak
+		data-component="renovator-details"
+		data-persist-key={ sanitize.RenovatorPersistKey(v.Name) }
+		class="group bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200"
+	>
+		<summary class="cursor-pointer bg-white px-4 py-5 sm:p-6 hover:bg-gray-50 transition-colors">
+			<div class="flex items-center justify-between">
+				<div class="flex items-center gap-4">
+					@IconChevronRight("chevron h-5 w-5 text-gray-400")
+					<div>
+						<h3 class="text-base font-semibold leading-6 text-gray-900">
+							{ v.Name }
+						</h3>
+						<p class="mt-1 max-w-2xl text-sm text-gray-500">
+							Namespace:
+							<span class="font-medium text-gray-900">{ v.Namespace }</span>
+						</p>
+					</div>
 				</div>
-			} else {
-				<div class="space-y-4">
-					for _, v := range data.Renovators {
-						<details
-							data-cloak
-							data-component="renovator-details"
-							data-persist-key={ sanitize.RenovatorPersistKey(v.Name) }
-							class="group bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200"
-						>
-							<summary class="cursor-pointer bg-white px-4 py-5 sm:p-6 hover:bg-gray-50 transition-colors">
-								<div class="flex items-center justify-between">
-									<div class="flex items-center gap-4">
-										@IconChevronRight("chevron h-5 w-5 text-gray-400")
-										<div>
-											<h3 class="text-base font-semibold leading-6 text-gray-900">
-												{ v.Name }
-											</h3>
-											<p class="mt-1 max-w-2xl text-sm text-gray-500">
-												Namespace:
-												<span class="font-medium text-gray-900">{ v.Namespace }</span>
-											</p>
-										</div>
-									</div>
-									<div class="flex items-center gap-2 sm:gap-6">
-										<div class="flex flex-col items-end sm:items-center justify-center gap-1">
-											<span class="text-xs text-gray-500">Repos</span>
-											@RenovatorCountBadge(v.Namespace, v.Renovator, v.GitRepoCount)
-										</div>
-										<div class="hidden sm:flex flex-col items-end justify-center gap-1">
-											<span class="text-xs text-gray-500">Runner</span>
-											<span class="text-sm font-medium text-gray-900">{ v.RunnerName }</span>
-										</div>
-										<div class="hidden sm:flex flex-col items-end justify-center gap-1">
-											<span class="text-xs text-gray-500">Discovery</span>
-											<span class="text-sm font-medium text-gray-900">{ v.DiscoveryName }</span>
-										</div>
-									</div>
-								</div>
-							</summary>
-							<div class="details-content">
-								<div class="details-content-inner">
-									<div
-										class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6"
-										data-component="repo-sort"
-										data-sort-key={ sanitize.SortFieldPersistKey(v.Name) }
-										data-order-key={ sanitize.SortOrderPersistKey(v.Name) }
-									>
-										<div class="flex items-center justify-end mb-4 gap-2">
-											<label for={ "sort-" + v.Name } class="sr-only">Sort repositories</label>
-											<div class="relative">
-												<button
-													type="button"
-													data-action="toggle-sort"
-													aria-expanded="false"
-													aria-haspopup="listbox"
-													class="inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
-												>
-													<span data-role="sort-label">{ string(viewmodel.GitRepoFieldName) }</span>
-													@IconChevronUpDown("h-4 w-4 text-gray-500")
-												</button>
-												<div
-													data-role="sort-menu"
-													class={ dropdownMenu() + " bg-white" }
-													role="listbox"
-												>
-													<div class="px-1">
-														<button type="button" data-value="name" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
-															{ string(viewmodel.GitRepoFieldName) }
-														</button>
-														<button type="button" data-value="date" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
-															{ string(viewmodel.GitRepoFieldCreated) }
-														</button>
-														<button type="button" data-value="last_update" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
-															{ string(viewmodel.GitRepoFieldLastRun) }
-														</button>
-													</div>
-												</div>
-											</div>
-											@Tooltip("Sort ascending", "sort-order") {
-												<button
-													type="button"
-													data-cloak
-													data-action="toggle-order"
-													aria-pressed="false"
-													class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors"
-												>
-													<span data-role="sort-asc">
-														@IconBarsArrowDown("h-4 w-4")
-													</span>
-													<span data-role="sort-desc" class="hidden">
-														@IconBarsArrowUp("h-4 w-4")
-													</span>
-												</button>
-											}
-										</div>
-										<div
-											data-ref="repoList"
-											hx-get={ sanitize.GitreposURL(v.Namespace, v.Renovator) }
-											hx-trigger="revealed once, sse:job-updated, sort-changed"
-											hx-swap="innerHTML"
-											class="focus:outline-none"
-										>
-											@SkeletonRepoList()
-										</div>
-									</div>
-								</div>
-							</div>
-						</details>
-					}
+				<div class="flex items-center gap-2 sm:gap-6">
+					<div class="flex flex-col items-end sm:items-center justify-center gap-1">
+						<span class="text-xs text-gray-500">Repos</span>
+						@RenovatorCountBadge(v.Namespace, v.Renovator, v.GitRepoCount)
+					</div>
+					<div class="hidden sm:flex flex-col items-end justify-center gap-1">
+						<span class="text-xs text-gray-500">Runner</span>
+						<span class="text-sm font-medium text-gray-900">{ v.RunnerName }</span>
+					</div>
+					<div class="hidden sm:flex flex-col items-end justify-center gap-1">
+						<span class="text-xs text-gray-500">Discovery</span>
+						<span class="text-sm font-medium text-gray-900">{ v.DiscoveryName }</span>
+					</div>
 				</div>
-			}
+			</div>
+		</summary>
+		<div class="details-content">
+			<div class="details-content-inner">
+				<div
+					class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6"
+					data-component="repo-sort"
+					data-sort-key={ sanitize.SortFieldPersistKey(v.Name) }
+					data-order-key={ sanitize.SortOrderPersistKey(v.Name) }
+				>
+					@RepoSortControls(v.Name)
+					<div
+						data-ref="repoList"
+						hx-get={ sanitize.GitreposURL(v.Namespace, v.Renovator) }
+						hx-trigger="revealed once, sse:job-updated, sort-changed"
+						hx-swap="innerHTML"
+						class="focus:outline-none"
+					>
+						@SkeletonRepoList()
+					</div>
+				</div>
+			</div>
+		</div>
+	</details>
+}
+
+templ RepoSortControls(renovatorName string) {
+	<div class="flex items-center justify-end mb-4 gap-2">
+		<label for={ "sort-" + renovatorName } class="sr-only">Sort repositories</label>
+		<div class="relative">
+			<button
+				type="button"
+				data-action="toggle-sort"
+				aria-expanded="false"
+				aria-haspopup="listbox"
+				class="inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+			>
+				<span data-role="sort-label">{ string(viewmodel.GitRepoFieldName) }</span>
+				@IconChevronUpDown("h-4 w-4 text-gray-500")
+			</button>
+			<div
+				data-role="sort-menu"
+				class={ dropdownMenu() + " bg-white" }
+				role="listbox"
+			>
+				<div class="px-1">
+					<button type="button" data-value="name" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+						{ string(viewmodel.GitRepoFieldName) }
+					</button>
+					<button type="button" data-value="date" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+						{ string(viewmodel.GitRepoFieldCreated) }
+					</button>
+					<button type="button" data-value="last_update" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+						{ string(viewmodel.GitRepoFieldLastRun) }
+					</button>
+				</div>
+			</div>
+		</div>
+		@Tooltip("Sort ascending", "sort-order") {
+			<button
+				type="button"
+				data-cloak
+				data-action="toggle-order"
+				aria-pressed="false"
+				class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors"
+			>
+				<span data-role="sort-asc">
+					@IconBarsArrowDown("h-4 w-4")
+				</span>
+				<span data-role="sort-desc" class="hidden">
+					@IconBarsArrowUp("h-4 w-4")
+				</span>
+			</button>
 		}
 	</div>
 }
