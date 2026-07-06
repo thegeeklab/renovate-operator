@@ -45,6 +45,41 @@ func skeletonDark() string {
 	return "animate-pulse rounded bg-gray-700"
 }
 
+func skeletonLogBarClass(width string) string {
+	const base = "animate-pulse rounded bg-gray-700 h-3 "
+	switch width {
+	case "w-11/12":
+		return base + "w-11/12"
+	case "w-3/4":
+		return base + "w-3/4"
+	case "w-5/6":
+		return base + "w-5/6"
+	case "w-2/3":
+		return base + "w-2/3"
+	case "w-4/5":
+		return base + "w-4/5"
+	case "w-1/2":
+		return base + "w-1/2"
+	case "w-3/5":
+		return base + "w-3/5"
+	}
+	return base + "w-3/4"
+}
+
+var skeletonLogWidths = []string{"w-11/12", "w-3/4", "w-5/6", "w-2/3", "w-4/5", "w-1/2", "w-3/5", "w-5/6", "w-2/3", "w-3/4"}
+
+templ SkeletonLogLines() {
+	<div aria-busy="true" class="space-y-2.5">
+		for _, w := range skeletonLogWidths {
+			<div aria-hidden="true" class="flex items-baseline gap-2">
+				<div class={ skeletonDark() + " h-3 w-16 shrink-0" }></div>
+				<div class={ skeletonDark() + " h-3 w-10 shrink-0" }></div>
+				<div class={ skeletonLogBarClass(w) }></div>
+			</div>
+		}
+	</div>
+}
+
 templ SkeletonRepoCard() {
 	<div
 		aria-hidden="true"
@@ -66,18 +101,6 @@ templ SkeletonRepoList() {
 		for range 3 {
 			<div role="listitem">
 				@SkeletonRepoCard()
-			</div>
-		}
-	</div>
-}
-
-templ SkeletonLogLines() {
-	<div aria-busy="true" class="space-y-2.5">
-		for _, w := range []string{"w-11/12", "w-3/4", "w-5/6", "w-2/3", "w-4/5", "w-1/2", "w-3/5", "w-5/6", "w-2/3", "w-3/4"} {
-			<div aria-hidden="true" class="flex items-baseline gap-2">
-				<div class={ skeletonDark() + " h-3 w-16 shrink-0" }></div>
-				<div class={ skeletonDark() + " h-3 w-10 shrink-0" }></div>
-				<div class={ skeletonDark() + " h-3 " + w }></div>
 			</div>
 		}
 	</div>

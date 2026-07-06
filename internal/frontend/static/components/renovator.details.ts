@@ -6,11 +6,13 @@ export class RenovatorDetailsComponent {
   private persistKey: string
   private summary: HTMLElement
   private isAnimating = false
+  private animationDurationMs: number
 
   constructor(el: HTMLDetailsElement) {
     this.el = el
     this.persistKey = getData(el, "persist-key")
     this.summary = el.querySelector("summary") as HTMLElement
+    this.animationDurationMs = this.resolveAnimationDuration()
 
     const stored = getPersisted<boolean>(this.persistKey, false)
     this.el.open = stored
@@ -20,13 +22,21 @@ export class RenovatorDetailsComponent {
     }
   }
 
+  private resolveAnimationDuration(): number {
+    const raw = getComputedStyle(this.el).getPropertyValue("--details-animation-duration").trim()
+    if (raw.endsWith("ms")) {
+      return Number.parseInt(raw.slice(0, -2), 10) || 300
+    }
+    return 300
+  }
+
   private handleClick(e: MouseEvent): void {
+    e.preventDefault()
+
     if (this.isAnimating) {
-      e.preventDefault()
       return
     }
 
-    e.preventDefault()
     this.isAnimating = true
 
     if (this.el.open) {
@@ -36,7 +46,7 @@ export class RenovatorDetailsComponent {
         this.el.classList.remove("animating-closed")
         this.isAnimating = false
         setPersisted(this.persistKey, false)
-      }, 300)
+      }, this.animationDurationMs)
     } else {
       this.el.open = true
       setPersisted(this.persistKey, true)

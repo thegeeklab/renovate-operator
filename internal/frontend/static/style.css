@@ -9,6 +9,9 @@
     appearance: none;
     -webkit-appearance: none;
   }
+  details {
+    --details-animation-duration: 300ms;
+  }
   details > summary {
     list-style: none;
   }
@@ -18,7 +21,7 @@
   details > .details-content {
     display: grid;
     grid-template-rows: 0fr;
-    transition: grid-template-rows 300ms ease-out;
+    transition: grid-template-rows var(--details-animation-duration) ease-out;
   }
   details > .details-content > .details-content-inner {
     overflow: hidden;
@@ -28,6 +31,9 @@
   }
   details.animating-closed > .details-content {
     grid-template-rows: 0fr;
+  }
+  details .chevron {
+    transition: transform var(--details-animation-duration) ease-out;
   }
   details[open] .chevron {
     transform: rotate(90deg);

@@ -197,7 +197,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
-					templ_7745c5c3_Err = IconChevronRight("chevron h-5 w-5 text-gray-400 transition-transform duration-300").Render(ctx, templ_7745c5c3_Buffer)
+					templ_7745c5c3_Err = IconChevronRight("chevron h-5 w-5 text-gray-400").Render(ctx, templ_7745c5c3_Buffer)
 					if templ_7745c5c3_Err != nil {
 						return templ_7745c5c3_Err
 					}
