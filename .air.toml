@@ -8,6 +8,7 @@ full_bin = "ENABLE_CONTROLLERS=true ENABLE_WEBHOOKS=false ./bin/manager -zap-log
 include_ext = ["go", "templ"]
 exclude_dir = ["tmp", "vendor", "node_modules", "dist", "test", "config"]
 include_dir = ["cmd", "internal", "hack"]
+exclude_regex = ["_test\\.go", "_templ\\.go"]
 
 [log]
 time = true

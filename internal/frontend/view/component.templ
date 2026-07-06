@@ -61,36 +61,11 @@ templ SkeletonRepoCard() {
 	</div>
 }
 
-templ SkeletonJobCard() {
-	<div
-		aria-hidden="true"
-		class="relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white shadow-sm border-l-4 border-l-gray-200 px-4 py-3"
-	>
-		<div class="min-w-0 flex-1">
-			<div class={ skeletonBase() + " h-5 w-1/2" }></div>
-			<div class="mt-1 flex items-center gap-3">
-				<div class={ skeletonBase() + " h-4 w-20" }></div>
-			</div>
-		</div>
-		<div class={ skeletonBase() + " h-6 w-20 shrink-0 rounded-full ring-1 ring-inset ring-gray-200" }></div>
-	</div>
-}
-
 templ SkeletonRepoList() {
 	<div aria-busy="true" class="grid grid-cols-1 gap-4" role="list">
 		for range 3 {
 			<div role="listitem">
 				@SkeletonRepoCard()
-			</div>
-		}
-	</div>
-}
-
-templ SkeletonJobList() {
-	<div aria-busy="true" class="flex flex-col gap-3 p-1 -m-1 pr-2 pb-4 flex-1" role="list">
-		for range 5 {
-			<div role="listitem">
-				@SkeletonJobCard()
 			</div>
 		}
 	</div>
@@ -103,16 +78,6 @@ templ SkeletonLogLines() {
 				<div class={ skeletonDark() + " h-3 w-16 shrink-0" }></div>
 				<div class={ skeletonDark() + " h-3 w-10 shrink-0" }></div>
 				<div class={ skeletonDark() + " h-3 " + w }></div>
-			</div>
-		}
-	</div>
-}
-
-templ SkeletonSearchResults() {
-	<div aria-busy="true" class="grid grid-cols-1 gap-4" role="list">
-		for range 3 {
-			<div role="listitem">
-				@SkeletonRepoCard()
 			</div>
 		}
 	</div>
