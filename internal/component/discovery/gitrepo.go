@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -58,7 +59,51 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 		return &ctrl.Result{}, nil
 	}
 
+	skipForks := r.instance.GetSkipForks()
+
+	var providerManager provider.ProviderManager
+
+	if skipForks {
+		secret := &corev1.Secret{}
+		if err := r.Get(ctx, client.ObjectKey{
+			Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
+			Namespace: r.instance.Namespace,
+		}, secret); err != nil {
+			return &ctrl.Result{}, fmt.Errorf("failed to get platform token secret: %w", err)
+		}
+
+		platformConfig := provider.PlatformConfig{
+			Type:     string(r.renovate.Spec.Platform.Type),
+			Endpoint: r.renovate.Spec.Platform.Endpoint,
+			Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
+		}
+
+		pm, err := r.providerFactory(ctx, platformConfig)
+		if err != nil {
+			return &ctrl.Result{}, fmt.Errorf("failed to initialize provider: %w", err)
+		}
+
+		providerManager = pm
+	}
+
 	for _, repoName := range discoveredRepos {
+		if skipForks && providerManager != nil {
+			isFork, err := providerManager.IsFork(ctx, repoName)
+			if err != nil {
+				log.Error(err, "Failed to check if repository is a fork", "repo", repoName)
+				allErrors = append(allErrors, fmt.Errorf("failed to check fork status for %s: %w", repoName, err))
+				discoveredRepoMatcher[repoName] = true
+
+				continue
+			}
+
+			if isFork {
+				log.V(1).Info("Skipping forked repository", "repo", repoName)
+
+				continue
+			}
+		}
+
 		discoveredRepoMatcher[repoName] = true
 
 		sanitizedName, err := k8s.SanitizeName(repoName)

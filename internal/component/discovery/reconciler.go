@@ -4,6 +4,7 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -14,11 +15,12 @@ import (
 
 type Reconciler struct {
 	client.Client
-	scheme    *runtime.Scheme
-	scheduler *scheduler.Manager
-	req       ctrl.Request
-	instance  *renovatev1beta1.Discovery
-	renovate  *renovatev1beta1.RenovateConfig
+	scheme          *runtime.Scheme
+	scheduler       *scheduler.Manager
+	req             ctrl.Request
+	instance        *renovatev1beta1.Discovery
+	renovate        *renovatev1beta1.RenovateConfig
+	providerFactory provider.ProviderFactory
 }
 
 func NewReconciler(
@@ -28,12 +30,13 @@ func NewReconciler(
 	renovate *renovatev1beta1.RenovateConfig,
 ) (*Reconciler, error) {
 	return &Reconciler{
-		Client:    c,
-		scheme:    scheme,
-		scheduler: scheduler.NewManager(c, scheme, clock.RealClock{}),
-		req:       ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
-		instance:  instance,
-		renovate:  renovate,
+		Client:          c,
+		scheme:          scheme,
+		scheduler:       scheduler.NewManager(c, scheme, clock.RealClock{}),
+		req:             ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
+		instance:        instance,
+		renovate:        renovate,
+		providerFactory: provider.DefaultProviderFactory,
 	}, nil
 }
 

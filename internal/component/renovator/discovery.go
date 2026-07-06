@@ -47,6 +47,11 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Spec.Schedule = discoverySpec.Schedule
 	}
 
+	discovery.Spec.Timezone = spec.Timezone
+	if discoverySpec.Timezone != "" {
+		discovery.Spec.Timezone = discoverySpec.Timezone
+	}
+
 	discovery.Spec.SuccessLimit = spec.SuccessLimit
 	if discoverySpec.SuccessLimit != nil {
 		discovery.Spec.SuccessLimit = discoverySpec.SuccessLimit
@@ -66,6 +71,8 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 	if discoverySpec.TTLSecondsAfterFinished != nil {
 		discovery.Spec.TTLSecondsAfterFinished = discoverySpec.TTLSecondsAfterFinished
 	}
+
+	discovery.Spec.SkipForks = discoverySpec.SkipForks
 
 	logging := &spec.Logging
 	if discoverySpec.Logging != nil {

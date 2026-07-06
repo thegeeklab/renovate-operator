@@ -174,6 +174,20 @@ func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error)
 	return fmt.Sprintf("%s/%s/%s", p.baseURL, owner, repo), nil
 }
 
+func (p *Provider) IsFork(ctx context.Context, repoName string) (bool, error) {
+	owner, repo, err := parseRepoName(repoName)
+	if err != nil {
+		return false, err
+	}
+
+	repoData, _, err := p.client.GetRepo(owner, repo)
+	if err != nil {
+		return false, fmt.Errorf("failed to fetch repository: %w", err)
+	}
+
+	return repoData.Fork, nil
+}
+
 // sanitizeEndpoint removes trailing slashes and the API suffix
 // because the Gitea SDK automatically appends /api/v1 internally.
 func sanitizeEndpoint(endpoint string) string {

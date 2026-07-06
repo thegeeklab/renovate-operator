@@ -21,6 +21,8 @@ type ProviderManager interface {
 	DeleteWebhook(ctx context.Context, repoName, webhookID string) error
 	// RepoURL returns the web-accessible URL for a repository.
 	RepoURL(ctx context.Context, repoName string) (string, error)
+	// IsFork returns true if the repository is a fork of another repository.
+	IsFork(ctx context.Context, repoName string) (bool, error)
 }
 
 type PlatformConfig struct {

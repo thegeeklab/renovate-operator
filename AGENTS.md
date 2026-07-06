@@ -51,6 +51,11 @@ This file contains comprehensive guidelines for AI coding agents working in the 
 
 ## Code Style & Conventions
 
+### Consistency
+
+- **Follow existing patterns**: When implementing new features, always check how similar functionality is implemented elsewhere in the codebase and follow the same patterns.
+- **Inline over abstraction**: Prefer inline code that matches existing patterns over creating helper methods, unless the abstraction is already established in the codebase.
+
 ### Imports
 
 - **Order**: Standard library first, blank line, third-party packages, blank line, local packages
@@ -295,6 +300,7 @@ After editing any `*.templ` file, always run `make templ`. After editing any `ap
 - **mirrord configuration**: The `run` target uses `mirrord`; ensure `mirrord.json` is configured for your environment
 - **Line length**: `lll` linter is enabled — keep lines reasonably short (avoid very long lines)
 - **YAML tag casing**: YAML struct tags must be `kebab-case` (enforced by `tagliatelle`)
+- **Defaulting webhooks**: When adding new fields to API types (especially pointer types like `*bool`, `*int32`), check if a defaulting webhook exists in `internal/webhook/v1beta1/` and update it to set appropriate defaults. This ensures consistent behavior and proper handling of unset fields.
 
 ## CI
 

@@ -81,6 +81,11 @@ type JobSpec struct {
 	// +kubebuilder:validation:Optional
 	Schedule string `json:"schedule,omitempty"`
 
+	// Timezone specifies the IANA timezone name (e.g., "America/New_York", "Europe/Berlin")
+	// to use when evaluating the cron schedule. If not set, the operator's local timezone is used.
+	// +kubebuilder:validation:Optional
+	Timezone string `json:"timezone,omitempty"`
+
 	// SuccessLimit specifies the number of successful finished jobs to retain for history.
 	// +kubebuilder:validation:Optional
 	SuccessLimit *int32 `json:"successLimit,omitempty"`
