@@ -52,12 +52,6 @@ templ GitRepoList(repos []viewmodel.GitRepoInfo) {
 			}
 		</ul>
 	} else {
-		<div class="text-center py-6">
-			@IconInbox("mx-auto h-12 w-12 text-gray-400")
-			<h3 class="mt-2 text-sm font-semibold text-gray-900">No GitRepos Found</h3>
-			<p class="mt-1 text-sm text-gray-500">
-				There are no repositories associated with this namespace.
-			</p>
-		</div>
+		@EmptyState("No GitRepos Found", "There are no repositories associated with this namespace.", "py-6")
 	}
 }

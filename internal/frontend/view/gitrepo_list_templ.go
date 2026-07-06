@@ -232,15 +232,7 @@ func GitRepoList(repos []viewmodel.GitRepoInfo) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "<div class=\"text-center py-6\">")
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = IconInbox("mx-auto h-12 w-12 text-gray-400").Render(ctx, templ_7745c5c3_Buffer)
-			if templ_7745c5c3_Err != nil {
-				return templ_7745c5c3_Err
-			}
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 17, "<h3 class=\"mt-2 text-sm font-semibold text-gray-900\">No GitRepos Found</h3><p class=\"mt-1 text-sm text-gray-500\">There are no repositories associated with this namespace.</p></div>")
+			templ_7745c5c3_Err = EmptyState("No GitRepos Found", "There are no repositories associated with this namespace.", "py-6").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

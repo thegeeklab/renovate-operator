@@ -2,7 +2,6 @@
 package view
 
 import "strconv"
-import "strings"
 
 import "github.com/thegeeklab/renovate-operator/internal/frontend/sanitize"
 import "github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
@@ -180,48 +179,62 @@ templ JobLogs(data viewmodel.JobLogData) {
 			class="p-4 overflow-x-auto overflow-y-auto relative flex-1"
 		>
 			if data.Message != "" {
-				<div class="flex flex-col items-center justify-center py-8 text-gray-500 h-full">
-					@IconInformationCircle("h-10 w-10 text-gray-600 mb-3")
-					<p class="text-sm font-mono text-center px-4">{ data.Message }</p>
-				</div>
+				@logMessageEmpty(data.Message)
 			} else if data.Parsed != nil {
-				<div class="text-xs font-mono whitespace-pre-wrap break-all leading-relaxed text-gray-300">
-					for _, line := range data.Parsed.Lines {
-						<div
-							class="log-line cursor-pointer hover:bg-gray-800/50 px-1 py-1 rounded"
-							data-action="toggle-raw"
-							data-raw={ line.Raw }
-							if line.Level > 0 {
-								data-level={ strconv.Itoa(int(line.Level)) }
-							}
-						>
-							<div class="flex items-baseline gap-2">
-								if line.Time != "" {
-									<span class="text-gray-500 shrink-0 tabular-nums">{ line.Time }</span>
-								}
-								<span class={ "font-bold shrink-0 w-10 " + line.Class }>{ line.LevelLabel() }</span>
-								<span class="text-gray-300 break-all" data-role="log-line-message">{ line.Message }</span>
-								<svg class="log-chevron h-4 w-4 ml-auto shrink-0 self-center text-gray-500 transition-transform" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-									<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
-								</svg>
-							</div>
-							<div class="hidden log-raw-content mt-1 ml-16 text-gray-500 whitespace-pre-wrap break-all text-xs leading-relaxed">
-								<pre class="log-raw-text"></pre>
-							</div>
-						</div>
-					}
-					<div
-						data-role="log-search-empty"
-						class="hidden flex flex-col items-center justify-center py-8 text-gray-500 h-full"
-					>
-						<p class="text-sm font-mono text-center px-4">No log entries match your search.</p>
-					</div>
-				</div>
+				@logMessageParsed(data.Parsed.Lines)
 			} else {
-				<pre class="text-xs font-mono text-gray-300 whitespace-pre-wrap break-all leading-relaxed">
-					<code>{ data.Content }</code>
-				</pre>
+				@logMessageRaw(data.Content)
 			}
+		</div>
+	</div>
+}
+
+templ logMessageEmpty(message string) {
+	<div class="flex flex-col items-center justify-center py-8 text-gray-500 h-full">
+		@IconInformationCircle("h-10 w-10 text-gray-600 mb-3")
+		<p class="text-sm font-mono text-center px-4">{ message }</p>
+	</div>
+}
+
+templ logMessageParsed(lines []parser.FormattedLine) {
+	<div class="text-xs font-mono whitespace-pre-wrap break-all leading-relaxed text-gray-300">
+		for _, line := range lines {
+			@logLine(line)
+		}
+		<div
+			data-role="log-search-empty"
+			class="hidden flex flex-col items-center justify-center py-8 text-gray-500 h-full"
+		>
+			<p class="text-sm font-mono text-center px-4">No log entries match your search.</p>
+		</div>
+	</div>
+}
+
+templ logMessageRaw(content string) {
+	<pre class="text-xs font-mono text-gray-300 whitespace-pre-wrap break-all leading-relaxed">
+		<code>{ content }</code>
+	</pre>
+}
+
+templ logLine(line parser.FormattedLine) {
+	<div
+		class="log-line cursor-pointer hover:bg-gray-800/50 px-1 py-1 rounded"
+		data-action="toggle-raw"
+		data-raw={ line.Raw }
+		if line.Level > 0 {
+			data-level={ strconv.Itoa(int(line.Level)) }
+		}
+	>
+		<div class="flex items-baseline gap-2">
+			if line.Time != "" {
+				<span class="text-gray-500 shrink-0 tabular-nums">{ line.Time }</span>
+			}
+			<span class={ "font-bold shrink-0 w-10 " + line.Class }>{ line.LevelLabel() }</span>
+			<span class="text-gray-300 break-all" data-role="log-line-message">{ line.Message }</span>
+			@IconChevronRight("log-chevron h-4 w-4 ml-auto shrink-0 self-center text-gray-500 transition-transform")
+		</div>
+		<div class="hidden log-raw-content mt-1 ml-16 text-gray-500 whitespace-pre-wrap break-all text-xs leading-relaxed">
+			<pre class="log-raw-text"></pre>
 		</div>
 	</div>
 }
@@ -234,7 +247,7 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 					<div class="flex items-center gap-2">
 						@IconExclamationTriangle("h-4 w-4 text-yellow-400")
 						<span class="text-xs font-medium text-yellow-400">
-							{ issueSummaryText(parsed.LogIssues) }
+							{ viewmodel.IssueSummaryText(parsed.LogIssues) }
 						</span>
 					</div>
 				} else if parsed.LogIssues != nil {
@@ -243,10 +256,10 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 						<span class="text-xs font-medium text-green-400">No issues</span>
 					</div>
 				}
-				if parsed.PRActivity != nil && hasPRActivity(parsed.PRActivity) {
+				if parsed.PRActivity != nil && viewmodel.HasPRActivity(parsed.PRActivity) {
 					<div class="flex items-center gap-2">
 						@IconArrowTopRightOnSquare("h-4 w-4 text-gray-400")
-						<span class="text-xs font-medium text-gray-400">{ prActivitySummary(parsed.PRActivity) }</span>
+						<span class="text-xs font-medium text-gray-400">{ viewmodel.PRActivitySummary(parsed.PRActivity) }</span>
 					</div>
 				}
 			</div>
@@ -258,9 +271,9 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 					aria-expanded="false"
 				>
 					<span>Details</span>
-					<svg class="h-4 w-4 transition-transform" data-role="details-chevron" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-						<path fill-rule="evenodd" d="M7.21 14.77a.75.75 0 01.02-1.06L11.168 10 7.23 6.29a.75.75 0 111.04-1.08l4.5 4.25a.75.75 0 010 1.08l-4.5 4.25a.75.75 0 01-1.06-.02z" clip-rule="evenodd"></path>
-					</svg>
+					<span data-role="details-chevron" class="inline-flex transition-transform">
+						@IconChevronRight("h-4 w-4")
+					</span>
 				</button>
 			</div>
 		</div>
@@ -294,9 +307,9 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 						for _, pr := range parsed.PRActivity.PRs {
 							<li class="flex items-center gap-2 text-xs">
 								@prActionIcon(pr.Action)
-								if buildPRURL(platform, repoURL, pr.Number) != "" {
+								if viewmodel.BuildPRURL(platform, repoURL, pr.Number) != "" {
 									<a
-										href={ buildPRURL(platform, repoURL, pr.Number) }
+										href={ viewmodel.BuildPRURL(platform, repoURL, pr.Number) }
 										target="_blank"
 										rel="noopener noreferrer"
 										class="text-gray-300 truncate hover:text-blue-400 hover:underline"
@@ -330,15 +343,11 @@ templ prActionIcon(action parser.PRAction) {
 			}
 		case parser.PRActionCreated:
 			@Tooltip("Created (new PR)") {
-				<svg class="h-4 w-4 text-blue-400 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-					<path d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z"></path>
-				</svg>
+				@IconPlus("h-4 w-4 text-blue-400 shrink-0")
 			}
 		case parser.PRActionUpdated:
 			@Tooltip("Updated") {
-				<svg class="h-4 w-4 text-yellow-400 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-					<path fill-rule="evenodd" d="M15.312 11.424a5.5 5.5 0 01-9.201 2.466l-.312-.311h2.433a.75.75 0 000-1.5H4.598a.75.75 0 00-.75.75v3.634a.75.75 0 001.5 0v-2.033l.312.311a7 7 0 0011.712-3.138.75.75 0 00-1.449-.39zm-1.675-5.274a7 7 0 00-11.712 3.138.75.75 0 001.449.39 5.5 5.5 0 019.201-2.466l.312.311H9.75a.75.75 0 000 1.5h3.634a.75.75 0 00.75-.75V4.598a.75.75 0 00-1.5 0v2.033l-.312-.311z" clip-rule="evenodd"></path>
-				</svg>
+				@IconArrowPath("h-4 w-4 text-yellow-400 shrink-0")
 			}
 		case parser.PRActionNeedsApproval:
 			@Tooltip("Needs approval") {
@@ -346,100 +355,7 @@ templ prActionIcon(action parser.PRAction) {
 			}
 		case parser.PRActionUnchanged:
 			@Tooltip("Unchanged (no updates needed)") {
-				<svg class="h-4 w-4 text-gray-400 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 20 20" fill="currentColor">
-					<path fill-rule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm.75-11.25a.75.75 0 00-1.5 0v2.5h-2.5a.75.75 0 000 1.5h2.5v2.5a.75.75 0 001.5 0v-2.5h2.5a.75.75 0 000-1.5h-2.5v-2.5z" clip-rule="evenodd"></path>
-				</svg>
+				@IconPlusCircle("h-4 w-4 text-gray-400 shrink-0")
 			}
 	}
-}
-
-func issueSummaryText(issues *parser.LogIssues) string {
-	if issues == nil {
-		return ""
-	}
-	parts := []string{}
-	if issues.ErrorCount > 0 {
-		parts = append(parts, formatCount(issues.ErrorCount, "error"))
-	}
-	if issues.WarnCount > 0 {
-		parts = append(parts, formatCount(issues.WarnCount, "warning"))
-	}
-	if len(parts) == 0 {
-		return ""
-	}
-	result := parts[0]
-	for i := 1; i < len(parts); i++ {
-		result += ", " + parts[i]
-	}
-	return result
-}
-
-func formatCount(count int, label string) string {
-	if count == 1 {
-		return "1 " + label
-	}
-	return formatInt(count) + " " + label + "s"
-}
-
-func formatInt(n int) string {
-	if n < 10 {
-		return string(rune('0' + n))
-	}
-	result := ""
-	for n > 0 {
-		result = string(rune('0'+n%10)) + result
-		n /= 10
-	}
-	return result
-}
-
-func hasPRActivity(activity *parser.PRActivity) bool {
-	return activity.Automerged > 0 || activity.Created > 0 || activity.Updated > 0 || activity.NeedsApproval > 0 || activity.Unchanged > 0
-}
-
-var prURLPatterns = map[string]string{
-	"github": "{repo}/pull/{number}",
-	"gitea":  "{repo}/pulls/{number}",
-}
-
-func buildPRURL(platform, repoURL string, prNumber int) string {
-	if repoURL == "" || prNumber <= 0 {
-		return ""
-	}
-
-	pattern, ok := prURLPatterns[platform]
-	if !ok {
-		return ""
-	}
-
-	url := strings.ReplaceAll(pattern, "{repo}", repoURL)
-	url = strings.ReplaceAll(url, "{number}", strconv.Itoa(prNumber))
-	return url
-}
-
-func prActivitySummary(activity *parser.PRActivity) string {
-	parts := []string{}
-	if activity.Automerged > 0 {
-		parts = append(parts, formatCount(activity.Automerged, "automerged"))
-	}
-	if activity.Created > 0 {
-		parts = append(parts, formatCount(activity.Created, "created"))
-	}
-	if activity.Updated > 0 {
-		parts = append(parts, formatCount(activity.Updated, "updated"))
-	}
-	if activity.NeedsApproval > 0 {
-		parts = append(parts, formatCount(activity.NeedsApproval, "needs approval"))
-	}
-	if activity.Unchanged > 0 {
-		parts = append(parts, formatCount(activity.Unchanged, "unchanged"))
-	}
-	if len(parts) == 0 {
-		return ""
-	}
-	result := parts[0]
-	for i := 1; i < len(parts); i++ {
-		result += ", " + parts[i]
-	}
-	return result
 }
