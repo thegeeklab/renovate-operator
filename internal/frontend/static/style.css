@@ -9,14 +9,37 @@
     appearance: none;
     -webkit-appearance: none;
   }
+  details {
+    --details-animation-duration: 300ms;
+  }
   details > summary {
     list-style: none;
   }
   details > summary::-webkit-details-marker {
     display: none;
   }
-  details[open] summary ~ * {
-    animation: sweep 0.3s ease-in-out;
+  details > .details-content {
+    display: grid;
+    grid-template-rows: 0fr;
+    transition: grid-template-rows var(--details-animation-duration) ease-out;
+  }
+  details > .details-content > .details-content-inner {
+    overflow: hidden;
+  }
+  details[open] > .details-content {
+    grid-template-rows: 1fr;
+  }
+  details.animating-closed > .details-content {
+    grid-template-rows: 0fr;
+  }
+  details .chevron {
+    transition: transform var(--details-animation-duration) ease-out;
+  }
+  details[open] .chevron {
+    transform: rotate(90deg);
+  }
+  details.animating-closed .chevron {
+    transform: rotate(0deg);
   }
   input[type="search"]::-webkit-search-cancel-button {
     -webkit-appearance: none;
@@ -32,17 +55,6 @@
   }
   [tabindex="-1"]:focus {
     outline: none !important;
-  }
-}
-
-@keyframes sweep {
-  0% {
-    opacity: 0;
-    transform: translateY(-8px);
-  }
-  100% {
-    opacity: 1;
-    transform: translateY(0);
   }
 }
 
@@ -116,7 +128,9 @@ kbd {
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  font-family:
+    ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New",
+    monospace;
   font-size: 0.6875rem;
   line-height: 1;
   font-weight: 500;

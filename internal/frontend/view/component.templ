@@ -37,6 +37,86 @@ func dropdownMenuItem() string {
 	return "flex items-center gap-2 w-full px-3 py-1 cursor-pointer text-xs transition-colors"
 }
 
+func skeletonBase() string {
+	return "animate-pulse rounded bg-gray-200"
+}
+
+func skeletonDark() string {
+	return "animate-pulse rounded bg-gray-700"
+}
+
+func skeletonLogBarClass(width string) string {
+	const base = "animate-pulse rounded bg-gray-700 h-3 "
+	switch width {
+	case "w-11/12":
+		return base + "w-11/12"
+	case "w-3/4":
+		return base + "w-3/4"
+	case "w-5/6":
+		return base + "w-5/6"
+	case "w-2/3":
+		return base + "w-2/3"
+	case "w-4/5":
+		return base + "w-4/5"
+	case "w-1/2":
+		return base + "w-1/2"
+	case "w-3/5":
+		return base + "w-3/5"
+	}
+	return base + "w-3/4"
+}
+
+var skeletonLogWidths = []string{"w-11/12", "w-3/4", "w-5/6", "w-2/3", "w-4/5", "w-1/2", "w-3/5", "w-5/6", "w-2/3", "w-3/4"}
+
+templ SkeletonLogLines() {
+	<div aria-busy="true" class="space-y-2.5">
+		for _, w := range skeletonLogWidths {
+			<div aria-hidden="true" class="flex items-baseline gap-2">
+				<div class={ skeletonDark() + " h-3 w-16 shrink-0" }></div>
+				<div class={ skeletonDark() + " h-3 w-10 shrink-0" }></div>
+				<div class={ skeletonLogBarClass(w) }></div>
+			</div>
+		}
+	</div>
+}
+
+templ SkeletonRepoCard() {
+	<div
+		aria-hidden="true"
+		class="relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white shadow-sm border-l-4 border-l-gray-200 px-4 py-3"
+	>
+		<div class="min-w-0 flex-1">
+			<div class={ skeletonBase() + " h-5 w-2/3" }></div>
+			<div class="mt-1 flex items-center gap-3">
+				<div class={ skeletonBase() + " h-4 w-24" }></div>
+				<div class={ skeletonBase() + " h-4 w-20" }></div>
+			</div>
+		</div>
+		<div class={ skeletonBase() + " h-6 w-20 shrink-0 rounded-full ring-1 ring-inset ring-gray-200" }></div>
+	</div>
+}
+
+templ SkeletonRepoList() {
+	<div aria-busy="true" class="grid grid-cols-1 gap-4" role="list">
+		for range 3 {
+			<div role="listitem">
+				@SkeletonRepoCard()
+			</div>
+		}
+	</div>
+}
+
+templ SkeletonLogViewer() {
+	<div class="rounded-lg bg-gray-900 shadow-lg overflow-hidden flex flex-col border border-gray-700 w-full h-full">
+		<div class="flex flex-wrap items-center justify-between gap-2 bg-gray-800 px-4 py-4 border-b border-gray-700 shrink-0 min-w-0">
+			<div class={ skeletonDark() + " h-4 w-48" }></div>
+		</div>
+		<div class="p-4 overflow-x-auto overflow-y-auto relative flex-1">
+			@SkeletonLogLines()
+		</div>
+	</div>
+}
+
 templ Kbd(text string) {
 	<kbd>{ text }</kbd>
 }

@@ -91,7 +91,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 							<summary class="cursor-pointer bg-white px-4 py-5 sm:p-6 hover:bg-gray-50 transition-colors">
 								<div class="flex items-center justify-between">
 									<div class="flex items-center gap-4">
-										@IconChevronRight("chevron h-5 w-5 text-gray-400 group-open:rotate-90 transition-transform duration-200")
+										@IconChevronRight("chevron h-5 w-5 text-gray-400")
 										<div>
 											<h3 class="text-base font-semibold leading-6 text-gray-900">
 												{ v.Name }
@@ -118,70 +118,71 @@ templ RenovatorList(data viewmodel.DashboardData) {
 									</div>
 								</div>
 							</summary>
-							<div
-								class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6"
-								data-component="repo-sort"
-								data-sort-key={ sanitize.SortFieldPersistKey(v.Name) }
-								data-order-key={ sanitize.SortOrderPersistKey(v.Name) }
-							>
-								<div class="flex items-center justify-end mb-4 gap-2">
-									<label for={ "sort-" + v.Name } class="sr-only">Sort repositories</label>
-									<div class="relative">
-										<button
-											type="button"
-											data-action="toggle-sort"
-											aria-expanded="false"
-											aria-haspopup="listbox"
-											class="inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
-										>
-											<span data-role="sort-label">{ string(viewmodel.GitRepoFieldName) }</span>
-											@IconChevronUpDown("h-4 w-4 text-gray-500")
-										</button>
-										<div
-											data-role="sort-menu"
-											class={ dropdownMenu() + " bg-white" }
-											role="listbox"
-										>
-											<div class="px-1">
-												<button type="button" data-value="name" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
-													{ string(viewmodel.GitRepoFieldName) }
+							<div class="details-content">
+								<div class="details-content-inner">
+									<div
+										class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6"
+										data-component="repo-sort"
+										data-sort-key={ sanitize.SortFieldPersistKey(v.Name) }
+										data-order-key={ sanitize.SortOrderPersistKey(v.Name) }
+									>
+										<div class="flex items-center justify-end mb-4 gap-2">
+											<label for={ "sort-" + v.Name } class="sr-only">Sort repositories</label>
+											<div class="relative">
+												<button
+													type="button"
+													data-action="toggle-sort"
+													aria-expanded="false"
+													aria-haspopup="listbox"
+													class="inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+												>
+													<span data-role="sort-label">{ string(viewmodel.GitRepoFieldName) }</span>
+													@IconChevronUpDown("h-4 w-4 text-gray-500")
 												</button>
-												<button type="button" data-value="date" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
-													{ string(viewmodel.GitRepoFieldCreated) }
-												</button>
-												<button type="button" data-value="last_update" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
-													{ string(viewmodel.GitRepoFieldLastRun) }
-												</button>
+												<div
+													data-role="sort-menu"
+													class={ dropdownMenu() + " bg-white" }
+													role="listbox"
+												>
+													<div class="px-1">
+														<button type="button" data-value="name" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+															{ string(viewmodel.GitRepoFieldName) }
+														</button>
+														<button type="button" data-value="date" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+															{ string(viewmodel.GitRepoFieldCreated) }
+														</button>
+														<button type="button" data-value="last_update" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+															{ string(viewmodel.GitRepoFieldLastRun) }
+														</button>
+													</div>
+												</div>
 											</div>
+											@Tooltip("Sort ascending", "sort-order") {
+												<button
+													type="button"
+													data-cloak
+													data-action="toggle-order"
+													aria-pressed="false"
+													class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors"
+												>
+													<span data-role="sort-asc">
+														@IconBarsArrowDown("h-4 w-4")
+													</span>
+													<span data-role="sort-desc" class="hidden">
+														@IconBarsArrowUp("h-4 w-4")
+													</span>
+												</button>
+											}
 										</div>
-									</div>
-									@Tooltip("Sort ascending", "sort-order") {
-										<button
-											type="button"
-											data-cloak
-											data-action="toggle-order"
-											aria-pressed="false"
-											class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors"
+										<div
+											data-ref="repoList"
+											hx-get={ sanitize.GitreposURL(v.Namespace, v.Renovator) }
+											hx-trigger="revealed once, sse:job-updated, sort-changed"
+											hx-swap="innerHTML"
+											class="focus:outline-none"
 										>
-											<span data-role="sort-asc">
-												@IconBarsArrowDown("h-4 w-4")
-											</span>
-											<span data-role="sort-desc" class="hidden">
-												@IconBarsArrowUp("h-4 w-4")
-											</span>
-										</button>
-									}
-								</div>
-								<div
-									data-ref="repoList"
-									hx-get={ sanitize.GitreposURL(v.Namespace, v.Renovator) }
-									hx-trigger="revealed once, sse:job-updated, sort-changed"
-									hx-swap="innerHTML"
-									class="focus:outline-none"
-								>
-									<div class="flex justify-center py-4">
-										@IconArrowPath("animate-spin h-5 w-5")
-										<span class="ml-2 text-sm text-gray-500">Loading Repositories...</span>
+											@SkeletonRepoList()
+										</div>
 									</div>
 								</div>
 							</div>
