@@ -99,5 +99,9 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 		delete(renovator.Labels, renovatev1beta1.LabelAuthProvider)
 	}
 
+	if err := validateTimezone(renovator.Spec.Timezone); err != nil {
+		return err
+	}
+
 	return nil
 }

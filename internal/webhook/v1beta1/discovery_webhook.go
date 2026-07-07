@@ -83,5 +83,9 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 		discovery.Spec.SkipForks = new(false)
 	}
 
+	if err := validateTimezone(discovery.Spec.Timezone); err != nil {
+		return err
+	}
+
 	return nil
 }

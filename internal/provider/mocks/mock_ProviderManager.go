@@ -8,6 +8,7 @@ import (
 	"context"
 
 	mock "github.com/stretchr/testify/mock"
+	"github.com/thegeeklab/renovate-operator/internal/provider"
 )
 
 // NewProviderManager creates a new instance of ProviderManager. It also registers a testing interface on the mock and a cleanup function to assert the mocks expectations.
@@ -231,53 +232,55 @@ func (_c *ProviderManager_GetIdentity_Call) RunAndReturn(run func() (string, err
 	return _c
 }
 
-// IsFork provides a mock function for the type ProviderManager
-func (_mock *ProviderManager) IsFork(ctx context.Context, repoName string) (bool, error) {
-	ret := _mock.Called(ctx, repoName)
+// ListRepos provides a mock function for the type ProviderManager
+func (_mock *ProviderManager) ListRepos(ctx context.Context, opts provider.ListReposOptions) ([]provider.Repo, error) {
+	ret := _mock.Called(ctx, opts)
 
 	if len(ret) == 0 {
-		panic("no return value specified for IsFork")
+		panic("no return value specified for ListRepos")
 	}
 
-	var r0 bool
+	var r0 []provider.Repo
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (bool, error)); ok {
-		return returnFunc(ctx, repoName)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, provider.ListReposOptions) ([]provider.Repo, error)); ok {
+		return returnFunc(ctx, opts)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) bool); ok {
-		r0 = returnFunc(ctx, repoName)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, provider.ListReposOptions) []provider.Repo); ok {
+		r0 = returnFunc(ctx, opts)
 	} else {
-		r0 = ret.Get(0).(bool)
+		if ret.Get(0) != nil {
+			r0 = ret.Get(0).([]provider.Repo)
+		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, repoName)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, provider.ListReposOptions) error); ok {
+		r1 = returnFunc(ctx, opts)
 	} else {
 		r1 = ret.Error(1)
 	}
 	return r0, r1
 }
 
-// ProviderManager_IsFork_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'IsFork'
-type ProviderManager_IsFork_Call struct {
+// ProviderManager_ListRepos_Call is a *mock.Call that shadows Run/Return methods with type explicit version for method 'ListRepos'
+type ProviderManager_ListRepos_Call struct {
 	*mock.Call
 }
 
-// IsFork is a helper method to define mock.On call
+// ListRepos is a helper method to define mock.On call
 //   - ctx context.Context
-//   - repoName string
-func (_e *ProviderManager_Expecter) IsFork(ctx any, repoName any) *ProviderManager_IsFork_Call {
-	return &ProviderManager_IsFork_Call{Call: _e.mock.On("IsFork", ctx, repoName)}
+//   - opts provider.ListReposOptions
+func (_e *ProviderManager_Expecter) ListRepos(ctx any, opts any) *ProviderManager_ListRepos_Call {
+	return &ProviderManager_ListRepos_Call{Call: _e.mock.On("ListRepos", ctx, opts)}
 }
 
-func (_c *ProviderManager_IsFork_Call) Run(run func(ctx context.Context, repoName string)) *ProviderManager_IsFork_Call {
+func (_c *ProviderManager_ListRepos_Call) Run(run func(ctx context.Context, opts provider.ListReposOptions)) *ProviderManager_ListRepos_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
 			arg0 = args[0].(context.Context)
 		}
-		var arg1 string
+		var arg1 provider.ListReposOptions
 		if args[1] != nil {
-			arg1 = args[1].(string)
+			arg1 = args[1].(provider.ListReposOptions)
 		}
 		run(
 			arg0,
@@ -287,12 +290,12 @@ func (_c *ProviderManager_IsFork_Call) Run(run func(ctx context.Context, repoNam
 	return _c
 }
 
-func (_c *ProviderManager_IsFork_Call) Return(b bool, err error) *ProviderManager_IsFork_Call {
-	_c.Call.Return(b, err)
+func (_c *ProviderManager_ListRepos_Call) Return(repos []provider.Repo, err error) *ProviderManager_ListRepos_Call {
+	_c.Call.Return(repos, err)
 	return _c
 }
 
-func (_c *ProviderManager_IsFork_Call) RunAndReturn(run func(ctx context.Context, repoName string) (bool, error)) *ProviderManager_IsFork_Call {
+func (_c *ProviderManager_ListRepos_Call) RunAndReturn(run func(ctx context.Context, opts provider.ListReposOptions) ([]provider.Repo, error)) *ProviderManager_ListRepos_Call {
 	_c.Call.Return(run)
 	return _c
 }

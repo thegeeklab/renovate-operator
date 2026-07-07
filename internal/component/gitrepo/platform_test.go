@@ -10,6 +10,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/internal/provider/mocks"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,7 +95,7 @@ var _ = Describe("GitRepo Component - Platform Info Logic", func() {
 
 		mockMgr = mocks.NewProviderManager(GinkgoT())
 		reconciler.providerFactory = func(
-			context.Context, provider.PlatformConfig,
+			context.Context, factory.PlatformConfig,
 		) (provider.ProviderManager, error) {
 			return mockMgr, nil
 		}
@@ -187,9 +188,9 @@ var _ = Describe("GitRepo Component - Platform Info Logic", func() {
 
 		It("should return safely without error if the provider is not implemented", func() {
 			reconciler.providerFactory = func(
-				context.Context, provider.PlatformConfig,
+				context.Context, factory.PlatformConfig,
 			) (provider.ProviderManager, error) {
-				return nil, provider.ErrNotImplemented
+				return nil, factory.ErrNotImplemented
 			}
 
 			_, err := reconciler.reconcilePlatformInfo(ctx)

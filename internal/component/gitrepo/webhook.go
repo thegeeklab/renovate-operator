@@ -7,7 +7,7 @@ import (
 	"strings"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -41,7 +41,7 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, fmt.Errorf("failed to get platform token secret: %w", err)
 	}
 
-	platformConfig := provider.PlatformConfig{
+	platformConfig := factory.PlatformConfig{
 		Type:     string(r.renovate.Spec.Platform.Type),
 		Endpoint: r.renovate.Spec.Platform.Endpoint,
 		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
@@ -49,7 +49,7 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 
 	providerManager, err := r.providerFactory(ctx, platformConfig)
 	if err != nil {
-		if errors.Is(err, provider.ErrNotImplemented) {
+		if errors.Is(err, factory.ErrNotImplemented) {
 			log.V(1).Info("Provider not implemented", "platform", r.renovate.Spec.Platform.Type)
 
 			return &ctrl.Result{}, nil
@@ -126,7 +126,7 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, fmt.Errorf("failed to get platform token secret: %w", err)
 	}
 
-	platformConfig := provider.PlatformConfig{
+	platformConfig := factory.PlatformConfig{
 		Type:     string(r.renovate.Spec.Platform.Type),
 		Endpoint: r.renovate.Spec.Platform.Endpoint,
 		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
@@ -134,7 +134,7 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 
 	providerManager, err := r.providerFactory(ctx, platformConfig)
 	if err != nil {
-		if !errors.Is(err, provider.ErrNotImplemented) {
+		if !errors.Is(err, factory.ErrNotImplemented) {
 			log.Error(err, "Failed to initialize provider for cleanup")
 
 			return &ctrl.Result{}, err

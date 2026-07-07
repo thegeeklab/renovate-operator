@@ -9,6 +9,8 @@ import (
 	"strings"
 
 	"code.gitea.io/sdk/gitea"
+
+	"github.com/thegeeklab/renovate-operator/internal/provider"
 )
 
 const defaultPageSize = 50
@@ -174,18 +176,50 @@ func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error)
 	return fmt.Sprintf("%s/%s/%s", p.baseURL, owner, repo), nil
 }
 
-func (p *Provider) IsFork(ctx context.Context, repoName string) (bool, error) {
-	owner, repo, err := parseRepoName(repoName)
-	if err != nil {
-		return false, err
+// ListRepos returns repositories visible to the authenticated identity,
+// applying the given options. The Gitea SDK does not support server-side
+// filtering by fork status, so opts.SkipForks is applied locally.
+func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions) ([]provider.Repo, error) {
+	listOpts := gitea.ListReposOptions{
+		ListOptions: gitea.ListOptions{Page: 1, PageSize: defaultPageSize},
 	}
 
-	repoData, _, err := p.client.GetRepo(owner, repo)
-	if err != nil {
-		return false, fmt.Errorf("failed to fetch repository: %w", err)
+	var out []provider.Repo
+
+	for {
+		repos, resp, err := p.client.ListMyRepos(listOpts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list repositories: %w", err)
+		}
+
+		for _, repo := range repos {
+			if opts.SkipForks && repo.Fork {
+				continue
+			}
+
+			name := repo.FullName
+			if name == "" {
+				name = repo.Owner.UserName + "/" + repo.Name
+			}
+
+			if name == "" {
+				continue
+			}
+
+			out = append(out, provider.Repo{
+				Name:   name,
+				IsFork: repo.Fork,
+			})
+		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+
+		listOpts.Page = resp.NextPage
 	}
 
-	return repoData.Fork, nil
+	return out, nil
 }
 
 // sanitizeEndpoint removes trailing slashes and the API suffix

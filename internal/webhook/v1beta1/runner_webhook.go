@@ -79,5 +79,9 @@ func (d *RunnerCustomDefaulter) Default(ctx context.Context, runner *renovatev1b
 		runner.Spec.BackoffLimit = new(renovatev1beta1.DefaultBackoffLimit)
 	}
 
+	if err := validateTimezone(runner.Spec.Timezone); err != nil {
+		return err
+	}
+
 	return nil
 }

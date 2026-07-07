@@ -8,6 +8,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -106,7 +107,8 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 }
 
 // filterRepos returns repos with forks removed when skipForks is enabled on the discovery instance.
-// IsFork failures are logged and the repo is kept so the sync still attempts it.
+// The full repository list is fetched in a single batched call per provider, with forks
+// excluded server-side (GitHub) or filtered locally (Gitea) to avoid N+1 API calls.
 func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string, error) {
 	log := logf.FromContext(ctx)
 
@@ -122,7 +124,7 @@ func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string,
 		return nil, fmt.Errorf("failed to get platform token secret: %w", err)
 	}
 
-	platformConfig := provider.PlatformConfig{
+	platformConfig := factory.PlatformConfig{
 		Type:     string(r.renovate.Spec.Platform.Type),
 		Endpoint: r.renovate.Spec.Platform.Endpoint,
 		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
@@ -133,19 +135,20 @@ func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string,
 		return nil, fmt.Errorf("failed to initialize provider: %w", err)
 	}
 
+	platformRepos, err := providerManager.ListRepos(ctx, provider.ListReposOptions{SkipForks: true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list repositories: %w", err)
+	}
+
+	platformSet := make(map[string]struct{}, len(platformRepos))
+	for _, repo := range platformRepos {
+		platformSet[repo.Name] = struct{}{}
+	}
+
 	filtered := make([]string, 0, len(repos))
-
 	for _, repoName := range repos {
-		isFork, err := providerManager.IsFork(ctx, repoName)
-		if err != nil {
-			log.Error(err, "Failed to check if repository is a fork", "repo", repoName)
-			filtered = append(filtered, repoName)
-
-			continue
-		}
-
-		if isFork {
-			log.V(1).Info("Skipping forked repository", "repo", repoName)
+		if _, ok := platformSet[repoName]; !ok {
+			log.V(1).Info("Skipping repository not visible to platform token", "repo", repoName)
 
 			continue
 		}

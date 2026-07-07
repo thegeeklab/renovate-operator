@@ -7,9 +7,12 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/stretchr/testify/mock"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
+	"github.com/thegeeklab/renovate-operator/internal/provider/mocks"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -25,6 +28,7 @@ var _ = Describe("GitRepo Reconciliation", func() {
 		instance   *renovatev1beta1.Discovery
 		ctx        context.Context
 		scheme     *runtime.Scheme
+		mockMgr    *mocks.ProviderManager
 	)
 
 	createDiscoveryCM := func(name string, repos []string) *corev1.ConfigMap {
@@ -70,6 +74,17 @@ var _ = Describe("GitRepo Reconciliation", func() {
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).Build()
 		reconciler = &Reconciler{Client: fakeClient, scheme: scheme, instance: instance}
 		ctx = context.Background()
+
+		mockMgr = mocks.NewProviderManager(GinkgoT())
+		reconciler.providerFactory = func(
+			context.Context, factory.PlatformConfig,
+		) (provider.ProviderManager, error) {
+			return mockMgr, nil
+		}
+	})
+
+	AfterEach(func() {
+		mockMgr.AssertExpectations(GinkgoT())
 	})
 
 	Describe("reconcileGitRepos", func() {
@@ -203,9 +218,11 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			})
 
 			It("should not create GitRepos for forked repositories and should not prune non-forks", func() {
-				reconciler.providerFactory = func(_ context.Context, _ provider.PlatformConfig) (provider.ProviderManager, error) {
-					return &stubProvider{forks: map[string]bool{"forked-repo": true}}, nil
-				}
+				mockMgr.On("ListRepos", mock.Anything, provider.ListReposOptions{SkipForks: true}).
+					Return([]provider.Repo{
+						{Name: "real-repo", IsFork: false},
+					}, nil).
+					Once()
 
 				cm := createDiscoveryCM("test-config", []string{"real-repo", "forked-repo"})
 				Expect(fakeClient.Create(ctx, cm)).To(Succeed())
@@ -254,9 +271,12 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			}
 			Expect(fakeClient.Create(ctx, tokenSecret)).To(Succeed())
 
-			reconciler.providerFactory = func(_ context.Context, _ provider.PlatformConfig) (provider.ProviderManager, error) {
-				return &stubProvider{forks: map[string]bool{"forked": true}}, nil
-			}
+			mockMgr.On("ListRepos", mock.Anything, provider.ListReposOptions{SkipForks: true}).
+				Return([]provider.Repo{
+					{Name: "real", IsFork: false},
+					{Name: "another", IsFork: false},
+				}, nil).
+				Once()
 
 			result, err := reconciler.filterRepos(ctx, []string{"real", "forked", "another"})
 			Expect(err).ToNot(HaveOccurred())
@@ -364,23 +384,4 @@ func (m *mockErrorClient) Get(
 	opts ...client.GetOption,
 ) error {
 	return errors.New("simulated error")
-}
-
-// stubProvider is a minimal ProviderManager for fork-filtering tests.
-type stubProvider struct {
-	forks map[string]bool
-}
-
-func (s *stubProvider) GetIdentity() (string, error) { return "", nil }
-
-func (s *stubProvider) EnsureWebhook(_ context.Context, _, _, _ string) (string, error) {
-	return "", nil
-}
-
-func (s *stubProvider) DeleteWebhook(_ context.Context, _, _ string) error { return nil }
-
-func (s *stubProvider) RepoURL(_ context.Context, _ string) (string, error) { return "", nil }
-
-func (s *stubProvider) IsFork(_ context.Context, repoName string) (bool, error) {
-	return s.forks[repoName], nil
 }
