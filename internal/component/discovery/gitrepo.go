@@ -24,7 +24,6 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 	)
 
 	log := logf.FromContext(ctx)
-	discoveredRepoMatcher := make(map[string]bool)
 
 	cms := &corev1.ConfigMapList{}
 	if err := r.List(ctx, cms, client.InNamespace(r.instance.Namespace)); err != nil {
@@ -59,53 +58,14 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 		return &ctrl.Result{}, nil
 	}
 
-	skipForks := r.instance.GetSkipForks()
-
-	var providerManager provider.ProviderManager
-
-	if skipForks {
-		secret := &corev1.Secret{}
-		if err := r.Get(ctx, client.ObjectKey{
-			Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
-			Namespace: r.instance.Namespace,
-		}, secret); err != nil {
-			return &ctrl.Result{}, fmt.Errorf("failed to get platform token secret: %w", err)
-		}
-
-		platformConfig := provider.PlatformConfig{
-			Type:     string(r.renovate.Spec.Platform.Type),
-			Endpoint: r.renovate.Spec.Platform.Endpoint,
-			Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
-		}
-
-		pm, err := r.providerFactory(ctx, platformConfig)
-		if err != nil {
-			return &ctrl.Result{}, fmt.Errorf("failed to initialize provider: %w", err)
-		}
-
-		providerManager = pm
+	filteredRepos, err := r.filterRepos(ctx, discoveredRepos)
+	if err != nil {
+		return &ctrl.Result{}, err
 	}
 
-	for _, repoName := range discoveredRepos {
-		if skipForks && providerManager != nil {
-			isFork, err := providerManager.IsFork(ctx, repoName)
-			if err != nil {
-				log.Error(err, "Failed to check if repository is a fork", "repo", repoName)
-				allErrors = append(allErrors, fmt.Errorf("failed to check fork status for %s: %w", repoName, err))
-				discoveredRepoMatcher[repoName] = true
+	repoMatcher := make(map[string]bool, len(filteredRepos))
 
-				continue
-			}
-
-			if isFork {
-				log.V(1).Info("Skipping forked repository", "repo", repoName)
-
-				continue
-			}
-		}
-
-		discoveredRepoMatcher[repoName] = true
-
+	for _, repoName := range filteredRepos {
 		sanitizedName, err := k8s.SanitizeName(repoName)
 		if err != nil {
 			log.Error(err, "Failed to sanitize repository name", "repo", repoName)
@@ -130,9 +90,11 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 
 			continue
 		}
+
+		repoMatcher[repoName] = true
 	}
 
-	if err := r.pruneOrphanedRepos(ctx, discoveredRepoMatcher); err != nil {
+	if err := r.pruneOrphanedRepos(ctx, repoMatcher); err != nil {
 		allErrors = append(allErrors, fmt.Errorf("failed to prune orphaned repos: %w", err))
 	}
 
@@ -141,6 +103,57 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 	}
 
 	return &ctrl.Result{}, nil
+}
+
+// filterRepos returns repos with forks removed when skipForks is enabled on the discovery instance.
+// IsFork failures are logged and the repo is kept so the sync still attempts it.
+func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string, error) {
+	log := logf.FromContext(ctx)
+
+	if !r.instance.GetSkipForks() {
+		return repos, nil
+	}
+
+	secret := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
+		Namespace: r.instance.Namespace,
+	}, secret); err != nil {
+		return nil, fmt.Errorf("failed to get platform token secret: %w", err)
+	}
+
+	platformConfig := provider.PlatformConfig{
+		Type:     string(r.renovate.Spec.Platform.Type),
+		Endpoint: r.renovate.Spec.Platform.Endpoint,
+		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
+	}
+
+	providerManager, err := r.providerFactory(ctx, platformConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize provider: %w", err)
+	}
+
+	filtered := make([]string, 0, len(repos))
+
+	for _, repoName := range repos {
+		isFork, err := providerManager.IsFork(ctx, repoName)
+		if err != nil {
+			log.Error(err, "Failed to check if repository is a fork", "repo", repoName)
+			filtered = append(filtered, repoName)
+
+			continue
+		}
+
+		if isFork {
+			log.V(1).Info("Skipping forked repository", "repo", repoName)
+
+			continue
+		}
+
+		filtered = append(filtered, repoName)
+	}
+
+	return filtered, nil
 }
 
 // updateGitRepo manages the specific spec and labels of the GitRepo resource.
