@@ -2,6 +2,7 @@ package gitrepo
 
 import (
 	"context"
+	"errors"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
@@ -10,6 +11,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
+
+var ErrPlatformTokenSecretNotConfigured = errors.New("platform token secret not configured")
 
 // reconcileGitRepo manages the finalizer for the GitRepo resource.
 func (r *Reconciler) reconcileGitRepo(ctx context.Context) (*ctrl.Result, error) {

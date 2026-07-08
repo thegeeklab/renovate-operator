@@ -52,6 +52,11 @@ func (r *Runner) GetSchedule() string {
 	return r.Spec.Schedule
 }
 
+// GetTimezone returns the IANA timezone name for schedule evaluation.
+func (r *Runner) GetTimezone() string {
+	return r.Spec.Timezone
+}
+
 // GetSuspend returns true if the schedule is suspended.
 func (r *Runner) GetSuspend() bool {
 	if r.Spec.Suspend == nil {

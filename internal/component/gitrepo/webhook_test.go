@@ -10,6 +10,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/internal/provider/mocks"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -101,7 +102,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 		mockMgr = mocks.NewProviderManager(GinkgoT())
 		reconciler.providerFactory = func(
-			context.Context, provider.PlatformConfig,
+			context.Context, factory.PlatformConfig,
 		) (provider.ProviderManager, error) {
 			return mockMgr, nil
 		}
@@ -190,9 +191,9 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 		It("should return safely without error if the provider is not implemented", func() {
 			reconciler.providerFactory = func(
-				context.Context, provider.PlatformConfig,
+				context.Context, factory.PlatformConfig,
 			) (provider.ProviderManager, error) {
-				return nil, provider.ErrNotImplemented
+				return nil, factory.ErrNotImplemented
 			}
 
 			_, err := reconciler.createWebhook(ctx)
@@ -256,10 +257,61 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
 			reconciler.providerFactory = func(
-				context.Context, provider.PlatformConfig,
+				context.Context, factory.PlatformConfig,
 			) (provider.ProviderManager, error) {
-				return nil, provider.ErrNotImplemented
+				return nil, factory.ErrNotImplemented
 			}
+
+			_, err := reconciler.deleteWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
+		})
+
+		It("should return error without clearing status if provider factory fails", func() {
+			instance.Status.WebhookID = "123"
+			instance.Finalizers = append(instance.Finalizers, renovatev1beta1.FinalizerGitRepoWebhook)
+			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+
+			instance.Status.WebhookID = "123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			reconciler.providerFactory = func(
+				context.Context, factory.PlatformConfig,
+			) (provider.ProviderManager, error) {
+				return nil, fmt.Errorf("provider init failed")
+			}
+
+			_, err := reconciler.deleteWebhook(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("provider init failed"))
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(Equal("123"))
+		})
+
+		It("should clear the WebhookID gracefully if the platform token secret is not configured", func() {
+			instance.Status.WebhookID = "123"
+			instance.Finalizers = append(instance.Finalizers, renovatev1beta1.FinalizerGitRepoWebhook)
+			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+
+			instance.Status.WebhookID = "123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			renovate.Spec.Platform.Token.SecretKeyRef = nil
 
 			_, err := reconciler.deleteWebhook(ctx)
 			Expect(err).NotTo(HaveOccurred())

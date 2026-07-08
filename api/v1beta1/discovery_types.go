@@ -19,6 +19,10 @@ type DiscoverySpec struct {
 
 	// +kubebuilder:validation:Optional
 	Filter []string `json:"filter,omitempty"`
+
+	// SkipForks excludes forked repositories from autodiscovery when set to true.
+	// +kubebuilder:validation:Optional
+	SkipForks *bool `json:"skipForks,omitempty"`
 }
 
 // DiscoveryStatus defines the observed state of Discovery.
@@ -56,6 +60,11 @@ func (d *Discovery) GetSchedule() string {
 	return d.Spec.Schedule
 }
 
+// GetTimezone returns the IANA timezone name for schedule evaluation.
+func (d *Discovery) GetTimezone() string {
+	return d.Spec.Timezone
+}
+
 // GetSuspend returns true if the schedule is suspended.
 func (d *Discovery) GetSuspend() bool {
 	if d.Spec.Suspend == nil {
@@ -83,6 +92,15 @@ func (d *Discovery) GetSuccessLimit() int {
 // GetFailedLimit returns the history limit for failed jobs.
 func (d *Discovery) GetFailedLimit() int {
 	return int(*d.Spec.FailedLimit)
+}
+
+// GetSkipForks returns true if forked repositories should be excluded from autodiscovery.
+func (d *Discovery) GetSkipForks() bool {
+	if d.Spec.SkipForks == nil {
+		return false
+	}
+
+	return *d.Spec.SkipForks
 }
 
 func (d *Discovery) SetCondition(

@@ -15,11 +15,13 @@ type MockSchedulable struct {
 	metav1.TypeMeta // Add this
 	metav1.ObjectMeta
 	Schedule         string
+	Timezone         string
 	Suspend          bool
 	LastScheduleTime *metav1.Time
 }
 
 func (m *MockSchedulable) GetSchedule() string                { return m.Schedule }
+func (m *MockSchedulable) GetTimezone() string                { return m.Timezone }
 func (m *MockSchedulable) GetSuspend() bool                   { return m.Suspend }
 func (m *MockSchedulable) GetLastScheduleTime() *metav1.Time  { return m.LastScheduleTime }
 func (m *MockSchedulable) SetLastScheduleTime(t *metav1.Time) { m.LastScheduleTime = t }
@@ -30,6 +32,7 @@ func (m *MockSchedulable) DeepCopyObject() runtime.Object {
 		TypeMeta:         m.TypeMeta,
 		ObjectMeta:       m.ObjectMeta,
 		Schedule:         m.Schedule,
+		Timezone:         m.Timezone,
 		Suspend:          m.Suspend,
 		LastScheduleTime: m.LastScheduleTime,
 	}

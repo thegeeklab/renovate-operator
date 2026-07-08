@@ -87,6 +87,11 @@ spec:
                 suspend:
                   description: Suspend specifies whether the job execution and scheduling should be paused.
                   type: boolean
+                timezone:
+                  description: |-
+                    Timezone specifies the IANA timezone name (e.g., "America/New_York", "Europe/Berlin")
+                    to use when evaluating the cron schedule. If not set, the operator's local timezone is used.
+                  type: string
                 ttlSecondsAfterFinished:
                   description: |-
                     TTLSecondsAfterFinished limits the lifetime of a Job that has finished execution

@@ -7,6 +7,8 @@ import (
 	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -14,6 +16,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var ErrPlatformTokenSecretNotConfigured = errors.New("platform token secret not configured")
 
 // reconcileGitRepos synchronizes GitRepo resources based on the discovery result ConfigMap.
 func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error) {
@@ -23,7 +27,6 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 	)
 
 	log := logf.FromContext(ctx)
-	discoveredRepoMatcher := make(map[string]bool)
 
 	cms := &corev1.ConfigMapList{}
 	if err := r.List(ctx, cms, client.InNamespace(r.instance.Namespace)); err != nil {
@@ -58,9 +61,14 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 		return &ctrl.Result{}, nil
 	}
 
-	for _, repoName := range discoveredRepos {
-		discoveredRepoMatcher[repoName] = true
+	filteredRepos, err := r.filterRepos(ctx, discoveredRepos)
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
 
+	repoMatcher := make(map[string]bool, len(filteredRepos))
+
+	for _, repoName := range filteredRepos {
 		sanitizedName, err := k8s.SanitizeName(repoName)
 		if err != nil {
 			log.Error(err, "Failed to sanitize repository name", "repo", repoName)
@@ -85,9 +93,11 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 
 			continue
 		}
+
+		repoMatcher[repoName] = true
 	}
 
-	if err := r.pruneOrphanedRepos(ctx, discoveredRepoMatcher); err != nil {
+	if err := r.pruneOrphanedRepos(ctx, repoMatcher); err != nil {
 		allErrors = append(allErrors, fmt.Errorf("failed to prune orphaned repos: %w", err))
 	}
 
@@ -96,6 +106,63 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 	}
 
 	return &ctrl.Result{}, nil
+}
+
+// filterRepos returns repos with forks removed when skipForks is enabled on the discovery instance.
+// The full repository list is fetched in a single batched call per provider, with forks
+// excluded server-side (GitHub) or filtered locally (Gitea) to avoid N+1 API calls.
+func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string, error) {
+	log := logf.FromContext(ctx)
+
+	if !r.instance.GetSkipForks() {
+		return repos, nil
+	}
+
+	if r.renovate.Spec.Platform.Token.SecretKeyRef == nil {
+		return nil, ErrPlatformTokenSecretNotConfigured
+	}
+
+	secret := &corev1.Secret{}
+	if err := r.Get(ctx, client.ObjectKey{
+		Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
+		Namespace: r.instance.Namespace,
+	}, secret); err != nil {
+		return nil, fmt.Errorf("failed to get platform token secret: %w", err)
+	}
+
+	platformConfig := factory.PlatformConfig{
+		Type:     string(r.renovate.Spec.Platform.Type),
+		Endpoint: r.renovate.Spec.Platform.Endpoint,
+		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
+	}
+
+	providerManager, err := r.providerFactory(ctx, platformConfig)
+	if err != nil {
+		return nil, fmt.Errorf("failed to initialize provider: %w", err)
+	}
+
+	platformRepos, err := providerManager.ListRepos(ctx, provider.ListReposOptions{SkipForks: true})
+	if err != nil {
+		return nil, fmt.Errorf("failed to list repositories: %w", err)
+	}
+
+	platformSet := make(map[string]struct{}, len(platformRepos))
+	for _, repo := range platformRepos {
+		platformSet[repo.Name] = struct{}{}
+	}
+
+	filtered := make([]string, 0, len(repos))
+	for _, repoName := range repos {
+		if _, ok := platformSet[repoName]; !ok {
+			log.V(1).Info("Skipping repository excluded by filter", "repo", repoName)
+
+			continue
+		}
+
+		filtered = append(filtered, repoName)
+	}
+
+	return filtered, nil
 }
 
 // updateGitRepo manages the specific spec and labels of the GitRepo resource.

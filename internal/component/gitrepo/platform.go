@@ -5,7 +5,7 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -16,6 +16,10 @@ import (
 func (r *Reconciler) reconcilePlatformInfo(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
+	if r.renovate.Spec.Platform.Token.SecretKeyRef == nil {
+		return &ctrl.Result{}, ErrPlatformTokenSecretNotConfigured
+	}
+
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{
 		Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
@@ -24,7 +28,7 @@ func (r *Reconciler) reconcilePlatformInfo(ctx context.Context) (*ctrl.Result, e
 		return &ctrl.Result{}, fmt.Errorf("failed to get platform token secret: %w", err)
 	}
 
-	platformConfig := provider.PlatformConfig{
+	platformConfig := factory.PlatformConfig{
 		Type:     string(r.renovate.Spec.Platform.Type),
 		Endpoint: r.renovate.Spec.Platform.Endpoint,
 		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
@@ -32,7 +36,7 @@ func (r *Reconciler) reconcilePlatformInfo(ctx context.Context) (*ctrl.Result, e
 
 	providerManager, err := r.providerFactory(ctx, platformConfig)
 	if err != nil {
-		if errors.Is(err, provider.ErrNotImplemented) {
+		if errors.Is(err, factory.ErrNotImplemented) {
 			log.V(1).Info("Provider not implemented, skipping platform info", "platform", r.renovate.Spec.Platform.Type)
 
 			return &ctrl.Result{}, nil

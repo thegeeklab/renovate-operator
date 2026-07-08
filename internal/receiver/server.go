@@ -10,7 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -62,7 +62,7 @@ type Server struct {
 	router chi.Router
 	server *http.Server
 
-	providerFactory provider.ProviderFactory
+	providerFactory factory.ProviderFactory
 	receiverFactory ReceiverFactory
 }
 
@@ -72,7 +72,7 @@ func NewServer(config ServerConfig, k8sClient client.Client, receiverFactory Rec
 		client: k8sClient,
 		router: chi.NewRouter(),
 
-		providerFactory: provider.DefaultProviderFactory,
+		providerFactory: factory.DefaultProviderFactory,
 		receiverFactory: receiverFactory,
 	}
 
@@ -289,7 +289,7 @@ func (s *Server) verifyWebhookUser(
 
 	providerManager, err := s.providerFactory(
 		ctx,
-		provider.PlatformConfig{
+		factory.PlatformConfig{
 			Type:     string(config.Spec.Platform.Type),
 			Endpoint: config.Spec.Platform.Endpoint,
 			Token:    platformToken,

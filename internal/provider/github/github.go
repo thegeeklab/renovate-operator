@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/google/go-github/v89/github"
+	"github.com/thegeeklab/renovate-operator/internal/provider"
 )
 
 const (
@@ -186,6 +187,53 @@ func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error)
 	}
 
 	return fmt.Sprintf("%s/%s/%s", p.forgeURL, owner, repo), nil
+}
+
+// ListRepos returns repositories visible to the authenticated identity,
+// applying the given options. When opts.SkipForks is true, forked
+// repositories are excluded via the provider's server-side filter.
+func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions) ([]provider.Repo, error) {
+	listOpts := &github.RepositoryListByAuthenticatedUserOptions{
+		ListOptions: github.ListOptions{Page: 1, PerPage: defaultPageSize},
+		Affiliation: "owner,collaborator,organization_member",
+	}
+
+	if opts.SkipForks {
+		listOpts.Type = "sources"
+	}
+
+	var out []provider.Repo
+
+	for {
+		repos, resp, err := p.client.Repositories.ListByAuthenticatedUser(ctx, listOpts)
+		if err != nil {
+			return nil, fmt.Errorf("failed to list repositories: %w", err)
+		}
+
+		for _, repo := range repos {
+			name := repo.GetFullName()
+			if name == "" {
+				name = repo.GetOwner().GetLogin() + "/" + repo.GetName()
+			}
+
+			if name == "" {
+				continue
+			}
+
+			out = append(out, provider.Repo{
+				Name:   name,
+				IsFork: repo.GetFork(),
+			})
+		}
+
+		if resp.NextPage == 0 {
+			break
+		}
+
+		listOpts.Page = resp.NextPage
+	}
+
+	return out, nil
 }
 
 func sanitizeEndpoint(endpoint string) string {

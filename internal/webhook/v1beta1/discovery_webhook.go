@@ -1,4 +1,3 @@
-//nolint:dupl
 package v1beta1
 
 import (
@@ -7,7 +6,6 @@ import (
 	"fmt"
 
 	corev1 "k8s.io/api/core/v1"
-	"k8s.io/utils/ptr"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 
@@ -70,15 +68,23 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 	}
 
 	if discovery.Spec.SuccessLimit == nil {
-		discovery.Spec.SuccessLimit = ptr.To(renovatev1beta1.DefaultSuccessLimit)
+		discovery.Spec.SuccessLimit = new(renovatev1beta1.DefaultSuccessLimit)
 	}
 
 	if discovery.Spec.FailedLimit == nil {
-		discovery.Spec.FailedLimit = ptr.To(renovatev1beta1.DefaultFailedLimit)
+		discovery.Spec.FailedLimit = new(renovatev1beta1.DefaultFailedLimit)
 	}
 
 	if discovery.Spec.BackoffLimit == nil {
-		discovery.Spec.BackoffLimit = ptr.To(renovatev1beta1.DefaultBackoffLimit)
+		discovery.Spec.BackoffLimit = new(renovatev1beta1.DefaultBackoffLimit)
+	}
+
+	if discovery.Spec.SkipForks == nil {
+		discovery.Spec.SkipForks = new(false)
+	}
+
+	if err := validateTimezone(discovery.Spec.Timezone); err != nil {
+		return err
 	}
 
 	return nil

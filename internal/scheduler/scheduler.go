@@ -29,6 +29,7 @@ var ErrInvalidClientObject = errors.New("failed to convert object deep copy to c
 type Schedulable interface {
 	client.Object
 	GetSchedule() string
+	GetTimezone() string
 	GetSuspend() bool
 	GetLastScheduleTime() *metav1.Time
 	SetLastScheduleTime(*metav1.Time)
@@ -62,7 +63,16 @@ func (m *Manager) Evaluate(obj Schedulable, checkManualTrigger func(map[string]s
 		hasAnnotation = checkManualTrigger(obj.GetAnnotations())
 	}
 
-	schedule, err := cron.ParseStandard(obj.GetSchedule())
+	scheduleStr := obj.GetSchedule()
+	if tz := obj.GetTimezone(); tz != "" {
+		if _, err := time.LoadLocation(tz); err != nil {
+			return DecisionResult{}, fmt.Errorf("invalid timezone %q: %w", tz, err)
+		}
+
+		scheduleStr = "CRON_TZ=" + tz + " " + scheduleStr
+	}
+
+	schedule, err := cron.ParseStandard(scheduleStr)
 	if err != nil {
 		return DecisionResult{}, fmt.Errorf("invalid schedule: %w", err)
 	}

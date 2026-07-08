@@ -41,6 +41,11 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.Schedule = runnerSpec.Schedule
 	}
 
+	runner.Spec.Timezone = spec.Timezone
+	if runnerSpec.Timezone != "" {
+		runner.Spec.Timezone = runnerSpec.Timezone
+	}
+
 	runner.Spec.Suspend = spec.Suspend
 	if runnerSpec.Suspend != nil {
 		runner.Spec.Suspend = runnerSpec.Suspend
