@@ -269,5 +269,56 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
 			Expect(updated.Status.WebhookID).To(BeEmpty())
 		})
+
+		It("should return error without clearing status if provider factory fails", func() {
+			instance.Status.WebhookID = "123"
+			instance.Finalizers = append(instance.Finalizers, renovatev1beta1.FinalizerGitRepoWebhook)
+			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+
+			instance.Status.WebhookID = "123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			reconciler.providerFactory = func(
+				context.Context, factory.PlatformConfig,
+			) (provider.ProviderManager, error) {
+				return nil, fmt.Errorf("provider init failed")
+			}
+
+			_, err := reconciler.deleteWebhook(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("provider init failed"))
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(Equal("123"))
+		})
+
+		It("should clear the WebhookID gracefully if the platform token secret is not configured", func() {
+			instance.Status.WebhookID = "123"
+			instance.Finalizers = append(instance.Finalizers, renovatev1beta1.FinalizerGitRepoWebhook)
+			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+
+			instance.Status.WebhookID = "123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			renovate.Spec.Platform.Token.SecretKeyRef = nil
+
+			_, err := reconciler.deleteWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
+		})
 	})
 })

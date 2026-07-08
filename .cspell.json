@@ -82,7 +82,6 @@
     ".woodpecker",
     "*_test.go",
     "mock_*.go",
-    ".cspell.json",
     ".git/**/*",
     ".gitignore",
     ".golangci.yaml",
@@ -93,9 +92,10 @@
     ".npmrc",
     "**/fixtures/**/*",
     "*.svg",
+    "*.json",
+    "*.jsonc",
     // generated
     "go.sum",
-    "renovate.json",
     "*zz_generated*.go",
     "config/**/*.yaml",
     "dist"

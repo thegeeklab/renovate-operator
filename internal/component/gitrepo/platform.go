@@ -16,6 +16,10 @@ import (
 func (r *Reconciler) reconcilePlatformInfo(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
+	if r.renovate.Spec.Platform.Token.SecretKeyRef == nil {
+		return &ctrl.Result{}, ErrPlatformTokenSecretNotConfigured
+	}
+
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{
 		Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,

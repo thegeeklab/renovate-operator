@@ -17,6 +17,8 @@ import (
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
+var ErrPlatformTokenSecretNotConfigured = errors.New("platform token secret not configured")
+
 // reconcileGitRepos synchronizes GitRepo resources based on the discovery result ConfigMap.
 func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error) {
 	var (
@@ -116,6 +118,10 @@ func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string,
 		return repos, nil
 	}
 
+	if r.renovate.Spec.Platform.Token.SecretKeyRef == nil {
+		return nil, ErrPlatformTokenSecretNotConfigured
+	}
+
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{
 		Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
@@ -148,7 +154,7 @@ func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string,
 	filtered := make([]string, 0, len(repos))
 	for _, repoName := range repos {
 		if _, ok := platformSet[repoName]; !ok {
-			log.V(1).Info("Skipping repository not visible to platform token", "repo", repoName)
+			log.V(1).Info("Skipping repository excluded by filter", "repo", repoName)
 
 			continue
 		}

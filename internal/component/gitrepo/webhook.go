@@ -33,6 +33,10 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, nil
 	}
 
+	if r.renovate.Spec.Platform.Token.SecretKeyRef == nil {
+		return &ctrl.Result{}, ErrPlatformTokenSecretNotConfigured
+	}
+
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{
 		Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
@@ -118,6 +122,16 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, nil
 	}
 
+	if r.renovate.Spec.Platform.Token.SecretKeyRef == nil {
+		log.Info("Platform token secret not configured, skipping remote webhook cleanup")
+
+		if err := r.clearWebhookIDStatus(ctx); err != nil {
+			return &ctrl.Result{}, err
+		}
+
+		return &ctrl.Result{}, nil
+	}
+
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{
 		Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
@@ -133,30 +147,44 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 	}
 
 	providerManager, err := r.providerFactory(ctx, platformConfig)
-	if err != nil {
-		if !errors.Is(err, factory.ErrNotImplemented) {
-			log.Error(err, "Failed to initialize provider for cleanup")
-
-			return &ctrl.Result{}, err
-		}
-
+	if errors.Is(err, factory.ErrNotImplemented) {
 		log.V(1).Info("Provider not implemented, skipping cleanup")
-	} else {
-		if err := providerManager.DeleteWebhook(ctx, r.instance.Spec.Name, r.instance.Status.WebhookID); err != nil {
-			log.Error(err, "Failed to delete webhook from remote")
 
+		if err := r.clearWebhookIDStatus(ctx); err != nil {
 			return &ctrl.Result{}, err
 		}
 
-		log.Info("Successfully deleted webhook from remote")
+		return &ctrl.Result{}, nil
 	}
 
+	if err != nil {
+		log.Error(err, "Failed to initialize provider for cleanup")
+
+		return &ctrl.Result{}, err
+	}
+
+	if err := providerManager.DeleteWebhook(ctx, r.instance.Spec.Name, r.instance.Status.WebhookID); err != nil {
+		log.Error(err, "Failed to delete webhook from remote")
+
+		return &ctrl.Result{}, err
+	}
+
+	log.Info("Successfully deleted webhook from remote")
+
+	if err := r.clearWebhookIDStatus(ctx); err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	return &ctrl.Result{}, nil
+}
+
+func (r *Reconciler) clearWebhookIDStatus(ctx context.Context) error {
 	patch := client.MergeFrom(r.instance.DeepCopy())
 	r.instance.Status.WebhookID = ""
 
 	if err := r.Status().Patch(ctx, r.instance, patch); err != nil && !api_errors.IsNotFound(err) {
-		return &ctrl.Result{}, fmt.Errorf("failed to clear webhook ID in status: %w", err)
+		return fmt.Errorf("failed to clear webhook ID in status: %w", err)
 	}
 
-	return &ctrl.Result{}, nil
+	return nil
 }
