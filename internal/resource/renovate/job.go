@@ -17,10 +17,11 @@ type jobConfig struct {
 	BackoffLimit            *int32
 	TTLSecondsAfterFinished *int32
 
-	InitContainers []corev1.Container
-	VolumeMutators []containers.VolumeMutator
-	EnvVars        []corev1.EnvVar
-	PodLabels      map[string]string
+	InitContainers   []corev1.Container
+	VolumeMutators   []containers.VolumeMutator
+	EnvVars          []corev1.EnvVar
+	PodLabels        map[string]string
+	ImagePullSecrets []corev1.LocalObjectReference
 }
 
 // JobOption defines a function that modifies the job configuration.
@@ -38,7 +39,8 @@ func DefaultJobSpec(
 			containers.WithEmptyDirVolume(VolumeRenovateTmp),
 			containers.WithConfigMapVolume(VolumeRenovateConfig, renovateCM),
 		},
-		EnvVars: DefaultEnvVars(&renovate.Spec),
+		EnvVars:          DefaultEnvVars(&renovate.Spec),
+		ImagePullSecrets: renovate.Spec.ImagePullSecrets,
 	}
 
 	// Apply all Functional Options
@@ -56,6 +58,7 @@ func DefaultJobSpec(
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 	spec.Template.Spec.InitContainers = cfg.InitContainers
 	spec.Template.Spec.Volumes = containers.VolumesTemplate(cfg.VolumeMutators...)
+	spec.Template.Spec.ImagePullSecrets = cfg.ImagePullSecrets
 
 	// Build Main Container
 	spec.Template.Spec.Containers = []corev1.Container{
@@ -78,6 +81,13 @@ func DefaultJobSpec(
 func WithPodLabels(labels map[string]string) JobOption {
 	return func(c *jobConfig) {
 		c.PodLabels = labels
+	}
+}
+
+// WithImagePullSecrets injects image pull secrets into the Pod template.
+func WithImagePullSecrets(secrets []corev1.LocalObjectReference) JobOption {
+	return func(c *jobConfig) {
+		c.ImagePullSecrets = append(c.ImagePullSecrets, secrets...)
 	}
 }
 

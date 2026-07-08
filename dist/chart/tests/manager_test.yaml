@@ -16,7 +16,7 @@ tests:
           value: 1
       - equal:
           path: spec.template.spec.containers[0].image
-          value: docker.io/thegeeklab/renovate-operator:latest
+          value: docker.io/thegeeklab/renovate-operator:0.1.0
 
   - it: should render the manager deployment with custom values
     set:
@@ -32,7 +32,7 @@ tests:
 
   - it: should disable metrics server when metrics.enable is false
     set:
-      metrics.enable: false
+      metrics.enabled: false
     asserts:
       - contains:
           path: spec.template.spec.containers[0].args
@@ -40,7 +40,7 @@ tests:
 
   - it: should enable metrics server when metrics.enable is true
     set:
-      metrics.enable: true
+      metrics.enabled: true
       metrics.port: 8443
     asserts:
       - contains:

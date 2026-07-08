@@ -17,7 +17,7 @@ tests:
 
   - it: should not render metrics service when disabled
     set:
-      metrics.enable: false
+      metrics.enabled: false
     asserts:
       - hasDocuments:
           count: 0

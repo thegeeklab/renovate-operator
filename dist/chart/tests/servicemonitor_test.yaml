@@ -1,6 +1,6 @@
 suite: test servicemonitor resources
 templates:
-  - templates/monitoring/servicemonitor.yaml
+  - templates/prometheus/controller-manager-metrics-monitor.yaml
 tests:
   - it: should not render servicemonitor by default
     asserts:
@@ -11,7 +11,7 @@ tests:
     release:
       name: renovate
     set:
-      prometheus.enable: true
+      prometheus.enabled: true
     asserts:
       - hasDocuments:
           count: 1

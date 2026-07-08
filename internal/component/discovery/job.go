@@ -129,6 +129,7 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 		renovate.WithRenovateJobSpec(r.instance.Spec.JobSpec),
 		renovate.WithPodLabels(podLabels),
 		renovate.WithInitContainer(initContainer),
+		renovate.WithImagePullSecrets(r.instance.Spec.ImagePullSecrets),
 	)
 
 	job.Spec.Template.Spec.Containers = []corev1.Container{
