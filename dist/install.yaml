@@ -2436,6 +2436,12 @@ subjects:
 apiVersion: v1
 kind: Secret
 metadata:
+  name: renovate-operator-metrics-server-cert
+  namespace: renovate-system
+---
+apiVersion: v1
+kind: Secret
+metadata:
   name: renovate-operator-webhook-server-cert
   namespace: renovate-system
 ---
@@ -2503,7 +2509,13 @@ spec:
             - --metrics-bind-address=:8443
             - --leader-elect
             - --health-probe-bind-address=:8081
+            - --metrics-cert-path=/tmp/k8s-metrics-server/serving-certs
+            - --metrics-cert-secret-name=renovate-operator-metrics-server-cert
+            - --metrics-service-name=renovate-operator-metrics-service
             - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+            - --webhook-name=renovate-operator-webhook-configuration
+            - --webhook-cert-secret-name=renovate-operator-webhook-server-cert
+            - --webhook-service-name=renovate-operator-webhook-service
             - --frontend-bind-address=:8082
           command:
             - /manager
@@ -2547,8 +2559,11 @@ spec:
               drop:
                 - ALL
           volumeMounts:
+            - mountPath: /tmp/k8s-metrics-server/serving-certs
+              name: metrics-cert
+              readOnly: true
             - mountPath: /tmp/k8s-webhook-server/serving-certs
-              name: cert
+              name: webhook-cert
               readOnly: true
             - mountPath: /tmp/runner-logs
               name: log-storage
@@ -2559,7 +2574,11 @@ spec:
       serviceAccountName: renovate-operator-controller-manager
       terminationGracePeriodSeconds: 10
       volumes:
-        - name: cert
+        - name: metrics-cert
+          secret:
+            defaultMode: 420
+            secretName: renovate-operator-metrics-server-cert
+        - name: webhook-cert
           secret:
             defaultMode: 420
             secretName: renovate-operator-webhook-server-cert

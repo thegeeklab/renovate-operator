@@ -1,0 +1,47 @@
+suite: test webhook resources
+templates:
+  - templates/webhook/webhook-configuration.yaml
+tests:
+  - it: should render webhook configuration by default
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: MutatingWebhookConfiguration
+
+  - it: should not render webhook configuration when disabled
+    set:
+      webhook.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should add annotations to webhook configuration
+    set:
+      webhook.annotations:
+        cert-manager.io/inject-ca-from: renovate-system/webhook-cert
+    asserts:
+      - equal:
+          path: metadata.annotations["cert-manager.io/inject-ca-from"]
+          value: renovate-system/webhook-cert
+
+---
+suite: test webhook cert secret
+templates:
+  - templates/extras/webhook-server-cert.yaml
+tests:
+  - it: should not render webhook cert secret when certRotation is disabled
+    set:
+      webhook.enabled: true
+      certRotation.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render webhook cert secret when certRotation is enabled
+    set:
+      webhook.enabled: true
+      certRotation.enabled: true
+    asserts:
+      - isKind:
+          of: Secret

@@ -308,5 +308,22 @@ var _ = Describe("ReconcileJob", func() {
 			expectedSA := metadata.GenericMetadata(reconciler.req).Name
 			Expect(job.Spec.Template.Spec.ServiceAccountName).To(Equal(expectedSA))
 		})
+
+		It("should propagate ImagePullSecrets to the job pod spec", func() {
+			instance.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
+				{Name: "runner-registry-secret"},
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, repo1, nil)
+
+			Expect(job.Spec.Template.Spec.ImagePullSecrets).To(HaveLen(1))
+			Expect(job.Spec.Template.Spec.ImagePullSecrets[0].Name).To(Equal("runner-registry-secret"))
+		})
 	})
 })

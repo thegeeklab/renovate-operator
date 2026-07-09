@@ -76,7 +76,14 @@ spec:
       - args:
         {{- if .Values.metrics.enabled }}
         - --metrics-bind-address=:{{ .Values.metrics.port }}
-        {{- if not .Values.metrics.secure }}
+        {{- if .Values.metrics.secure }}
+        - --metrics-cert-path=/tmp/k8s-metrics-server/serving-certs
+        - --metrics-cert-secret-name={{ include "renovate-operator.resourceName" (dict "suffix" "metrics-server-cert" "context" $) }}
+        - --metrics-service-name={{ include "renovate-operator.resourceName" (dict "suffix" "metrics-service" "context" $) }}
+        {{- if not .Values.certRotation.enabled }}
+        - --metrics-cert-rotation=false
+        {{- end }}
+        {{- else }}
         - --metrics-secure=false
         {{- end }}
         {{- else }}
@@ -87,26 +94,36 @@ spec:
         {{- range .Values.manager.args }}
         - {{ . }}
         {{- end }}
-        {{- if .Values.certManager.enabled }}
+        {{- if .Values.webhook.enabled }}
         - --webhook-cert-path=/tmp/k8s-webhook-server/serving-certs
+        - --webhook-name={{ include "renovate-operator.resourceName" (dict "suffix" "webhook-configuration" "context" $) }}
+        - --webhook-cert-secret-name={{ include "renovate-operator.resourceName" (dict "suffix" "webhook-server-cert" "context" $) }}
+        - --webhook-service-name={{ include "renovate-operator.resourceName" (dict "suffix" "webhook-service" "context" $) }}
+        {{- if not .Values.certRotation.enabled }}
+        - --webhook-cert-rotation=false
+        {{- end }}
         {{- end }}
         command:
         - /manager
         - -zap-devel
         env:
-{{- if or .Values.manager.env (and (kindIs "map" .Values.manager.envOverrides) (not (empty .Values.manager.envOverrides))) }}
+{{- if or .Values.manager.env (and (kindIs "map" .Values.manager.envOverrides) (not (empty .Values.manager.envOverrides))) (not .Values.webhook.enabled) }}
           {{- if .Values.manager.env }}
           {{- toYaml .Values.manager.env | nindent 10 }}
           {{- end }}
           {{- if kindIs "map" .Values.manager.envOverrides }}
           {{- range $k, $v := .Values.manager.envOverrides }}
-          - name: {{ $k }}
+          - name: {{ $k | quote }}
             value: {{ $v | quote }}
           {{- end }}
           {{- end }}
-          {{- else }}
-          []
+          {{- if not .Values.webhook.enabled }}
+          - name: ENABLE_WEBHOOKS
+            value: "false"
           {{- end }}
+{{- else }}
+          []
+{{- end }}
         image: "{{ .Values.manager.image.repository }}{{- if not (contains "@" .Values.manager.image.repository) }}:{{ .Values.manager.image.tag | default .Chart.AppVersion }}{{- end }}"
         {{- with .Values.manager.image.pullPolicy }}
         imagePullPolicy: {{ . }}
@@ -147,9 +164,18 @@ spec:
           {{- if .Values.manager.extraVolumeMounts }}
           {{- toYaml .Values.manager.extraVolumeMounts | nindent 10 }}
           {{- end }}
-        - mountPath: /tmp/k8s-webhook-server/serving-certs
-          name: cert
+        {{- if .Values.metrics.enabled }}
+        {{- if .Values.metrics.secure }}
+        - mountPath: /tmp/k8s-metrics-server/serving-certs
+          name: metrics-cert
           readOnly: true
+        {{- end }}
+        {{- end }}
+        {{- if .Values.webhook.enabled }}
+        - mountPath: /tmp/k8s-webhook-server/serving-certs
+          name: webhook-cert
+          readOnly: true
+        {{- end }}
         - mountPath: /tmp/runner-logs
           name: log-storage
       securityContext:
@@ -166,10 +192,20 @@ spec:
         {{- if .Values.manager.extraVolumes }}
         {{- toYaml .Values.manager.extraVolumes | nindent 8 }}
         {{- end }}
-      - name: cert
+      {{- if .Values.metrics.enabled }}
+      {{- if .Values.metrics.secure }}
+      - name: metrics-cert
+        secret:
+          defaultMode: 420
+          secretName: {{ include "renovate-operator.resourceName" (dict "suffix" "metrics-server-cert" "context" $) }}
+      {{- end }}
+      {{- end }}
+      {{- if .Values.webhook.enabled }}
+      - name: webhook-cert
         secret:
           defaultMode: 420
           secretName: {{ include "renovate-operator.resourceName" (dict "suffix" "webhook-server-cert" "context" $) }}
+      {{- end }}
       - emptyDir:
           sizeLimit: 100Mi
         name: log-storage

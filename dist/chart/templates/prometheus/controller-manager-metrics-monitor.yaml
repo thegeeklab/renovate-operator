@@ -20,22 +20,11 @@ spec:
     scheme: {{ if .Values.metrics.secure }}https{{ else }}http{{ end }}
     {{- if .Values.metrics.secure }}
     tlsConfig:
-      serverName: {{ include "renovate-operator.resourceName" (dict "suffix" "controller-manager-metrics-service" "context" $) }}.{{ .Release.Namespace }}.svc
-      {{- if .Values.certManager.enabled }}
+      serverName: {{ include "renovate-operator.resourceName" (dict "suffix" "metrics-service" "context" $) }}.{{ .Release.Namespace }}.svc
       ca:
         secret:
-          name: metrics-server-cert
+          name: {{ include "renovate-operator.resourceName" (dict "suffix" "metrics-server-cert" "context" $) }}
           key: ca.crt
-      cert:
-        secret:
-          name: metrics-server-cert
-          key: tls.crt
-      keySecret:
-        name: metrics-server-cert
-        key: tls.key
-      {{- else }}
-      insecureSkipVerify: true
-      {{- end }}
     {{- end }}
   selector:
     matchLabels:

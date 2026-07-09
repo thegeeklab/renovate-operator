@@ -74,6 +74,7 @@ var _ = Describe("Renovate Job Library", func() {
 			Expect(jobSpec.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 			Expect(jobSpec.Template.Spec.Volumes).To(HaveLen(2))
 			Expect(jobSpec.Template.Spec.Containers).To(HaveLen(1))
+			Expect(jobSpec.Template.Spec.ImagePullSecrets).To(BeEmpty())
 		})
 
 		It("should apply ImagePullSecrets from RenovateConfig", func() {

@@ -1,0 +1,7 @@
+{{- if and .Values.metrics.enabled .Values.metrics.secure .Values.certRotation.enabled }}
+apiVersion: v1
+kind: Secret
+metadata:
+  name: {{ include "renovate-operator.resourceName" (dict "suffix" "metrics-server-cert" "context" $) }}
+  namespace: {{ .Release.Namespace }}
+{{- end }}

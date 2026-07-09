@@ -20,9 +20,9 @@ manager:
     # -- Manager container image pull policy
     pullPolicy: IfNotPresent
 
-    # -- Image pull secrets for the manager pod
-    # imagePullSecrets:
-    #   - name: myregistrykey
+  # -- Image pull secrets for the manager pod
+  # imagePullSecrets:
+  #   - name: myregistrykey
 
   # -- Arguments passed to the manager container
   args:
@@ -112,6 +112,11 @@ rbac:
   # -- RBAC resource scope
   # - false (default): ClusterRole/ClusterRoleBinding (all namespaces)
   # - true: Role/RoleBinding (release namespace only)
+  #
+  # WARNING: When set to false (default), the manager ClusterRole grants full CRUD on
+  # roles and rolebindings across all namespaces. If the operator is compromised, an attacker
+  # could create a ClusterRoleBinding granting cluster-admin. Consider using rbac.namespaced=true
+  # for reduced privilege escalation surface.
   namespaced: false
 
   # -- Helper roles for CRD management (admin/editor/viewer)
@@ -149,16 +154,24 @@ metrics:
   # Note: Metrics authn/authz needs ClusterRole access.
   secure: true
 
-certManager:
+certRotation:
+  # -- Enable the operator's built-in certificate rotation (cert-controller).
+  # Disable this if you provide certificates via an external tool such as cert-manager.
   enabled: true
 
 webhook:
+  # -- Enable the validating/mutating webhook server
   enabled: true
   # -- Webhook server port
   port: 9443
+  # -- Annotations added to the MutatingWebhookConfiguration.
+  # Useful for CA injection, e.g. cert-manager.io/inject-ca-from.
+  annotations: {}
 
 prometheus:
+  # -- Create ServiceMonitor resources for Prometheus Operator
   enabled: false
 
 networkPolicy:
+  # -- Create NetworkPolicy resources for the manager pod
   enabled: false

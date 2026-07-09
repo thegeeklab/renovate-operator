@@ -222,5 +222,22 @@ var _ = Describe("ReconcileJob", func() {
 			expectedServiceAccountName := metadata.GenericMetadata(reconciler.req).Name
 			Expect(job.Spec.Template.Spec.ServiceAccountName).To(Equal(expectedServiceAccountName))
 		})
+
+		It("should propagate ImagePullSecrets to the job pod spec", func() {
+			instance.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
+				{Name: "discovery-registry-secret"},
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, nil)
+
+			Expect(job.Spec.Template.Spec.ImagePullSecrets).To(HaveLen(1))
+			Expect(job.Spec.Template.Spec.ImagePullSecrets[0].Name).To(Equal("discovery-registry-secret"))
+		})
 	})
 })

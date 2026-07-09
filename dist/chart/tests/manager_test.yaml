@@ -30,7 +30,7 @@ tests:
           path: spec.template.spec.containers[0].image
           value: docker.io/thegeeklab/renovate-operator:v1.2.3
 
-  - it: should disable metrics server when metrics.enable is false
+  - it: should disable metrics server when metrics.enabled is false
     set:
       metrics.enabled: false
     asserts:
@@ -38,7 +38,7 @@ tests:
           path: spec.template.spec.containers[0].args
           content: --metrics-bind-address=0
 
-  - it: should enable metrics server when metrics.enable is true
+  - it: should enable metrics server when metrics.enabled is true
     set:
       metrics.enabled: true
       metrics.port: 8443
@@ -46,3 +46,77 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].args
           content: --metrics-bind-address=:8443
+
+  - it: should include metrics cert volume and mount when metrics secure is enabled
+    set:
+      metrics.enabled: true
+      metrics.secure: true
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            mountPath: /tmp/k8s-metrics-server/serving-certs
+            name: metrics-cert
+            readOnly: true
+      - contains:
+          path: spec.template.spec.volumes
+          content:
+            name: metrics-cert
+            secret:
+              defaultMode: 420
+              secretName: RELEASE-NAME-renovate-operator-metrics-server-cert
+
+  - it: should not include metrics cert volume when metrics secure is disabled
+    set:
+      metrics.enabled: true
+      metrics.secure: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: metrics-cert
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: metrics-cert
+
+  - it: should not include webhook cert volume when webhook is disabled
+    set:
+      webhook.enabled: false
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            name: webhook-cert
+      - notContains:
+          path: spec.template.spec.volumes
+          content:
+            name: webhook-cert
+
+  - it: should disable built-in cert rotation when certRotation is disabled
+    set:
+      certRotation.enabled: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --metrics-cert-rotation=false
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --webhook-cert-rotation=false
+
+  - it: should still mount cert volumes when certRotation is disabled
+    set:
+      certRotation.enabled: false
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            mountPath: /tmp/k8s-metrics-server/serving-certs
+            name: metrics-cert
+            readOnly: true
+      - contains:
+          path: spec.template.spec.containers[0].volumeMounts
+          content:
+            mountPath: /tmp/k8s-webhook-server/serving-certs
+            name: webhook-cert
+            readOnly: true
