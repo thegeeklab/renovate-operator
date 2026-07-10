@@ -1,4 +1,4 @@
-{{- if and .Values.metrics.enabled .Values.metrics.secure .Values.certRotation.enabled }}
+{{- if and .Values.metrics.enabled .Values.metrics.secure }}
 apiVersion: v1
 kind: Secret
 metadata:

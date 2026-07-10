@@ -32,9 +32,16 @@ tests:
       - isKind:
           of: Secret
 
-  - it: should not render metrics cert secret when certRotation is disabled
+  - it: should render metrics cert secret as placeholder when certRotation is disabled
     set:
       certRotation.enabled: false
+    asserts:
+      - isKind:
+          of: Secret
+
+  - it: should not render metrics cert secret when metrics secure is disabled
+    set:
+      metrics.secure: false
     asserts:
       - hasDocuments:
           count: 0

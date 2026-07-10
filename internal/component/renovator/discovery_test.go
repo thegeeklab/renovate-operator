@@ -301,6 +301,83 @@ var _ = Describe("Renovator Discovery", func() {
 			}))
 		})
 
+		It("should inherit ImagePullSecrets from Renovator when Discovery ImagePullSecrets is nil", func() {
+			renovator := &renovatev1beta1.Renovator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-renovator-inherit-secrets",
+					Namespace: "default",
+				},
+				Spec: renovatev1beta1.RenovatorSpec{
+					ImageSpec: renovatev1beta1.ImageSpec{
+						ImagePullSecrets: []corev1.LocalObjectReference{
+							{Name: "renovator-registry-secret"},
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						JobSpec: renovatev1beta1.JobSpec{
+							Schedule: "0 0 * * *",
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			discovery := &renovatev1beta1.Discovery{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-discovery",
+					Namespace: "default",
+				},
+			}
+
+			err = reconciler.updateDiscovery(discovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(discovery.Spec.ImagePullSecrets).To(Equal([]corev1.LocalObjectReference{
+				{Name: "renovator-registry-secret"},
+			}))
+		})
+
+		It("should allow Discovery to clear ImagePullSecrets with empty slice", func() {
+			renovator := &renovatev1beta1.Renovator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-renovator-clear-secrets",
+					Namespace: "default",
+				},
+				Spec: renovatev1beta1.RenovatorSpec{
+					ImageSpec: renovatev1beta1.ImageSpec{
+						ImagePullSecrets: []corev1.LocalObjectReference{
+							{Name: "renovator-registry-secret"},
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						JobSpec: renovatev1beta1.JobSpec{
+							Schedule: "0 0 * * *",
+						},
+						ImageSpec: renovatev1beta1.ImageSpec{
+							ImagePullSecrets: []corev1.LocalObjectReference{},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			discovery := &renovatev1beta1.Discovery{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-discovery",
+					Namespace: "default",
+				},
+			}
+
+			err = reconciler.updateDiscovery(discovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(discovery.Spec.ImagePullSecrets).To(BeEmpty())
+		})
+
 		It("should set Renovator UID label on Discovery", func() {
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{

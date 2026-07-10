@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -52,6 +53,7 @@ var (
 
 	errWebhookTimeout = errors.New("timeout waiting for webhook")
 	errFlagRequired   = errors.New("missing required flag")
+	errInvalidDNSName = errors.New("invalid DNS name")
 )
 
 const (
@@ -348,20 +350,14 @@ func setupMetricsCertRotation(mgr manager.Manager, cfg Config) error {
 		return nil
 	}
 
+	if err := validateDNSName(cfg.MetricsServiceName, "metrics-service-name"); err != nil {
+		return err
+	}
+
 	if !cfg.MetricsCertRotation {
 		setupLog.Info("Skipping metrics cert rotation")
 
-		if _, err := os.Stat(fmt.Sprintf("%s/tls.crt", cfg.MetricsCertPath)); errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("metrics certificate file does not exist"+
-				" while certificate rotation is disabled at path %s/tls.crt: %w", cfg.MetricsCertPath, err)
-		}
-
-		if _, err := os.Stat(fmt.Sprintf("%s/tls.key", cfg.MetricsCertPath)); errors.Is(err, os.ErrNotExist) {
-			return fmt.Errorf("metrics certificate key file does not exist"+
-				" while certificate rotation is disabled at path %s/tls.key: %w", cfg.MetricsCertPath, err)
-		}
-
-		return nil
+		return verifyCertFiles(cfg.MetricsCertPath, "metrics")
 	}
 
 	setupLog.Info("Setting up metrics cert rotation")
@@ -388,6 +384,10 @@ func setupMetricsCertRotation(mgr manager.Manager, cfg Config) error {
 func setupWebhooks(mgr manager.Manager, cfg Config) error {
 	if os.Getenv("ENABLE_WEBHOOKS") == "false" {
 		return nil
+	}
+
+	if err := validateDNSName(cfg.WebhookServiceName, "webhook-service-name"); err != nil {
+		return err
 	}
 
 	var webhookReady chan struct{}
@@ -439,14 +439,8 @@ func setupWebhooks(mgr manager.Manager, cfg Config) error {
 		} else {
 			setupLog.Info("Skipping cert rotation, setting up webhook")
 
-			if _, err := os.Stat(fmt.Sprintf("%s/tls.crt", cfg.WebhookCertPath)); errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("certificate file does not exist"+
-					" while certificate rotation is disabled at path %s/tls.crt: %w", cfg.WebhookCertPath, err)
-			}
-
-			if _, err := os.Stat(fmt.Sprintf("%s/tls.key", cfg.WebhookCertPath)); errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("certificate key file does not exist"+
-					" while certificate rotation is disabled at path %s/tls.key: %w", cfg.WebhookCertPath, err)
+			if err := verifyCertFiles(cfg.WebhookCertPath, "webhook"); err != nil {
+				return err
 			}
 		}
 
@@ -603,4 +597,29 @@ func buildReceiverFactory() receiver.ReceiverFactory {
 			return nil
 		}
 	}
+}
+
+// verifyCertFiles checks that the required TLS certificate and key files exist at the given path.
+func verifyCertFiles(certPath, label string) error {
+	crtPath := fmt.Sprintf("%s/tls.crt", certPath)
+	keyPath := fmt.Sprintf("%s/tls.key", certPath)
+
+	if _, err := os.Stat(crtPath); errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("%s certificate file does not exist at path %s: %w", label, crtPath, err)
+	}
+
+	if _, err := os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("%s certificate key file does not exist at path %s: %w", label, keyPath, err)
+	}
+
+	return nil
+}
+
+// validateDNSName validates that a name is a valid DNS subdomain.
+func validateDNSName(name, flagName string) error {
+	if errs := validation.IsDNS1123Subdomain(name); len(errs) > 0 {
+		return fmt.Errorf("%w for flag %s: %q: %s", errInvalidDNSName, flagName, name, strings.Join(errs, ", "))
+	}
+
+	return nil
 }

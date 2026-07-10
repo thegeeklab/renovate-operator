@@ -40,7 +40,7 @@ func DefaultJobSpec(
 			containers.WithConfigMapVolume(VolumeRenovateConfig, renovateCM),
 		},
 		EnvVars:          DefaultEnvVars(&renovate.Spec),
-		ImagePullSecrets: renovate.Spec.ImagePullSecrets,
+		ImagePullSecrets: append([]corev1.LocalObjectReference(nil), renovate.Spec.ImagePullSecrets...),
 	}
 
 	// Apply all Functional Options

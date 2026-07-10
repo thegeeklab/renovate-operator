@@ -37,7 +37,7 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 	}
 
 	runner.Spec.ImagePullSecrets = spec.ImagePullSecrets
-	if len(runnerSpec.ImagePullSecrets) > 0 {
+	if runnerSpec.ImagePullSecrets != nil {
 		runner.Spec.ImagePullSecrets = runnerSpec.ImagePullSecrets
 	}
 

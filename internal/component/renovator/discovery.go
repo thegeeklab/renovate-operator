@@ -38,7 +38,7 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 	}
 
 	discovery.Spec.ImagePullSecrets = spec.ImagePullSecrets
-	if len(discoverySpec.ImagePullSecrets) > 0 {
+	if discoverySpec.ImagePullSecrets != nil {
 		discovery.Spec.ImagePullSecrets = discoverySpec.ImagePullSecrets
 	}
 

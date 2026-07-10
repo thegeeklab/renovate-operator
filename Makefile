@@ -241,6 +241,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build --enable-helm config/dev | $(KUBECTL) apply -f -
+	@$(KUBECTL) set env deployments -n renovate-system renovate-operator-controller-manager ENABLE_CONTROLLERS-
 	@$(MAKE) --no-print-directory yamlfmt
 
 .PHONY: undeploy

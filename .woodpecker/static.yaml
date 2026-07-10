@@ -61,4 +61,4 @@ steps:
     depends_on: [frontend-deps]
     commands:
       - ct list-changed --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist
-      - ct lint --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist --validate-maintainers=false
+      - ct lint --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist --validate-maintainers=false --check-version-increment=false

@@ -30,18 +30,17 @@ suite: test webhook cert secret
 templates:
   - templates/extras/webhook-server-cert.yaml
 tests:
-  - it: should not render webhook cert secret when certRotation is disabled
+  - it: should render webhook cert secret as placeholder when certRotation is disabled
     set:
       webhook.enabled: true
       certRotation.enabled: false
     asserts:
-      - hasDocuments:
-          count: 0
-
-  - it: should render webhook cert secret when certRotation is enabled
-    set:
-      webhook.enabled: true
-      certRotation.enabled: true
-    asserts:
       - isKind:
           of: Secret
+
+  - it: should not render webhook cert secret when webhook is disabled
+    set:
+      webhook.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

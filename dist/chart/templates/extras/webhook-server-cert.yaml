@@ -1,4 +1,4 @@
-{{- if and .Values.webhook.enabled .Values.certRotation.enabled }}
+{{- if .Values.webhook.enabled }}
 apiVersion: v1
 kind: Secret
 metadata:
