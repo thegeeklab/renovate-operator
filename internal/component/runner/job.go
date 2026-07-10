@@ -90,6 +90,19 @@ func (r *Reconciler) processGitRepos(
 		return false, fmt.Errorf("failed to list GitRepos: %w", err)
 	}
 
+	maxParallel := r.instance.GetMaxParallel()
+
+	var activeCount int
+
+	if maxParallel > 0 {
+		count, err := r.scheduler.CountActiveJobs(ctx, r.instance.Namespace, labels)
+		if err != nil {
+			return false, fmt.Errorf("failed to count active jobs: %w", err)
+		}
+
+		activeCount = count
+	}
+
 	for _, repo := range gitRepos.Items {
 		repoLabels := make(map[string]string, len(labels)+1)
 		maps.Copy(repoLabels, labels)
@@ -110,6 +123,15 @@ func (r *Reconciler) processGitRepos(
 			continue
 		}
 
+		if maxParallel > 0 && activeCount >= maxParallel {
+			log.V(1).Info(
+				"Max parallel jobs reached, skipping repo",
+				"repo", repo.Name, "active", activeCount, "max", maxParallel,
+			)
+
+			continue
+		}
+
 		created, err := r.ensureRepoJob(ctx, &repo, repoLabels)
 		if err != nil {
 			log.Error(err, "Failed to ensure job", "repo", repo.Name)
@@ -123,6 +145,7 @@ func (r *Reconciler) processGitRepos(
 			continue
 		}
 
+		activeCount++
 		triggeredAny = true
 
 		if hasRepoAnnotation {
