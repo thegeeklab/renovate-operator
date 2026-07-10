@@ -76,6 +76,8 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.TTLSecondsAfterFinished = runnerSpec.TTLSecondsAfterFinished
 	}
 
+	runner.Spec.MaxParallel = runnerSpec.MaxParallel
+
 	logging := &spec.Logging
 	if runnerSpec.Logging != nil {
 		logging = runnerSpec.Logging

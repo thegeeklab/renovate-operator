@@ -1537,6 +1537,12 @@ spec:
                       required:
                         - level
                       type: object
+                    maxParallel:
+                      description: |-
+                        MaxParallel specifies the maximum number of jobs that can run concurrently.
+                        A value of 0 means no limit.
+                      format: int32
+                      type: integer
                     schedule:
                       description: Schedule specifies the cron-formatted schedule on which the job should run.
                       type: string
@@ -1749,6 +1755,12 @@ spec:
                   required:
                     - level
                   type: object
+                maxParallel:
+                  description: |-
+                    MaxParallel specifies the maximum number of jobs that can run concurrently.
+                    A value of 0 means no limit.
+                  format: int32
+                  type: integer
                 schedule:
                   description: Schedule specifies the cron-formatted schedule on which the job should run.
                   type: string

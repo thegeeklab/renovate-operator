@@ -201,6 +201,17 @@ func (m *Manager) getActiveJobs(
 	return active, nil
 }
 
+func (m *Manager) CountActiveJobs(
+	ctx context.Context, namespace string, matchLabels map[string]string,
+) (int, error) {
+	active, err := m.getActiveJobs(ctx, namespace, matchLabels)
+	if err != nil {
+		return 0, err
+	}
+
+	return len(active), nil
+}
+
 func (m *Manager) PruneJobs(
 	ctx context.Context, ns string, labels map[string]string, successLimit, failedLimit int,
 ) error {

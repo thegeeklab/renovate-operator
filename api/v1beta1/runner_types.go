@@ -5,6 +5,10 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	DefaultRunnerMaxParallel int32 = 0
+)
+
 // RunnerSpec defines the desired state of Runner.
 type RunnerSpec struct {
 	ImageSpec `json:",inline"`
@@ -16,6 +20,11 @@ type RunnerSpec struct {
 	ConfigRef string `json:"configRef,omitempty"`
 
 	JobSpec `json:",inline"`
+
+	// MaxParallel specifies the maximum number of jobs that can run concurrently.
+	// A value of 0 means no limit.
+	// +kubebuilder:validation:Optional
+	MaxParallel *int32 `json:"maxParallel,omitempty"`
 }
 
 // RunnerStatus defines the observed state of Runner.
@@ -84,6 +93,15 @@ func (r *Runner) GetSuccessLimit() int {
 // GetFailedLimit returns the history limit for failed jobs.
 func (r *Runner) GetFailedLimit() int {
 	return int(*r.Spec.FailedLimit)
+}
+
+// GetMaxParallel returns the maximum number of concurrent jobs.
+func (r *Runner) GetMaxParallel() int {
+	if r.Spec.MaxParallel == nil {
+		return 0
+	}
+
+	return int(*r.Spec.MaxParallel)
 }
 
 func (r *Runner) SetCondition(
