@@ -17,7 +17,31 @@ tests:
 
   - it: should not render metrics service when disabled
     set:
-      metrics.enable: false
+      metrics.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+---
+suite: test metrics cert secret
+templates:
+  - templates/extras/metrics-server-cert.yaml
+tests:
+  - it: should render metrics cert secret by default
+    asserts:
+      - isKind:
+          of: Secret
+
+  - it: should render metrics cert secret as placeholder when certRotation is disabled
+    set:
+      certRotation.enabled: false
+    asserts:
+      - isKind:
+          of: Secret
+
+  - it: should not render metrics cert secret when metrics secure is disabled
+    set:
+      metrics.secure: false
     asserts:
       - hasDocuments:
           count: 0

@@ -14,24 +14,18 @@ metadata:
     app.kubernetes.io/name: {{ include "renovate-operator.name" . }}
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     app.kubernetes.io/instance: {{ .Release.Name }}
-  name: {{ include "renovate-operator.resourceName" (dict "suffix" "gitrepo-editor-role" "context" $) }}
+  name: {{ include "renovate-operator.resourceName" (dict "suffix" "authprovider-admin-role" "context" $) }}
 rules:
 - apiGroups:
   - renovate.thegeeklab.de
   resources:
-  - gitrepos
+  - authproviders
   verbs:
-  - create
-  - delete
-  - get
-  - list
-  - patch
-  - update
-  - watch
+  - '*'
 - apiGroups:
   - renovate.thegeeklab.de
   resources:
-  - gitrepos/status
+  - authproviders/status
   verbs:
   - get
 {{- end }}

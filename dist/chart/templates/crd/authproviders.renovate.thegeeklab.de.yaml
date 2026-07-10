@@ -7,20 +7,20 @@ metadata:
     "helm.sh/resource-policy": keep
     {{- end }}
     controller-gen.kubebuilder.io/version: v0.17.1
-  name: runners.renovate.thegeeklab.de
+  name: authproviders.renovate.thegeeklab.de
 spec:
   group: renovate.thegeeklab.de
   names:
-    kind: Runner
-    listKind: RunnerList
-    plural: runners
-    singular: runner
+    kind: AuthProvider
+    listKind: AuthProviderList
+    plural: authproviders
+    singular: authprovider
   scope: Namespaced
   versions:
   - name: v1beta1
     schema:
       openAPIV3Schema:
-        description: Runner is the Schema for the runners API.
+        description: AuthProvider is the Schema for the auth providers API.
         properties:
           apiVersion:
             description: |-
@@ -40,99 +40,82 @@ spec:
           metadata:
             type: object
           spec:
-            description: RunnerSpec defines the desired state of Runner.
+            description: AuthProviderSpec defines the desired state of AuthProvider.
             properties:
-              backoffLimit:
-                description: BackoffLimit specifies the number of retries before marking
-                  this job as failed.
-                format: int32
-                type: integer
-              configRef:
+              authUrl:
+                description: AuthURL is a custom OAuth2 authorization URL. Derived
+                  from Type and Endpoint if not specified.
                 type: string
-              failedLimit:
-                description: FailedLimit specifies the number of failed finished jobs
-                  to retain for history.
-                format: int32
-                type: integer
-              image:
-                description: |-
-                  Name of the container image, supporting both tags (`<image>:<tag>`)
-                  and digests for deterministic and repeatable deployments
-                  (`<image>:<tag>@sha256:<digestValue>`)
+              clientId:
+                description: ClientID is the OAuth2 client ID.
                 type: string
-              imagePullPolicy:
-                description: |-
-                  Image pull policy.
-                  One of `Always`, `Never` or `IfNotPresent`.
-                  If not defined, it defaults to `IfNotPresent`.
-                  Cannot be updated.
-                  More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
-                type: string
-              imagePullSecrets:
-                description: |-
-                  ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling the image.
-                  More info: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
-                items:
-                  description: |-
-                    LocalObjectReference contains enough information to let you locate the
-                    referenced object inside the same namespace.
-                  properties:
-                    name:
-                      default: ""
-                      description: |-
-                        Name of the referent.
-                        This field is effectively required, but due to backwards compatibility is
-                        allowed to be empty. Instances of this type with an empty value here are
-                        almost certainly wrong.
-                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
-                      type: string
-                  type: object
-                  x-kubernetes-map-type: atomic
-                type: array
-              logging:
+              clientSecret:
+                description: ClientSecret is a reference to the Secret containing
+                  the OAuth2 client secret.
                 properties:
-                  level:
-                    enum:
-                    - trace
-                    - debug
-                    - info
-                    - warn
-                    - error
-                    - fatal
+                  key:
+                    description: The key of the secret to select from.  Must be a
+                      valid secret key.
                     type: string
+                  name:
+                    default: ""
+                    description: |-
+                      Name of the referent.
+                      This field is effectively required, but due to backwards compatibility is
+                      allowed to be empty. Instances of this type with an empty value here are
+                      almost certainly wrong.
+                      More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                    type: string
+                  optional:
+                    description: Specify whether the Secret or its key must be defined
+                    type: boolean
                 required:
-                - level
+                - key
                 type: object
-              schedule:
-                description: Schedule specifies the cron-formatted schedule on which
-                  the job should run.
+                x-kubernetes-map-type: atomic
+              displayName:
+                description: |-
+                  DisplayName is a human-readable name shown in the login UI.
+                  Derived from the Endpoint hostname when empty.
                 type: string
-              successLimit:
-                description: SuccessLimit specifies the number of successful finished
-                  jobs to retain for history.
-                format: int32
-                type: integer
-              suspend:
-                description: Suspend specifies whether the job execution and scheduling
-                  should be paused.
+              endpoint:
+                description: Endpoint is the base URL of the Git platform.
+                type: string
+              forgeUrl:
+                description: ForgeURL is the API URL for the Git platform. Defaults
+                  to Endpoint.
+                type: string
+              iconUrl:
+                description: |-
+                  IconURL is the URL of an icon shown next to the provider in the login UI.
+                  Defaults to the Endpoint's favicon.ico when empty.
+                type: string
+              insecure:
+                description: Insecure disables TLS verification (not recommended for
+                  production).
                 type: boolean
-              timezone:
-                description: |-
-                  Timezone specifies the IANA timezone name (e.g., "America/New_York", "Europe/Berlin")
-                  to use when evaluating the cron schedule. If not set, the operator's local timezone is used.
+              redirectUrl:
+                description: RedirectURL is the OAuth2 callback URL.
                 type: string
-              ttlSecondsAfterFinished:
-                description: |-
-                  TTLSecondsAfterFinished limits the lifetime of a Job that has finished execution
-                  (either Complete or Failed). If this field is set, the job and its pods will be
-                  automatically deleted after the specified number of seconds.
-                format: int32
-                type: integer
+              type:
+                description: Type is the platform type.
+                enum:
+                - github
+                - gitea
+                type: string
+            required:
+            - clientId
+            - clientSecret
+            - endpoint
+            - redirectUrl
+            - type
             type: object
           status:
-            description: RunnerStatus defines the observed state of Runner.
+            description: AuthProviderStatus defines the observed state of AuthProvider.
             properties:
               conditions:
+                description: Conditions represent the latest available observations
+                  of the AuthProvider's state.
                 items:
                   description: Condition contains details for one aspect of the current
                     state of this API Resource.
@@ -188,8 +171,14 @@ spec:
                   - type
                   type: object
                 type: array
-              lastScheduleTime:
-                format: date-time
+              registered:
+                description: Registered indicates whether the provider is currently
+                  registered with the auth manager.
+                type: boolean
+              secretResourceVersion:
+                description: |-
+                  SecretResourceVersion tracks the resource version of the referenced secret.
+                  This allows the controller to detect when the secret has been rotated.
                 type: string
             type: object
         type: object

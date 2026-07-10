@@ -304,6 +304,83 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(Equal(new(int32(600))))
 		})
 
+		It("should inherit ImagePullSecrets from the global spec and allow runner override", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					ImageSpec: renovatev1beta1.ImageSpec{
+						ImagePullSecrets: []corev1.LocalObjectReference{
+							{Name: "renovator-registry-secret"},
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						ImageSpec: renovatev1beta1.ImageSpec{
+							ImagePullSecrets: []corev1.LocalObjectReference{
+								{Name: "runner-registry-secret"},
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.ImagePullSecrets).To(Equal([]corev1.LocalObjectReference{
+				{Name: "runner-registry-secret"},
+			}))
+		})
+
+		It("should inherit ImagePullSecrets from Renovator when Runner ImagePullSecrets is nil", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					ImageSpec: renovatev1beta1.ImageSpec{
+						ImagePullSecrets: []corev1.LocalObjectReference{
+							{Name: "renovator-registry-secret"},
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.ImagePullSecrets).To(Equal([]corev1.LocalObjectReference{
+				{Name: "renovator-registry-secret"},
+			}))
+		})
+
+		It("should allow Runner to clear ImagePullSecrets with empty slice", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					ImageSpec: renovatev1beta1.ImageSpec{
+						ImagePullSecrets: []corev1.LocalObjectReference{
+							{Name: "renovator-registry-secret"},
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						ImageSpec: renovatev1beta1.ImageSpec{
+							ImagePullSecrets: []corev1.LocalObjectReference{},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.ImagePullSecrets).To(BeEmpty())
+		})
+
 		It("should successfully unset properties if they are removed from the parent Renovator", func() {
 			renovator := &renovatev1beta1.Renovator{
 				Spec: renovatev1beta1.RenovatorSpec{

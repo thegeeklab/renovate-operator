@@ -22,6 +22,21 @@ steps:
     when:
       - event: [tag]
 
+  - name: helm-docs
+    image: docker.io/jnorwood/helm-docs:v1.14.2
+    commands:
+      - helm-docs -c dist/chart/
+    when:
+      - event: [tag]
+
+  - name: prettier
+    image: docker.io/jauderho/prettier:3.9.5
+    commands:
+      - prettier -w dist/chart/README.md
+      - cat dist/chart/README.md
+    when:
+      - event: [tag]
+
   - name: publish-github
     image: docker.io/plugins/github-release
     settings:
@@ -62,21 +77,6 @@ steps:
       - echo "$QUAY_PASSWORD" | helm registry login quay.io --username "$QUAY_USERNAME" --password-stdin
       - helm package dist/chart/
       - helm push *.tgz oci://quay.io/thegeeklab
-    when:
-      - event: [tag]
-
-  - name: helm-docs
-    image: docker.io/jnorwood/helm-docs:v1.14.2
-    commands:
-      - helm-docs -c dist/chart/
-    when:
-      - event: [tag]
-
-  - name: prettier
-    image: docker.io/jauderho/prettier:3.9.5
-    commands:
-      - prettier -w dist/chart/README.md
-      - cat dist/chart/README.md
     when:
       - event: [tag]
 

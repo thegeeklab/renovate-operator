@@ -32,6 +32,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
+	"k8s.io/apimachinery/pkg/util/validation"
 	"k8s.io/client-go/kubernetes"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -52,14 +53,12 @@ var (
 
 	errWebhookTimeout = errors.New("timeout waiting for webhook")
 	errFlagRequired   = errors.New("missing required flag")
+	errInvalidDNSName = errors.New("invalid DNS name")
 )
 
 const (
 	webhookCAName         = "renovate-operator-ca"
 	webhookCAOrganization = "renovate-operator"
-	webhookName           = "renovate-operator-webhook-configuration"
-	webhookSecretName     = "renovate-operator-webhook-server-cert"
-	webhookCertService    = "renovate-operator-webhook-service"
 )
 
 // Namespace Scoped
@@ -88,8 +87,15 @@ type Config struct {
 	EnableLeaderElection bool
 	ProbeAddr            string
 	SecureMetrics        bool
+	MetricsCertRotation  bool
+	MetricsCertPath      string
+	MetricsSecretName    string
+	MetricsServiceName   string
 	WebhookCertRotation  bool
 	WebhookCertPath      string
+	WebhookName          string
+	WebhookSecretName    string
+	WebhookServiceName   string
 	EnableHTTP2          bool
 	WatchNamespace       string
 	FrontendAddr         string
@@ -133,6 +139,11 @@ func main() {
 		os.Exit(1)
 	}
 
+	if err := setupMetricsCertRotation(mgr, cfg); err != nil {
+		setupLog.Error(err, "Unable to setup metrics certificate rotation")
+		os.Exit(1)
+	}
+
 	if err := setupWebhooks(mgr, cfg); err != nil {
 		setupLog.Error(err, "Unable to setup webhooks")
 		os.Exit(1)
@@ -165,10 +176,24 @@ func parseFlags() Config {
 			"Enabling this will ensure there is only one active controller manager.")
 	flag.BoolVar(&cfg.SecureMetrics, "metrics-secure", true,
 		"If set, the metrics endpoint is served securely via HTTPS. Use --metrics-secure=false to use HTTP instead.")
+	flag.BoolVar(&cfg.MetricsCertRotation, "metrics-cert-rotation", true,
+		"Enable metrics server certificate rotation if set true.")
+	flag.StringVar(&cfg.MetricsCertPath, "metrics-cert-path", "/tmp/k8s-metrics-server/serving-certs",
+		"The directory where metrics server certificates are stored.")
+	flag.StringVar(&cfg.MetricsSecretName, "metrics-cert-secret-name", "renovate-operator-metrics-server-cert",
+		"The name of the Secret containing metrics server certificates.")
+	flag.StringVar(&cfg.MetricsServiceName, "metrics-service-name", "renovate-operator-metrics-service",
+		"The name of the metrics Service (used for certificate SAN).")
 	flag.BoolVar(&cfg.WebhookCertRotation, "webhook-cert-rotation", true,
 		"Enable webhook certificate rotation if set true.")
 	flag.StringVar(&cfg.WebhookCertPath, "webhook-cert-path", "/tmp/k8s-webhook-server/serving-certs",
 		"The directory where webhook certificates are stored.")
+	flag.StringVar(&cfg.WebhookName, "webhook-name", "renovate-operator-webhook-configuration",
+		"The name of the MutatingWebhookConfiguration (used for cert patching).")
+	flag.StringVar(&cfg.WebhookSecretName, "webhook-cert-secret-name", "renovate-operator-webhook-server-cert",
+		"The name of the Secret containing webhook certificates.")
+	flag.StringVar(&cfg.WebhookServiceName, "webhook-service-name", "renovate-operator-webhook-service",
+		"The name of the webhook Service (used for certificate SAN).")
 	flag.BoolVar(&cfg.EnableHTTP2, "enable-http2", false,
 		"If set, HTTP/2 will be enabled for the metrics and webhook servers")
 	flag.StringVar(&cfg.WatchNamespace, "watch-namespace", "",
@@ -211,12 +236,16 @@ func setupManager(cfg Config) (manager.Manager, error) {
 	}
 
 	webhookServer := webhook.NewServer(webhook.Options{
+		CertDir: cfg.WebhookCertPath,
 		TLSOpts: tlsOpts,
 	})
 
 	metricsServerOptions := metricsserver.Options{
 		BindAddress:   cfg.MetricsAddr,
 		SecureServing: cfg.SecureMetrics,
+		CertDir:       cfg.MetricsCertPath,
+		CertName:      "tls.crt",
+		KeyName:       "tls.key",
 		TLSOpts:       tlsOpts,
 	}
 
@@ -313,54 +342,95 @@ func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBr
 	return nil
 }
 
-// setupWebhooks handles certificate rotation and registers admission webhooks.
+// setupMetricsCertRotation configures certificate rotation for the metrics server.
+// The metrics server loads certificates from CertDir dynamically, so the rotator
+// can be started fire-and-forget without blocking startup.
+func setupMetricsCertRotation(mgr manager.Manager, cfg Config) error {
+	if cfg.MetricsAddr == "0" || !cfg.SecureMetrics {
+		return nil
+	}
+
+	if err := validateDNSName(cfg.MetricsServiceName, "metrics-service-name"); err != nil {
+		return err
+	}
+
+	if !cfg.MetricsCertRotation {
+		setupLog.Info("Skipping metrics cert rotation")
+
+		return verifyCertFiles(cfg.MetricsCertPath, "metrics")
+	}
+
+	setupLog.Info("Setting up metrics cert rotation")
+
+	if err := rotator.AddRotator(mgr, &rotator.CertRotator{
+		SecretKey: types.NamespacedName{
+			Namespace: k8s.GetNamespace(),
+			Name:      cfg.MetricsSecretName,
+		},
+		CertDir:        cfg.MetricsCertPath,
+		CAName:         webhookCAName,
+		CAOrganization: webhookCAOrganization,
+		DNSName:        fmt.Sprintf("%s.%s.svc", cfg.MetricsServiceName, k8s.GetNamespace()),
+		Webhooks:       []rotator.WebhookInfo{},
+	}); err != nil {
+		return fmt.Errorf("unable to set up metrics cert rotation: %w", err)
+	}
+
+	return nil
+}
+
+// setupWebhooks configures webhook certificate rotation if enabled and registers
+// webhook handlers once the webhook certificate is ready.
 func setupWebhooks(mgr manager.Manager, cfg Config) error {
 	if os.Getenv("ENABLE_WEBHOOKS") == "false" {
 		return nil
 	}
 
-	setupFinished := make(chan struct{})
+	if err := validateDNSName(cfg.WebhookServiceName, "webhook-service-name"); err != nil {
+		return err
+	}
+
+	var webhookReady chan struct{}
 
 	if cfg.WebhookCertRotation {
 		setupLog.Info("Setting up webhook cert rotation")
 
 		webhooks := []rotator.WebhookInfo{
 			{
-				Name: webhookName,
+				Name: cfg.WebhookName,
 				Type: rotator.Mutating,
 			},
 		}
 
 		if err := waitForWebhooks(mgr.GetAPIReader(), webhooks); err != nil {
-			return fmt.Errorf("unable to find required WebhookConfiguration %s: %w", webhookName, err)
+			return fmt.Errorf("unable to find required WebhookConfiguration %s: %w", cfg.WebhookName, err)
 		}
+
+		webhookReady = make(chan struct{})
 
 		if err := rotator.AddRotator(mgr, &rotator.CertRotator{
 			SecretKey: types.NamespacedName{
 				Namespace: k8s.GetNamespace(),
-				Name:      webhookSecretName,
+				Name:      cfg.WebhookSecretName,
 			},
 			CertDir:        cfg.WebhookCertPath,
 			CAName:         webhookCAName,
 			CAOrganization: webhookCAOrganization,
-			DNSName:        fmt.Sprintf("%s.%s.svc", webhookCertService, k8s.GetNamespace()),
-			IsReady:        setupFinished,
+			DNSName:        fmt.Sprintf("%s.%s.svc", cfg.WebhookServiceName, k8s.GetNamespace()),
+			IsReady:        webhookReady,
 			Webhooks:       webhooks,
 		}); err != nil {
 			return fmt.Errorf("unable to set up webhook cert rotation: %w", err)
 		}
-	} else {
-		close(setupFinished)
 	}
 
-	return mgr.Add(manager.RunnableFunc((func(ctx context.Context) error {
+	return mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
 		if cfg.WebhookCertRotation {
-			setupLog.Info("Waiting for certificates to be ready before registering webhook")
+			setupLog.Info("Waiting for webhook certificate to be ready before registering handlers")
 
-			// Use select to gracefully abort if the manager context is cancelled
 			select {
-			case <-setupFinished:
-				setupLog.Info("Certificates ready, setting up webhook")
+			case <-webhookReady:
+				setupLog.Info("Webhook certificate ready, registering handlers")
 			case <-ctx.Done():
 				setupLog.Info("Manager shutting down, aborting webhook setup")
 
@@ -369,11 +439,12 @@ func setupWebhooks(mgr manager.Manager, cfg Config) error {
 		} else {
 			setupLog.Info("Skipping cert rotation, setting up webhook")
 
-			if _, err := os.Stat(fmt.Sprintf("%s/tls.crt", cfg.WebhookCertPath)); errors.Is(err, os.ErrNotExist) {
-				return fmt.Errorf("certificate file does not exist"+
-					" while certificate rotation is disabled at path %s/tls.crt: %w", cfg.WebhookCertPath, err)
+			if err := verifyCertFiles(cfg.WebhookCertPath, "webhook"); err != nil {
+				return err
 			}
 		}
+
+		setupLog.Info("Registering webhook handlers")
 
 		if err := webhookrenovatev1beta1.SetupRenovatorWebhookWithManager(mgr); err != nil {
 			return fmt.Errorf("unable to create webhook %s: %w", renovator.ControllerName, err)
@@ -392,7 +463,7 @@ func setupWebhooks(mgr manager.Manager, cfg Config) error {
 		}
 
 		return nil
-	})))
+	}))
 }
 
 // setupHTTPServers registers the web frontend and event receiver HTTP servers.
@@ -526,4 +597,29 @@ func buildReceiverFactory() receiver.ReceiverFactory {
 			return nil
 		}
 	}
+}
+
+// verifyCertFiles checks that the required TLS certificate and key files exist at the given path.
+func verifyCertFiles(certPath, label string) error {
+	crtPath := fmt.Sprintf("%s/tls.crt", certPath)
+	keyPath := fmt.Sprintf("%s/tls.key", certPath)
+
+	if _, err := os.Stat(crtPath); errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("%s certificate file does not exist at path %s: %w", label, crtPath, err)
+	}
+
+	if _, err := os.Stat(keyPath); errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("%s certificate key file does not exist at path %s: %w", label, keyPath, err)
+	}
+
+	return nil
+}
+
+// validateDNSName validates that a name is a valid DNS subdomain.
+func validateDNSName(name, flagName string) error {
+	if errs := validation.IsDNS1123Subdomain(name); len(errs) > 0 {
+		return fmt.Errorf("%w for flag %s: %q: %s", errInvalidDNSName, flagName, name, strings.Join(errs, ", "))
+	}
+
+	return nil
 }

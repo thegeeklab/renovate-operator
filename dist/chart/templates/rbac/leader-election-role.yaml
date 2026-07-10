@@ -1,25 +1,25 @@
-{{- if .Values.rbac.helpers.enabled }}
 apiVersion: rbac.authorization.k8s.io/v1
-{{- if .Values.rbac.namespaced }}
 kind: Role
-{{- else }}
-kind: ClusterRole
-{{- end }}
 metadata:
-{{- if .Values.rbac.namespaced }}
-  namespace: {{ .Release.Namespace }}
-{{- end }}
   labels:
     app.kubernetes.io/managed-by: {{ .Release.Service }}
     app.kubernetes.io/name: {{ include "renovate-operator.name" . }}
     helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
     app.kubernetes.io/instance: {{ .Release.Name }}
-  name: {{ include "renovate-operator.resourceName" (dict "suffix" "gitrepo-editor-role" "context" $) }}
+  name: {{ include "renovate-operator.resourceName" (dict "suffix" "leader-election-role" "context" $) }}
+  namespace: {{ .Release.Namespace }}
 rules:
 - apiGroups:
-  - renovate.thegeeklab.de
+  - ""
   resources:
-  - gitrepos
+  - events
+  verbs:
+  - create
+  - patch
+- apiGroups:
+  - ""
+  resources:
+  - secrets
   verbs:
   - create
   - delete
@@ -29,9 +29,14 @@ rules:
   - update
   - watch
 - apiGroups:
-  - renovate.thegeeklab.de
+  - coordination.k8s.io
   resources:
-  - gitrepos/status
+  - leases
   verbs:
+  - create
+  - delete
   - get
-{{- end }}
+  - list
+  - patch
+  - update
+  - watch

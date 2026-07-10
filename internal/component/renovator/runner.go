@@ -36,6 +36,11 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.ImagePullPolicy = runnerSpec.ImagePullPolicy
 	}
 
+	runner.Spec.ImagePullSecrets = spec.ImagePullSecrets
+	if runnerSpec.ImagePullSecrets != nil {
+		runner.Spec.ImagePullSecrets = runnerSpec.ImagePullSecrets
+	}
+
 	runner.Spec.Schedule = spec.Schedule
 	if runnerSpec.Schedule != "" {
 		runner.Spec.Schedule = runnerSpec.Schedule

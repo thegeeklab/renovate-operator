@@ -70,6 +70,11 @@ type ImageSpec struct {
 	// More info: https://kubernetes.io/docs/concepts/containers/images#updating-images
 	// +kubebuilder:validation:Optional
 	ImagePullPolicy corev1.PullPolicy `json:"imagePullPolicy,omitempty"`
+
+	// ImagePullSecrets is a list of references to secrets in the same namespace to use for pulling the image.
+	// More info: https://kubernetes.io/docs/concepts/containers/images/#specifying-imagepullsecrets-on-a-pod
+	// +kubebuilder:validation:Optional
+	ImagePullSecrets []corev1.LocalObjectReference `json:"imagePullSecrets,omitempty"`
 }
 
 type JobSpec struct {

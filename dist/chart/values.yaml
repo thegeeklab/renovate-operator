@@ -6,16 +6,23 @@ nameOverride: ""
 fullnameOverride: ""
 
 manager:
+  # -- Set to false to skip manager installation
+  enabled: true
+
   # -- Number of replicas for the manager deployment
   replicas: 1
 
   image:
     # -- Manager container image repository
     repository: docker.io/thegeeklab/renovate-operator
-    # -- Manager container image tag
-    tag: latest
+    # -- Image tag (defaults to Chart.appVersion if not set)
+    # tag: ""
     # -- Manager container image pull policy
     pullPolicy: IfNotPresent
+
+  # -- Image pull secrets for the manager pod
+  # imagePullSecrets:
+  #   - name: myregistrykey
 
   # -- Arguments passed to the manager container
   args:
@@ -29,8 +36,9 @@ manager:
         fieldRef:
           fieldPath: metadata.namespace
 
-  # -- Image pull secrets for the manager pod
-  imagePullSecrets: []
+  # -- Env overrides (--set manager.envOverrides.VAR=value)
+  # Same name in env above: this value takes precedence.
+  envOverrides: {}
 
   podSecurityContext:
     # -- Ensure the pod runs as a non-root user
@@ -67,32 +75,103 @@ manager:
   # -- Tolerations for the manager pod
   tolerations: []
 
-rbacHelpers:
-  # -- Install convenience admin/editor/viewer roles for CRDs
-  enable: false
+  # -- Deployment strategy
+  # strategy:
+  #   type: RollingUpdate
+  #   rollingUpdate:
+  #     maxSurge: 25%
+  #     maxUnavailable: 25%
+
+  # -- Priority class name
+  # priorityClassName: ""
+
+  # -- Topology spread constraints
+  # topologySpreadConstraints: []
+
+  # -- Termination grace period seconds
+  terminationGracePeriodSeconds: 10
+
+  # -- Custom Deployment labels
+  # labels: {}
+
+  # -- Custom Deployment annotations
+  # annotations: {}
+
+  # -- Custom Pod labels and annotations
+  # pod:
+  #   labels: {}
+  #   annotations: {}
+
+  # -- Additional volumes to mount on the manager pod
+  # extraVolumes: []
+
+  # -- Additional volume mounts on the manager container
+  # extraVolumeMounts: []
+
+rbac:
+  # -- RBAC resource scope
+  # - false (default): ClusterRole/ClusterRoleBinding (all namespaces)
+  # - true: Role/RoleBinding (release namespace only)
+  #
+  # WARNING: When set to false (default), the manager ClusterRole grants full CRUD on
+  # roles and rolebindings across all namespaces. If the operator is compromised, an attacker
+  # could create a ClusterRoleBinding granting cluster-admin. Consider using rbac.namespaced=true
+  # for reduced privilege escalation surface.
+  namespaced: false
+
+  # -- Helper roles for CRD management (admin/editor/viewer)
+  helpers:
+    # -- Install convenience admin/editor/viewer roles for CRDs
+    enabled: false
+
+serviceAccount:
+  # -- Install default ServiceAccount provided
+  enabled: true
+
+  # -- Existing ServiceAccount name (only when enabled=false)
+  # Note: When enabled=true, respects nameOverride/fullnameOverride
+  # name: ""
+
+  # -- Custom ServiceAccount annotations
+  # annotations: {}
+
+  # -- Custom ServiceAccount labels
+  # labels: {}
 
 crd:
   # -- Install CRDs with the chart
-  enable: true
-  # -- Keep CRDs when uninstalling the chart
+  enabled: true
+  # -- Keep CRDs when uninstalling
   keep: true
 
+# -- Controller metrics endpoint.
+# Enable to expose /metrics endpoint
 metrics:
-  # -- Enable the /metrics endpoint with RBAC protection
-  enable: true
+  enabled: true
   # -- Metrics server port
   port: 8443
+  # -- Enable secure metrics: HTTPS with certs/auth (true) or HTTP (false).
+  # Note: Metrics authn/authz needs ClusterRole access.
+  secure: true
 
-certManager:
-  # -- Enable cert-manager integration for webhook and metrics certificates
-  enable: true
+certRotation:
+  # -- Enable the operator's built-in certificate rotation (cert-controller).
+  # Disable this if you provide certificates via an external tool such as cert-manager.
+  enabled: true
 
 webhook:
   # -- Enable the validating/mutating webhook server
-  enable: true
+  enabled: true
   # -- Webhook server port
   port: 9443
+  # -- Annotations added to the MutatingWebhookConfiguration.
+  # Useful for CA injection, e.g. cert-manager.io/inject-ca-from.
+  annotations: {}
 
 prometheus:
-  # -- Enable ServiceMonitor creation (requires prometheus-operator)
-  enable: false
+  # -- Create ServiceMonitor resources for Prometheus Operator
+  enabled: false
+
+networkPolicy:
+  # -- Create NetworkPolicy resources for the manager pod
+  enabled: false

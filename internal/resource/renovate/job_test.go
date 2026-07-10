@@ -74,6 +74,37 @@ var _ = Describe("Renovate Job Library", func() {
 			Expect(jobSpec.Template.Spec.RestartPolicy).To(Equal(corev1.RestartPolicyNever))
 			Expect(jobSpec.Template.Spec.Volumes).To(HaveLen(2))
 			Expect(jobSpec.Template.Spec.Containers).To(HaveLen(1))
+			Expect(jobSpec.Template.Spec.ImagePullSecrets).To(BeEmpty())
+		})
+
+		It("should apply ImagePullSecrets from RenovateConfig", func() {
+			renovateCR.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
+				{Name: "renovate-registry-secret"},
+			}
+
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
+
+			Expect(jobSpec.Template.Spec.ImagePullSecrets).To(HaveLen(1))
+			Expect(jobSpec.Template.Spec.ImagePullSecrets[0].Name).To(Equal("renovate-registry-secret"))
+		})
+
+		It("should merge ImagePullSecrets from RenovateConfig and WithImagePullSecrets", func() {
+			renovateCR.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
+				{Name: "config-secret"},
+			}
+
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(
+				jobSpec, renovateCR, renovateCM,
+				renovate.WithImagePullSecrets([]corev1.LocalObjectReference{
+					{Name: "extra-secret"},
+				}),
+			)
+
+			Expect(jobSpec.Template.Spec.ImagePullSecrets).To(HaveLen(2))
+			Expect(jobSpec.Template.Spec.ImagePullSecrets[0].Name).To(Equal("config-secret"))
+			Expect(jobSpec.Template.Spec.ImagePullSecrets[1].Name).To(Equal("extra-secret"))
 		})
 
 		DescribeTable(
@@ -115,6 +146,15 @@ var _ = Describe("Renovate Job Library", func() {
 					env := spec.Template.Spec.Containers[0].Env
 					Expect(env).To(ContainElement(HaveField("Name", "FOO")))
 					Expect(env).To(ContainElement(HaveField("Value", "BAR")))
+				},
+			),
+			Entry(
+				"WithImagePullSecrets",
+				[]renovate.JobOption{renovate.WithImagePullSecrets([]corev1.LocalObjectReference{
+					{Name: "extra-registry-secret"},
+				})},
+				func(spec *batchv1.JobSpec) {
+					Expect(spec.Template.Spec.ImagePullSecrets).To(ContainElement(HaveField("Name", "extra-registry-secret")))
 				},
 			),
 			Entry(
