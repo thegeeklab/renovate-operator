@@ -15,6 +15,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	"golang.org/x/sync/singleflight"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -243,7 +244,7 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 
 		// Filter Renovators by AuthProvider label
 		listOpts = append(listOpts, client.MatchingLabels{
-			renovatev1beta1.LabelAuthProvider: session.Provider,
+			renovatev1beta1.LabelAuthProvider: k8s.LabelValue(session.Provider),
 		})
 	} else if err := df.checkAuthReady(); err != nil {
 		return nil, err
@@ -483,7 +484,7 @@ func (df *DataFactory) GetJobsForRepo(
 	var jobList batchv1.JobList
 
 	listOpts := []client.ListOption{
-		client.MatchingLabels{renovatev1beta1.LabelGitRepo: repoName},
+		client.MatchingLabels{renovatev1beta1.LabelGitRepo: k8s.LabelValue(repoName)},
 	}
 
 	if opt.Namespace != "" {

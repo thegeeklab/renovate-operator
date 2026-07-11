@@ -11,6 +11,7 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -145,7 +146,7 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			if repoName != "" {
-				expected[renovatev1beta1.LabelGitRepo] = repoName
+				expected[renovatev1beta1.LabelGitRepo] = k8s.LabelValue(repoName)
 			}
 
 			return expected
@@ -287,6 +288,64 @@ var _ = Describe("ReconcileJob", func() {
 				updatedInstance := &renovatev1beta1.Runner{}
 				Expect(fakeClient.Get(ctx, reconciler.req.NamespacedName, updatedInstance)).To(Succeed())
 				Expect(updatedInstance.Status.LastScheduleTime).NotTo(BeNil())
+			})
+		})
+
+		Context("when repo name exceeds 63 characters", func() {
+			var longRepo *renovatev1beta1.GitRepo
+
+			BeforeEach(func() {
+				longName := "very-long-organization-name-very-long-repository-name-that-exceeds-limit"
+				longRepo = &renovatev1beta1.GitRepo{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      longName,
+						Namespace: instance.Namespace,
+						Labels: map[string]string{
+							renovatev1beta1.LabelRenovator: "renovator-id",
+						},
+					},
+					Spec: renovatev1beta1.GitRepoSpec{Name: longName},
+				}
+				Expect(fakeClient.Create(ctx, longRepo)).To(Succeed())
+			})
+
+			It("should create jobs with truncated label values", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+
+				var longRepoJob *batchv1.Job
+
+				for i := range jobList.Items {
+					if jobList.Items[i].Labels[renovatev1beta1.LabelGitRepo] == k8s.LabelValue(longRepo.Name) {
+						longRepoJob = &jobList.Items[i]
+
+						break
+					}
+				}
+
+				Expect(longRepoJob).NotTo(BeNil(), "job for long-named repo should exist")
+
+				gitRepoLabel := longRepoJob.Labels[renovatev1beta1.LabelGitRepo]
+				Expect(len(gitRepoLabel)).To(BeNumerically("<=", 63), "label value must not exceed 63 chars")
+				Expect(gitRepoLabel).To(Equal(k8s.LabelValue(longRepo.Name)))
+			})
+
+			It("should allow querying jobs by truncated label value", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				truncatedLabel := k8s.LabelValue(longRepo.Name)
+				jobList := &batchv1.JobList{}
+				err = fakeClient.List(
+					ctx, jobList,
+					client.InNamespace("default"),
+					client.MatchingLabels{renovatev1beta1.LabelGitRepo: truncatedLabel},
+				)
+				Expect(err).NotTo(HaveOccurred())
+				Expect(jobList.Items).To(HaveLen(1), "should find job by truncated label")
 			})
 		})
 	})

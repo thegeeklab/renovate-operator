@@ -1,6 +1,8 @@
 package discovery
 
 import (
+	"strings"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
@@ -84,5 +86,12 @@ var _ = Describe("DiscoveryLabels", func() {
 		labels := DiscoveryLabels(request)
 
 		Expect(labels).To(HaveKeyWithValue(renovatev1beta1.LabelAppInstance, ""))
+	})
+
+	It("should truncate label values exceeding 63 characters", func() {
+		request.Name = strings.Repeat("a", 100)
+		labels := DiscoveryLabels(request)
+
+		Expect(len(labels[renovatev1beta1.LabelAppInstance])).To(BeNumerically("<=", 63))
 	})
 })

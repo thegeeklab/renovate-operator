@@ -123,6 +123,28 @@ func deterministicNameWithLimit(baseName, suffix string, maxLength int) (string,
 	return fmt.Sprintf("%s-%s%s", truncatedBase, hashStr, suffix), nil
 }
 
+// LabelValue truncates name to the 63-character Kubernetes label value limit (DNS-1035).
+// If the name exceeds 63 characters, it is truncated and a deterministic hash suffix is
+// appended to preserve uniqueness. The same input always produces the same output.
+func LabelValue(name string) string {
+	if len(name) <= DNS1035LabelMaxLength {
+		return name
+	}
+
+	h := fnv.New32a()
+	h.Write([]byte(name))
+
+	hashStr := fmt.Sprintf("%08x", h.Sum32())
+
+	reservedLength := 1 + len(hashStr)
+	maxBaseLength := DNS1035LabelMaxLength - reservedLength
+
+	truncated := name[:maxBaseLength]
+	truncated = strings.TrimRight(truncated, "-")
+
+	return fmt.Sprintf("%s-%s", truncated, hashStr)
+}
+
 func hasValidCharacters(name string) bool {
 	for i := 0; i < len(name); i++ {
 		c := name[i]

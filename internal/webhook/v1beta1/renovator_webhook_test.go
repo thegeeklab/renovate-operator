@@ -2,6 +2,7 @@ package v1beta1
 
 import (
 	"context"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -132,6 +133,20 @@ var _ = Describe("Renovator Webhook", func() {
 			err := defaulter.Default(ctx, obj)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(obj.Labels[renovatev1beta1.LabelAuthProvider]).To(Equal("correct-auth-provider"))
+		})
+
+		It("Should truncate LabelAuthProvider when authProviderRef exceeds 63 characters", func() {
+			By("setting authProviderRef to a very long name")
+
+			longName := strings.Repeat("a", 100)
+			obj.Spec.AuthProviderRef = longName
+
+			By("calling the Default method")
+
+			err := defaulter.Default(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj.Labels).NotTo(BeNil())
+			Expect(len(obj.Labels[renovatev1beta1.LabelAuthProvider])).To(BeNumerically("<=", 63))
 		})
 	})
 })
