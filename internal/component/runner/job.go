@@ -12,7 +12,7 @@ import (
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
-	k8sutil "github.com/thegeeklab/renovate-operator/pkg/util/k8s"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -108,7 +108,7 @@ func (r *Reconciler) processGitRepos(
 	for _, repo := range gitRepos.Items {
 		repoLabels := make(map[string]string, len(labels)+1)
 		maps.Copy(repoLabels, labels)
-		repoLabels[renovatev1beta1.LabelGitRepo] = k8sutil.LabelValue(repo.Name)
+		repoLabels[renovatev1beta1.LabelGitRepo] = k8s.LabelValue(repo.Name)
 
 		if err := r.updateJobStatus(ctx, &repo, repoLabels); err != nil {
 			log.Error(err, "Failed to update job status", "repo", repo.Name)

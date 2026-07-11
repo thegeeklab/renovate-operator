@@ -3,7 +3,7 @@ package discovery
 import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
-	k8sutil "github.com/thegeeklab/renovate-operator/pkg/util/k8s"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -27,7 +27,7 @@ func DiscoveryName(request ctrl.Request) string {
 func DiscoveryLabels(request ctrl.Request) map[string]string {
 	return map[string]string{
 		renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
-		renovatev1beta1.LabelAppInstance:  k8sutil.LabelValue(request.Name),
+		renovatev1beta1.LabelAppInstance:  k8s.LabelValue(request.Name),
 		renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentDiscovery,
 		renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
 	}

@@ -5,11 +5,11 @@ import (
 	"errors"
 	"fmt"
 
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	k8s "github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
-
-	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
 
 var (
@@ -94,7 +94,7 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 	}
 
 	if renovator.Spec.AuthProviderRef != "" {
-		renovator.Labels[renovatev1beta1.LabelAuthProvider] = renovator.Spec.AuthProviderRef
+		renovator.Labels[renovatev1beta1.LabelAuthProvider] = k8s.LabelValue(renovator.Spec.AuthProviderRef)
 	} else {
 		delete(renovator.Labels, renovatev1beta1.LabelAuthProvider)
 	}

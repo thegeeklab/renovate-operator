@@ -11,7 +11,7 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
-	k8sutil "github.com/thegeeklab/renovate-operator/pkg/util/k8s"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
@@ -146,7 +146,7 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			if repoName != "" {
-				expected[renovatev1beta1.LabelGitRepo] = k8sutil.LabelValue(repoName)
+				expected[renovatev1beta1.LabelGitRepo] = k8s.LabelValue(repoName)
 			}
 
 			return expected
@@ -317,24 +317,27 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
 
 				var longRepoJob *batchv1.Job
+
 				for i := range jobList.Items {
-					if jobList.Items[i].Labels[renovatev1beta1.LabelGitRepo] == k8sutil.LabelValue(longRepo.Name) {
+					if jobList.Items[i].Labels[renovatev1beta1.LabelGitRepo] == k8s.LabelValue(longRepo.Name) {
 						longRepoJob = &jobList.Items[i]
+
 						break
 					}
 				}
+
 				Expect(longRepoJob).NotTo(BeNil(), "job for long-named repo should exist")
 
 				gitRepoLabel := longRepoJob.Labels[renovatev1beta1.LabelGitRepo]
 				Expect(len(gitRepoLabel)).To(BeNumerically("<=", 63), "label value must not exceed 63 chars")
-				Expect(gitRepoLabel).To(Equal(k8sutil.LabelValue(longRepo.Name)))
+				Expect(gitRepoLabel).To(Equal(k8s.LabelValue(longRepo.Name)))
 			})
 
 			It("should allow querying jobs by truncated label value", func() {
 				_, err := reconciler.reconcileJob(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				truncatedLabel := k8sutil.LabelValue(longRepo.Name)
+				truncatedLabel := k8s.LabelValue(longRepo.Name)
 				jobList := &batchv1.JobList{}
 				err = fakeClient.List(
 					ctx, jobList,
