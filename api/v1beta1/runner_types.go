@@ -21,6 +21,8 @@ type RunnerSpec struct {
 
 	JobSpec `json:",inline"`
 
+	PodSpec `json:",inline"`
+
 	// MaxParallel specifies the maximum number of jobs that can run concurrently.
 	// A value of 0 means no limit.
 	// +kubebuilder:validation:Optional

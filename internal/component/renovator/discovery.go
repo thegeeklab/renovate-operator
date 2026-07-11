@@ -77,6 +77,26 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Spec.TTLSecondsAfterFinished = discoverySpec.TTLSecondsAfterFinished
 	}
 
+	discovery.Spec.NodeSelector = spec.NodeSelector
+	if discoverySpec.NodeSelector != nil {
+		discovery.Spec.NodeSelector = discoverySpec.NodeSelector
+	}
+
+	discovery.Spec.Affinity = spec.Affinity
+	if discoverySpec.Affinity != nil {
+		discovery.Spec.Affinity = discoverySpec.Affinity
+	}
+
+	discovery.Spec.Tolerations = spec.Tolerations
+	if discoverySpec.Tolerations != nil {
+		discovery.Spec.Tolerations = discoverySpec.Tolerations
+	}
+
+	discovery.Spec.TopologySpreadConstraints = spec.TopologySpreadConstraints
+	if discoverySpec.TopologySpreadConstraints != nil {
+		discovery.Spec.TopologySpreadConstraints = discoverySpec.TopologySpreadConstraints
+	}
+
 	discovery.Spec.SkipForks = discoverySpec.SkipForks
 
 	logging := &spec.Logging

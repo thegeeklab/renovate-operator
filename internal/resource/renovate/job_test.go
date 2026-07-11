@@ -158,6 +158,72 @@ var _ = Describe("Renovate Job Library", func() {
 				},
 			),
 			Entry(
+				"WithPodSpec NodeSelector",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					NodeSelector: map[string]string{"disktype": "ssd"},
+				})},
+				func(spec *batchv1.JobSpec) {
+					Expect(spec.Template.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "ssd"))
+				},
+			),
+			Entry(
+				"WithPodSpec Affinity",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					Affinity: &corev1.Affinity{
+						NodeAffinity: &corev1.NodeAffinity{
+							RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+								NodeSelectorTerms: []corev1.NodeSelectorTerm{
+									{MatchExpressions: []corev1.NodeSelectorRequirement{
+										{Key: "kubernetes.io/e2e-az-name", Operator: corev1.NodeSelectorOpIn, Values: []string{"e2e-az1", "e2e-az2"}},
+									}},
+								},
+							},
+						},
+					},
+				})},
+				func(spec *batchv1.JobSpec) {
+					Expect(spec.Template.Spec.Affinity).NotTo(BeNil())
+					Expect(spec.Template.Spec.Affinity.NodeAffinity).NotTo(BeNil())
+				},
+			),
+			Entry(
+				"WithPodSpec Tolerations",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					Tolerations: []corev1.Toleration{
+						{Key: "key1", Operator: corev1.TolerationOpEqual, Value: "value1", Effect: corev1.TaintEffectNoSchedule},
+					},
+				})},
+				func(spec *batchv1.JobSpec) {
+					Expect(spec.Template.Spec.Tolerations).To(HaveLen(1))
+					Expect(spec.Template.Spec.Tolerations[0].Key).To(Equal("key1"))
+				},
+			),
+			Entry(
+				"WithPodSpec TopologySpreadConstraints",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					TopologySpreadConstraints: []corev1.TopologySpreadConstraint{
+						{MaxSkew: 1, TopologyKey: "zone", WhenUnsatisfiable: corev1.DoNotSchedule},
+					},
+				})},
+				func(spec *batchv1.JobSpec) {
+					Expect(spec.Template.Spec.TopologySpreadConstraints).To(HaveLen(1))
+					Expect(spec.Template.Spec.TopologySpreadConstraints[0].TopologyKey).To(Equal("zone"))
+				},
+			),
+			Entry(
+				"WithPodSpec Multiple Fields",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					NodeSelector: map[string]string{"disktype": "ssd"},
+					Tolerations: []corev1.Toleration{
+						{Key: "key1", Operator: corev1.TolerationOpEqual, Value: "value1"},
+					},
+				})},
+				func(spec *batchv1.JobSpec) {
+					Expect(spec.Template.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "ssd"))
+					Expect(spec.Template.Spec.Tolerations).To(HaveLen(1))
+				},
+			),
+			Entry(
 				"Multiple Options Combined",
 				[]renovate.JobOption{
 					renovate.WithRepository("org/repo"),

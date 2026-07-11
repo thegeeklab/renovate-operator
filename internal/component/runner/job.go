@@ -208,6 +208,7 @@ func (r *Reconciler) updateJob(job *batchv1.Job, repo *renovatev1beta1.GitRepo, 
 		renovate.WithPodLabels(podLabels),
 		renovate.WithRepository(repo.Spec.Name),
 		renovate.WithImagePullSecrets(r.instance.Spec.ImagePullSecrets),
+		renovate.WithPodSpec(r.instance.Spec.PodSpec),
 	)
 
 	// Configure job execution details

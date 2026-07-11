@@ -398,5 +398,51 @@ var _ = Describe("Renovator Runner", func() {
 
 			Expect(existingRunner.Spec.TTLSecondsAfterFinished).To(BeNil())
 		})
+
+		It("should inherit PodSpec from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						NodeSelector: map[string]string{"disktype": "ssd"},
+						Tolerations: []corev1.Toleration{
+							{Key: "key1", Operator: corev1.TolerationOpEqual, Value: "value1"},
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "ssd"))
+			Expect(existingRunner.Spec.Tolerations).To(HaveLen(1))
+		})
+
+		It("should override global PodSpec with runner-specific PodSpec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						NodeSelector: map[string]string{"disktype": "ssd"},
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							NodeSelector: map[string]string{"disktype": "hdd"},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "hdd"))
+		})
 	})
 })

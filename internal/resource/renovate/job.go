@@ -17,11 +17,15 @@ type jobConfig struct {
 	BackoffLimit            *int32
 	TTLSecondsAfterFinished *int32
 
-	InitContainers   []corev1.Container
-	VolumeMutators   []containers.VolumeMutator
-	EnvVars          []corev1.EnvVar
-	PodLabels        map[string]string
-	ImagePullSecrets []corev1.LocalObjectReference
+	InitContainers            []corev1.Container
+	VolumeMutators            []containers.VolumeMutator
+	EnvVars                   []corev1.EnvVar
+	PodLabels                 map[string]string
+	ImagePullSecrets          []corev1.LocalObjectReference
+	NodeSelector              map[string]string
+	Affinity                  *corev1.Affinity
+	Tolerations               []corev1.Toleration
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint
 }
 
 // JobOption defines a function that modifies the job configuration.
@@ -59,6 +63,10 @@ func DefaultJobSpec(
 	spec.Template.Spec.InitContainers = cfg.InitContainers
 	spec.Template.Spec.Volumes = containers.VolumesTemplate(cfg.VolumeMutators...)
 	spec.Template.Spec.ImagePullSecrets = cfg.ImagePullSecrets
+	spec.Template.Spec.NodeSelector = cfg.NodeSelector
+	spec.Template.Spec.Affinity = cfg.Affinity
+	spec.Template.Spec.Tolerations = cfg.Tolerations
+	spec.Template.Spec.TopologySpreadConstraints = cfg.TopologySpreadConstraints
 
 	// Build Main Container
 	spec.Template.Spec.Containers = []corev1.Container{
@@ -81,6 +89,16 @@ func DefaultJobSpec(
 func WithPodLabels(labels map[string]string) JobOption {
 	return func(c *jobConfig) {
 		c.PodLabels = labels
+	}
+}
+
+// WithPodSpec applies pod-level scheduling configuration.
+func WithPodSpec(podSpec renovatev1beta1.PodSpec) JobOption {
+	return func(c *jobConfig) {
+		c.NodeSelector = podSpec.NodeSelector
+		c.Affinity = podSpec.Affinity
+		c.Tolerations = podSpec.Tolerations
+		c.TopologySpreadConstraints = podSpec.TopologySpreadConstraints
 	}
 }
 

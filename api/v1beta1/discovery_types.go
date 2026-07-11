@@ -17,6 +17,8 @@ type DiscoverySpec struct {
 
 	JobSpec `json:",inline"`
 
+	PodSpec `json:",inline"`
+
 	// +kubebuilder:validation:Optional
 	Filter []string `json:"filter,omitempty"`
 

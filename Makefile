@@ -93,6 +93,11 @@ manifests: controller-gen ## Generate WebhookConfiguration, ClusterRole and Cust
 	sed -i -e 's/mutating-webhook-configuration/webhook-configuration/g' config/webhook/manifests.yaml
 	sed -i -e 's/webhook-service/renovate-operator-webhook-service/g' config/webhook/manifests.yaml
 	@$(MAKE) --no-print-directory yamlfmt
+	@$(MAKE) --no-print-directory helm-crds
+
+.PHONY: helm-crds
+helm-crds: ## Sync CRDs to Helm chart with templating wrappers.
+	$(GO) run ./hack/gen-helm-crds.go
 
 .PHONY: generate
 generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and DeepCopyObject method implementations.
@@ -224,6 +229,10 @@ build-installer: manifests generate kustomize ## Generate a consolidated YAML wi
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
 	$(KUSTOMIZE) build config/default > dist/install.yaml
 	@$(MAKE) --no-print-directory yamlfmt
+
+.PHONY: build-helm
+build-helm: manifests generate helm-docs ## Build the Helm chart package.
+	helm package dist/chart/ --destination dist/
 
 ##@ Deployment
 
