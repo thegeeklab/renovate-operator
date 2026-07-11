@@ -96,14 +96,16 @@ func processCRD(srcPath, dstDir string) error {
 	}
 	b.WriteString("{{- end }}\n")
 
+	result := b.String()
+
 	// Check if content changed
 	existing, _ := os.ReadFile(dstPath)
-	if string(existing) == b.String() {
+	if string(existing) == result {
 		fmt.Printf("no changes to %s\n", dstPath)
 		return nil
 	}
 
-	if err := os.WriteFile(dstPath, []byte(b.String()), 0o600); err != nil {
+	if err := os.WriteFile(dstPath, []byte(result), 0o644); err != nil {
 		return fmt.Errorf("writing file: %w", err)
 	}
 
