@@ -76,7 +76,8 @@
     "HTMLURL",
     "heroicons",
     "Forgejo",
-    "tinykeys"
+    "tinykeys",
+    "Tolerations"
   ],
   "ignorePaths": [
     ".woodpecker",

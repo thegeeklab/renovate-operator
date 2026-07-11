@@ -5,10 +5,6 @@
 domain: thegeeklab.de
 layout:
 - go.kubebuilder.io/v4
-plugins:
-  helm.kubebuilder.io/v2-alpha:
-    manifests: dist/install.yaml
-    output: dist
 projectName: renovate-operator
 repo: github.com/thegeeklab/renovate-operator
 resources:

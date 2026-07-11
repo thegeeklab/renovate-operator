@@ -325,5 +325,78 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(job.Spec.Template.Spec.ImagePullSecrets).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.ImagePullSecrets[0].Name).To(Equal("runner-registry-secret"))
 		})
+
+		It("should propagate NodeSelector to the job pod spec", func() {
+			instance.Spec.NodeSelector = map[string]string{"disktype": "ssd"}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, repo1, nil)
+
+			Expect(job.Spec.Template.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "ssd"))
+		})
+
+		It("should propagate Affinity to the job pod spec", func() {
+			instance.Spec.Affinity = &corev1.Affinity{
+				NodeAffinity: &corev1.NodeAffinity{
+					RequiredDuringSchedulingIgnoredDuringExecution: &corev1.NodeSelector{
+						NodeSelectorTerms: []corev1.NodeSelectorTerm{
+							{MatchExpressions: []corev1.NodeSelectorRequirement{
+								{Key: "kubernetes.io/e2e-az-name", Operator: corev1.NodeSelectorOpIn, Values: []string{"e2e-az1"}},
+							}},
+						},
+					},
+				},
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, repo1, nil)
+
+			Expect(job.Spec.Template.Spec.Affinity).NotTo(BeNil())
+			Expect(job.Spec.Template.Spec.Affinity.NodeAffinity).NotTo(BeNil())
+		})
+
+		It("should propagate Tolerations to the job pod spec", func() {
+			instance.Spec.Tolerations = []corev1.Toleration{
+				{Key: "key1", Operator: corev1.TolerationOpEqual, Value: "value1", Effect: corev1.TaintEffectNoSchedule},
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, repo1, nil)
+
+			Expect(job.Spec.Template.Spec.Tolerations).To(HaveLen(1))
+			Expect(job.Spec.Template.Spec.Tolerations[0].Key).To(Equal("key1"))
+		})
+
+		It("should propagate TopologySpreadConstraints to the job pod spec", func() {
+			instance.Spec.TopologySpreadConstraints = []corev1.TopologySpreadConstraint{
+				{MaxSkew: 1, TopologyKey: "zone", WhenUnsatisfiable: corev1.DoNotSchedule},
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, repo1, nil)
+
+			Expect(job.Spec.Template.Spec.TopologySpreadConstraints).To(HaveLen(1))
+			Expect(job.Spec.Template.Spec.TopologySpreadConstraints[0].TopologyKey).To(Equal("zone"))
+		})
 	})
 })

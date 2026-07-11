@@ -110,6 +110,25 @@ type JobSpec struct {
 	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
 }
 
+// PodSpec defines pod-level scheduling configuration.
+type PodSpec struct {
+	// NodeSelector specifies the node selector for scheduling the renovate pod.
+	// +kubebuilder:validation:Optional
+	NodeSelector map[string]string `json:"nodeSelector,omitempty"`
+
+	// Affinity specifies the affinity settings for scheduling the renovate pod.
+	// +kubebuilder:validation:Optional
+	Affinity *corev1.Affinity `json:"affinity,omitempty"`
+
+	// Tolerations specifies the tolerations for scheduling the renovate pod.
+	// +kubebuilder:validation:Optional
+	Tolerations []corev1.Toleration `json:"tolerations,omitempty"`
+
+	// TopologySpreadConstraints specifies the topology spread constraints for the renovate pod.
+	// +kubebuilder:validation:Optional
+	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+}
+
 // RenovatorSpec defines the desired state of Renovator.
 type RenovatorSpec struct {
 	ImageSpec `json:",inline"`
@@ -118,6 +137,8 @@ type RenovatorSpec struct {
 	Logging LoggingSpec `json:"logging,omitempty"`
 
 	JobSpec `json:",inline"`
+
+	PodSpec `json:",inline"`
 
 	Discovery DiscoverySpec `json:"discovery"`
 

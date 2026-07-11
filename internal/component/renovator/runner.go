@@ -76,6 +76,26 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.TTLSecondsAfterFinished = runnerSpec.TTLSecondsAfterFinished
 	}
 
+	runner.Spec.NodeSelector = spec.NodeSelector
+	if runnerSpec.NodeSelector != nil {
+		runner.Spec.NodeSelector = runnerSpec.NodeSelector
+	}
+
+	runner.Spec.Affinity = spec.Affinity
+	if runnerSpec.Affinity != nil {
+		runner.Spec.Affinity = runnerSpec.Affinity
+	}
+
+	runner.Spec.Tolerations = spec.Tolerations
+	if runnerSpec.Tolerations != nil {
+		runner.Spec.Tolerations = runnerSpec.Tolerations
+	}
+
+	runner.Spec.TopologySpreadConstraints = spec.TopologySpreadConstraints
+	if runnerSpec.TopologySpreadConstraints != nil {
+		runner.Spec.TopologySpreadConstraints = runnerSpec.TopologySpreadConstraints
+	}
+
 	runner.Spec.MaxParallel = runnerSpec.MaxParallel
 
 	logging := &spec.Logging
