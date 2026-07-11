@@ -26,6 +26,8 @@ type jobConfig struct {
 	Affinity                  *corev1.Affinity
 	Tolerations               []corev1.Toleration
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint
+	Resources                 corev1.ResourceRequirements
+	SecurityContext           *corev1.SecurityContext
 }
 
 // JobOption defines a function that modifies the job configuration.
@@ -69,18 +71,30 @@ func DefaultJobSpec(
 	spec.Template.Spec.TopologySpreadConstraints = cfg.TopologySpreadConstraints
 
 	// Build Main Container
+	containerMutators := []containers.ContainerMutator{
+		containers.WithEnvVars(cfg.EnvVars),
+		containers.WithVolumeMounts([]corev1.VolumeMount{
+			{
+				Name:      VolumeRenovateConfig,
+				MountPath: DirRenovateConfig,
+			},
+		}),
+	}
+
+	if cfg.Resources.Limits != nil || cfg.Resources.Requests != nil {
+		containerMutators = append(containerMutators, containers.WithResourceRequirements(cfg.Resources))
+	}
+
+	if cfg.SecurityContext != nil {
+		containerMutators = append(containerMutators, containers.WithSecurityContext(cfg.SecurityContext))
+	}
+
 	spec.Template.Spec.Containers = []corev1.Container{
 		containers.ContainerTemplate(
 			"renovate",
 			renovate.Spec.Image,
 			renovate.Spec.ImagePullPolicy,
-			containers.WithEnvVars(cfg.EnvVars),
-			containers.WithVolumeMounts([]corev1.VolumeMount{
-				{
-					Name:      VolumeRenovateConfig,
-					MountPath: DirRenovateConfig,
-				},
-			}),
+			containerMutators...,
 		),
 	}
 }
@@ -99,6 +113,22 @@ func WithPodSpec(podSpec renovatev1beta1.PodSpec) JobOption {
 		c.Affinity = podSpec.Affinity
 		c.Tolerations = podSpec.Tolerations
 		c.TopologySpreadConstraints = podSpec.TopologySpreadConstraints
+		c.Resources = podSpec.Resources
+		c.SecurityContext = podSpec.SecurityContext
+	}
+}
+
+// WithResources sets the resource requirements for the renovate container.
+func WithResources(resources corev1.ResourceRequirements) JobOption {
+	return func(c *jobConfig) {
+		c.Resources = resources
+	}
+}
+
+// WithSecurityContext sets the security context for the renovate container.
+func WithSecurityContext(sc *corev1.SecurityContext) JobOption {
+	return func(c *jobConfig) {
+		c.SecurityContext = sc
 	}
 }
 

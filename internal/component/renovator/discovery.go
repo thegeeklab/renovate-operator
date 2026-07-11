@@ -97,6 +97,26 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Spec.TopologySpreadConstraints = discoverySpec.TopologySpreadConstraints
 	}
 
+	discovery.Spec.Resources = spec.Resources
+	if discoverySpec.Resources.Limits != nil || discoverySpec.Resources.Requests != nil {
+		discovery.Spec.Resources = discoverySpec.Resources
+	}
+
+	discovery.Spec.SecurityContext = spec.SecurityContext
+	if discoverySpec.SecurityContext != nil {
+		discovery.Spec.SecurityContext = discoverySpec.SecurityContext
+	}
+
+	discovery.Spec.ExtraEnv = spec.ExtraEnv
+	if discoverySpec.ExtraEnv != nil {
+		discovery.Spec.ExtraEnv = discoverySpec.ExtraEnv
+	}
+
+	discovery.Spec.ExtraVolumes = spec.ExtraVolumes
+	if discoverySpec.ExtraVolumes != nil {
+		discovery.Spec.ExtraVolumes = discoverySpec.ExtraVolumes
+	}
+
 	discovery.Spec.SkipForks = discoverySpec.SkipForks
 
 	logging := &spec.Logging

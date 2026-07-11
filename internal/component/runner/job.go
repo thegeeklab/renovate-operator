@@ -9,6 +9,7 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
+	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	batchv1 "k8s.io/api/batch/v1"
@@ -209,6 +210,8 @@ func (r *Reconciler) updateJob(job *batchv1.Job, repo *renovatev1beta1.GitRepo, 
 		renovate.WithRepository(repo.Spec.Name),
 		renovate.WithImagePullSecrets(r.instance.Spec.ImagePullSecrets),
 		renovate.WithPodSpec(r.instance.Spec.PodSpec),
+		renovate.WithExtraEnv(r.instance.Spec.ExtraEnv),
+		renovate.WithExtraVolumes(containers.WithRawVolumes(r.instance.Spec.ExtraVolumes)),
 	)
 
 	// Configure job execution details

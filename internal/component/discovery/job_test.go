@@ -13,6 +13,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
@@ -311,6 +312,86 @@ var _ = Describe("ReconcileJob", func() {
 
 			Expect(job.Spec.Template.Spec.TopologySpreadConstraints).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.TopologySpreadConstraints[0].TopologyKey).To(Equal("zone"))
+		})
+
+		It("should propagate Resources to the job container", func() {
+			instance.Spec.Resources = corev1.ResourceRequirements{
+				Requests: corev1.ResourceList{
+					corev1.ResourceCPU: resource.MustParse("100m"),
+				},
+				Limits: corev1.ResourceList{
+					corev1.ResourceCPU: resource.MustParse("500m"),
+				},
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, nil)
+
+			mainContainer := job.Spec.Template.Spec.Containers[0]
+			Expect(mainContainer.Resources.Requests).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("100m")))
+			Expect(mainContainer.Resources.Limits).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("500m")))
+		})
+
+		It("should propagate SecurityContext to the job container", func() {
+			instance.Spec.SecurityContext = &corev1.SecurityContext{
+				RunAsNonRoot: new(true),
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, nil)
+
+			mainContainer := job.Spec.Template.Spec.Containers[0]
+			Expect(mainContainer.SecurityContext).NotTo(BeNil())
+			Expect(*mainContainer.SecurityContext.RunAsNonRoot).To(BeTrue())
+		})
+
+		It("should propagate ExtraEnv to the job container", func() {
+			instance.Spec.ExtraEnv = []corev1.EnvVar{
+				{Name: "CUSTOM_VAR", Value: "custom_value"},
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, nil)
+
+			env := job.Spec.Template.Spec.Containers[0].Env
+			Expect(env).To(ContainElement(HaveField("Name", "CUSTOM_VAR")))
+			Expect(env).To(ContainElement(HaveField("Value", "custom_value")))
+		})
+
+		It("should propagate ExtraVolumes to the job pod spec", func() {
+			instance.Spec.ExtraVolumes = []corev1.Volume{
+				{
+					Name: "extra-vol",
+					VolumeSource: corev1.VolumeSource{
+						EmptyDir: &corev1.EmptyDirVolumeSource{},
+					},
+				},
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, nil)
+
+			Expect(job.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "extra-vol")))
 		})
 	})
 })

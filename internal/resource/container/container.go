@@ -144,3 +144,10 @@ func WithPersistentVolumeClaim(name, claimName string) VolumeMutator {
 		})
 	}
 }
+
+// WithRawVolumes appends pre-built volumes directly.
+func WithRawVolumes(extra []corev1.Volume) VolumeMutator {
+	return func(volumes *[]corev1.Volume) {
+		*volumes = append(*volumes, extra...)
+	}
+}
