@@ -239,7 +239,7 @@ var _ = Describe("GitRepo Reconciliation", func() {
 	})
 
 	Describe("filterRepos", func() {
-		It("should return the input unchanged when skipForks is disabled", func() {
+		It("should return the input unchanged when skipForks is disabled and no topics are set", func() {
 			repos := []string{"a", "b", "c"}
 			result, err := reconciler.filterRepos(ctx, repos)
 			Expect(err).ToNot(HaveOccurred())
@@ -281,6 +281,79 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			result, err := reconciler.filterRepos(ctx, []string{"real", "forked", "another"})
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(Equal([]string{"real", "another"}))
+		})
+
+		It("should filter repositories by topics when topics are set", func() {
+			reconciler.instance.Spec.Topics = []string{"renovate", "production"}
+
+			reconciler.renovate = &renovatev1beta1.RenovateConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-config", Namespace: "default"},
+				Spec: renovatev1beta1.RenovateConfigSpec{
+					Platform: renovatev1beta1.PlatformSpec{
+						Type: "stub",
+						Token: corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								Key:                  "token",
+								LocalObjectReference: corev1.LocalObjectReference{Name: "platform-secret"},
+							},
+						},
+					},
+				},
+			}
+
+			tokenSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "platform-secret", Namespace: "default"},
+				Data:       map[string][]byte{"token": []byte("test-token")},
+			}
+			Expect(fakeClient.Create(ctx, tokenSecret)).To(Succeed())
+
+			mockMgr.On("ListRepos", mock.Anything, provider.ListReposOptions{
+				Topics: []string{"renovate", "production"},
+			}).Return([]provider.Repo{
+				{Name: "matching-repo"},
+			}, nil).Once()
+
+			result, err := reconciler.filterRepos(ctx, []string{"matching-repo", "non-matching-repo"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]string{"matching-repo"}))
+		})
+
+		It("should apply both skipForks and topics filters together", func() {
+			skipForks := true
+			reconciler.instance.Spec.SkipForks = &skipForks
+			reconciler.instance.Spec.Topics = []string{"renovate"}
+
+			reconciler.renovate = &renovatev1beta1.RenovateConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-config", Namespace: "default"},
+				Spec: renovatev1beta1.RenovateConfigSpec{
+					Platform: renovatev1beta1.PlatformSpec{
+						Type: "stub",
+						Token: corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								Key:                  "token",
+								LocalObjectReference: corev1.LocalObjectReference{Name: "platform-secret"},
+							},
+						},
+					},
+				},
+			}
+
+			tokenSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "platform-secret", Namespace: "default"},
+				Data:       map[string][]byte{"token": []byte("test-token")},
+			}
+			Expect(fakeClient.Create(ctx, tokenSecret)).To(Succeed())
+
+			mockMgr.On("ListRepos", mock.Anything, provider.ListReposOptions{
+				SkipForks: true,
+				Topics:    []string{"renovate"},
+			}).Return([]provider.Repo{
+				{Name: "matching-repo", IsFork: false},
+			}, nil).Once()
+
+			result, err := reconciler.filterRepos(ctx, []string{"matching-repo", "non-matching-repo"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]string{"matching-repo"}))
 		})
 	})
 

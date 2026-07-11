@@ -11,6 +11,7 @@ import (
 
 	"github.com/google/go-github/v89/github"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/pkg/util"
 )
 
 const (
@@ -192,6 +193,8 @@ func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error)
 // ListRepos returns repositories visible to the authenticated identity,
 // applying the given options. When opts.SkipForks is true, forked
 // repositories are excluded via the provider's server-side filter.
+// When opts.Topics is non-empty, only repositories containing all specified
+// topics are included (client-side filter).
 func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions) ([]provider.Repo, error) {
 	listOpts := &github.RepositoryListByAuthenticatedUserOptions{
 		ListOptions: github.ListOptions{Page: 1, PerPage: defaultPageSize},
@@ -217,6 +220,10 @@ func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions
 			}
 
 			if name == "" {
+				continue
+			}
+
+			if len(opts.Topics) > 0 && !util.ContainsAll(repo.Topics, opts.Topics) {
 				continue
 			}
 

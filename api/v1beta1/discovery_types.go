@@ -25,6 +25,10 @@ type DiscoverySpec struct {
 	// SkipForks excludes forked repositories from autodiscovery when set to true.
 	// +kubebuilder:validation:Optional
 	SkipForks *bool `json:"skipForks,omitempty"`
+
+	// Topics filters autodiscovery to repositories matching all specified topics.
+	// +kubebuilder:validation:Optional
+	Topics []string `json:"topics,omitempty"`
 }
 
 // DiscoveryStatus defines the observed state of Discovery.
@@ -103,6 +107,11 @@ func (d *Discovery) GetSkipForks() bool {
 	}
 
 	return *d.Spec.SkipForks
+}
+
+// GetTopics returns the list of topics to filter repositories by.
+func (d *Discovery) GetTopics() []string {
+	return d.Spec.Topics
 }
 
 func (d *Discovery) SetCondition(

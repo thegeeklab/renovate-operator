@@ -7,6 +7,8 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/thegeeklab/renovate-operator/internal/provider"
 )
 
 var _ = Describe("Gitea Provider", func() {
@@ -54,7 +56,7 @@ var _ = Describe("Gitea Provider", func() {
 			ctx        context.Context
 			mockServer *httptest.Server
 			mux        *http.ServeMux
-			provider   *Provider
+			p          *Provider
 		)
 
 		BeforeEach(func() {
@@ -69,10 +71,10 @@ var _ = Describe("Gitea Provider", func() {
 
 			var err error
 
-			provider, err = NewProvider(ctx, mockServer.URL, "dummy-token")
+			p, err = NewProvider(ctx, mockServer.URL, "dummy-token")
 			Expect(err).NotTo(HaveOccurred())
-			Expect(provider).NotTo(BeNil())
-			Expect(provider.client).NotTo(BeNil())
+			Expect(p).NotTo(BeNil())
+			Expect(p.client).NotTo(BeNil())
 		})
 
 		AfterEach(func() {
@@ -81,7 +83,7 @@ var _ = Describe("Gitea Provider", func() {
 
 		Describe("NewProvider", func() {
 			It("should successfully create a new provider and ping the version endpoint", func() {
-				Expect(provider.client).NotTo(BeNil())
+				Expect(p.client).NotTo(BeNil())
 			})
 		})
 
@@ -96,7 +98,7 @@ var _ = Describe("Gitea Provider", func() {
 					},
 				)
 
-				_, err := provider.EnsureWebhook(ctx, "thegeeklab/renovate-operator", "https://hook.url", "dummy-secret")
+				_, err := p.EnsureWebhook(ctx, "thegeeklab/renovate-operator", "https://hook.url", "dummy-secret")
 				Expect(err).To(MatchError(errMissingAdmin))
 			})
 
@@ -127,7 +129,7 @@ var _ = Describe("Gitea Provider", func() {
 					},
 				)
 
-				id, err := provider.EnsureWebhook(ctx, "thegeeklab/renovate-operator", "https://hook.url", "dummy-secret")
+				id, err := p.EnsureWebhook(ctx, "thegeeklab/renovate-operator", "https://hook.url", "dummy-secret")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(id).To(Equal("123"))
 			})
@@ -162,7 +164,7 @@ var _ = Describe("Gitea Provider", func() {
 					},
 				)
 
-				id, err := provider.EnsureWebhook(ctx, "thegeeklab/renovate-operator", "https://new.hook.url", "dummy-secret")
+				id, err := p.EnsureWebhook(ctx, "thegeeklab/renovate-operator", "https://new.hook.url", "dummy-secret")
 				Expect(err).NotTo(HaveOccurred())
 				Expect(id).To(Equal("999"))
 			})
@@ -170,8 +172,8 @@ var _ = Describe("Gitea Provider", func() {
 
 		Describe("DeleteWebhook", func() {
 			It("should return early without error if the webhook ID is empty", func() {
-				err := provider.DeleteWebhook(ctx, "thegeeklab/renovate-operator", "")
-				Expect(err).NotTo(HaveOccurred())
+				err := p.DeleteWebhook(ctx, "thegeeklab/renovate-operator", "")
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("should successfully delete the webhook from the remote", func() {
@@ -183,14 +185,48 @@ var _ = Describe("Gitea Provider", func() {
 					},
 				)
 
-				err := provider.DeleteWebhook(ctx, "thegeeklab/renovate-operator", "123")
-				Expect(err).NotTo(HaveOccurred())
+				err := p.DeleteWebhook(ctx, "thegeeklab/renovate-operator", "123")
+				Expect(err).ToNot(HaveOccurred())
 			})
 
 			It("should return an error if the webhook ID is not a valid integer", func() {
-				err := provider.DeleteWebhook(ctx, "thegeeklab/renovate-operator", "invalid-id")
+				err := p.DeleteWebhook(ctx, "thegeeklab/renovate-operator", "invalid-id")
 				Expect(err).To(HaveOccurred())
 				Expect(err.Error()).To(ContainSubstring("invalid webhook ID format"))
+			})
+		})
+
+		Describe("ListRepos", func() {
+			It("should filter repositories by topics", func() {
+				mux.HandleFunc("/api/v1/user/repos", func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte(`[
+						{"id": 1, "name": "repo1", "full_name": "owner/repo1", "topics": ["renovate", "production"]},
+						{"id": 2, "name": "repo2", "full_name": "owner/repo2", "topics": ["renovate"]},
+						{"id": 3, "name": "repo3", "full_name": "owner/repo3", "topics": ["production"]}
+					]`))
+				})
+
+				repos, err := p.ListRepos(ctx, provider.ListReposOptions{
+					Topics: []string{"renovate", "production"},
+				})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(repos).To(HaveLen(1))
+				Expect(repos[0].Name).To(Equal("owner/repo1"))
+			})
+
+			It("should return all repositories when no topics filter is specified", func() {
+				mux.HandleFunc("/api/v1/user/repos", func(w http.ResponseWriter, r *http.Request) {
+					w.WriteHeader(http.StatusOK)
+					_, _ = w.Write([]byte(`[
+						{"id": 1, "name": "repo1", "full_name": "owner/repo1", "topics": ["renovate"]},
+						{"id": 2, "name": "repo2", "full_name": "owner/repo2", "topics": []}
+					]`))
+				})
+
+				repos, err := p.ListRepos(ctx, provider.ListReposOptions{})
+				Expect(err).ToNot(HaveOccurred())
+				Expect(repos).To(HaveLen(2))
 			})
 		})
 	})

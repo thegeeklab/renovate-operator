@@ -118,6 +118,7 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 	}
 
 	discovery.Spec.SkipForks = discoverySpec.SkipForks
+	discovery.Spec.Topics = discoverySpec.Topics
 
 	logging := &spec.Logging
 	if discoverySpec.Logging != nil {

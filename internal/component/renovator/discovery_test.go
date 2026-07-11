@@ -193,6 +193,7 @@ var _ = Describe("Renovator Discovery", func() {
 						},
 						ConfigRef: "test-config",
 						Filter:    []string{"test-filter"},
+						Topics:    []string{"renovate", "production"},
 					},
 				},
 			}
@@ -212,6 +213,7 @@ var _ = Describe("Renovator Discovery", func() {
 
 			Expect(discovery.Spec.ConfigRef).To(Equal("test-config"))
 			Expect(discovery.Spec.Filter).To(Equal([]string{"test-filter"}))
+			Expect(discovery.Spec.Topics).To(Equal([]string{"renovate", "production"}))
 			Expect(discovery.Spec.Image).To(Equal("renovate/renovate:36"))
 			Expect(discovery.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
 			Expect(discovery.Spec.Logging).NotTo(BeNil())

@@ -3243,6 +3243,11 @@ spec:
                         type: string
                     type: object
                   type: array
+                topics:
+                  description: Topics filters autodiscovery to repositories matching all specified topics.
+                  items:
+                    type: string
+                  type: array
                 topologySpreadConstraints:
                   description: TopologySpreadConstraints specifies the topology spread constraints for the renovate pod.
                   items:
