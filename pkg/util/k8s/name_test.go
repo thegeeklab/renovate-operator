@@ -103,6 +103,43 @@ var _ = Describe("SanitizeName", func() {
 	})
 })
 
+var _ = Describe("LabelValue", func() {
+	It("should return short names unchanged", func() {
+		Expect(LabelValue("my-repo")).To(Equal("my-repo"))
+	})
+
+	It("should return names at exactly 63 characters unchanged", func() {
+		name := strings.Repeat("a", 63)
+		Expect(LabelValue(name)).To(Equal(name))
+		Expect(LabelValue(name)).To(HaveLen(63))
+	})
+
+	It("should truncate names exceeding 63 characters with a hash suffix", func() {
+		name := strings.Repeat("a", 100)
+		result := LabelValue(name)
+		Expect(len(result)).To(BeNumerically("<=", 63))
+		Expect(result).To(HavePrefix(strings.Repeat("a", 54)))
+	})
+
+	It("should be deterministic", func() {
+		name := strings.Repeat("b", 100)
+		Expect(LabelValue(name)).To(Equal(LabelValue(name)))
+	})
+
+	It("should produce different values for different long inputs", func() {
+		name1 := strings.Repeat("a", 80) + "x"
+		name2 := strings.Repeat("a", 80) + "y"
+		Expect(LabelValue(name1)).NotTo(Equal(LabelValue(name2)))
+	})
+
+	It("should not end with a trailing hyphen before the hash", func() {
+		name := strings.Repeat("a", 53) + "-" + strings.Repeat("b", 20)
+		result := LabelValue(name)
+		Expect(len(result)).To(BeNumerically("<=", 63))
+		Expect(result).NotTo(ContainSubstring("--"))
+	})
+})
+
 var _ = Describe("DeterministicName", func() {
 	It("should append suffix without hashing if combined length is under 63", func() {
 		result, err := DeterministicName("my-repo", "-12345")

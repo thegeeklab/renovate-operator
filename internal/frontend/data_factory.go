@@ -15,6 +15,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
+	k8sutil "github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	"golang.org/x/sync/singleflight"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -483,7 +484,7 @@ func (df *DataFactory) GetJobsForRepo(
 	var jobList batchv1.JobList
 
 	listOpts := []client.ListOption{
-		client.MatchingLabels{renovatev1beta1.LabelGitRepo: repoName},
+		client.MatchingLabels{renovatev1beta1.LabelGitRepo: k8sutil.LabelValue(repoName)},
 	}
 
 	if opt.Namespace != "" {

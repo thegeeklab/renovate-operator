@@ -3,6 +3,7 @@ package runner
 import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
+	k8sutil "github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 )
@@ -27,7 +28,7 @@ func RunnerName(request ctrl.Request) string {
 func RunnerLabels(request ctrl.Request) map[string]string {
 	return map[string]string{
 		renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
-		renovatev1beta1.LabelAppInstance:  request.Name,
+		renovatev1beta1.LabelAppInstance:  k8sutil.LabelValue(request.Name),
 		renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentRunner,
 		renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
 	}
