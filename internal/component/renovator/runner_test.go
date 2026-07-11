@@ -8,6 +8,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -443,6 +444,210 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(existingRunner.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "hdd"))
+		})
+
+		It("should inherit Resources from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU: resource.MustParse("100m"),
+							},
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.Resources.Requests).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("100m")))
+		})
+
+		It("should override global Resources with runner-specific Resources", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU: resource.MustParse("100m"),
+							},
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU: resource.MustParse("500m"),
+								},
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.Resources.Requests).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("500m")))
+		})
+
+		It("should inherit SecurityContext from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						SecurityContext: &corev1.SecurityContext{
+							RunAsNonRoot: new(true),
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.SecurityContext).NotTo(BeNil())
+			Expect(*existingRunner.Spec.SecurityContext.RunAsNonRoot).To(BeTrue())
+		})
+
+		It("should override global SecurityContext with runner-specific SecurityContext", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						SecurityContext: &corev1.SecurityContext{
+							RunAsNonRoot: new(true),
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							SecurityContext: &corev1.SecurityContext{
+								RunAsUser: new(int64(1000)),
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.SecurityContext).NotTo(BeNil())
+			Expect(*existingRunner.Spec.SecurityContext.RunAsUser).To(Equal(int64(1000)))
+		})
+
+		It("should inherit ExtraEnv from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ExtraEnv: []corev1.EnvVar{
+							{Name: "GLOBAL_VAR", Value: "global_value"},
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.ExtraEnv).To(HaveLen(1))
+			Expect(existingRunner.Spec.ExtraEnv[0].Name).To(Equal("GLOBAL_VAR"))
+		})
+
+		It("should override global ExtraEnv with runner-specific ExtraEnv", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ExtraEnv: []corev1.EnvVar{
+							{Name: "GLOBAL_VAR", Value: "global_value"},
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							ExtraEnv: []corev1.EnvVar{
+								{Name: "RUNNER_VAR", Value: "runner_value"},
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.ExtraEnv).To(HaveLen(1))
+			Expect(existingRunner.Spec.ExtraEnv[0].Name).To(Equal("RUNNER_VAR"))
+		})
+
+		It("should inherit ExtraVolumes from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ExtraVolumes: []corev1.Volume{
+							{Name: "global-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.ExtraVolumes).To(HaveLen(1))
+			Expect(existingRunner.Spec.ExtraVolumes[0].Name).To(Equal("global-vol"))
+		})
+
+		It("should override global ExtraVolumes with runner-specific ExtraVolumes", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ExtraVolumes: []corev1.Volume{
+							{Name: "global-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							ExtraVolumes: []corev1.Volume{
+								{Name: "runner-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.ExtraVolumes).To(HaveLen(1))
+			Expect(existingRunner.Spec.ExtraVolumes[0].Name).To(Equal("runner-vol"))
 		})
 	})
 })

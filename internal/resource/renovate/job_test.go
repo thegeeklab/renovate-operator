@@ -11,6 +11,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -221,6 +222,66 @@ var _ = Describe("Renovate Job Library", func() {
 				func(spec *batchv1.JobSpec) {
 					Expect(spec.Template.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "ssd"))
 					Expect(spec.Template.Spec.Tolerations).To(HaveLen(1))
+				},
+			),
+			Entry(
+				"WithResources",
+				[]renovate.JobOption{renovate.WithResources(corev1.ResourceRequirements{
+					Requests: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("100m"),
+						corev1.ResourceMemory: resource.MustParse("128Mi"),
+					},
+					Limits: corev1.ResourceList{
+						corev1.ResourceCPU:    resource.MustParse("500m"),
+						corev1.ResourceMemory: resource.MustParse("512Mi"),
+					},
+				})},
+				func(spec *batchv1.JobSpec) {
+					container := spec.Template.Spec.Containers[0]
+					Expect(container.Resources.Requests).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("100m")))
+					Expect(container.Resources.Requests).To(HaveKeyWithValue(corev1.ResourceMemory, resource.MustParse("128Mi")))
+					Expect(container.Resources.Limits).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("500m")))
+					Expect(container.Resources.Limits).To(HaveKeyWithValue(corev1.ResourceMemory, resource.MustParse("512Mi")))
+				},
+			),
+			Entry(
+				"WithSecurityContext",
+				[]renovate.JobOption{renovate.WithSecurityContext(&corev1.SecurityContext{
+					RunAsNonRoot: new(true),
+					RunAsUser:    new(int64(1000)),
+				})},
+				func(spec *batchv1.JobSpec) {
+					container := spec.Template.Spec.Containers[0]
+					Expect(container.SecurityContext).NotTo(BeNil())
+					Expect(*container.SecurityContext.RunAsNonRoot).To(BeTrue())
+					Expect(*container.SecurityContext.RunAsUser).To(Equal(int64(1000)))
+				},
+			),
+			Entry(
+				"WithPodSpec Resources",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					Resources: corev1.ResourceRequirements{
+						Requests: corev1.ResourceList{
+							corev1.ResourceCPU: resource.MustParse("200m"),
+						},
+					},
+				})},
+				func(spec *batchv1.JobSpec) {
+					container := spec.Template.Spec.Containers[0]
+					Expect(container.Resources.Requests).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("200m")))
+				},
+			),
+			Entry(
+				"WithPodSpec SecurityContext",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					SecurityContext: &corev1.SecurityContext{
+						ReadOnlyRootFilesystem: new(true),
+					},
+				})},
+				func(spec *batchv1.JobSpec) {
+					container := spec.Template.Spec.Containers[0]
+					Expect(container.SecurityContext).NotTo(BeNil())
+					Expect(*container.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
 				},
 			),
 			Entry(

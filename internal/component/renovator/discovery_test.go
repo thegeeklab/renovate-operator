@@ -8,6 +8,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -576,6 +577,214 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(existingDiscovery.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "hdd"))
+		})
+
+		It("should inherit Resources from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU: resource.MustParse("100m"),
+							},
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.Resources.Requests).To(
+				HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("100m")),
+			)
+		})
+
+		It("should override global Resources with discovery-specific Resources", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						Resources: corev1.ResourceRequirements{
+							Requests: corev1.ResourceList{
+								corev1.ResourceCPU: resource.MustParse("100m"),
+							},
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							Resources: corev1.ResourceRequirements{
+								Requests: corev1.ResourceList{
+									corev1.ResourceCPU: resource.MustParse("500m"),
+								},
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.Resources.Requests).To(
+				HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("500m")),
+			)
+		})
+
+		It("should inherit SecurityContext from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						SecurityContext: &corev1.SecurityContext{
+							RunAsNonRoot: new(true),
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.SecurityContext).NotTo(BeNil())
+			Expect(*existingDiscovery.Spec.SecurityContext.RunAsNonRoot).To(BeTrue())
+		})
+
+		It("should override global SecurityContext with discovery-specific SecurityContext", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						SecurityContext: &corev1.SecurityContext{
+							RunAsNonRoot: new(true),
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							SecurityContext: &corev1.SecurityContext{
+								RunAsUser: new(int64(1000)),
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.SecurityContext).NotTo(BeNil())
+			Expect(*existingDiscovery.Spec.SecurityContext.RunAsUser).To(Equal(int64(1000)))
+		})
+
+		It("should inherit ExtraEnv from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ExtraEnv: []corev1.EnvVar{
+							{Name: "GLOBAL_VAR", Value: "global_value"},
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.ExtraEnv).To(HaveLen(1))
+			Expect(existingDiscovery.Spec.ExtraEnv[0].Name).To(Equal("GLOBAL_VAR"))
+		})
+
+		It("should override global ExtraEnv with discovery-specific ExtraEnv", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ExtraEnv: []corev1.EnvVar{
+							{Name: "GLOBAL_VAR", Value: "global_value"},
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							ExtraEnv: []corev1.EnvVar{
+								{Name: "DISCOVERY_VAR", Value: "discovery_value"},
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.ExtraEnv).To(HaveLen(1))
+			Expect(existingDiscovery.Spec.ExtraEnv[0].Name).To(Equal("DISCOVERY_VAR"))
+		})
+
+		It("should inherit ExtraVolumes from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ExtraVolumes: []corev1.Volume{
+							{Name: "global-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.ExtraVolumes).To(HaveLen(1))
+			Expect(existingDiscovery.Spec.ExtraVolumes[0].Name).To(Equal("global-vol"))
+		})
+
+		It("should override global ExtraVolumes with discovery-specific ExtraVolumes", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ExtraVolumes: []corev1.Volume{
+							{Name: "global-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							ExtraVolumes: []corev1.Volume{
+								{Name: "discovery-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.ExtraVolumes).To(HaveLen(1))
+			Expect(existingDiscovery.Spec.ExtraVolumes[0].Name).To(Equal("discovery-vol"))
 		})
 	})
 })

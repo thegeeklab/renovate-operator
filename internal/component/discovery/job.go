@@ -131,34 +131,49 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 		renovate.WithInitContainer(initContainer),
 		renovate.WithImagePullSecrets(r.instance.Spec.ImagePullSecrets),
 		renovate.WithPodSpec(r.instance.Spec.PodSpec),
+		renovate.WithExtraEnv(r.instance.Spec.ExtraEnv),
+		renovate.WithExtraVolumes(containers.WithRawVolumes(r.instance.Spec.ExtraVolumes)),
 	)
+
+	discoveryMutators := []containers.ContainerMutator{
+		containers.WithContainerCommand([]string{"/discovery"}),
+		containers.WithEnvVars([]corev1.EnvVar{
+			{
+				Name:  discovery.EnvDiscoveryInstanceName,
+				Value: r.instance.Name,
+			},
+			{
+				Name:  discovery.EnvDiscoveryInstanceNamespace,
+				Value: r.instance.Namespace,
+			},
+			{
+				Name:  discovery.EnvRenovateOutputFile,
+				Value: renovate.FileRenovateRepositories,
+			},
+		}),
+		containers.WithEnvVars(r.instance.Spec.ExtraEnv),
+		containers.WithVolumeMounts([]corev1.VolumeMount{
+			{
+				Name:      renovate.VolumeRenovateTmp,
+				MountPath: renovate.DirRenovateTmp,
+			},
+		}),
+	}
+
+	if r.instance.Spec.Resources.Limits != nil || r.instance.Spec.Resources.Requests != nil {
+		discoveryMutators = append(discoveryMutators, containers.WithResourceRequirements(r.instance.Spec.Resources))
+	}
+
+	if r.instance.Spec.SecurityContext != nil {
+		discoveryMutators = append(discoveryMutators, containers.WithSecurityContext(r.instance.Spec.SecurityContext))
+	}
 
 	job.Spec.Template.Spec.Containers = []corev1.Container{
 		containers.ContainerTemplate(
 			"renovate-discovery",
 			r.instance.Spec.Image,
 			r.instance.Spec.ImagePullPolicy,
-			containers.WithContainerCommand([]string{"/discovery"}),
-			containers.WithEnvVars([]corev1.EnvVar{
-				{
-					Name:  discovery.EnvDiscoveryInstanceName,
-					Value: r.instance.Name,
-				},
-				{
-					Name:  discovery.EnvDiscoveryInstanceNamespace,
-					Value: r.instance.Namespace,
-				},
-				{
-					Name:  discovery.EnvRenovateOutputFile,
-					Value: renovate.FileRenovateRepositories,
-				},
-			}),
-			containers.WithVolumeMounts([]corev1.VolumeMount{
-				{
-					Name:      renovate.VolumeRenovateTmp,
-					MountPath: renovate.DirRenovateTmp,
-				},
-			}),
+			discoveryMutators...,
 		),
 	}
 

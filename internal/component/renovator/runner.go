@@ -96,6 +96,26 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.TopologySpreadConstraints = runnerSpec.TopologySpreadConstraints
 	}
 
+	runner.Spec.Resources = spec.Resources
+	if runnerSpec.Resources.Limits != nil || runnerSpec.Resources.Requests != nil {
+		runner.Spec.Resources = runnerSpec.Resources
+	}
+
+	runner.Spec.SecurityContext = spec.SecurityContext
+	if runnerSpec.SecurityContext != nil {
+		runner.Spec.SecurityContext = runnerSpec.SecurityContext
+	}
+
+	runner.Spec.ExtraEnv = spec.ExtraEnv
+	if runnerSpec.ExtraEnv != nil {
+		runner.Spec.ExtraEnv = runnerSpec.ExtraEnv
+	}
+
+	runner.Spec.ExtraVolumes = spec.ExtraVolumes
+	if runnerSpec.ExtraVolumes != nil {
+		runner.Spec.ExtraVolumes = runnerSpec.ExtraVolumes
+	}
+
 	runner.Spec.MaxParallel = runnerSpec.MaxParallel
 
 	logging := &spec.Logging

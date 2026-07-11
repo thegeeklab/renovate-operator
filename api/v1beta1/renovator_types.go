@@ -127,6 +127,22 @@ type PodSpec struct {
 	// TopologySpreadConstraints specifies the topology spread constraints for the renovate pod.
 	// +kubebuilder:validation:Optional
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint `json:"topologySpreadConstraints,omitempty"`
+
+	// Resources specifies the resource requirements for the renovate container.
+	// +kubebuilder:validation:Optional
+	Resources corev1.ResourceRequirements `json:"resources,omitempty"`
+
+	// SecurityContext specifies the security context for the renovate container.
+	// +kubebuilder:validation:Optional
+	SecurityContext *corev1.SecurityContext `json:"securityContext,omitempty"`
+
+	// ExtraEnv specifies additional environment variables for the renovate container.
+	// +kubebuilder:validation:Optional
+	ExtraEnv []corev1.EnvVar `json:"extraEnv,omitempty"`
+
+	// ExtraVolumes specifies additional volumes for the renovate pod.
+	// +kubebuilder:validation:Optional
+	ExtraVolumes []corev1.Volume `json:"extraVolumes,omitempty"`
 }
 
 // RenovatorSpec defines the desired state of Renovator.
