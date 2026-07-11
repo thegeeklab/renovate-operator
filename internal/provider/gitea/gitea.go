@@ -11,6 +11,7 @@ import (
 	"code.gitea.io/sdk/gitea"
 
 	"github.com/thegeeklab/renovate-operator/internal/provider"
+	"github.com/thegeeklab/renovate-operator/pkg/util"
 )
 
 const defaultPageSize = 50
@@ -179,6 +180,8 @@ func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error)
 // ListRepos returns repositories visible to the authenticated identity,
 // applying the given options. The Gitea SDK does not support server-side
 // filtering by fork status, so opts.SkipForks is applied locally.
+// When opts.Topics is non-empty, only repositories containing all specified
+// topics are included (client-side filter).
 func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions) ([]provider.Repo, error) {
 	listOpts := gitea.ListReposOptions{
 		ListOptions: gitea.ListOptions{Page: 1, PageSize: defaultPageSize},
@@ -194,6 +197,10 @@ func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions
 
 		for _, repo := range repos {
 			if opts.SkipForks && repo.Fork {
+				continue
+			}
+
+			if len(opts.Topics) > 0 && !util.ContainsAll(repo.Topics, opts.Topics) {
 				continue
 			}
 

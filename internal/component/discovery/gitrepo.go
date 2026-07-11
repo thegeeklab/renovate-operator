@@ -108,13 +108,17 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 	return &ctrl.Result{}, nil
 }
 
-// filterRepos returns repos with forks removed when skipForks is enabled on the discovery instance.
+// filterRepos returns repos with forks removed when skipForks is enabled and/or
+// filtered by topics when topics are configured on the discovery instance.
 // The full repository list is fetched in a single batched call per provider, with forks
 // excluded server-side (GitHub) or filtered locally (Gitea) to avoid N+1 API calls.
 func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string, error) {
 	log := logf.FromContext(ctx)
 
-	if !r.instance.GetSkipForks() {
+	skipForks := r.instance.GetSkipForks()
+	topics := r.instance.GetTopics()
+
+	if !skipForks && len(topics) == 0 {
 		return repos, nil
 	}
 
@@ -141,7 +145,10 @@ func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string,
 		return nil, fmt.Errorf("failed to initialize provider: %w", err)
 	}
 
-	platformRepos, err := providerManager.ListRepos(ctx, provider.ListReposOptions{SkipForks: true})
+	platformRepos, err := providerManager.ListRepos(ctx, provider.ListReposOptions{
+		SkipForks: skipForks,
+		Topics:    topics,
+	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list repositories: %w", err)
 	}

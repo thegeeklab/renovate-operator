@@ -6,6 +6,8 @@ import "context"
 type ListReposOptions struct {
 	// SkipForks, when true, excludes forked repositories from the result.
 	SkipForks bool
+	// Topics, when non-empty, restricts results to repositories that contain all listed topics.
+	Topics []string
 }
 
 // Repo is the platform-agnostic representation of a repository returned by ListRepos.
