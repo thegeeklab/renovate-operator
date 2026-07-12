@@ -14,8 +14,10 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+	"github.com/thegeeklab/renovate-operator/internal/parser"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
+	"golang.org/x/sync/errgroup"
 	"golang.org/x/sync/singleflight"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -51,6 +53,9 @@ const (
 	defaultHTTPClientCacheTTL           = 24 * time.Hour
 	defaultHTTPClientCacheMax           = 1000
 	defaultHTTPClientTimeout            = 30 * time.Second
+	defaultPRActivityCacheTTL           = 30 * time.Second
+	defaultPRActivityCacheMax           = 500
+	defaultPRActivityConcurrency        = 4
 )
 
 func (df *DataFactory) deriveCacheKey(session auth.SessionData) string {
@@ -75,6 +80,8 @@ type DataFactory struct {
 	authorizedRenovatorsCache *otter.Cache[string, []string]
 	authorizedRenovatorsGroup singleflight.Group
 	httpClientCache           *otter.Cache[string, *http.Client]
+	prActivityCache           *otter.Cache[string, PRActivitySummary]
+	prActivityGroup           singleflight.Group
 }
 
 // NewDataFactory creates a new DataFactory instance.
@@ -94,6 +101,11 @@ func NewDataFactory(client client.Client, clientset kubernetes.Interface, authMa
 		MaximumSize:      defaultHTTPClientCacheMax,
 	})
 
+	prActivityCache := otter.Must(&otter.Options[string, PRActivitySummary]{
+		ExpiryCalculator: otter.ExpiryWriting[string, PRActivitySummary](defaultPRActivityCacheTTL),
+		MaximumSize:      defaultPRActivityCacheMax,
+	})
+
 	return &DataFactory{
 		client:                    client,
 		clientset:                 clientset,
@@ -101,7 +113,25 @@ func NewDataFactory(client client.Client, clientset kubernetes.Interface, authMa
 		accessCache:               accessCache,
 		authorizedRenovatorsCache: authorizedRenovatorsCache,
 		httpClientCache:           httpClientCache,
+		prActivityCache:           prActivityCache,
 	}
+}
+
+// prActivityCacheKey returns the cache key for a (namespace, renovatorUID)
+// pair, scoped per user so per-repo access filtering cannot leak between sessions.
+func (df *DataFactory) prActivityCacheKey(ctx context.Context, namespace, renovatorUID string) string {
+	user := "anon"
+
+	if df.authManager != nil && df.authManager.IsEnabled() {
+		session, ok := auth.GetSessionData(ctx, df.authManager.SessionManager())
+		if ok {
+			if key := df.deriveCacheKey(session); key != "" {
+				user = key
+			}
+		}
+	}
+
+	return namespace + "|" + renovatorUID + "|" + user
 }
 
 // buildListOptions creates standard client.ListOptions for server-side filtering.
@@ -471,6 +501,258 @@ func (df *DataFactory) GetDiscoveries(ctx context.Context, opts ...ListOptions) 
 	)
 
 	return result, nil
+}
+
+// PRActivitySummary is the per-Renovator aggregate of open PR activity
+// derived from the most recent successful job's log output.
+type PRActivitySummary struct {
+	Open          int
+	NeedsApproval int
+	Unchanged     int
+	HasRecentData bool
+}
+
+// GetPRActivityForRenovator aggregates open PR counts across every GitRepo
+// of a Renovator by parsing the most recent completed job's log per repo.
+// "Open" is Created+Updated+Unchanged (PRs that still exist on the platform);
+// Automerged is excluded. NeedsApproval is reported separately for tinting.
+// Result is cached briefly and de-duplicated via singleflight.
+func (df *DataFactory) GetPRActivityForRenovator(
+	ctx context.Context,
+	opts ...ListOptions,
+) (PRActivitySummary, error) {
+	opt := getListOptions(opts)
+
+	if opt.Namespace == "" || opt.Renovator == "" {
+		return PRActivitySummary{}, nil
+	}
+
+	cacheKey := df.prActivityCacheKey(ctx, opt.Namespace, opt.Renovator)
+
+	loaderCtx := context.WithoutCancel(ctx)
+
+	result, err, _ := df.prActivityGroup.Do(cacheKey, func() (any, error) {
+		loader := otter.LoaderFunc[string, PRActivitySummary](
+			func(_ context.Context, _ string) (PRActivitySummary, error) {
+				return df.computePRActivityForRenovator(loaderCtx, opt)
+			},
+		)
+
+		return df.prActivityCache.Get(loaderCtx, cacheKey, loader)
+	})
+	if err != nil {
+		return PRActivitySummary{}, err
+	}
+
+	summary, ok := result.(PRActivitySummary)
+	if !ok {
+		return PRActivitySummary{}, errUnexpectedCacheResult
+	}
+
+	return summary, nil
+}
+
+// computePRActivityForRenovator lists jobs for the Renovator once,
+// partitions by GitRepo in memory, then parses the most recent completed
+// job per repo with bounded concurrency. Repos the current user cannot
+// access are filtered out before aggregation.
+func (df *DataFactory) computePRActivityForRenovator(
+	ctx context.Context,
+	opt ListOptions,
+) (PRActivitySummary, error) {
+	summary := PRActivitySummary{}
+
+	repos, err := df.GetGitRepos(ctx, opt)
+	if err != nil {
+		return summary, fmt.Errorf("failed to list repos for PR activity: %w", err)
+	}
+
+	repos = df.ApplyAccessFilter(ctx, repos)
+
+	if len(repos) == 0 {
+		return summary, nil
+	}
+
+	latestByRepo, err := df.findLatestTerminalJobsByRepo(ctx, opt.Namespace, opt.Renovator)
+	if err != nil {
+		return summary, fmt.Errorf("failed to list jobs for PR activity: %w", err)
+	}
+
+	if len(latestByRepo) == 0 {
+		return summary, nil
+	}
+
+	results := make(chan prJobSample, len(latestByRepo))
+
+	g, ctx := errgroup.WithContext(ctx)
+	g.SetLimit(defaultPRActivityConcurrency)
+
+	for _, repo := range repos {
+		job, ok := latestByRepo[k8s.LabelValue(repo.Name)]
+		if !ok {
+			continue
+		}
+
+		g.Go(func() error {
+			results <- df.parseJobPRActivity(ctx, repo.Namespace, job)
+
+			return nil
+		})
+	}
+
+	if err := g.Wait(); err != nil {
+		return summary, err
+	}
+
+	close(results)
+
+	for sample := range results {
+		if !sample.OK {
+			continue
+		}
+
+		summary.Open += sample.Open
+		summary.NeedsApproval += sample.NeedsApproval
+		summary.Unchanged += sample.Unchanged
+		summary.HasRecentData = true
+	}
+
+	return summary, nil
+}
+
+// prJobSample is the per-repo result of inspecting the most recent
+// completed Job's log output.
+type prJobSample struct {
+	Open          int
+	NeedsApproval int
+	Unchanged     int
+	OK            bool
+}
+
+// readJobLogStream reads the full log stream from a pod up to maxLogReadSize
+// bytes. Used by the job-logs viewer to bound memory usage.
+func readJobLogStream(stream io.Reader) (string, error) {
+	content, err := io.ReadAll(io.LimitReader(stream, maxLogReadSize))
+
+	return string(content), err
+}
+
+// findLatestTerminalJobsByRepo lists Jobs for a Renovator (paginated to
+// avoid silent truncation on long histories) and returns the most recent
+// terminal job (completed or failed) per GitRepo, keyed by repo name.
+// Single Renovator-scoped list replaces N per-repo lists.
+func (df *DataFactory) findLatestTerminalJobsByRepo(
+	ctx context.Context,
+	namespace, renovatorUID string,
+) (map[string]*batchv1.Job, error) {
+	const pageSize = 500
+
+	var (
+		latest = make(map[string]*batchv1.Job)
+		cont   string
+	)
+
+	for {
+		var page batchv1.JobList
+
+		opts := []client.ListOption{
+			client.InNamespace(namespace),
+			client.MatchingLabels{renovatev1beta1.LabelRenovator: renovatorUID},
+			client.Limit(pageSize),
+		}
+		if cont != "" {
+			opts = append(opts, client.Continue(cont))
+		}
+
+		if err := df.client.List(ctx, &page, opts...); err != nil {
+			return nil, fmt.Errorf("failed to list jobs: %w", err)
+		}
+
+		for i := range page.Items {
+			job := &page.Items[i]
+			if !isJobTerminal(job) {
+				continue
+			}
+
+			repoName := job.Labels[renovatev1beta1.LabelGitRepo]
+			if repoName == "" {
+				continue
+			}
+
+			if existing, ok := latest[repoName]; ok {
+				if job.CreationTimestamp.After(existing.CreationTimestamp.Time) {
+					latest[repoName] = job
+				}
+			} else {
+				latest[repoName] = job
+			}
+		}
+
+		if len(page.Items) < pageSize || page.GetContinue() == "" {
+			break
+		}
+
+		cont = page.GetContinue()
+	}
+
+	return latest, nil
+}
+
+// parseJobPRActivity streams a Job's pod logs through parser.ParsePRActivity
+// and returns the parsed open-PR counts. Line-by-line parsing keeps memory
+// bounded by per-line allocations rather than the full log buffer.
+func (df *DataFactory) parseJobPRActivity(
+	ctx context.Context,
+	namespace string,
+	job *batchv1.Job,
+) prJobSample {
+	stream, err := df.GetJobLogs(ctx, namespace, job.Name)
+	if err != nil {
+		frontendLog.Info("Job logs unavailable",
+			"namespace", namespace, "job", job.Name, "error", err)
+
+		return prJobSample{}
+	}
+	defer stream.Close()
+
+	activity, err := parser.ParsePRActivity(stream, maxLogReadSize)
+	if err != nil {
+		frontendLog.Error(err, "Failed to parse PR activity from job logs",
+			"namespace", namespace, "job", job.Name)
+
+		return prJobSample{}
+	}
+
+	if activity == nil {
+		return prJobSample{}
+	}
+
+	return prJobSample{
+		Open:          activity.Created + activity.Updated + activity.Unchanged,
+		NeedsApproval: activity.NeedsApproval,
+		Unchanged:     activity.Unchanged,
+		OK:            true,
+	}
+}
+
+// isJobTerminal reports whether the given Job has reached a terminal state
+// (successful completion or failure).
+func isJobTerminal(job *batchv1.Job) bool {
+	if job.Status.CompletionTime != nil {
+		return true
+	}
+
+	for _, cond := range job.Status.Conditions {
+		if cond.Type == batchv1.JobComplete && cond.Status == corev1.ConditionTrue {
+			return true
+		}
+
+		if cond.Type == batchv1.JobFailed && cond.Status == corev1.ConditionTrue {
+			return true
+		}
+	}
+
+	return false
 }
 
 // GetJobsForRepo fetches jobs associated with a specific GitRepo.

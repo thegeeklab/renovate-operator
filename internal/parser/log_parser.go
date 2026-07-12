@@ -3,7 +3,9 @@ package parser
 import (
 	"bufio"
 	"encoding/json"
+	"fmt"
 	"html"
+	"io"
 	"regexp"
 	"sort"
 	"strconv"
@@ -180,6 +182,45 @@ var (
 		LogLevelFatal: "FATAL",
 	}
 )
+
+// ParsePRActivity streams a Renovate NDJSON log from r and returns the
+// aggregated PR activity. Unlike ParseRenovateLogs it skips the
+// FormattedLine/issue passes, so memory stays proportional to the branch
+// count. The reader is consumed up to maxBytes; pass a negative value for
+// no cap.
+func ParsePRActivity(r io.Reader, maxBytes int64) (*PRActivity, error) {
+	branchMap := make(map[string]*PRDetail)
+
+	reader := r
+	if maxBytes >= 0 {
+		reader = io.LimitReader(r, maxBytes)
+	}
+
+	scanner := bufio.NewScanner(reader)
+	scanner.Buffer(make([]byte, scannerInitialBuf), scannerMaxBuf)
+
+	result := &ParseResult{}
+
+	for scanner.Scan() {
+		line := scanner.Text()
+		if line == "" {
+			continue
+		}
+
+		var entry renovateLogEntry
+		if err := json.Unmarshal([]byte(line), &entry); err != nil {
+			continue
+		}
+
+		processLogEntry(line, entry, branchMap, result)
+	}
+
+	if err := scanner.Err(); err != nil {
+		return nil, fmt.Errorf("scan renovate logs: %w", err)
+	}
+
+	return buildPRActivity(branchMap), nil
+}
 
 func ParseRenovateLogs(logs string) *ParseResult {
 	result := &ParseResult{}

@@ -92,6 +92,19 @@ var _ = Describe("sanitize helpers", func() {
 			Expect(SortOrderPersistKey("my-renovator")).To(Equal("sort-order-my-renovator"))
 		})
 	})
+
+	Describe("RenovatorPRsURL", func() {
+		It("builds a base URL", func() {
+			Expect(RenovatorPRsURL("ns", "uid")).
+				To(Equal("/renovators/prs?namespace=ns&renovator=uid"))
+		})
+
+		It("escapes user-controlled segments", func() {
+			got := RenovatorPRsURL("ns with space", "uid&with=special")
+			Expect(got).NotTo(ContainSubstring(" "))
+			Expect(got).NotTo(ContainSubstring("ns with space"))
+		})
+	})
 })
 
 var _ = Describe("sanitize regression cases", func() {

@@ -246,4 +246,47 @@ var _ = Describe("LogParser", func() {
 			Expect(isNDJSON(logs)).To(BeFalse())
 		})
 	})
+
+	Describe("ParsePRActivity", func() {
+		It("returns an empty PRActivity for empty logs", func() {
+			activity, err := ParsePRActivity(strings.NewReader(""), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(activity).NotTo(BeNil())
+			Expect(activity.Created).To(BeZero())
+		})
+
+		It("counts created PRs from a stream", func() {
+			activity, err := ParsePRActivity(strings.NewReader(fixtures.PRCreated), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(activity).NotTo(BeNil())
+			Expect(activity.Created).To(Equal(1))
+		})
+
+		It("counts needs-approval PRs from a stream", func() {
+			activity, err := ParsePRActivity(strings.NewReader(fixtures.BranchesInfoExtended), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(activity).NotTo(BeNil())
+			Expect(activity.NeedsApproval).To(Equal(1))
+		})
+
+		It("respects the maxBytes cap", func() {
+			activity, err := ParsePRActivity(
+				strings.NewReader(fixtures.PRCreated),
+				16,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(activity).NotTo(BeNil())
+			Expect(activity.Created).To(BeZero())
+		})
+
+		It("counts unchanged PRs (they still exist on the platform)", func() {
+			activity, err := ParsePRActivity(
+				strings.NewReader(fixtures.PRUnchanged),
+				-1,
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(activity).NotTo(BeNil())
+			Expect(activity.Unchanged).To(Equal(1))
+		})
+	})
 })

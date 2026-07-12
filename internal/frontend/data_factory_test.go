@@ -9,6 +9,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -242,6 +243,185 @@ var _ = Describe("DataFactory", func() {
 			_, err := dataFactory.GetJobLogs(context.Background(), "test-namespace", "test-job-1")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("no pods found for job: test-job-1"))
+		})
+	})
+
+	Describe("GetPRActivityForRenovator", func() {
+		It("returns an empty summary without required params", func() {
+			summary, err := dataFactory.GetPRActivityForRenovator(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(summary.Open).To(BeZero())
+			Expect(summary.HasRecentData).To(BeFalse())
+		})
+
+		It("returns zero counts with no recent data when no jobs have logs", func() {
+			summary, err := dataFactory.GetPRActivityForRenovator(
+				context.Background(),
+				ListOptions{Namespace: "test-namespace", Renovator: "test-renovator"},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(summary.Open).To(BeZero())
+			Expect(summary.NeedsApproval).To(BeZero())
+			Expect(summary.HasRecentData).To(BeFalse())
+		})
+	})
+
+	Describe("isJobTerminal", func() {
+		It("returns false for a fresh job", func() {
+			job := &batchv1.Job{Status: batchv1.JobStatus{}}
+			Expect(isJobTerminal(job)).To(BeFalse())
+		})
+
+		It("returns true when CompletionTime is set", func() {
+			now := metav1.Now()
+			job := &batchv1.Job{Status: batchv1.JobStatus{CompletionTime: &now}}
+			Expect(isJobTerminal(job)).To(BeTrue())
+		})
+
+		It("returns true when JobComplete condition is True", func() {
+			job := &batchv1.Job{Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+				},
+			}}
+			Expect(isJobTerminal(job)).To(BeTrue())
+		})
+
+		It("returns true when JobFailed condition is True", func() {
+			job := &batchv1.Job{Status: batchv1.JobStatus{
+				Conditions: []batchv1.JobCondition{
+					{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+				},
+			}}
+			Expect(isJobTerminal(job)).To(BeTrue())
+		})
+	})
+
+	Describe("findLatestTerminalJobsByRepo", func() {
+		It("returns an empty map when no jobs exist", func() {
+			jobs, err := dataFactory.findLatestTerminalJobsByRepo(
+				context.Background(), "test-namespace", "test-renovator",
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(jobs).To(BeEmpty())
+		})
+
+		It("returns the most recent completed job per repo", func() {
+			older := metav1.NewTime(time.Now().Add(-1 * time.Hour))
+			newer := metav1.NewTime(time.Now().Add(-1 * time.Minute))
+
+			jobs := []client.Object{
+				&batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "repo-a-older",
+						Namespace: "test-namespace",
+						Labels: map[string]string{
+							renovatev1beta1.LabelRenovator: "test-renovator",
+							renovatev1beta1.LabelGitRepo:   "repo-a",
+						},
+					},
+					Status: batchv1.JobStatus{CompletionTime: &older},
+				},
+				&batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "repo-a-newer",
+						Namespace: "test-namespace",
+						Labels: map[string]string{
+							renovatev1beta1.LabelRenovator: "test-renovator",
+							renovatev1beta1.LabelGitRepo:   "repo-a",
+						},
+					},
+					Status: batchv1.JobStatus{CompletionTime: &newer},
+				},
+				&batchv1.Job{
+					ObjectMeta: metav1.ObjectMeta{
+						Name:      "repo-b-only",
+						Namespace: "test-namespace",
+						Labels: map[string]string{
+							renovatev1beta1.LabelRenovator: "test-renovator",
+							renovatev1beta1.LabelGitRepo:   "repo-b",
+						},
+					},
+					Status: batchv1.JobStatus{CompletionTime: &newer},
+				},
+			}
+			Expect(fakeClient.Create(context.Background(), jobs[0])).To(Succeed())
+			Expect(fakeClient.Create(context.Background(), jobs[1])).To(Succeed())
+			Expect(fakeClient.Create(context.Background(), jobs[2])).To(Succeed())
+
+			latest, err := dataFactory.findLatestTerminalJobsByRepo(
+				context.Background(), "test-namespace", "test-renovator",
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(HaveLen(2))
+			Expect(latest["repo-a"].Name).To(Equal("repo-a-newer"))
+			Expect(latest["repo-b"].Name).To(Equal("repo-b-only"))
+		})
+
+		It("keys the map by the same label value the runner writes (truncated/hashed for long names)", func() {
+			// Reproduces the bug where jobs are labeled with k8s.LabelValue(repo.Name)
+			// (a 63-char DNS-1035 normalization) but the aggregator was looking them
+			// up by the un-normalized repo.Name, missing any GitRepo whose name
+			// exceeded 63 characters.
+			longName := "this-is-a-very-long-repo-name-that-exceeds-the-63-character-dns-label-limit-yes"
+			Expect(len(longName)).To(BeNumerically(">", 63))
+
+			normalized := k8s.LabelValue(longName)
+			Expect(normalized).NotTo(Equal(longName))
+
+			now := metav1.NewTime(time.Now().Add(-1 * time.Minute))
+			Expect(fakeClient.Create(context.Background(), &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "long-repo-job",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelGitRepo:   normalized,
+					},
+				},
+				Status: batchv1.JobStatus{CompletionTime: &now},
+			})).To(Succeed())
+
+			latest, err := dataFactory.findLatestTerminalJobsByRepo(
+				context.Background(), "test-namespace", "test-renovator",
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(latest).To(HaveLen(1))
+			Expect(latest[normalized].Name).To(Equal("long-repo-job"))
+		})
+	})
+
+	Describe("GetPRActivityForRenovator cache", func() {
+		It("returns the same summary for repeated calls without re-listing jobs", func() {
+			now := metav1.NewTime(time.Now().Add(-1 * time.Minute))
+			Expect(fakeClient.Create(context.Background(), &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cached-job",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelGitRepo:   "test-repo-a",
+					},
+				},
+				Status: batchv1.JobStatus{CompletionTime: &now},
+			})).To(Succeed())
+
+			ctx := context.Background()
+			opts := ListOptions{Namespace: "test-namespace", Renovator: "test-renovator"}
+
+			first, err := dataFactory.GetPRActivityForRenovator(ctx, opts)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeClient.Delete(context.Background(), &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cached-job",
+					Namespace: "test-namespace",
+				},
+			})).To(Succeed())
+
+			second, err := dataFactory.GetPRActivityForRenovator(ctx, opts)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(second).To(Equal(first))
 		})
 	})
 })

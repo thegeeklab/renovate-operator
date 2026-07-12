@@ -109,6 +109,10 @@ type WebView struct {
 	GitRepoCount  int
 	RunnerName    string
 	DiscoveryName string
+	OpenPRs       int
+	NeedsApproval int
+	UnchangedPRs  int
+	HasRecentPR   bool
 }
 
 // GitRepoInfo is the view-layer representation of a GitRepo.
