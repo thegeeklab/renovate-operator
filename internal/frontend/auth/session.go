@@ -124,7 +124,6 @@ func SetSessionData(ctx context.Context, session *scs.SessionManager, data Sessi
 
 // SetAPISessionData stores session data in the request context for API token authentication.
 // This is used for Bearer token authentication where no cookie session is created.
-// API sessions do not expire since tokens (PATs) are validated on each request.
 func SetAPISessionData(ctx context.Context, data SessionData) context.Context {
 	return context.WithValue(ctx, apiSessionKey, data)
 }

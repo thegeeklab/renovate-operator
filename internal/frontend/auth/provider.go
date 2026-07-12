@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/alexedwards/scs/v2"
+	"github.com/maypok86/otter/v2"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -20,6 +21,11 @@ var (
 	ErrInvalidProvider = errors.New("invalid provider")
 	ErrNoRefreshToken  = errors.New("no refresh token available")
 	ErrInvalidToken    = errors.New("invalid token")
+)
+
+const (
+	defaultTokenCacheTTL = 5 * time.Minute
+	defaultTokenCacheMax = 1000
 )
 
 type ProviderConfig struct {
@@ -66,14 +72,21 @@ type Manager struct {
 	session      *scs.SessionManager
 	intended     bool
 	refreshGroup singleflight.Group
+	patCache     *otter.Cache[string, *SessionData]
 }
 
 func NewManager(secureCookies bool) *Manager {
 	session := NewSessionManager(secureCookies)
 
+	patCache := otter.Must(&otter.Options[string, *SessionData]{
+		ExpiryCalculator: otter.ExpiryWriting[string, *SessionData](defaultTokenCacheTTL),
+		MaximumSize:      defaultTokenCacheMax,
+	})
+
 	return &Manager{
 		providers: make(map[string]AuthProvider),
 		session:   session,
+		patCache:  patCache,
 	}
 }
 

@@ -213,7 +213,26 @@ func (p *GitHubProvider) fetchPrimaryEmailWithToken(ctx context.Context, token s
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
 
-	resp, err := p.httpClient.Do(req)
+	return p.fetchPrimaryEmailFromResponse(req, p.httpClient)
+}
+
+func (p *GitHubProvider) fetchPrimaryEmail(ctx context.Context, client *http.Client) (string, error) {
+	apiURL := p.apiURL()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL+"/user/emails", nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	return p.fetchPrimaryEmailFromResponse(req, client)
+}
+
+// fetchPrimaryEmailFromResponse fetches and parses the primary email from the GitHub emails API.
+func (p *GitHubProvider) fetchPrimaryEmailFromResponse(req *http.Request, client *http.Client) (string, error) {
+	resp, err := client.Do(req)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch emails: %w", err)
 	}
@@ -306,54 +325,6 @@ func (p *GitHubProvider) fetchUser(ctx context.Context, client *http.Client) (*g
 	}
 
 	return &user, nil
-}
-
-func (p *GitHubProvider) fetchPrimaryEmail(ctx context.Context, client *http.Client) (string, error) {
-	apiURL := p.apiURL()
-
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL+"/user/emails", nil)
-	if err != nil {
-		return "", fmt.Errorf("failed to create request: %w", err)
-	}
-
-	req.Header.Set("Accept", "application/vnd.github+json")
-	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
-
-	resp, err := client.Do(req)
-	if err != nil {
-		return "", fmt.Errorf("failed to fetch emails: %w", err)
-	}
-	defer resp.Body.Close()
-
-	if resp.StatusCode != http.StatusOK {
-		_, _ = io.Copy(io.Discard, resp.Body)
-
-		return "", fmt.Errorf("%w: %d", errUnexpectedStatus, resp.StatusCode)
-	}
-
-	var emails []struct {
-		Email    string `json:"email"`
-		Primary  bool   `json:"primary"`
-		Verified bool   `json:"verified"`
-	}
-
-	if err := json.NewDecoder(resp.Body).Decode(&emails); err != nil {
-		return "", fmt.Errorf("failed to decode emails: %w", err)
-	}
-
-	for _, e := range emails {
-		if e.Primary && e.Verified {
-			return e.Email, nil
-		}
-	}
-
-	for _, e := range emails {
-		if e.Verified {
-			return e.Email, nil
-		}
-	}
-
-	return "", nil
 }
 
 func (p *GitHubProvider) apiURL() string {

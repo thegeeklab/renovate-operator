@@ -59,7 +59,6 @@ func authCheckMiddleware(manager *Manager) func(http.Handler) http.Handler {
 				return
 			}
 
-			// Check for Bearer token authentication on API paths
 			if IsAPIPath(r.URL.Path) {
 				if token := extractBearerToken(r); token != "" {
 					if !handleBearerTokenAuth(manager, w, r, next, token) {
@@ -96,7 +95,6 @@ func handleBearerTokenAuth(
 		return false
 	}
 
-	// Inject API session into context
 	ctx := SetAPISessionData(r.Context(), *session)
 	next.ServeHTTP(w, r.WithContext(ctx))
 
@@ -159,6 +157,11 @@ func extractBearerToken(r *http.Request) string {
 // validateBearerToken validates a Bearer token against all registered providers.
 // Returns the session data if validation succeeds, or an error if all providers reject the token.
 func (m *Manager) validateBearerToken(ctx context.Context, token string) (*SessionData, error) {
+	cacheKey := HashAccessToken(token)
+	if cached, found := m.patCache.GetIfPresent(cacheKey); found {
+		return cached, nil
+	}
+
 	m.mu.RLock()
 
 	providers := make([]AuthProvider, 0, len(m.providers))
@@ -171,14 +174,18 @@ func (m *Manager) validateBearerToken(ctx context.Context, token string) (*Sessi
 	for _, provider := range providers {
 		user, err := provider.ValidateToken(ctx, token)
 		if err == nil && user != nil {
-			return &SessionData{
+			session := &SessionData{
 				Email:       user.Email,
 				Name:        user.Name,
 				Subject:     user.Subject,
 				AvatarURL:   user.AvatarURL,
 				AccessToken: user.AccessToken,
 				Provider:    user.Provider,
-			}, nil
+			}
+
+			m.patCache.Set(cacheKey, session)
+
+			return session, nil
 		}
 	}
 
