@@ -265,6 +265,10 @@ func (m *mockAuthProvider) RefreshToken(_ context.Context, _ string) (*auth.Auth
 	return nil, errors.New("not implemented")
 }
 
+func (m *mockAuthProvider) ValidateToken(_ context.Context, _ string) (*auth.AuthenticatedUser, error) {
+	return nil, errors.New("not implemented")
+}
+
 func (m *mockAuthProvider) GetUserRepos(_ context.Context, _ *http.Client) (map[string]bool, error) {
 	return nil, errors.New("not implemented")
 }

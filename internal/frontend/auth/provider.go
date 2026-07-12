@@ -19,6 +19,7 @@ const (
 var (
 	ErrInvalidProvider = errors.New("invalid provider")
 	ErrNoRefreshToken  = errors.New("no refresh token available")
+	ErrInvalidToken    = errors.New("invalid token")
 )
 
 type ProviderConfig struct {
@@ -54,6 +55,7 @@ type AuthProvider interface {
 	LoginURL(state string) string
 	HandleCallback(ctx context.Context, code string) (*AuthenticatedUser, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*AuthenticatedUser, error)
+	ValidateToken(ctx context.Context, token string) (*AuthenticatedUser, error)
 	GetUserRepos(ctx context.Context, client *http.Client) (map[string]bool, error)
 	IsUserRepo(ctx context.Context, client *http.Client, fullName string) (bool, error)
 }

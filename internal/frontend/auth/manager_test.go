@@ -57,6 +57,20 @@ func (p *testAuthProvider) RefreshToken(ctx context.Context, refreshToken string
 	}, nil
 }
 
+func (p *testAuthProvider) ValidateToken(ctx context.Context, token string) (*AuthenticatedUser, error) {
+	if token == "valid-pat" {
+		return &AuthenticatedUser{
+			Email:       "test@example.com",
+			Name:        "Test User",
+			Subject:     "sub-123",
+			AccessToken: token,
+			Provider:    p.name,
+		}, nil
+	}
+
+	return nil, ErrInvalidToken
+}
+
 func (p *testAuthProvider) GetUserRepos(
 	ctx context.Context,
 	client *http.Client,

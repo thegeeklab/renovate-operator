@@ -59,37 +59,130 @@ func authCheckMiddleware(manager *Manager) func(http.Handler) http.Handler {
 				return
 			}
 
-			sessionManager := manager.SessionManager()
+			// Check for Bearer token authentication on API paths
+			if IsAPIPath(r.URL.Path) {
+				if token := extractBearerToken(r); token != "" {
+					if !handleBearerTokenAuth(manager, w, r, next, token) {
+						return
+					}
 
-			if !IsAuthenticated(r.Context(), sessionManager) {
-				writeUnauthorizedResponse(w, r, "unauthorized")
-
-				return
+					return
+				}
 			}
 
-			providerName := GetProvider(r.Context(), sessionManager)
-
-			_, ok := manager.Get(providerName)
-			if !ok {
-				writeUnauthorizedResponse(w, r, "invalid provider")
-
-				return
-			}
-
-			session, ok := GetSessionData(r.Context(), sessionManager)
-			if !ok {
-				writeUnauthorizedResponse(w, r, "unauthorized")
-
-				return
-			}
-
-			if !manager.ensureValidToken(w, r, sessionManager, providerName, session) {
+			if !handleCookieAuth(manager, w, r) {
 				return
 			}
 
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// handleBearerTokenAuth validates a Bearer token and injects the session into the request context.
+// Returns true if the request should continue, false if a response was already written.
+func handleBearerTokenAuth(
+	manager *Manager,
+	w http.ResponseWriter,
+	r *http.Request,
+	next http.Handler,
+	token string,
+) bool {
+	session, err := manager.validateBearerToken(r.Context(), token)
+	if err != nil {
+		authLog.Error(err, "Bearer token validation failed")
+		writeUnauthorizedResponse(w, r, "invalid token")
+
+		return false
+	}
+
+	// Inject API session into context
+	ctx := SetAPISessionData(r.Context(), *session)
+	next.ServeHTTP(w, r.WithContext(ctx))
+
+	return true
+}
+
+// handleCookieAuth validates the cookie-based session and ensures the token is valid.
+// Returns true if the request should continue, false if a response was already written.
+func handleCookieAuth(
+	manager *Manager,
+	w http.ResponseWriter,
+	r *http.Request,
+) bool {
+	sessionManager := manager.SessionManager()
+
+	if !IsAuthenticated(r.Context(), sessionManager) {
+		writeUnauthorizedResponse(w, r, "unauthorized")
+
+		return false
+	}
+
+	providerName := GetProvider(r.Context(), sessionManager)
+
+	_, ok := manager.Get(providerName)
+	if !ok {
+		writeUnauthorizedResponse(w, r, "invalid provider")
+
+		return false
+	}
+
+	session, ok := GetSessionData(r.Context(), sessionManager)
+	if !ok {
+		writeUnauthorizedResponse(w, r, "unauthorized")
+
+		return false
+	}
+
+	if !manager.ensureValidToken(w, r, sessionManager, providerName, session) {
+		return false
+	}
+
+	return true
+}
+
+// extractBearerToken extracts the Bearer token from the Authorization header.
+func extractBearerToken(r *http.Request) string {
+	auth := r.Header.Get("Authorization")
+	if auth == "" {
+		return ""
+	}
+
+	const bearerPrefix = "Bearer "
+	if len(auth) < len(bearerPrefix) || auth[:len(bearerPrefix)] != bearerPrefix {
+		return ""
+	}
+
+	return auth[len(bearerPrefix):]
+}
+
+// validateBearerToken validates a Bearer token against all registered providers.
+// Returns the session data if validation succeeds, or an error if all providers reject the token.
+func (m *Manager) validateBearerToken(ctx context.Context, token string) (*SessionData, error) {
+	m.mu.RLock()
+
+	providers := make([]AuthProvider, 0, len(m.providers))
+	for _, p := range m.providers {
+		providers = append(providers, p)
+	}
+
+	m.mu.RUnlock()
+
+	for _, provider := range providers {
+		user, err := provider.ValidateToken(ctx, token)
+		if err == nil && user != nil {
+			return &SessionData{
+				Email:       user.Email,
+				Name:        user.Name,
+				Subject:     user.Subject,
+				AvatarURL:   user.AvatarURL,
+				AccessToken: user.AccessToken,
+				Provider:    user.Provider,
+			}, nil
+		}
+	}
+
+	return nil, ErrInvalidToken
 }
 
 // ensureValidToken checks if the session token is valid and refreshes it if expired.

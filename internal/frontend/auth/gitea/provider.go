@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"code.gitea.io/sdk/gitea"
 	"github.com/cenkalti/backoff/v7"
 	"github.com/coreos/go-oidc/v3/oidc"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
@@ -165,6 +166,36 @@ func (p *GiteaProvider) RefreshToken(ctx context.Context, refreshToken string) (
 	}
 
 	return p.getUserFromToken(ctx, newToken)
+}
+
+func (p *GiteaProvider) ValidateToken(ctx context.Context, token string) (*auth.AuthenticatedUser, error) {
+	if token == "" {
+		return nil, auth.ErrInvalidToken
+	}
+
+	opts := []gitea.ClientOption{
+		gitea.SetToken(token),
+		gitea.SetHTTPClient(p.httpClient),
+	}
+
+	client, err := gitea.NewClient(p.forgeURL, opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create gitea client: %w", err)
+	}
+
+	user, _, err := client.GetMyUserInfo()
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate token: %w", err)
+	}
+
+	return &auth.AuthenticatedUser{
+		Email:       user.Email,
+		Name:        user.FullName,
+		Subject:     strconv.FormatInt(user.ID, 10),
+		AvatarURL:   user.AvatarURL,
+		AccessToken: token,
+		Provider:    p.name,
+	}, nil
 }
 
 func (p *GiteaProvider) getUserFromToken(ctx context.Context, token *oauth2.Token) (*auth.AuthenticatedUser, error) {

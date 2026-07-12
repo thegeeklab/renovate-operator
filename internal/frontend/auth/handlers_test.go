@@ -379,6 +379,10 @@ func (p *failingAuthProvider) RefreshToken(ctx context.Context, refreshToken str
 	return nil, errors.New("refresh failed")
 }
 
+func (p *failingAuthProvider) ValidateToken(ctx context.Context, token string) (*AuthenticatedUser, error) {
+	return nil, ErrInvalidToken
+}
+
 func (p *failingAuthProvider) GetUserRepos(
 	ctx context.Context,
 	client *http.Client,

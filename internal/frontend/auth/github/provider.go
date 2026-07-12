@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/cenkalti/backoff/v7"
+	"github.com/google/go-github/v89/github"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"golang.org/x/oauth2"
 	github_oauth "golang.org/x/oauth2/github"
@@ -158,6 +159,95 @@ func (p *GitHubProvider) RefreshToken(ctx context.Context, refreshToken string) 
 	}
 
 	return p.getUserFromToken(ctx, newToken)
+}
+
+func (p *GitHubProvider) ValidateToken(ctx context.Context, token string) (*auth.AuthenticatedUser, error) {
+	if token == "" {
+		return nil, auth.ErrInvalidToken
+	}
+
+	opts := []github.ClientOptionsFunc{
+		github.WithAuthToken(token),
+		github.WithTimeout(defaultHTTPTimeout),
+	}
+
+	apiURL := p.apiURL()
+	if apiURL != "https://api.github.com" {
+		opts = append(opts, github.WithEnterpriseURLs(apiURL, apiURL))
+	}
+
+	client, err := github.NewClient(opts...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to create github client: %w", err)
+	}
+
+	user, _, err := client.Users.Get(ctx, "")
+	if err != nil {
+		return nil, fmt.Errorf("failed to validate token: %w", err)
+	}
+
+	email := user.GetEmail()
+	if email == "" {
+		email, _ = p.fetchPrimaryEmailWithToken(ctx, token)
+	}
+
+	return &auth.AuthenticatedUser{
+		Email:       email,
+		Name:        user.GetName(),
+		Subject:     strconv.FormatInt(user.GetID(), 10),
+		AvatarURL:   user.GetAvatarURL(),
+		AccessToken: token,
+		Provider:    p.name,
+	}, nil
+}
+
+func (p *GitHubProvider) fetchPrimaryEmailWithToken(ctx context.Context, token string) (string, error) {
+	apiURL := p.apiURL()
+
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, apiURL+"/user/emails", nil)
+	if err != nil {
+		return "", fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Accept", "application/vnd.github+json")
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("X-GitHub-Api-Version", "2022-11-28")
+
+	resp, err := p.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("failed to fetch emails: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		_, _ = io.Copy(io.Discard, resp.Body)
+
+		return "", fmt.Errorf("%w: %d", errUnexpectedStatus, resp.StatusCode)
+	}
+
+	var emails []struct {
+		Email    string `json:"email"`
+		Primary  bool   `json:"primary"`
+		Verified bool   `json:"verified"`
+	}
+
+	if err := json.NewDecoder(resp.Body).Decode(&emails); err != nil {
+		return "", fmt.Errorf("failed to decode emails: %w", err)
+	}
+
+	for _, e := range emails {
+		if e.Primary && e.Verified {
+			return e.Email, nil
+		}
+	}
+
+	for _, e := range emails {
+		if e.Verified {
+			return e.Email, nil
+		}
+	}
+
+	return "", nil
 }
 
 func (p *GitHubProvider) getUserFromToken(ctx context.Context, token *oauth2.Token) (*auth.AuthenticatedUser, error) {
