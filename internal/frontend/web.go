@@ -69,6 +69,7 @@ func (h *WebHandler) RegisterRoutes(router chi.Router) {
 	router.Get("/gitrepo", h.HandleGitRepoView)
 	router.Get("/gitrepos", h.HandleGitReposPartial)
 	router.Get("/renovators/count", h.HandleRenovatorCount)
+	router.Get("/renovators/prs", h.HandleRenovatorPRs)
 	router.Get("/joblogs", h.HandleJobLogs)
 	router.Get("/joblogs/download", h.HandleJobLogsDownload)
 }
@@ -222,14 +223,16 @@ func (h *WebHandler) buildRenovatorSummaries(
 				runners     []RunnerInfo
 				discoveries []DiscoveryInfo
 				repos       []viewmodel.GitRepoInfo
+				prActivity  PRActivitySummary
 			)
 
-			var runnersErr, discoveriesErr, reposErr error
+			var runnersErr, discoveriesErr, reposErr, prErr error
 
 			queries := []func(){
 				func() { runners, runnersErr = h.dataFactory.GetRunners(ctx, renOpts) },
 				func() { discoveries, discoveriesErr = h.dataFactory.GetDiscoveries(ctx, renOpts) },
 				func() { repos, reposErr = h.dataFactory.GetGitRepos(ctx, renOpts) },
+				func() { prActivity, prErr = h.dataFactory.GetPRActivityForRenovator(ctx, renOpts) },
 			}
 
 			var inner sync.WaitGroup
@@ -246,7 +249,7 @@ func (h *WebHandler) buildRenovatorSummaries(
 
 			inner.Wait()
 
-			for _, qErr := range []error{runnersErr, discoveriesErr, reposErr} {
+			for _, qErr := range []error{runnersErr, discoveriesErr, reposErr, prErr} {
 				if qErr != nil {
 					frontendLog.Error(qErr, "Failed to load renovator summary data",
 						"renovator", ren.Name, "namespace", ren.Namespace)
@@ -264,6 +267,10 @@ func (h *WebHandler) buildRenovatorSummaries(
 				GitRepoCount:  len(repos),
 				RunnerName:    "-",
 				DiscoveryName: "-",
+				OpenPRs:       prActivity.Open,
+				NeedsApproval: prActivity.NeedsApproval,
+				UnchangedPRs:  prActivity.Unchanged,
+				HasRecentPR:   prActivity.HasRecentData,
 			}
 			if len(runners) > 0 {
 				summary.RunnerName = runners[0].Name
@@ -356,6 +363,35 @@ func (h *WebHandler) HandleRenovatorCount(w http.ResponseWriter, r *http.Request
 
 	w.Header().Set("Content-Type", "text/html")
 	_ = view.RenovatorCountBadge(opts.Namespace, opts.Renovator, len(repos)).Render(r.Context(), w)
+}
+
+// HandleRenovatorPRs returns a self-reloading PR-count badge partial for a
+// Renovator. Mirrors HandleRenovatorCount; the aggregation is cached briefly
+// so SSE-triggered refreshes within the cache window coalesce.
+func (h *WebHandler) HandleRenovatorPRs(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	opts := getOptionsFromRequest(r)
+
+	if opts.Namespace == "" || opts.Renovator == "" {
+		http.Error(w, "Namespace and renovator parameters are required", http.StatusBadRequest)
+
+		return
+	}
+
+	activity, err := h.dataFactory.GetPRActivityForRenovator(ctx, opts)
+	if err != nil {
+		frontendLog.Error(err, "Failed to load PR activity", "namespace", opts.Namespace, "renovator", opts.Renovator)
+		http.Error(w, "Failed to load PR activity", http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	_ = view.RenovatorPRBadge(
+		opts.Namespace, opts.Renovator,
+		activity.Open, activity.NeedsApproval, activity.Unchanged, activity.HasRecentData,
+	).Render(r.Context(), w)
 }
 
 func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
@@ -462,14 +498,14 @@ func (h *WebHandler) buildJobLogData(
 
 	defer stream.Close()
 
-	content, ioErr := io.ReadAll(io.LimitReader(stream, maxLogReadSize))
+	content, ioErr := readJobLogStream(stream)
 	if ioErr != nil {
 		data.Message = "Failed to read log stream from pod."
 
 		return data
 	}
 
-	data.Content = string(content)
+	data.Content = content
 	if len(data.Content) == 0 && isRunning {
 		data.Message = msgInitializing
 	} else if len(data.Content) == maxLogReadSize {

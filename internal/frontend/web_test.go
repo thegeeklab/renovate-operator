@@ -200,6 +200,40 @@ var _ = Describe("WebHandler", func() {
 		})
 	})
 
+	Describe("HandleRenovatorPRs", func() {
+		It("should handle renovator PR requests with empty activity", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/renovators/prs?namespace=test-namespace&renovator=test-uid-123",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleRenovatorPRs(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+		})
+
+		It("should return bad request for missing namespace parameter", func() {
+			req := httptest.NewRequest(http.MethodGet, "/renovators/prs?renovator=test-uid", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleRenovatorPRs(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("should return bad request for missing renovator parameter", func() {
+			req := httptest.NewRequest(http.MethodGet, "/renovators/prs?namespace=test-namespace", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleRenovatorPRs(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+	})
+
 	Describe("HandleGitRepoView", func() {
 		It("should return bad request for missing parameters", func() {
 			req := httptest.NewRequest(http.MethodGet, "/gitrepo", nil)
