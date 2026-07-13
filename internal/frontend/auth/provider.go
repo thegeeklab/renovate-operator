@@ -67,12 +67,13 @@ type AuthProvider interface {
 }
 
 type Manager struct {
-	mu           sync.RWMutex
-	providers    map[string]AuthProvider
-	session      *scs.SessionManager
-	intended     bool
-	refreshGroup singleflight.Group
-	patCache     *otter.Cache[string, *SessionData]
+	mu            sync.RWMutex
+	providers     map[string]AuthProvider
+	session       *scs.SessionManager
+	intended      bool
+	refreshGroup  singleflight.Group
+	validateGroup singleflight.Group
+	patCache      *otter.Cache[string, *SessionData]
 }
 
 func NewManager(secureCookies bool) *Manager {

@@ -17,9 +17,13 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"golang.org/x/oauth2"
 	github_oauth "golang.org/x/oauth2/github"
+	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
-var errNoRefreshToken = errors.New("no refresh_token in token response")
+var (
+	errNoRefreshToken = errors.New("no refresh_token in token response")
+	providerLog       = logf.Log.WithName("auth").WithName("github")
+)
 
 const (
 	defaultPageSize    = 50
@@ -189,7 +193,12 @@ func (p *GitHubProvider) ValidateToken(ctx context.Context, token string) (*auth
 
 	email := user.GetEmail()
 	if email == "" {
-		email, _ = p.fetchPrimaryEmailWithToken(ctx, token)
+		var emailErr error
+
+		email, emailErr = p.fetchPrimaryEmailWithToken(ctx, token)
+		if emailErr != nil {
+			providerLog.Error(emailErr, "Failed to fetch primary email, session will have empty email")
+		}
 	}
 
 	return &auth.AuthenticatedUser{

@@ -200,21 +200,37 @@ func (m *Manager) validateBearerToken(ctx context.Context, token, providerName s
 		return nil, ErrInvalidProvider
 	}
 
-	user, err := provider.ValidateToken(ctx, token)
-	if err != nil || user == nil {
+	result, err, _ := m.validateGroup.Do(cacheKey, func() (any, error) {
+		user, validateErr := provider.ValidateToken(ctx, token)
+		if validateErr != nil {
+			return nil, validateErr
+		}
+
+		if user == nil {
+			return nil, ErrInvalidToken
+		}
+
+		session := &SessionData{
+			Email:       user.Email,
+			Name:        user.Name,
+			Subject:     user.Subject,
+			AvatarURL:   user.AvatarURL,
+			AccessToken: user.AccessToken,
+			Provider:    user.Provider,
+		}
+
+		m.patCache.Set(cacheKey, session)
+
+		return session, nil
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	session, ok := result.(*SessionData)
+	if !ok {
 		return nil, ErrInvalidToken
 	}
-
-	session := &SessionData{
-		Email:       user.Email,
-		Name:        user.Name,
-		Subject:     user.Subject,
-		AvatarURL:   user.AvatarURL,
-		AccessToken: user.AccessToken,
-		Provider:    user.Provider,
-	}
-
-	m.patCache.Set(cacheKey, session)
 
 	return session, nil
 }
