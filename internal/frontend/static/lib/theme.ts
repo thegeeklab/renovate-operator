@@ -42,10 +42,6 @@ function updateSwitcherUI(mode: ThemeMode): void {
   })
 }
 
-export function getTheme(): ThemeMode {
-  return getStoredMode()
-}
-
 export function setTheme(mode: ThemeMode): void {
   setPersisted(STORAGE_KEY, mode)
   applyClass(resolveEffective(mode))
