@@ -39,6 +39,9 @@ var icons = []iconDef{
 	{fileName: "circle-plus"},
 	{fileName: "circle-x"},
 	{fileName: "x"},
+	{fileName: "sun"},
+	{fileName: "moon"},
+	{fileName: "monitor"},
 }
 
 var (

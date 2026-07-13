@@ -40,7 +40,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-col h-full w-full\"><div class=\"bg-white shadow-sm z-10 shrink-0\"><div class=\"w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between\"><div class=\"flex flex-col justify-center overflow-hidden pr-4\"><h2 class=\"text-2xl font-bold tracking-tight text-gray-900 truncate\" data-focus-target>")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<div class=\"flex flex-col h-full w-full\"><div class=\"bg-white dark:bg-gray-800 shadow-sm z-10 shrink-0\"><div class=\"w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between\"><div class=\"flex flex-col justify-center overflow-hidden pr-4\"><h2 class=\"text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 truncate\" data-focus-target>")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -53,14 +53,14 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</h2><p class=\"mt-1 text-sm text-gray-500 font-medium truncate\">Namespace: ")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 2, "</h2><p class=\"mt-1 text-sm text-gray-500 dark:text-gray-400 font-medium truncate\">Namespace: ")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(data.Repo.Namespace)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 23, Col: 96}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 23, Col: 115}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -96,7 +96,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span class=\"hidden sm:inline\">Back to Dashboard</span> <span class=\"sm:hidden\">Back</span></button></div></div></div><div class=\"flex-1 min-h-0 w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col\"><div class=\"border-b border-gray-200 pb-3 mb-6 shrink-0\"><h3 class=\"text-lg font-semibold leading-6 text-gray-900\">Recent Jobs</h3></div><div data-component=\"job-list\" data-repo-id=\"")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 6, "<span class=\"hidden sm:inline\">Back to Dashboard</span> <span class=\"sm:hidden\">Back</span></button></div></div></div><div class=\"flex-1 min-h-0 w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col\"><div class=\"border-b border-gray-200 dark:border-gray-700 pb-3 mb-6 shrink-0\"><h3 class=\"text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100\">Recent Jobs</h3></div><div data-component=\"job-list\" data-repo-id=\"")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -193,20 +193,20 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"><div class=\"min-w-0 flex-1\"><p class=\"text-sm font-medium text-gray-900 truncate\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 15, "\"><div class=\"min-w-0 flex-1\"><p class=\"text-sm font-medium text-gray-900 dark:text-gray-100 truncate\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(job.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 75, Col: 75}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 75, Col: 94}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</p><p class=\"text-xs text-gray-500\">")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 16, "</p><p class=\"text-xs text-gray-500 dark:text-gray-400\">")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -263,16 +263,16 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		} else {
-			templ_7745c5c3_Err = EmptyState("No Jobs Found", "Renovate hasn't triggered any runs for this repository yet.", "py-6 border-2 border-dashed border-gray-200 rounded-lg").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = EmptyState("No Jobs Found", "Renovate hasn't triggered any runs for this repository yet.", "py-6 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div><div class=\"lg:col-span-8 xl:col-span-9 flex flex-col h-full min-h-0\"><div data-cloak data-role=\"placeholder\" class=\"flex flex-col items-center justify-center h-full text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 22, "</div><div class=\"lg:col-span-8 xl:col-span-9 flex flex-col h-full min-h-0\"><div data-cloak data-role=\"placeholder\" class=\"flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = IconFileText("h-12 w-12 mb-3 text-gray-300").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = IconFileText("h-12 w-12 mb-3 text-gray-300 dark:text-gray-600").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

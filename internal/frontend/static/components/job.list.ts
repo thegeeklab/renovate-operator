@@ -80,9 +80,9 @@ export class JobListComponent {
     this.jobButtons.forEach((btn) => {
       const name = getData(btn, "job-name")
       if (name === this.selectedJob) {
-        btn.classList.add("!border-blue-400", "bg-gray-50")
+        btn.classList.add("!border-blue-400", "bg-gray-50", "dark:bg-gray-700")
       } else {
-        btn.classList.remove("!border-blue-400", "bg-gray-50")
+        btn.classList.remove("!border-blue-400", "bg-gray-50", "dark:bg-gray-700")
       }
     })
 

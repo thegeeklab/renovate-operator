@@ -14,13 +14,13 @@ func getBaseJobClass(status viewmodel.Status) string {
 
 templ GitRepoView(data viewmodel.GitRepoViewData) {
 	<div class="flex flex-col h-full w-full">
-		<div class="bg-white shadow-sm z-10 shrink-0">
+		<div class="bg-white dark:bg-gray-800 shadow-sm z-10 shrink-0">
 			<div class="w-full px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
 				<div class="flex flex-col justify-center overflow-hidden pr-4">
-					<h2 class="text-2xl font-bold tracking-tight text-gray-900 truncate" data-focus-target>
+					<h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 truncate" data-focus-target>
 						{ data.Repo.FullName }
 					</h2>
-					<p class="mt-1 text-sm text-gray-500 font-medium truncate">Namespace: { data.Repo.Namespace }</p>
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400 font-medium truncate">Namespace: { data.Repo.Namespace }</p>
 				</div>
 				<div class="shrink-0">
 					<button
@@ -38,8 +38,8 @@ templ GitRepoView(data viewmodel.GitRepoViewData) {
 			</div>
 		</div>
 		<div class="flex-1 min-h-0 w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col">
-			<div class="border-b border-gray-200 pb-3 mb-6 shrink-0">
-				<h3 class="text-lg font-semibold leading-6 text-gray-900">Recent Jobs</h3>
+			<div class="border-b border-gray-200 dark:border-gray-700 pb-3 mb-6 shrink-0">
+				<h3 class="text-lg font-semibold leading-6 text-gray-900 dark:text-gray-100">Recent Jobs</h3>
 			</div>
 			<div
 				data-component="job-list"
@@ -72,8 +72,8 @@ templ GitRepoView(data viewmodel.GitRepoViewData) {
 										data-job-name={ job.Name }
 									>
 										<div class="min-w-0 flex-1">
-											<p class="text-sm font-medium text-gray-900 truncate">{ job.Name }</p>
-											<p class="text-xs text-gray-500">
+											<p class="text-sm font-medium text-gray-900 dark:text-gray-100 truncate">{ job.Name }</p>
+											<p class="text-xs text-gray-500 dark:text-gray-400">
 												@Tooltip(job.CreatedAt.Format("Jan 02, 2006 15:04")) {
 													<span class="truncate">
 														{ humanize.Time(job.CreatedAt) }
@@ -89,16 +89,16 @@ templ GitRepoView(data viewmodel.GitRepoViewData) {
 							}
 						</ul>
 					} else {
-						@EmptyState("No Jobs Found", "Renovate hasn't triggered any runs for this repository yet.", "py-6 border-2 border-dashed border-gray-200 rounded-lg")
+						@EmptyState("No Jobs Found", "Renovate hasn't triggered any runs for this repository yet.", "py-6 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg")
 					}
 				</div>
 				<div class="lg:col-span-8 xl:col-span-9 flex flex-col h-full min-h-0">
 					<div
 						data-cloak
 						data-role="placeholder"
-						class="flex flex-col items-center justify-center h-full text-gray-400 border-2 border-dashed border-gray-200 rounded-lg bg-gray-50"
+						class="flex flex-col items-center justify-center h-full text-gray-400 dark:text-gray-500 border-2 border-dashed border-gray-200 dark:border-gray-700 rounded-lg bg-gray-50 dark:bg-gray-900"
 					>
-						@IconFileText("h-12 w-12 mb-3 text-gray-300")
+						@IconFileText("h-12 w-12 mb-3 text-gray-300 dark:text-gray-600")
 						<p class="text-sm">Select a job from the list to view its logs</p>
 					</div>
 					<div

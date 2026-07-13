@@ -23,9 +23,9 @@ func btnGhostLabel() string {
 
 func btnOutline() string {
 	return btnBase() +
-		" inline-flex items-center text-center rounded-md bg-white px-3 py-2" +
-		" text-sm font-semibold text-gray-900 shadow-sm ring-1 ring-inset" +
-		" ring-gray-300 hover:bg-gray-50 gap-1"
+		" inline-flex items-center text-center rounded-md bg-white dark:bg-gray-800 px-3 py-2" +
+		" text-sm font-semibold text-gray-900 dark:text-gray-100 shadow-sm ring-1 ring-inset" +
+		" ring-gray-300 dark:ring-gray-600 hover:bg-gray-50 dark:hover:bg-gray-700 gap-1"
 }
 
 func btnLink() string {
@@ -33,11 +33,11 @@ func btnLink() string {
 }
 
 func statusCardBase() string {
-	return "relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white shadow-sm border-l-4 hover:border-blue-400"
+	return "relative flex items-center space-x-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm border-l-4 hover:border-blue-400"
 }
 
 func dropdownMenu() string {
-	return "hidden fixed z-50 min-w-36 rounded-md ring-1 ring-gray-200 shadow-lg py-1 focus:outline-none"
+	return "hidden fixed z-50 min-w-36 rounded-md ring-1 ring-gray-200 dark:ring-gray-700 shadow-lg py-1 focus:outline-none"
 }
 
 func dropdownMenuItem() string {
@@ -45,7 +45,7 @@ func dropdownMenuItem() string {
 }
 
 func skeletonBase() string {
-	return "animate-pulse rounded bg-gray-200"
+	return "animate-pulse rounded bg-gray-200 dark:bg-gray-700"
 }
 
 func skeletonDark() string {
@@ -201,7 +201,7 @@ func SkeletonRepoCard() templ.Component {
 			templ_7745c5c3_Var8 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div aria-hidden=\"true\" class=\"relative flex items-center space-x-3 rounded-lg border border-gray-300 bg-white shadow-sm border-l-4 border-l-gray-200 px-4 py-3\"><div class=\"min-w-0 flex-1\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 10, "<div aria-hidden=\"true\" class=\"relative flex items-center space-x-3 rounded-lg border border-gray-300 dark:border-gray-700 bg-white dark:bg-gray-800 shadow-sm border-l-4 border-l-gray-200 dark:border-l-gray-700 px-4 py-3\"><div class=\"min-w-0 flex-1\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -271,7 +271,7 @@ func SkeletonRepoCard() templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		var templ_7745c5c3_Var15 = []any{skeletonBase() + " h-6 w-20 shrink-0 rounded-full ring-1 ring-inset ring-gray-200"}
+		var templ_7745c5c3_Var15 = []any{skeletonBase() + " h-6 w-20 shrink-0 rounded-full ring-1 ring-inset ring-gray-200 dark:ring-gray-700"}
 		templ_7745c5c3_Err = templ.RenderCSSItems(ctx, templ_7745c5c3_Buffer, templ_7745c5c3_Var15...)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err

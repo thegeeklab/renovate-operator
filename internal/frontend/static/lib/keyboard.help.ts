@@ -74,10 +74,10 @@ function ensureInstance(): void {
         <div class="flex items-center justify-center min-h-screen px-4 py-8 text-center sm:block sm:p-0">
           <div class="fixed inset-0 bg-gray-900/50 backdrop-blur-sm transition-opacity" data-close aria-hidden="true"></div>
           <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
-          <div class="relative inline-block align-middle bg-white rounded-lg text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-2xl sm:w-full z-10">
-            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200">
-              <h3 id="keyboard-help-title" class="text-base font-semibold text-gray-900">Keyboard shortcuts</h3>
-              <button type="button" data-close data-autofocus class="text-gray-400 hover:text-gray-600 focus:outline-none cursor-pointer rounded-md p-1.5 hover:bg-gray-100 transition-colors" aria-label="Close">
+          <div class="relative inline-block align-middle bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-2xl sm:w-full z-10">
+            <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
+              <h3 id="keyboard-help-title" class="text-base font-semibold text-gray-900 dark:text-gray-100">Keyboard shortcuts</h3>
+              <button type="button" data-close data-autofocus class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none cursor-pointer rounded-md p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" aria-label="Close">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
@@ -101,16 +101,16 @@ function renderSections(): string {
   return sections
     .map(
       (section) => `
-        <div class="rounded-lg border border-gray-200 overflow-hidden">
-          <div class="bg-gray-50 px-4 py-2 border-b border-gray-200">
-            <h4 class="text-sm font-semibold text-gray-900">${section.title}</h4>
+        <div class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+          <div class="bg-gray-50 dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
+            <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">${section.title}</h4>
           </div>
           <div class="flex flex-col">
             ${section.shortcuts
               .map(
                 (shortcut) => `
-              <div class="flex items-center justify-between gap-4 px-4 py-2 border-b border-gray-100 last:border-b-0">
-                <span class="text-sm text-gray-700">${shortcut.description}</span>
+              <div class="flex items-center justify-between gap-4 px-4 py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+                <span class="text-sm text-gray-700 dark:text-gray-300">${shortcut.description}</span>
                 <div class="flex items-center gap-1 shrink-0">
                   ${renderKeys(shortcut.keys)}
                 </div>
