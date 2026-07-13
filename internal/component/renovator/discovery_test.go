@@ -788,5 +788,146 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(existingDiscovery.Spec.ExtraVolumes).To(HaveLen(1))
 			Expect(existingDiscovery.Spec.ExtraVolumes[0].Name).To(Equal("discovery-vol"))
 		})
+
+		It("should inherit RuntimeClassName from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						RuntimeClassName: new("gvisor"),
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.RuntimeClassName).NotTo(BeNil())
+			Expect(*existingDiscovery.Spec.RuntimeClassName).To(Equal("gvisor"))
+		})
+
+		It("should override global RuntimeClassName with discovery-specific RuntimeClassName", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						RuntimeClassName: new("gvisor"),
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							RuntimeClassName: new("kata"),
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.RuntimeClassName).NotTo(BeNil())
+			Expect(*existingDiscovery.Spec.RuntimeClassName).To(Equal("kata"))
+		})
+
+		It("should inherit PodAnnotations from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						PodAnnotations: map[string]string{"prometheus.io/scrape": "true"},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.PodAnnotations).To(HaveKeyWithValue("prometheus.io/scrape", "true"))
+		})
+
+		It("should override global PodAnnotations with discovery-specific PodAnnotations", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						PodAnnotations: map[string]string{"prometheus.io/scrape": "true"},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							PodAnnotations: map[string]string{"istio-injection": "enabled"},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.PodAnnotations).To(HaveKeyWithValue("istio-injection", "enabled"))
+			Expect(existingDiscovery.Spec.PodAnnotations).NotTo(HaveKey("prometheus.io/scrape"))
+		})
+
+		It("should inherit ScratchVolume from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
+							Enabled: true,
+							Path:    "/scratch",
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.ScratchVolume).NotTo(BeNil())
+			Expect(existingDiscovery.Spec.ScratchVolume.Enabled).To(BeTrue())
+			Expect(existingDiscovery.Spec.ScratchVolume.Path).To(Equal("/scratch"))
+		})
+
+		It("should override global ScratchVolume with discovery-specific ScratchVolume", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
+							Enabled: true,
+							Path:    "/scratch",
+						},
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
+								Enabled: true,
+								Path:    "/discovery-scratch",
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.ScratchVolume).NotTo(BeNil())
+			Expect(existingDiscovery.Spec.ScratchVolume.Path).To(Equal("/discovery-scratch"))
+		})
 	})
 })

@@ -538,5 +538,71 @@ var _ = Describe("ReconcileJob", func() {
 
 			Expect(job.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "extra-vol")))
 		})
+
+		It("should propagate RuntimeClassName to the job pod spec", func() {
+			instance.Spec.RuntimeClassName = new("gvisor")
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, repo1, nil)
+
+			Expect(job.Spec.Template.Spec.RuntimeClassName).NotTo(BeNil())
+			Expect(*job.Spec.Template.Spec.RuntimeClassName).To(Equal("gvisor"))
+		})
+
+		It("should propagate PodAnnotations to the job pod spec", func() {
+			instance.Spec.PodAnnotations = map[string]string{"prometheus.io/scrape": "true"}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, repo1, nil)
+
+			Expect(job.Spec.Template.Annotations).To(HaveKeyWithValue("prometheus.io/scrape", "true"))
+		})
+
+		It("should propagate ScratchVolume to the job pod spec", func() {
+			sizeLimit := resource.MustParse("1Gi")
+			instance.Spec.ScratchVolume = &renovatev1beta1.ScratchVolumeSpec{
+				Enabled:   true,
+				Path:      "/scratch",
+				Medium:    corev1.StorageMediumMemory,
+				SizeLimit: &sizeLimit,
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			reconciler.updateJob(job, repo1, nil)
+
+			var scratchVol *corev1.Volume
+
+			for i := range job.Spec.Template.Spec.Volumes {
+				if job.Spec.Template.Spec.Volumes[i].Name == "renovate-tmp" {
+					scratchVol = &job.Spec.Template.Spec.Volumes[i]
+
+					break
+				}
+			}
+
+			Expect(scratchVol).NotTo(BeNil())
+			Expect(scratchVol.EmptyDir).NotTo(BeNil())
+			Expect(scratchVol.EmptyDir.Medium).To(Equal(corev1.StorageMediumMemory))
+			Expect(scratchVol.EmptyDir.SizeLimit).To(Equal(&sizeLimit))
+
+			env := job.Spec.Template.Spec.Containers[0].Env
+			Expect(env).To(ContainElement(HaveField("Name", "RENOVATE_BASE_DIR")))
+			Expect(env).To(ContainElement(HaveField("Value", "/scratch")))
+		})
 	})
 })
