@@ -39,13 +39,14 @@ var icons = []iconDef{
 	{fileName: "circle-plus"},
 	{fileName: "circle-x"},
 	{fileName: "x"},
+	{fileName: "sun"},
+	{fileName: "moon"},
+	{fileName: "monitor"},
 }
 
 var (
 	svgTagRe    = regexp.MustCompile(`<svg[^>]*>`)
-	widthAttrRe = regexp.MustCompile(`\s*width="24"`)
-	heightRe    = regexp.MustCompile(`\s*height="24"`)
-	classRe     = regexp.MustCompile(`\s*class="[^"]*"`)
+	attrRe      = regexp.MustCompile(`(\S+)=["']([^"']*)["']`)
 	selfCloseRe = regexp.MustCompile(`<(\w+)([^>]*?)/>`)
 
 	errNoSVGTag = errors.New("no <svg> tag found")
@@ -122,21 +123,31 @@ func kebabToPascal(s string) string {
 }
 
 func svgToTempl(raw, funcName string) (string, error) {
-	svgMatch := svgTagRe.FindString(raw)
-	if svgMatch == "" {
+	loc := svgTagRe.FindStringIndex(raw)
+	if loc == nil {
 		return "", errNoSVGTag
 	}
+	svgMatch := raw[loc[0]:loc[1]]
 
-	inner := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(raw[len(svgMatch):]), "</svg>"))
+	inner := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(raw[loc[1]:]), "</svg>"))
 
-	svgTag := svgMatch
-	svgTag = widthAttrRe.ReplaceAllString(svgTag, "")
-	svgTag = heightRe.ReplaceAllString(svgTag, "")
-	svgTag = classRe.ReplaceAllString(svgTag, "")
-	svgTag = strings.TrimRight(svgTag, ">")
-	svgTag += ` class={ class }>`
+	attrs := attrRe.FindAllStringSubmatch(svgMatch, -1)
 
-	inner = selfCloseRe.ReplaceAllString(inner, "<$1$2></$1>")
+	var kept []struct{ name, value string }
+
+	skip := map[string]bool{"width": true, "height": true, "class": true}
+
+	for _, m := range attrs {
+		if !skip[m[1]] {
+			kept = append(kept, struct{ name, value string }{m[1], m[2]})
+		}
+	}
+
+	inner = selfCloseRe.ReplaceAllStringFunc(inner, func(match string) string {
+		parts := selfCloseRe.FindStringSubmatch(match)
+
+		return "<" + parts[1] + strings.TrimRight(parts[2], " ") + "></" + parts[1] + ">"
+	})
 
 	innerLines := strings.Split(inner, "\n")
 
@@ -151,7 +162,14 @@ func svgToTempl(raw, funcName string) (string, error) {
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "templ %s(class string) {\n", funcName)
-	fmt.Fprintf(&b, "\t%s\n", svgTag)
+	b.WriteString("\t<svg\n")
+
+	for _, a := range kept {
+		fmt.Fprintf(&b, "\t\t%s=\"%s\"\n", a.name, a.value)
+	}
+
+	b.WriteString("\t\tclass={ class }\n")
+	b.WriteString("\t>\n")
 
 	for _, line := range indented {
 		fmt.Fprintf(&b, "%s\n", line)

@@ -40,13 +40,17 @@ func (s Status) BadgeClass() string {
 
 	switch s {
 	case StatusSucceeded:
-		return base + "bg-green-50 text-green-700 ring-green-600/20"
+		return base + "bg-green-50 dark:bg-green-950 text-green-700 dark:text-green-400 " +
+			"ring-green-600/20 dark:ring-green-500/20"
 	case StatusRunning:
-		return base + "bg-blue-50 text-blue-700 ring-blue-600/20"
+		return base + "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 " +
+			"ring-blue-600/20 dark:ring-blue-500/20"
 	case StatusFailed:
-		return base + "bg-red-50 text-red-700 ring-red-600/20"
+		return base + "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 " +
+			"ring-red-600/20 dark:ring-red-500/20"
 	default:
-		return base + "bg-gray-50 text-gray-600 ring-gray-500/20"
+		return base + "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 " +
+			"ring-gray-500/20 dark:ring-gray-500/30"
 	}
 }
 
@@ -55,13 +59,13 @@ func (s Status) BadgeClass() string {
 func (s Status) LeftBorderClass() string {
 	switch s {
 	case StatusSucceeded:
-		return "border-l-green-500"
+		return "border-l-green-500 dark:border-l-green-500"
 	case StatusRunning:
-		return "border-l-blue-500"
+		return "border-l-blue-500 dark:border-l-blue-500"
 	case StatusFailed:
-		return "border-l-red-500"
+		return "border-l-red-500 dark:border-l-red-500"
 	default:
-		return "border-l-gray-300"
+		return "border-l-gray-300 dark:border-l-gray-300"
 	}
 }
 

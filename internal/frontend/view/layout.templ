@@ -17,12 +17,15 @@ func avatarInitial(name string) string {
 
 templ Layout(title string, styles []string, scripts []string, auth viewmodel.AuthInfo, content templ.Component) {
 	<!DOCTYPE html>
-	<html lang="en" class="h-full bg-gray-100">
+	<html lang="en" class="h-full bg-gray-100 dark:bg-gray-900">
 		<head>
 			<meta charset="UTF-8"/>
 			<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
 			<title>{ title }</title>
 			<link rel="icon" type="image/svg+xml" href="/static/logo.svg" sizes="any"/>
+			<script>
+				(function(){try{var t=JSON.parse(localStorage.getItem("theme")||"null");if(t==="dark"||(t==="auto"&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark")}}catch(e){}})();
+			</script>
 			for _, style := range styles {
 				<link rel="stylesheet" href={ style }/>
 			}
@@ -45,7 +48,7 @@ templ Layout(title string, styles []string, scripts []string, auth viewmodel.Aut
 }
 
 templ NavBar(auth viewmodel.AuthInfo) {
-	<nav id="navbar" class="bg-gray-800 shrink-0" hx-preserve="true">
+	<nav id="navbar" class="bg-gray-800 shrink-0 border-b border-gray-700" hx-preserve="true">
 		<div class="w-full px-4 sm:px-6 lg:px-8">
 			<div class="flex h-16 items-center justify-between">
 				<div class="flex items-center">
@@ -58,47 +61,82 @@ templ NavBar(auth viewmodel.AuthInfo) {
 						}
 					</div>
 				</div>
-				if auth.Enabled && auth.Authenticated {
-					<div class="relative" data-component="avatar-dropdown">
-						<button
-							type="button"
-							data-avatar-button
-							class="flex items-center gap-2 rounded-full"
-							aria-expanded="false"
-							aria-haspopup="true"
-						>
-							if auth.AvatarURL != "" {
-								<div data-component="progressive-image" data-cloak class="relative">
-									<img class="h-8 w-8 rounded-full hidden" src={ auth.AvatarURL } alt={ auth.Name }/>
-									<div data-fallback class="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium">{ avatarInitial(auth.Name) }</div>
+				<div class="flex items-center gap-3">
+					<div data-component="theme-switcher" class="flex items-center rounded-md bg-gray-900 p-0.5">
+						@Tooltip("Light mode") {
+							<button
+								type="button"
+								data-theme-option="light"
+								aria-pressed="false"
+								class="rounded p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+							>
+								@IconSun("h-4 w-4")
+							</button>
+						}
+						@Tooltip("Auto (system)") {
+							<button
+								type="button"
+								data-theme-option="auto"
+								aria-pressed="true"
+								class="rounded p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+								aria-label="Auto (system)"
+							>
+								@IconMonitor("h-4 w-4")
+							</button>
+						}
+						@Tooltip("Dark mode") {
+							<button
+								type="button"
+								data-theme-option="dark"
+								aria-pressed="false"
+								class="rounded p-1.5 text-gray-400 hover:text-gray-200 hover:bg-gray-700/50 transition-colors"
+							>
+								@IconMoon("h-4 w-4")
+							</button>
+						}
+					</div>
+					if auth.Enabled && auth.Authenticated {
+						<div class="relative" data-component="avatar-dropdown">
+							<button
+								type="button"
+								data-avatar-button
+								class="flex items-center gap-2 rounded-full"
+								aria-expanded="false"
+								aria-haspopup="true"
+							>
+								if auth.AvatarURL != "" {
+									<div data-component="progressive-image" data-cloak class="relative">
+										<img class="h-8 w-8 rounded-full hidden" src={ auth.AvatarURL } alt={ auth.Name }/>
+										<div data-fallback class="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium">{ avatarInitial(auth.Name) }</div>
+									</div>
+								} else {
+									<div class="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium">{ avatarInitial(auth.Name) }</div>
+								}
+							</button>
+							<div
+								data-avatar-menu
+								class={ dropdownMenu() + " bg-white dark:bg-gray-800 w-48 overflow-hidden" }
+							>
+								<div class="px-4 py-2">
+									<p class="text-sm text-gray-900 dark:text-gray-100 font-medium">{ auth.Name }</p>
+									<p class="text-xs text-gray-500 dark:text-gray-400 truncate">{ auth.Provider }</p>
 								</div>
-							} else {
-								<div class="h-8 w-8 rounded-full bg-gray-600 flex items-center justify-center text-white text-sm font-medium">{ avatarInitial(auth.Name) }</div>
-							}
-						</button>
-						<div
-							data-avatar-menu
-							class={ dropdownMenu() + " bg-white w-48 overflow-hidden" }
-						>
-							<div class="px-4 py-2">
-								<p class="text-sm text-gray-900 font-medium">{ auth.Name }</p>
-								<p class="text-xs text-gray-500 truncate">{ auth.Provider }</p>
-							</div>
-							<div class="p-1 border-t border-gray-100">
-								<form method="POST" action="/auth/logout" hx-boost="false">
-									<input type="hidden" name="csrf_token" value={ auth.CSRFToken }/>
-									<button
-										type="submit"
-										class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }
-									>
-										@IconLogOut("h-4 w-4")
-										Sign out
-									</button>
-								</form>
+								<div class="p-1 border-t border-gray-100 dark:border-gray-700">
+									<form method="POST" action="/auth/logout" hx-boost="false">
+										<input type="hidden" name="csrf_token" value={ auth.CSRFToken }/>
+										<button
+											type="submit"
+											class={ dropdownMenuItem() + " text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md" }
+										>
+											@IconLogOut("h-4 w-4")
+											Sign out
+										</button>
+									</form>
+								</div>
 							</div>
 						</div>
-					</div>
-				}
+					}
+				</div>
 			</div>
 		</div>
 	</nav>

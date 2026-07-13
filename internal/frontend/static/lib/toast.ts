@@ -177,7 +177,7 @@ function createToast(message: string, type: "success" | "error" | "info" | "warn
   const config = typeConfig[type] || typeConfig.info
 
   el.className =
-    "pointer-events-auto absolute bottom-0 left-0 right-0 group overflow-hidden bg-white shadow-lg rounded-lg border border-gray-200 flex items-center gap-2.5 p-4"
+    "pointer-events-auto absolute bottom-0 left-0 right-0 group overflow-hidden bg-white dark:bg-gray-800 shadow-lg rounded-lg border border-gray-200 dark:border-gray-700 flex items-center gap-2.5 p-4"
   el.style.transition = `transform ${ANIM_DURATION}ms ease-out, opacity ${ANIM_DURATION}ms ease-out`
   el.style.transform = "translateY(calc(-1 * var(--offset, 0px)))"
   el.style.opacity = "0"
@@ -187,13 +187,13 @@ function createToast(message: string, type: "success" | "error" | "info" | "warn
       ${config.icon}
     </div>
     <div class="w-0 flex-1 flex flex-col">
-      <p class="text-sm font-medium text-gray-900 break-words leading-snug">${escapeHtml(message)}</p>
+      <p class="text-sm font-medium text-gray-900 dark:text-gray-100 break-words leading-snug">${escapeHtml(message)}</p>
     </div>
-    <button class="shrink-0 p-0 cursor-pointer text-gray-400 hover:text-gray-600 transition-colors" aria-label="Dismiss">
+    <button class="shrink-0 p-0 cursor-pointer text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" aria-label="Dismiss">
       <span class="block w-4 h-4">${xMarkSvg}</span>
     </button>
     <div class="absolute inset-x-0 bottom-0 h-1 overflow-hidden">
-      <div class="absolute inset-0 bg-gray-200"></div>
+      <div class="absolute inset-0 bg-gray-200 dark:bg-gray-700"></div>
       <div data-role="progress" class="absolute inset-y-0 left-0 z-10 ${config.barBg} rounded-r-full" style="transform-origin: left; transform: scaleX(1); width: 100%"></div>
     </div>
   `

@@ -13,7 +13,7 @@ templ RenovatorCountBadge(namespace, renovatorUID string, count int) {
 		hx-trigger="sse:job-updated"
 		hx-swap="outerHTML"
 		hx-target="this"
-		class="inline-flex items-center rounded-md bg-indigo-50 px-2 py-1 text-xs font-medium text-indigo-700 ring-1 ring-inset ring-indigo-700/10"
+		class="inline-flex items-center rounded-md bg-indigo-50 dark:bg-indigo-950 px-2 py-1 text-xs font-medium text-indigo-700 dark:text-indigo-400 ring-1 ring-inset ring-indigo-700/10 dark:ring-indigo-500/20"
 	>
 		{ count }
 	</span>
@@ -29,7 +29,7 @@ templ RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, unch
 				hx-trigger="sse:job-updated throttle:15s"
 				hx-swap="outerHTML"
 				hx-target="this"
-				class="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-500 ring-1 ring-inset ring-gray-500/20"
+				class="inline-flex items-center gap-1 rounded-md bg-gray-50 dark:bg-gray-800 px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 ring-1 ring-inset ring-gray-500/20 dark:ring-gray-500/30"
 			>
 				@IconGitPullRequest("h-3.5 w-3.5")
 				if hasRecentData {
@@ -46,12 +46,12 @@ templ RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, unch
 				hx-trigger="sse:job-updated throttle:15s"
 				hx-swap="outerHTML"
 				hx-target="this"
-				class="inline-flex items-center gap-1.5 rounded-md bg-red-50 px-2 py-1 text-xs font-medium text-red-700 ring-1 ring-inset ring-red-600/20"
+				class="inline-flex items-center gap-1.5 rounded-md bg-red-50 dark:bg-red-950 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/20"
 			>
 				@IconTriangleAlert("h-3.5 w-3.5")
 				{ needsApproval }
 				if open > 0 {
-					<span class="inline-flex items-center rounded bg-red-100 px-1 text-red-700">+{ open }</span>
+					<span class="inline-flex items-center rounded bg-red-100 dark:bg-red-900 px-1 text-red-700 dark:text-red-400">+{ open }</span>
 				}
 			</span>
 		}
@@ -62,7 +62,7 @@ templ RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, unch
 				hx-trigger="sse:job-updated throttle:15s"
 				hx-swap="outerHTML"
 				hx-target="this"
-				class="inline-flex items-center gap-1 rounded-md bg-gray-50 px-2 py-1 text-xs font-medium text-gray-500 ring-1 ring-inset ring-gray-500/20"
+				class="inline-flex items-center gap-1 rounded-md bg-gray-50 dark:bg-gray-800 px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 ring-1 ring-inset ring-gray-500/20 dark:ring-gray-500/30"
 			>
 				@IconInfo("h-3.5 w-3.5")
 				{ open }
@@ -75,7 +75,7 @@ templ RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, unch
 				hx-trigger="sse:job-updated throttle:15s"
 				hx-swap="outerHTML"
 				hx-target="this"
-				class="inline-flex items-center gap-1 rounded-md bg-blue-50 px-2 py-1 text-xs font-medium text-blue-700 ring-1 ring-inset ring-blue-600/20"
+				class="inline-flex items-center gap-1 rounded-md bg-blue-50 dark:bg-blue-950 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-400 ring-1 ring-inset ring-blue-600/20 dark:ring-blue-500/20"
 			>
 				@IconGitPullRequest("h-3.5 w-3.5")
 				{ open }
@@ -85,9 +85,9 @@ templ RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, unch
 }
 
 templ RenovatorList(data viewmodel.DashboardData) {
-	<div class="bg-white shadow-sm mb-6 shrink-0">
+	<div class="bg-white dark:bg-gray-800 shadow-sm mb-6 shrink-0">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-			<h2 class="hidden sm:block text-2xl font-bold tracking-tight text-gray-900" data-focus-target>Dashboard</h2>
+			<h2 class="hidden sm:block text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100" data-focus-target>Dashboard</h2>
 			<div class="relative w-full sm:w-64">
 				<input
 					type="search"
@@ -101,12 +101,12 @@ templ RenovatorList(data viewmodel.DashboardData) {
 					hx-target="#dashboard-content"
 					hx-swap="innerHTML"
 					hx-trigger="input changed delay:500ms, search"
-					class="block w-full rounded-md border-0 py-2 pl-3 pr-16 text-sm text-gray-900 ring-1 ring-inset ring-gray-300 placeholder:text-gray-400"
+					class="block w-full rounded-md border-0 py-2 pl-3 pr-16 text-sm text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
 				/>
 				if data.SearchQuery == "" {
 					<div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2 pointer-events-none">
 						@Kbd("/")
-						@IconSearch("h-4 w-4 text-gray-400")
+						@IconSearch("h-4 w-4 text-gray-400 dark:text-gray-500")
 					</div>
 				} else {
 					<button
@@ -116,7 +116,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 						hx-target="#dashboard-content"
 						hx-swap="innerHTML"
 						aria-label="Clear search"
-						class="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 hover:text-gray-600 cursor-pointer"
+						class="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
 					>
 						@IconX("h-4 w-4")
 					</button>
@@ -148,38 +148,38 @@ templ RenovatorCard(v viewmodel.WebView) {
 		data-cloak
 		data-component="renovator-details"
 		data-persist-key={ sanitize.RenovatorPersistKey(v.Name) }
-		class="group bg-white shadow-sm rounded-lg overflow-hidden border border-gray-200"
+		class="group bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700"
 	>
-		<summary class="cursor-pointer bg-white px-4 py-5 sm:p-6 hover:bg-gray-50 transition-colors">
+		<summary class="cursor-pointer bg-white dark:bg-gray-800 px-4 py-5 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-4">
-					@IconChevronRight("chevron h-5 w-5 text-gray-400")
+					@IconChevronRight("chevron h-5 w-5 text-gray-400 dark:text-gray-500")
 					<div>
-						<h3 class="text-base font-semibold leading-6 text-gray-900">
+						<h3 class="text-base font-semibold leading-6 text-gray-900 dark:text-gray-100">
 							{ v.Name }
 						</h3>
-						<p class="mt-1 max-w-2xl text-sm text-gray-500">
+						<p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
 							Namespace:
-							<span class="font-medium text-gray-900">{ v.Namespace }</span>
+							<span class="font-medium text-gray-900 dark:text-gray-100">{ v.Namespace }</span>
 						</p>
 					</div>
 				</div>
 				<div class="flex items-center gap-2 sm:gap-6">
 					<div class="flex flex-col items-end sm:items-center justify-center gap-1">
-						<span class="text-xs text-gray-500">Repos</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">Repos</span>
 						@RenovatorCountBadge(v.Namespace, v.Renovator, v.GitRepoCount)
 					</div>
 					<div class="flex flex-col items-end sm:items-center justify-center gap-1">
-						<span class="text-xs text-gray-500">PRs</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">PRs</span>
 						@RenovatorPRBadge(v.Namespace, v.Renovator, v.OpenPRs, v.NeedsApproval, v.UnchangedPRs, v.HasRecentPR)
 					</div>
 					<div class="hidden sm:flex flex-col items-end justify-center gap-1">
-						<span class="text-xs text-gray-500">Runner</span>
-						<span class="text-sm font-medium text-gray-900">{ v.RunnerName }</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">Runner</span>
+						<span class="text-sm font-medium text-gray-900 dark:text-gray-100">{ v.RunnerName }</span>
 					</div>
 					<div class="hidden sm:flex flex-col items-end justify-center gap-1">
-						<span class="text-xs text-gray-500">Discovery</span>
-						<span class="text-sm font-medium text-gray-900">{ v.DiscoveryName }</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">Discovery</span>
+						<span class="text-sm font-medium text-gray-900 dark:text-gray-100">{ v.DiscoveryName }</span>
 					</div>
 				</div>
 			</div>
@@ -187,7 +187,7 @@ templ RenovatorCard(v viewmodel.WebView) {
 		<div class="details-content">
 			<div class="details-content-inner">
 				<div
-					class="border-t border-gray-200 bg-gray-50 px-4 py-5 sm:p-6"
+					class="border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-900 px-4 py-5 sm:p-6"
 					data-component="repo-sort"
 					data-sort-key={ sanitize.SortFieldPersistKey(v.Name) }
 					data-order-key={ sanitize.SortOrderPersistKey(v.Name) }
@@ -217,24 +217,24 @@ templ RepoSortControls(renovatorName string) {
 				data-action="toggle-sort"
 				aria-expanded="false"
 				aria-haspopup="listbox"
-				class="inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-700 ring-1 ring-inset ring-gray-300 bg-white hover:bg-gray-50 cursor-pointer transition-colors"
+				class="inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-700 dark:text-gray-300 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
 			>
 				<span data-role="sort-label">{ string(viewmodel.GitRepoFieldName) }</span>
-				@IconChevronsUpDown("h-4 w-4 text-gray-500")
+				@IconChevronsUpDown("h-4 w-4 text-gray-500 dark:text-gray-400")
 			</button>
 			<div
 				data-role="sort-menu"
-				class={ dropdownMenu() + " bg-white" }
+				class={ dropdownMenu() + " bg-white dark:bg-gray-800" }
 				role="listbox"
 			>
 				<div class="px-1">
-					<button type="button" data-value="name" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+					<button type="button" data-value="name" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md" }>
 						{ string(viewmodel.GitRepoFieldName) }
 					</button>
-					<button type="button" data-value="date" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+					<button type="button" data-value="date" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md" }>
 						{ string(viewmodel.GitRepoFieldCreated) }
 					</button>
-					<button type="button" data-value="last_update" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 hover:bg-gray-100 rounded-md" }>
+					<button type="button" data-value="last_update" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md" }>
 						{ string(viewmodel.GitRepoFieldLastRun) }
 					</button>
 				</div>
@@ -246,7 +246,7 @@ templ RepoSortControls(renovatorName string) {
 				data-cloak
 				data-action="toggle-order"
 				aria-pressed="false"
-				class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 ring-1 ring-inset ring-gray-300 hover:bg-gray-100 bg-white cursor-pointer transition-colors"
+				class="inline-flex items-center justify-center rounded-md p-2 text-gray-700 dark:text-gray-300 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 hover:bg-gray-100 dark:hover:bg-gray-700 bg-white dark:bg-gray-800 cursor-pointer transition-colors"
 			>
 				<span data-role="sort-asc">
 					@IconArrowDownWideNarrow("h-4 w-4")

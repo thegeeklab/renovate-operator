@@ -256,24 +256,24 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 						<span class="text-xs font-medium text-green-400">No issues</span>
 					</div>
 				}
-			if parsed.PRActivity != nil && viewmodel.HasPRActivity(parsed.PRActivity) {
-				if parsed.PRActivity.NeedsApproval > 0 {
-					<div class="flex items-center gap-2">
-						@IconTriangleAlert("h-4 w-4 text-yellow-400")
-						<span class="text-xs font-medium text-yellow-400">{ viewmodel.PRActivitySummary(parsed.PRActivity) }</span>
-					</div>
-				} else if parsed.PRActivity.Unchanged > 0 && (parsed.PRActivity.Created+parsed.PRActivity.Updated) == parsed.PRActivity.Unchanged {
-					<div class="flex items-center gap-2">
-						@IconInfo("h-4 w-4 text-gray-400")
-						<span class="text-xs font-medium text-gray-400">{ viewmodel.PRActivitySummary(parsed.PRActivity) }</span>
-					</div>
-				} else if parsed.PRActivity.Created+parsed.PRActivity.Updated > 0 {
-					<div class="flex items-center gap-2">
-						@IconGitPullRequest("h-4 w-4 text-blue-400")
-						<span class="text-xs font-medium text-blue-400">{ viewmodel.PRActivitySummary(parsed.PRActivity) }</span>
-					</div>
+				if parsed.PRActivity != nil && viewmodel.HasPRActivity(parsed.PRActivity) {
+					if parsed.PRActivity.NeedsApproval > 0 {
+						<div class="flex items-center gap-2">
+							@IconTriangleAlert("h-4 w-4 text-yellow-400")
+							<span class="text-xs font-medium text-yellow-400">{ viewmodel.PRActivitySummary(parsed.PRActivity) }</span>
+						</div>
+					} else if parsed.PRActivity.Unchanged > 0 && (parsed.PRActivity.Created+parsed.PRActivity.Updated) == parsed.PRActivity.Unchanged {
+						<div class="flex items-center gap-2">
+							@IconInfo("h-4 w-4 text-gray-400")
+							<span class="text-xs font-medium text-gray-400">{ viewmodel.PRActivitySummary(parsed.PRActivity) }</span>
+						</div>
+					} else if parsed.PRActivity.Created+parsed.PRActivity.Updated > 0 {
+						<div class="flex items-center gap-2">
+							@IconGitPullRequest("h-4 w-4 text-blue-400")
+							<span class="text-xs font-medium text-blue-400">{ viewmodel.PRActivitySummary(parsed.PRActivity) }</span>
+						</div>
+					}
 				}
-			}
 			</div>
 			<div class="flex items-center gap-1">
 				<button
