@@ -25,6 +25,8 @@ func HashAccessToken(token string) string {
 const (
 	errorTitleNotReady = "Service Unavailable"
 	errorMsgNotReady   = "Authentication service is not ready yet. Please try again later."
+
+	headerAuthProvider = "X-Auth-Provider"
 )
 
 func Middleware(manager *Manager) func(http.Handler) http.Handler {
@@ -60,11 +62,7 @@ func authCheckMiddleware(manager *Manager) func(http.Handler) http.Handler {
 			}
 
 			if IsAPIPath(r.URL.Path) {
-				if token := extractBearerToken(r); token != "" {
-					if !handleBearerTokenAuth(manager, w, r, next, token) {
-						return
-					}
-
+				if handled := tryBearerTokenAuth(manager, w, r, next); handled {
 					return
 				}
 			}
@@ -78,7 +76,35 @@ func authCheckMiddleware(manager *Manager) func(http.Handler) http.Handler {
 	}
 }
 
-// handleBearerTokenAuth validates a Bearer token and injects the session into the request context.
+// tryBearerTokenAuth attempts to authenticate using Bearer token.
+// Returns true if the request was handled (either successfully or with an error response).
+func tryBearerTokenAuth(
+	manager *Manager,
+	w http.ResponseWriter,
+	r *http.Request,
+	next http.Handler,
+) bool {
+	token := extractBearerToken(r)
+	if token == "" {
+		return false
+	}
+
+	providerName := r.Header.Get(headerAuthProvider)
+	if providerName == "" {
+		writeUnauthorizedResponse(w, r, "missing "+headerAuthProvider+" header")
+
+		return true
+	}
+
+	if !handleBearerTokenAuth(manager, w, r, next, token, providerName) {
+		return true
+	}
+
+	return true
+}
+
+// handleBearerTokenAuth validates a Bearer token against the specified provider
+// and injects the session into the request context.
 // Returns true if the request should continue, false if a response was already written.
 func handleBearerTokenAuth(
 	manager *Manager,
@@ -86,10 +112,11 @@ func handleBearerTokenAuth(
 	r *http.Request,
 	next http.Handler,
 	token string,
+	providerName string,
 ) bool {
-	session, err := manager.validateBearerToken(r.Context(), token)
+	session, err := manager.validateBearerToken(r.Context(), token, providerName)
 	if err != nil {
-		authLog.Error(err, "Bearer token validation failed")
+		authLog.Error(err, "Bearer token validation failed", "provider", providerName)
 		writeUnauthorizedResponse(w, r, "invalid token")
 
 		return false
@@ -146,50 +173,50 @@ func extractBearerToken(r *http.Request) string {
 		return ""
 	}
 
-	const bearerPrefix = "Bearer "
-	if len(auth) < len(bearerPrefix) || auth[:len(bearerPrefix)] != bearerPrefix {
+	const bearerScheme = "bearer"
+	if len(auth) < len(bearerScheme)+1 ||
+		!strings.EqualFold(auth[:len(bearerScheme)], bearerScheme) ||
+		auth[len(bearerScheme)] != ' ' {
 		return ""
 	}
 
-	return auth[len(bearerPrefix):]
+	return auth[len(bearerScheme)+1:]
 }
 
-// validateBearerToken validates a Bearer token against all registered providers.
-// Returns the session data if validation succeeds, or an error if all providers reject the token.
-func (m *Manager) validateBearerToken(ctx context.Context, token string) (*SessionData, error) {
-	cacheKey := HashAccessToken(token)
+// validateBearerToken validates a Bearer token against the specified provider.
+// Returns the session data if validation succeeds, or an error if the provider
+// rejects the token or is not registered.
+func (m *Manager) validateBearerToken(ctx context.Context, token, providerName string) (*SessionData, error) {
+	cacheKey := providerName + ":" + HashAccessToken(token)
 	if cached, found := m.patCache.GetIfPresent(cacheKey); found {
 		return cached, nil
 	}
 
 	m.mu.RLock()
-
-	providers := make([]AuthProvider, 0, len(m.providers))
-	for _, p := range m.providers {
-		providers = append(providers, p)
-	}
-
+	provider, ok := m.providers[providerName]
 	m.mu.RUnlock()
 
-	for _, provider := range providers {
-		user, err := provider.ValidateToken(ctx, token)
-		if err == nil && user != nil {
-			session := &SessionData{
-				Email:       user.Email,
-				Name:        user.Name,
-				Subject:     user.Subject,
-				AvatarURL:   user.AvatarURL,
-				AccessToken: user.AccessToken,
-				Provider:    user.Provider,
-			}
-
-			m.patCache.Set(cacheKey, session)
-
-			return session, nil
-		}
+	if !ok {
+		return nil, ErrInvalidProvider
 	}
 
-	return nil, ErrInvalidToken
+	user, err := provider.ValidateToken(ctx, token)
+	if err != nil || user == nil {
+		return nil, ErrInvalidToken
+	}
+
+	session := &SessionData{
+		Email:       user.Email,
+		Name:        user.Name,
+		Subject:     user.Subject,
+		AvatarURL:   user.AvatarURL,
+		AccessToken: user.AccessToken,
+		Provider:    user.Provider,
+	}
+
+	m.patCache.Set(cacheKey, session)
+
+	return session, nil
 }
 
 // ensureValidToken checks if the session token is valid and refreshes it if expired.

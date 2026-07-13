@@ -461,9 +461,10 @@ var _ = Describe("Middleware", func() {
 	})
 
 	Describe("Bearer token authentication", func() {
-		It("should authenticate API requests with valid Bearer token", func() {
+		It("should authenticate API requests with valid Bearer token and provider header", func() {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
 			req.Header.Set("Authorization", "Bearer valid-pat")
+			req.Header.Set(headerAuthProvider, "gitea-prod")
 
 			rec := httptest.NewRecorder()
 
@@ -475,6 +476,7 @@ var _ = Describe("Middleware", func() {
 		It("should reject API requests with invalid Bearer token", func() {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
 			req.Header.Set("Authorization", "Bearer invalid-pat")
+			req.Header.Set(headerAuthProvider, "gitea-prod")
 
 			rec := httptest.NewRecorder()
 
@@ -488,6 +490,33 @@ var _ = Describe("Middleware", func() {
 		It("should reject API requests with empty Bearer token", func() {
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
 			req.Header.Set("Authorization", "Bearer ")
+			req.Header.Set(headerAuthProvider, "gitea-prod")
+
+			rec := httptest.NewRecorder()
+
+			Middleware(manager)(handler).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusUnauthorized))
+			Expect(rec.Header().Get("Content-Type")).To(Equal("application/json"))
+		})
+
+		It("should reject API requests with Bearer token but missing provider header", func() {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
+			req.Header.Set("Authorization", "Bearer valid-pat")
+
+			rec := httptest.NewRecorder()
+
+			Middleware(manager)(handler).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusUnauthorized))
+			Expect(rec.Header().Get("Content-Type")).To(Equal("application/json"))
+			Expect(rec.Body.String()).To(ContainSubstring("missing X-Auth-Provider header"))
+		})
+
+		It("should reject API requests with unknown provider in header", func() {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
+			req.Header.Set("Authorization", "Bearer valid-pat")
+			req.Header.Set(headerAuthProvider, "unknown-provider")
 
 			rec := httptest.NewRecorder()
 
@@ -511,6 +540,7 @@ var _ = Describe("Middleware", func() {
 		It("should not check Bearer token on non-API paths", func() {
 			req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
 			req.Header.Set("Authorization", "Bearer valid-pat")
+			req.Header.Set(headerAuthProvider, "gitea-prod")
 
 			rec := httptest.NewRecorder()
 
@@ -533,6 +563,7 @@ var _ = Describe("Middleware", func() {
 
 			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
 			req.Header.Set("Authorization", "Bearer valid-pat")
+			req.Header.Set(headerAuthProvider, "gitea-prod")
 
 			rec := httptest.NewRecorder()
 

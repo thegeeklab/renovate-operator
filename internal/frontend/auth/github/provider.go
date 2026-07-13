@@ -168,6 +168,7 @@ func (p *GitHubProvider) ValidateToken(ctx context.Context, token string) (*auth
 
 	opts := []github.ClientOptionsFunc{
 		github.WithAuthToken(token),
+		github.WithHTTPClient(p.httpClient),
 		github.WithTimeout(defaultHTTPTimeout),
 	}
 
