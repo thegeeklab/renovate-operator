@@ -333,7 +333,6 @@ var _ = Describe("Renovate Job Library", func() {
 				"WithPodSpec ScratchVolume",
 				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
 					ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
-						Enabled:   true,
 						Path:      "/scratch",
 						Medium:    corev1.StorageMediumMemory,
 						SizeLimit: new(resource.MustParse("1Gi")),
@@ -365,38 +364,10 @@ var _ = Describe("Renovate Job Library", func() {
 				},
 			),
 			Entry(
-				"WithPodSpec ScratchVolume Disabled",
-				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
-					ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
-						Enabled: false,
-					},
-				})},
-				func(spec *batchv1.JobSpec) {
-					var scratchVol *corev1.Volume
-
-					for i := range spec.Template.Spec.Volumes {
-						if spec.Template.Spec.Volumes[i].Name == renovate.VolumeRenovateTmp {
-							scratchVol = &spec.Template.Spec.Volumes[i]
-
-							break
-						}
-					}
-
-					Expect(scratchVol).To(BeNil())
-
-					env := spec.Template.Spec.Containers[0].Env
-					Expect(env).NotTo(ContainElement(HaveField("Name", "RENOVATE_BASE_DIR")))
-
-					mounts := spec.Template.Spec.Containers[0].VolumeMounts
-					Expect(mounts).NotTo(ContainElement(HaveField("Name", renovate.VolumeRenovateTmp)))
-				},
-			),
-			Entry(
 				"WithPodSpec ScratchVolume Ephemeral",
 				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
 					ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
-						Enabled: true,
-						Path:    "/ephemeral",
+						Path: "/ephemeral",
 						Ephemeral: &corev1.EphemeralVolumeSource{
 							VolumeClaimTemplate: &corev1.PersistentVolumeClaimTemplate{
 								Spec: corev1.PersistentVolumeClaimSpec{

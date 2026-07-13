@@ -114,10 +114,6 @@ type JobSpec struct {
 
 // ScratchVolumeSpec configures a scratch volume for RENOVATE_BASE_DIR.
 type ScratchVolumeSpec struct {
-	// Enabled controls whether the scratch volume is created.
-	// +kubebuilder:default=true
-	Enabled bool `json:"enabled"`
-
 	// Path is the mount path for the scratch volume (RENOVATE_BASE_DIR).
 	// +kubebuilder:default="/tmp"
 	Path string `json:"path,omitempty"`

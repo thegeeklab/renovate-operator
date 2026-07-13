@@ -742,8 +742,7 @@ var _ = Describe("Renovator Runner", func() {
 				Spec: renovatev1beta1.RenovatorSpec{
 					PodSpec: renovatev1beta1.PodSpec{
 						ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
-							Enabled: true,
-							Path:    "/scratch",
+							Path: "/scratch",
 						},
 					},
 					Runner: renovatev1beta1.RunnerSpec{},
@@ -757,7 +756,6 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(existingRunner.Spec.ScratchVolume).NotTo(BeNil())
-			Expect(existingRunner.Spec.ScratchVolume.Enabled).To(BeTrue())
 			Expect(existingRunner.Spec.ScratchVolume.Path).To(Equal("/scratch"))
 		})
 
@@ -766,15 +764,13 @@ var _ = Describe("Renovator Runner", func() {
 				Spec: renovatev1beta1.RenovatorSpec{
 					PodSpec: renovatev1beta1.PodSpec{
 						ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
-							Enabled: true,
-							Path:    "/scratch",
+							Path: "/scratch",
 						},
 					},
 					Runner: renovatev1beta1.RunnerSpec{
 						PodSpec: renovatev1beta1.PodSpec{
 							ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
-								Enabled: true,
-								Path:    "/runner-scratch",
+								Path: "/runner-scratch",
 							},
 						},
 					},

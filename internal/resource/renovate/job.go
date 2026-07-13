@@ -5,6 +5,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -58,8 +59,8 @@ func DefaultJobSpec(
 	scratchVolumes, scratchMounts := BuildScratchVolumeAndMounts(cfg.ScratchVolume)
 	cfg.VolumeMutators = append(cfg.VolumeMutators, scratchVolumes...)
 
-	// Add RENOVATE_BASE_DIR env var if scratch volume is enabled
-	if cfg.ScratchVolume == nil || cfg.ScratchVolume.Enabled {
+	// Add RENOVATE_BASE_DIR env var if not already set by the user.
+	if !k8s.EnvVarExists(cfg.EnvVars, "RENOVATE_BASE_DIR") {
 		cfg.EnvVars = append(cfg.EnvVars, corev1.EnvVar{
 			Name:  "RENOVATE_BASE_DIR",
 			Value: GetScratchVolumePath(cfg.ScratchVolume),
@@ -230,14 +231,9 @@ func GetActiveJobs(
 }
 
 // BuildScratchVolumeAndMounts creates the scratch volume and mount based on the spec.
-// Returns empty slices if scratch volume is disabled.
 func BuildScratchVolumeAndMounts(
 	scratch *renovatev1beta1.ScratchVolumeSpec,
 ) ([]containers.VolumeMutator, []corev1.VolumeMount) {
-	if scratch != nil && !scratch.Enabled {
-		return nil, nil
-	}
-
 	path := GetScratchVolumePath(scratch)
 	volumeSource := corev1.VolumeSource{}
 

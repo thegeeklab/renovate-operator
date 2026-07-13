@@ -12,7 +12,6 @@ const (
 	VolumeRenovateTmp    = "renovate-tmp"
 
 	DirRenovateConfig = "/etc/config/renovate"
-	DirRenovateTmp    = "/tmp/renovate"
 
 	FilenameRenovateConfig = "renovate.json"
 	FilenameRepositories   = "repositories.json"

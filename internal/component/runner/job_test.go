@@ -571,7 +571,6 @@ var _ = Describe("ReconcileJob", func() {
 		It("should propagate ScratchVolume to the job pod spec", func() {
 			sizeLimit := resource.MustParse("1Gi")
 			instance.Spec.ScratchVolume = &renovatev1beta1.ScratchVolumeSpec{
-				Enabled:   true,
 				Path:      "/scratch",
 				Medium:    corev1.StorageMediumMemory,
 				SizeLimit: &sizeLimit,

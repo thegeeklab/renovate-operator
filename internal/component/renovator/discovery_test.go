@@ -881,8 +881,7 @@ var _ = Describe("Renovator Discovery", func() {
 				Spec: renovatev1beta1.RenovatorSpec{
 					PodSpec: renovatev1beta1.PodSpec{
 						ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
-							Enabled: true,
-							Path:    "/scratch",
+							Path: "/scratch",
 						},
 					},
 					Discovery: renovatev1beta1.DiscoverySpec{},
@@ -896,7 +895,6 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(existingDiscovery.Spec.ScratchVolume).NotTo(BeNil())
-			Expect(existingDiscovery.Spec.ScratchVolume.Enabled).To(BeTrue())
 			Expect(existingDiscovery.Spec.ScratchVolume.Path).To(Equal("/scratch"))
 		})
 
@@ -905,15 +903,13 @@ var _ = Describe("Renovator Discovery", func() {
 				Spec: renovatev1beta1.RenovatorSpec{
 					PodSpec: renovatev1beta1.PodSpec{
 						ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
-							Enabled: true,
-							Path:    "/scratch",
+							Path: "/scratch",
 						},
 					},
 					Discovery: renovatev1beta1.DiscoverySpec{
 						PodSpec: renovatev1beta1.PodSpec{
 							ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
-								Enabled: true,
-								Path:    "/discovery-scratch",
+								Path: "/discovery-scratch",
 							},
 						},
 					},
