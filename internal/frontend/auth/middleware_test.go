@@ -459,6 +459,123 @@ var _ = Describe("Middleware", func() {
 			Expect(rec.Header().Get("X-Error-Message")).To(ContainSubstring("not ready"))
 		})
 	})
+
+	Describe("Bearer token authentication", func() {
+		It("should authenticate API requests with valid Bearer token and provider header", func() {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
+			req.Header.Set("Authorization", "Bearer valid-pat")
+			req.Header.Set(headerAuthProvider, "gitea-prod")
+
+			rec := httptest.NewRecorder()
+
+			Middleware(manager)(handler).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusOK))
+		})
+
+		It("should reject API requests with invalid Bearer token", func() {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
+			req.Header.Set("Authorization", "Bearer invalid-pat")
+			req.Header.Set(headerAuthProvider, "gitea-prod")
+
+			rec := httptest.NewRecorder()
+
+			Middleware(manager)(handler).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusUnauthorized))
+			Expect(rec.Header().Get("Content-Type")).To(Equal("application/json"))
+			Expect(rec.Body.String()).To(ContainSubstring("invalid token"))
+		})
+
+		It("should reject API requests with empty Bearer token", func() {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
+			req.Header.Set("Authorization", "Bearer ")
+			req.Header.Set(headerAuthProvider, "gitea-prod")
+
+			rec := httptest.NewRecorder()
+
+			Middleware(manager)(handler).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusUnauthorized))
+			Expect(rec.Header().Get("Content-Type")).To(Equal("application/json"))
+		})
+
+		It("should reject API requests with Bearer token but missing provider header", func() {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
+			req.Header.Set("Authorization", "Bearer valid-pat")
+
+			rec := httptest.NewRecorder()
+
+			Middleware(manager)(handler).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusUnauthorized))
+			Expect(rec.Header().Get("Content-Type")).To(Equal("application/json"))
+			Expect(rec.Body.String()).To(ContainSubstring("missing X-Auth-Provider header"))
+		})
+
+		It("should reject API requests with unknown provider in header", func() {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
+			req.Header.Set("Authorization", "Bearer valid-pat")
+			req.Header.Set(headerAuthProvider, "unknown-provider")
+
+			rec := httptest.NewRecorder()
+
+			Middleware(manager)(handler).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusUnauthorized))
+			Expect(rec.Header().Get("Content-Type")).To(Equal("application/json"))
+		})
+
+		It("should fall back to cookie auth when no Bearer token on API path", func() {
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
+
+			rec := httptest.NewRecorder()
+
+			Middleware(manager)(handler).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusUnauthorized))
+			Expect(rec.Header().Get("Content-Type")).To(Equal("application/json"))
+		})
+
+		It("should not check Bearer token on non-API paths", func() {
+			req := httptest.NewRequest(http.MethodGet, "/dashboard", nil)
+			req.Header.Set("Authorization", "Bearer valid-pat")
+			req.Header.Set(headerAuthProvider, "gitea-prod")
+
+			rec := httptest.NewRecorder()
+
+			Middleware(manager)(handler).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusFound))
+			Expect(rec.Header().Get("Location")).To(Equal("/login"))
+		})
+
+		It("should inject API session into context for valid Bearer token", func() {
+			var capturedSession SessionData
+
+			var sessionFound bool
+
+			sessionHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				capturedSession, sessionFound = GetSessionData(r.Context(), manager.SessionManager())
+
+				w.WriteHeader(http.StatusOK)
+			})
+
+			req := httptest.NewRequest(http.MethodGet, "/api/v1/test", nil)
+			req.Header.Set("Authorization", "Bearer valid-pat")
+			req.Header.Set(headerAuthProvider, "gitea-prod")
+
+			rec := httptest.NewRecorder()
+
+			Middleware(manager)(sessionHandler).ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusOK))
+			Expect(sessionFound).To(BeTrue())
+			Expect(capturedSession.Email).To(Equal("test@example.com"))
+			Expect(capturedSession.AccessToken).To(Equal("valid-pat"))
+			Expect(capturedSession.Provider).To(Equal("gitea-prod"))
+		})
+	})
 })
 
 func findSessionCookie(rec *httptest.ResponseRecorder) *http.Cookie {

@@ -8,6 +8,7 @@ import (
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 )
 
 func newTestProvider(endpoint string, httpClient *http.Client) *GitHubProvider {
@@ -270,6 +271,71 @@ var _ = Describe("GitHubProvider", func() {
 			accessible, err := provider.IsUserRepo(ctx, newTestClient(), "owner/repo1")
 			Expect(err).To(HaveOccurred())
 			Expect(accessible).To(BeFalse())
+		})
+	})
+
+	Describe("ValidateToken", func() {
+		It("returns user info for valid token", func() {
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				// go-github SDK calls /api/v3/user for enterprise URLs
+				if r.URL.Path == "/api/v3/user" {
+					Expect(r.Header.Get("Authorization")).To(Equal("Bearer test-pat"))
+
+					w.Header().Set("Content-Type", "application/json")
+					_, _ = fmt.Fprint(w, `{
+						"id": 12345,
+						"login": "testuser",
+						"name": "Test User",
+						"email": "test@example.com",
+						"avatar_url": "https://example.com/avatar.png"
+					}`)
+
+					return
+				}
+
+				http.NotFound(w, r)
+			}))
+
+			provider := &GitHubProvider{
+				endpoint:   server.URL,
+				forgeURL:   server.URL,
+				httpClient: server.Client(),
+			}
+
+			user, err := provider.ValidateToken(ctx, "test-pat")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(user).NotTo(BeNil())
+			Expect(user.Subject).To(Equal("12345"))
+			Expect(user.Name).To(Equal("Test User"))
+			Expect(user.Email).To(Equal("test@example.com"))
+			Expect(user.AccessToken).To(Equal("test-pat"))
+		})
+
+		It("returns error for empty token", func() {
+			provider := &GitHubProvider{
+				endpoint:   "https://api.github.com",
+				httpClient: &http.Client{},
+			}
+
+			user, err := provider.ValidateToken(ctx, "")
+			Expect(err).To(MatchError(auth.ErrInvalidToken))
+			Expect(user).To(BeNil())
+		})
+
+		It("returns error for invalid token", func() {
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				http.Error(w, "unauthorized", http.StatusUnauthorized)
+			}))
+
+			provider := &GitHubProvider{
+				endpoint:   server.URL,
+				forgeURL:   server.URL,
+				httpClient: server.Client(),
+			}
+
+			user, err := provider.ValidateToken(ctx, "invalid-pat")
+			Expect(err).To(HaveOccurred())
+			Expect(user).To(BeNil())
 		})
 	})
 })

@@ -13,6 +13,7 @@ import (
 	"github.com/coreos/go-oidc/v3/oidc/oidctest"
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"golang.org/x/oauth2"
 )
 
@@ -427,6 +428,77 @@ var _ = Describe("GiteaProvider", func() {
 			Expect(user.Subject).To(Equal("user-123"))
 			Expect(user.AccessToken).To(Equal("test-access-token"))
 			Expect(user.RefreshToken).To(Equal("test-refresh-token"))
+		})
+	})
+
+	Describe("ValidateToken", func() {
+		It("returns user info for valid token", func() {
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+
+				switch r.URL.Path {
+				case "/api/v1/version":
+					_, _ = fmt.Fprint(w, `{"version": "1.21.0"}`)
+				case "/api/v1/user":
+					Expect(r.Header.Get("Authorization")).To(Equal("token test-pat"))
+
+					_, _ = fmt.Fprint(w, `{
+						"id": 12345,
+						"login": "testuser",
+						"full_name": "Test User",
+						"email": "test@example.com",
+						"avatar_url": "https://example.com/avatar.png"
+					}`)
+				default:
+					http.NotFound(w, r)
+				}
+			}))
+
+			provider := &GiteaProvider{
+				forgeURL:   server.URL,
+				httpClient: server.Client(),
+			}
+
+			user, err := provider.ValidateToken(ctx, "test-pat")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(user).NotTo(BeNil())
+			Expect(user.Subject).To(Equal("12345"))
+			Expect(user.Name).To(Equal("Test User"))
+			Expect(user.Email).To(Equal("test@example.com"))
+			Expect(user.AccessToken).To(Equal("test-pat"))
+		})
+
+		It("returns error for empty token", func() {
+			provider := &GiteaProvider{
+				forgeURL:   "https://gitea.example.com",
+				httpClient: &http.Client{},
+			}
+
+			user, err := provider.ValidateToken(ctx, "")
+			Expect(err).To(MatchError(auth.ErrInvalidToken))
+			Expect(user).To(BeNil())
+		})
+
+		It("returns error for invalid token", func() {
+			server = httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				w.Header().Set("Content-Type", "application/json")
+
+				switch r.URL.Path {
+				case "/api/v1/version":
+					_, _ = fmt.Fprint(w, `{"version": "1.21.0"}`)
+				default:
+					http.Error(w, "unauthorized", http.StatusUnauthorized)
+				}
+			}))
+
+			provider := &GiteaProvider{
+				forgeURL:   server.URL,
+				httpClient: server.Client(),
+			}
+
+			user, err := provider.ValidateToken(ctx, "invalid-pat")
+			Expect(err).To(HaveOccurred())
+			Expect(user).To(BeNil())
 		})
 	})
 })

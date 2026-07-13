@@ -33,6 +33,10 @@ const (
 	defaultTokenLifetime = 1 * time.Hour
 )
 
+type contextKey string
+
+const apiSessionKey contextKey = "apiSession"
+
 type SessionData struct {
 	Email        string
 	Name         string
@@ -118,7 +122,26 @@ func SetSessionData(ctx context.Context, session *scs.SessionManager, data Sessi
 	session.Put(ctx, sessionKeyAvatarURL, data.AvatarURL)
 }
 
+// SetAPISessionData stores session data in the request context for API token authentication.
+// This is used for Bearer token authentication where no cookie session is created.
+func SetAPISessionData(ctx context.Context, data SessionData) context.Context {
+	return context.WithValue(ctx, apiSessionKey, data)
+}
+
+// GetAPISessionData retrieves API session data from the request context.
+func GetAPISessionData(ctx context.Context) (SessionData, bool) {
+	data, ok := ctx.Value(apiSessionKey).(SessionData)
+
+	return data, ok
+}
+
 func GetSessionData(ctx context.Context, session *scs.SessionManager) (SessionData, bool) {
+	// Check for API session first (Bearer token auth)
+	if data, ok := GetAPISessionData(ctx); ok {
+		return data, true
+	}
+
+	// Fall back to cookie-based session
 	if !session.Exists(ctx, sessionKeyProvider) {
 		return SessionData{}, false
 	}

@@ -8,6 +8,7 @@ import (
 	"time"
 
 	"github.com/alexedwards/scs/v2"
+	"github.com/maypok86/otter/v2"
 	"golang.org/x/sync/singleflight"
 )
 
@@ -19,6 +20,12 @@ const (
 var (
 	ErrInvalidProvider = errors.New("invalid provider")
 	ErrNoRefreshToken  = errors.New("no refresh token available")
+	ErrInvalidToken    = errors.New("invalid token")
+)
+
+const (
+	defaultTokenCacheTTL = 5 * time.Minute
+	defaultTokenCacheMax = 1000
 )
 
 type ProviderConfig struct {
@@ -54,24 +61,33 @@ type AuthProvider interface {
 	LoginURL(state string) string
 	HandleCallback(ctx context.Context, code string) (*AuthenticatedUser, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*AuthenticatedUser, error)
+	ValidateToken(ctx context.Context, token string) (*AuthenticatedUser, error)
 	GetUserRepos(ctx context.Context, client *http.Client) (map[string]bool, error)
 	IsUserRepo(ctx context.Context, client *http.Client, fullName string) (bool, error)
 }
 
 type Manager struct {
-	mu           sync.RWMutex
-	providers    map[string]AuthProvider
-	session      *scs.SessionManager
-	intended     bool
-	refreshGroup singleflight.Group
+	mu            sync.RWMutex
+	providers     map[string]AuthProvider
+	session       *scs.SessionManager
+	intended      bool
+	refreshGroup  singleflight.Group
+	validateGroup singleflight.Group
+	patCache      *otter.Cache[string, *SessionData]
 }
 
 func NewManager(secureCookies bool) *Manager {
 	session := NewSessionManager(secureCookies)
 
+	patCache := otter.Must(&otter.Options[string, *SessionData]{
+		ExpiryCalculator: otter.ExpiryWriting[string, *SessionData](defaultTokenCacheTTL),
+		MaximumSize:      defaultTokenCacheMax,
+	})
+
 	return &Manager{
 		providers: make(map[string]AuthProvider),
 		session:   session,
+		patCache:  patCache,
 	}
 }
 
