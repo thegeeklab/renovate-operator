@@ -122,7 +122,7 @@ func RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, uncha
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = IconArrowPath("h-3.5 w-3.5").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = IconGitPullRequest("h-3.5 w-3.5").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -177,7 +177,7 @@ func RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, uncha
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = IconExclamationTriangle("h-3.5 w-3.5").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = IconTriangleAlert("h-3.5 w-3.5").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -253,7 +253,7 @@ func RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, uncha
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = IconInformationCircle("h-3.5 w-3.5").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = IconInfo("h-3.5 w-3.5").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -306,7 +306,7 @@ func RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, uncha
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = IconArrowPath("h-3.5 w-3.5").Render(ctx, templ_7745c5c3_Buffer)
+				templ_7745c5c3_Err = IconGitPullRequest("h-3.5 w-3.5").Render(ctx, templ_7745c5c3_Buffer)
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
@@ -381,7 +381,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = IconMagnifyingGlass("h-4 w-4 text-gray-400").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = IconSearch("h-4 w-4 text-gray-400").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -394,7 +394,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = IconXMark("h-4 w-4").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = IconX("h-4 w-4").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -672,7 +672,7 @@ func RepoSortControls(renovatorName string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = IconChevronUpDown("h-4 w-4 text-gray-500").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = IconChevronsUpDown("h-4 w-4 text-gray-500").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -823,7 +823,7 @@ func RepoSortControls(renovatorName string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = IconBarsArrowDown("h-4 w-4").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = IconArrowDownWideNarrow("h-4 w-4").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -831,7 +831,7 @@ func RepoSortControls(renovatorName string) templ.Component {
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
-			templ_7745c5c3_Err = IconBarsArrowUp("h-4 w-4").Render(ctx, templ_7745c5c3_Buffer)
+			templ_7745c5c3_Err = IconArrowUpNarrowWide("h-4 w-4").Render(ctx, templ_7745c5c3_Buffer)
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}

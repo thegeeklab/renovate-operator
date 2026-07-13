@@ -108,7 +108,7 @@ generate: controller-gen ## Generate code containing DeepCopy, DeepCopyInto, and
 	@$(MAKE) --no-print-directory yamlfmt
 
 .PHONY: gen-icons
-gen-icons: ## Generate icons.templ from heroicons npm package.
+gen-icons: ## Generate icons.templ from lucide-static npm package.
 	$(GO) run ./hack/gen-icons.go internal/frontend/view/icons.templ
 
 .PHONY: templ

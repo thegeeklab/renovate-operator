@@ -20,7 +20,7 @@ const sections: ShortcutSection[] = [
     title: "General",
     shortcuts: [
       { keys: "?", description: "Show keyboard shortcuts" },
-      { keys: "Escape", description: "Close modal or blur input" }
+      { keys: "Esc", description: "Close modal or blur input" }
     ]
   }
 ]

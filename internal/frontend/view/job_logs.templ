@@ -74,11 +74,11 @@ templ JobLogs(data viewmodel.JobLogData) {
 							aria-label="Clear search"
 							class="hidden pointer-events-auto rounded text-gray-400 hover:text-gray-200"
 						>
-							@IconXMark("h-4 w-4")
+							@IconX("h-4 w-4")
 						</button>
 						<span data-role="log-search-icon" class="flex items-center gap-1.5 text-gray-500">
 							@Kbd("/")
-							@IconMagnifyingGlass("h-4 w-4")
+							@IconSearch("h-4 w-4")
 						</span>
 					</div>
 				</div>
@@ -103,7 +103,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 							>
 								{ strconv.Itoa(len(logLevelOptions())) }/{ strconv.Itoa(len(logLevelOptions())) }
 							</span>
-							@IconChevronUpDown("h-4 w-4 text-gray-500")
+							@IconChevronsUpDown("h-4 w-4 text-gray-500")
 						</button>
 						<div
 							data-role="level-menu"
@@ -139,7 +139,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 								@IconEye("h-4 w-4")
 							</span>
 							<span data-role="autoscroll-icon-off">
-								@IconEyeSlash("h-4 w-4")
+								@IconEyeOff("h-4 w-4")
 							</span>
 						</button>
 					}
@@ -154,7 +154,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 							aria-label="Download full log"
 							class={ btnGhostIcon() }
 						>
-							@IconArrowDownTray("h-4 w-4")
+							@IconDownload("h-4 w-4")
 						</button>
 					}
 				}
@@ -165,7 +165,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 						aria-label="Close logs"
 						class={ btnGhostIcon() }
 					>
-						@IconXMark("h-4 w-4")
+						@IconX("h-4 w-4")
 					</button>
 				}
 			</div>
@@ -191,7 +191,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 
 templ logMessageEmpty(message string) {
 	<div class="flex flex-col items-center justify-center py-8 text-gray-500 h-full">
-		@IconInformationCircle("h-10 w-10 text-gray-600 mb-3")
+		@IconInfo("h-10 w-10 text-gray-600 mb-3")
 		<p class="text-sm font-mono text-center px-4">{ message }</p>
 	</div>
 }
@@ -245,23 +245,35 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 			<div class="flex items-center gap-4">
 				if parsed.HasIssues {
 					<div class="flex items-center gap-2">
-						@IconExclamationTriangle("h-4 w-4 text-yellow-400")
+						@IconTriangleAlert("h-4 w-4 text-yellow-400")
 						<span class="text-xs font-medium text-yellow-400">
 							{ viewmodel.IssueSummaryText(parsed.LogIssues) }
 						</span>
 					</div>
 				} else if parsed.LogIssues != nil {
 					<div class="flex items-center gap-2">
-						@IconCheckCircle("h-4 w-4 text-green-400")
+						@IconCircleCheck("h-4 w-4 text-green-400")
 						<span class="text-xs font-medium text-green-400">No issues</span>
 					</div>
 				}
-				if parsed.PRActivity != nil && viewmodel.HasPRActivity(parsed.PRActivity) {
+			if parsed.PRActivity != nil && viewmodel.HasPRActivity(parsed.PRActivity) {
+				if parsed.PRActivity.NeedsApproval > 0 {
 					<div class="flex items-center gap-2">
-						@IconArrowTopRightOnSquare("h-4 w-4 text-gray-400")
+						@IconTriangleAlert("h-4 w-4 text-yellow-400")
+						<span class="text-xs font-medium text-yellow-400">{ viewmodel.PRActivitySummary(parsed.PRActivity) }</span>
+					</div>
+				} else if parsed.PRActivity.Unchanged > 0 && (parsed.PRActivity.Created+parsed.PRActivity.Updated) == parsed.PRActivity.Unchanged {
+					<div class="flex items-center gap-2">
+						@IconInfo("h-4 w-4 text-gray-400")
 						<span class="text-xs font-medium text-gray-400">{ viewmodel.PRActivitySummary(parsed.PRActivity) }</span>
 					</div>
+				} else if parsed.PRActivity.Created+parsed.PRActivity.Updated > 0 {
+					<div class="flex items-center gap-2">
+						@IconGitPullRequest("h-4 w-4 text-blue-400")
+						<span class="text-xs font-medium text-blue-400">{ viewmodel.PRActivitySummary(parsed.PRActivity) }</span>
+					</div>
 				}
+			}
 			</div>
 			<div class="flex items-center gap-1">
 				<button
@@ -285,9 +297,9 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 						for _, issue := range parsed.LogIssues.Issues {
 							<li class="flex items-start gap-2 text-xs">
 								if issue.Level >= 50 {
-									@IconXCircle("h-4 w-4 text-red-400 mt-0.5 shrink-0")
+									@IconCircleX("h-4 w-4 text-red-400 mt-0.5 shrink-0")
 								} else {
-									@IconExclamationTriangle("h-4 w-4 text-yellow-400 mt-0.5 shrink-0")
+									@IconTriangleAlert("h-4 w-4 text-yellow-400 mt-0.5 shrink-0")
 								}
 								<span class="text-gray-300">{ issue.Message }</span>
 							</li>
@@ -318,9 +330,9 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 									<span class="text-gray-300 truncate">{ pr.Title }</span>
 								}
 								if pr.Number > 0 {
-									<span class="text-gray-500">#{ pr.Number }</span>
+									<span class="text-gray-400">#{ pr.Number }</span>
 								}
-								<span class="text-gray-600 truncate ml-auto">{ pr.Branch }</span>
+								<span class="text-gray-400 truncate ml-auto">{ pr.Branch }</span>
 							</li>
 						}
 						if parsed.PRActivity.Truncated {
@@ -339,7 +351,7 @@ templ prActionIcon(action parser.PRAction) {
 	switch action {
 		case parser.PRActionAutomerged:
 			@Tooltip("Automerged") {
-				@IconCheckCircle("h-4 w-4 text-green-400 shrink-0")
+				@IconCircleCheck("h-4 w-4 text-green-400 shrink-0")
 			}
 		case parser.PRActionCreated:
 			@Tooltip("Created (new PR)") {
@@ -347,15 +359,15 @@ templ prActionIcon(action parser.PRAction) {
 			}
 		case parser.PRActionUpdated:
 			@Tooltip("Updated") {
-				@IconArrowPath("h-4 w-4 text-yellow-400 shrink-0")
+				@IconRefreshCw("h-4 w-4 text-yellow-400 shrink-0")
 			}
 		case parser.PRActionNeedsApproval:
 			@Tooltip("Needs approval") {
-				@IconExclamationTriangle("h-4 w-4 text-orange-400 shrink-0")
+				@IconTriangleAlert("h-4 w-4 text-orange-400 shrink-0")
 			}
 		case parser.PRActionUnchanged:
 			@Tooltip("Unchanged (no updates needed)") {
-				@IconPlusCircle("h-4 w-4 text-gray-400 shrink-0")
+				@IconCirclePlus("h-4 w-4 text-gray-400 shrink-0")
 			}
 	}
 }

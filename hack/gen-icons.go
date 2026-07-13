@@ -13,40 +13,40 @@ import (
 
 type iconDef struct {
 	fileName string
-	variant  string
 }
 
 var icons = []iconDef{
-	{fileName: "arrow-down-tray"},
+	{fileName: "download"},
 	{fileName: "arrow-left"},
-	{fileName: "arrow-path"},
-	{fileName: "arrow-right-on-rectangle"},
-	{fileName: "arrow-top-right-on-square"},
-	{fileName: "bars-arrow-down"},
-	{fileName: "bars-arrow-up"},
-	{fileName: "check-circle"},
+	{fileName: "refresh-cw"},
+	{fileName: "log-out"},
+	{fileName: "git-pull-request"},
+	{fileName: "arrow-down-wide-narrow"},
+	{fileName: "arrow-up-narrow-wide"},
+	{fileName: "circle-check"},
 	{fileName: "chevron-right"},
-	{fileName: "chevron-up-down"},
-	{fileName: "document-text"},
-	{fileName: "exclamation-triangle"},
+	{fileName: "chevrons-up-down"},
+	{fileName: "file-text"},
+	{fileName: "triangle-alert"},
 	{fileName: "eye"},
-	{fileName: "eye-slash"},
+	{fileName: "eye-off"},
 	{fileName: "funnel"},
 	{fileName: "inbox"},
-	{fileName: "information-circle"},
-	{fileName: "key"},
-	{fileName: "magnifying-glass"},
+	{fileName: "info"},
+	{fileName: "key-round"},
+	{fileName: "search"},
 	{fileName: "plus"},
-	{fileName: "plus-circle"},
-	{fileName: "x-circle"},
-	{fileName: "x-mark"},
+	{fileName: "circle-plus"},
+	{fileName: "circle-x"},
+	{fileName: "x"},
 }
 
 var (
-	svgTagRe     = regexp.MustCompile(`<svg[^>]*>`)
-	ariaHiddenRe = regexp.MustCompile(`\s*aria-hidden="true"`)
-	dataSlotRe   = regexp.MustCompile(`\s*data-slot="icon"`)
-	selfCloseRe  = regexp.MustCompile(`<(\w+)([^>]*?)/>`)
+	svgTagRe    = regexp.MustCompile(`<svg[^>]*>`)
+	widthAttrRe = regexp.MustCompile(`\s*width="24"`)
+	heightRe    = regexp.MustCompile(`\s*height="24"`)
+	classRe     = regexp.MustCompile(`\s*class="[^"]*"`)
+	selfCloseRe = regexp.MustCompile(`<(\w+)([^>]*?)/>`)
 
 	errNoSVGTag = errors.New("no <svg> tag found")
 )
@@ -59,9 +59,9 @@ func main() {
 
 	outputPath := os.Args[1]
 
-	nodeModules := filepath.Join("node_modules", "heroicons")
+	nodeModules := filepath.Join("node_modules", "lucide-static")
 	if _, err := os.Stat(nodeModules); os.IsNotExist(err) {
-		fmt.Fprintf(os.Stderr, "error: node_modules/heroicons not found. Run 'npm install' first.\n")
+		fmt.Fprintf(os.Stderr, "error: node_modules/lucide-static not found. Run 'npm install' first.\n")
 		os.Exit(1)
 	}
 
@@ -70,12 +70,7 @@ func main() {
 	b.WriteString("package view\n\n")
 
 	for i, icon := range icons {
-		variant := icon.variant
-		if variant == "" {
-			variant = "outline"
-		}
-
-		svgPath := filepath.Join(nodeModules, "24", variant, icon.fileName+".svg")
+		svgPath := filepath.Join(nodeModules, "icons", icon.fileName+".svg")
 
 		raw, err := os.ReadFile(svgPath)
 		if err != nil {
@@ -135,8 +130,9 @@ func svgToTempl(raw, funcName string) (string, error) {
 	inner := strings.TrimSpace(strings.TrimSuffix(strings.TrimSpace(raw[len(svgMatch):]), "</svg>"))
 
 	svgTag := svgMatch
-	svgTag = ariaHiddenRe.ReplaceAllString(svgTag, "")
-	svgTag = dataSlotRe.ReplaceAllString(svgTag, "")
+	svgTag = widthAttrRe.ReplaceAllString(svgTag, "")
+	svgTag = heightRe.ReplaceAllString(svgTag, "")
+	svgTag = classRe.ReplaceAllString(svgTag, "")
 	svgTag = strings.TrimRight(svgTag, ">")
 	svgTag += ` class={ class }>`
 
