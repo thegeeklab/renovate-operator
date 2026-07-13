@@ -63,7 +63,7 @@ func errorContent(statusCode int, title, message string) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = IconExclamationTriangle("mx-auto h-16 w-16 text-gray-600 mb-4").Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = IconTriangleAlert("mx-auto h-16 w-16 text-gray-600 mb-4").Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

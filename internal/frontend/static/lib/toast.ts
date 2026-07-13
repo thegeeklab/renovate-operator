@@ -1,8 +1,8 @@
-import checkCircleSvg from "heroicons/24/outline/check-circle.svg?raw"
-import xCircleSvg from "heroicons/24/outline/x-circle.svg?raw"
-import exclamationTriangleSvg from "heroicons/24/outline/exclamation-triangle.svg?raw"
-import informationCircleSvg from "heroicons/24/outline/information-circle.svg?raw"
-import xMarkSvg from "heroicons/24/outline/x-mark.svg?raw"
+import checkCircleSvg from "lucide-static/icons/circle-check.svg?raw"
+import xCircleSvg from "lucide-static/icons/circle-x.svg?raw"
+import exclamationTriangleSvg from "lucide-static/icons/triangle-alert.svg?raw"
+import informationCircleSvg from "lucide-static/icons/info.svg?raw"
+import xMarkSvg from "lucide-static/icons/x.svg?raw"
 
 const TOAST_DURATION = 5000
 const TOAST_LIMIT = 5
