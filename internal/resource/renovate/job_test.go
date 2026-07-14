@@ -78,7 +78,7 @@ var _ = Describe("Renovate Job Library", func() {
 			Expect(jobSpec.Template.Spec.ImagePullSecrets).To(BeEmpty())
 		})
 
-		It("should create scratch volume at /tmp by default", func() {
+		It("should create scratch volume at /tmp/renovate by default", func() {
 			jobSpec := &batchv1.JobSpec{}
 			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
 
@@ -97,11 +97,11 @@ var _ = Describe("Renovate Job Library", func() {
 
 			env := jobSpec.Template.Spec.Containers[0].Env
 			Expect(env).To(ContainElement(HaveField("Name", "RENOVATE_BASE_DIR")))
-			Expect(env).To(ContainElement(HaveField("Value", "/tmp")))
+			Expect(env).To(ContainElement(HaveField("Value", "/tmp/renovate")))
 
 			mounts := jobSpec.Template.Spec.Containers[0].VolumeMounts
 			Expect(mounts).To(ContainElement(HaveField("Name", renovate.VolumeRenovateTmp)))
-			Expect(mounts).To(ContainElement(HaveField("MountPath", "/tmp")))
+			Expect(mounts).To(ContainElement(HaveField("MountPath", "/tmp/renovate")))
 		})
 
 		It("should apply ImagePullSecrets from RenovateConfig", func() {

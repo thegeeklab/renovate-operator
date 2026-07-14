@@ -71,4 +71,97 @@ var _ = Describe("Discovery Webhook", func() {
 			Expect(err.Error()).To(ContainSubstring("expected a Discovery object but got other type"))
 		})
 	})
+
+	Context("When creating Discovery under Validating Webhook", func() {
+		var validator DiscoveryCustomValidator
+
+		BeforeEach(func() {
+			validator = DiscoveryCustomValidator{}
+		})
+
+		It("Should accept valid timezone", func() {
+			By("setting a valid timezone")
+
+			obj.Spec.Timezone = "Europe/Berlin"
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should reject invalid timezone", func() {
+			By("setting an invalid timezone")
+
+			obj.Spec.Timezone = "Invalid/Timezone"
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid timezone"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should return error when object is nil on ValidateCreate", func() {
+			By("calling the ValidateCreate method with nil object")
+
+			warnings, err := validator.ValidateCreate(ctx, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("expected a Discovery object but got other type"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should validate timezone on update", func() {
+			By("setting an invalid timezone")
+
+			obj.Spec.Timezone = "Invalid/Timezone"
+
+			By("calling the ValidateUpdate method")
+
+			warnings, err := validator.ValidateUpdate(ctx, oldObj, obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid timezone"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should accept valid timezone on update", func() {
+			By("setting a valid timezone")
+
+			obj.Spec.Timezone = "Europe/Berlin"
+
+			By("calling the ValidateUpdate method")
+
+			warnings, err := validator.ValidateUpdate(ctx, oldObj, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should return error when object is nil on ValidateUpdate", func() {
+			By("calling the ValidateUpdate method with nil object")
+
+			warnings, err := validator.ValidateUpdate(ctx, oldObj, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("expected a Discovery object but got other type"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should accept valid object on ValidateDelete", func() {
+			By("calling the ValidateDelete method")
+
+			warnings, err := validator.ValidateDelete(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should return error when object is nil on ValidateDelete", func() {
+			By("calling the ValidateDelete method with nil object")
+
+			warnings, err := validator.ValidateDelete(ctx, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("expected a Discovery object but got other type"))
+			Expect(warnings).To(BeNil())
+		})
+	})
 })

@@ -10,6 +10,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 )
 
 var (
@@ -22,17 +23,16 @@ var (
 func SetupRenovatorWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr, &renovatev1beta1.Renovator{}).
 		WithDefaulter(&RenovatorCustomDefaulter{}).
+		WithValidator(&RenovatorCustomValidator{}).
 		Complete()
 }
 
 //nolint:lll
 // +kubebuilder:webhook:path=/mutate-renovate-thegeeklab-de-v1beta1-renovator,mutating=true,failurePolicy=fail,sideEffects=None,groups=renovate.thegeeklab.de,resources=renovators,verbs=create;update,versions=v1beta1,name=mrenovator-v1beta1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-renovate-thegeeklab-de-v1beta1-renovator,mutating=false,failurePolicy=fail,sideEffects=None,groups=renovate.thegeeklab.de,resources=renovators,verbs=create;update,versions=v1beta1,name=vrenovator-v1beta1.kb.io,admissionReviewVersions=v1
 
 // RenovatorCustomDefaulter struct is responsible for setting default values on the custom resource of the
 // Kind Renovator when those are created or updated.
-//
-// NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
-// as it is used only for temporary operations and does not need to be deeply copied.
 type RenovatorCustomDefaulter struct{}
 
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind Renovator.
@@ -88,7 +88,6 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 		renovator.Spec.Renovate.FailOnConfigValidationError = new(false)
 	}
 
-	// Enforce LabelAuthProvider to match authProviderRef.
 	if renovator.Labels == nil {
 		renovator.Labels = make(map[string]string)
 	}
@@ -99,9 +98,102 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 		delete(renovator.Labels, renovatev1beta1.LabelAuthProvider)
 	}
 
-	if err := validateTimezone(renovator.Spec.Timezone); err != nil {
-		return err
-	}
+	defaultScratchVolume(renovator.Spec.ScratchVolume)
+	defaultScratchVolume(renovator.Spec.Discovery.ScratchVolume)
+	defaultScratchVolume(renovator.Spec.Runner.ScratchVolume)
 
 	return nil
+}
+
+// RenovatorCustomValidator struct is responsible for validating the Kind Renovator resource
+// when it is created or updated.
+type RenovatorCustomValidator struct{}
+
+// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the Kind Renovator.
+func (v *RenovatorCustomValidator) ValidateCreate(
+	_ context.Context,
+	renovator *renovatev1beta1.Renovator,
+) (admission.Warnings, error) {
+	if renovator == nil {
+		return nil, fmt.Errorf("%w: %T", ErrRenovatorObjectType, renovator)
+	}
+
+	renovatorLog.Info("Validation for Renovator upon creation", "name", renovator.GetName())
+
+	if err := validateTimezone(renovator.Spec.Timezone); err != nil {
+		return nil, err
+	}
+
+	if err := validateTimezone(renovator.Spec.Discovery.Timezone); err != nil {
+		return nil, err
+	}
+
+	if err := validateTimezone(renovator.Spec.Runner.Timezone); err != nil {
+		return nil, err
+	}
+
+	if err := validateScratchVolumePath(renovator.Spec.ScratchVolume); err != nil {
+		return nil, err
+	}
+
+	if err := validateScratchVolumePath(renovator.Spec.Discovery.ScratchVolume); err != nil {
+		return nil, err
+	}
+
+	if err := validateScratchVolumePath(renovator.Spec.Runner.ScratchVolume); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the Kind Renovator.
+func (v *RenovatorCustomValidator) ValidateUpdate(
+	_ context.Context,
+	_ *renovatev1beta1.Renovator,
+	newRenovator *renovatev1beta1.Renovator,
+) (admission.Warnings, error) {
+	if newRenovator == nil {
+		return nil, fmt.Errorf("%w: %T", ErrRenovatorObjectType, newRenovator)
+	}
+
+	renovatorLog.Info("Validation for Renovator upon update", "name", newRenovator.GetName())
+
+	if err := validateTimezone(newRenovator.Spec.Timezone); err != nil {
+		return nil, err
+	}
+
+	if err := validateTimezone(newRenovator.Spec.Discovery.Timezone); err != nil {
+		return nil, err
+	}
+
+	if err := validateTimezone(newRenovator.Spec.Runner.Timezone); err != nil {
+		return nil, err
+	}
+
+	if err := validateScratchVolumePath(newRenovator.Spec.ScratchVolume); err != nil {
+		return nil, err
+	}
+
+	if err := validateScratchVolumePath(newRenovator.Spec.Discovery.ScratchVolume); err != nil {
+		return nil, err
+	}
+
+	if err := validateScratchVolumePath(newRenovator.Spec.Runner.ScratchVolume); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the Kind Renovator.
+func (v *RenovatorCustomValidator) ValidateDelete(
+	_ context.Context,
+	renovator *renovatev1beta1.Renovator,
+) (admission.Warnings, error) {
+	if renovator == nil {
+		return nil, fmt.Errorf("%w: %T", ErrRenovatorObjectType, renovator)
+	}
+
+	return nil, nil
 }

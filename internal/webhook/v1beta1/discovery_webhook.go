@@ -8,6 +8,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
+	"sigs.k8s.io/controller-runtime/pkg/webhook/admission"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 )
@@ -22,17 +23,16 @@ var (
 func SetupDiscoveryWebhookWithManager(mgr ctrl.Manager) error {
 	return ctrl.NewWebhookManagedBy(mgr, &renovatev1beta1.Discovery{}).
 		WithDefaulter(&DiscoveryCustomDefaulter{}).
+		WithValidator(&DiscoveryCustomValidator{}).
 		Complete()
 }
 
 //nolint:lll
 // +kubebuilder:webhook:path=/mutate-renovate-thegeeklab-de-v1beta1-discovery,mutating=true,failurePolicy=fail,sideEffects=None,groups=renovate.thegeeklab.de,resources=discoveries,verbs=create;update,versions=v1beta1,name=mdiscovery-v1beta1.kb.io,admissionReviewVersions=v1
+// +kubebuilder:webhook:path=/validate-renovate-thegeeklab-de-v1beta1-discovery,mutating=false,failurePolicy=fail,sideEffects=None,groups=renovate.thegeeklab.de,resources=discoveries,verbs=create;update,versions=v1beta1,name=vdiscovery-v1beta1.kb.io,admissionReviewVersions=v1
 
 // DiscoveryCustomDefaulter struct is responsible for setting default values on the custom resource of the
 // Kind Discovery when those are created or updated.
-//
-// NOTE: The +kubebuilder:object:generate=false marker prevents controller-gen from generating DeepCopy methods,
-// as it is used only for temporary operations and does not need to be deeply copied.
 type DiscoveryCustomDefaulter struct{}
 
 // Default implements webhook.CustomDefaulter so a webhook will be registered for the Kind Discovery.
@@ -83,9 +83,67 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 		discovery.Spec.SkipForks = new(false)
 	}
 
-	if err := validateTimezone(discovery.Spec.Timezone); err != nil {
-		return err
-	}
+	defaultScratchVolume(discovery.Spec.ScratchVolume)
 
 	return nil
+}
+
+// DiscoveryCustomValidator struct is responsible for validating the Kind Discovery resource
+// when it is created or updated.
+type DiscoveryCustomValidator struct{}
+
+// ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the Kind Discovery.
+func (v *DiscoveryCustomValidator) ValidateCreate(
+	_ context.Context,
+	discovery *renovatev1beta1.Discovery,
+) (admission.Warnings, error) {
+	if discovery == nil {
+		return nil, fmt.Errorf("%w: %T", ErrDiscoveryObjectType, discovery)
+	}
+
+	discoveryLog.Info("Validation for Discovery upon creation", "name", discovery.GetName())
+
+	if err := validateTimezone(discovery.Spec.Timezone); err != nil {
+		return nil, err
+	}
+
+	if err := validateScratchVolumePath(discovery.Spec.ScratchVolume); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the Kind Discovery.
+func (v *DiscoveryCustomValidator) ValidateUpdate(
+	_ context.Context,
+	_, newDiscovery *renovatev1beta1.Discovery,
+) (admission.Warnings, error) {
+	if newDiscovery == nil {
+		return nil, fmt.Errorf("%w: %T", ErrDiscoveryObjectType, newDiscovery)
+	}
+
+	discoveryLog.Info("Validation for Discovery upon update", "name", newDiscovery.GetName())
+
+	if err := validateTimezone(newDiscovery.Spec.Timezone); err != nil {
+		return nil, err
+	}
+
+	if err := validateScratchVolumePath(newDiscovery.Spec.ScratchVolume); err != nil {
+		return nil, err
+	}
+
+	return nil, nil
+}
+
+// ValidateDelete implements webhook.CustomValidator so a webhook will be registered for the Kind Discovery.
+func (v *DiscoveryCustomValidator) ValidateDelete(
+	_ context.Context,
+	discovery *renovatev1beta1.Discovery,
+) (admission.Warnings, error) {
+	if discovery == nil {
+		return nil, fmt.Errorf("%w: %T", ErrDiscoveryObjectType, discovery)
+	}
+
+	return nil, nil
 }

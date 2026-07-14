@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -91,7 +92,7 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 	scratchPath := renovate.GetScratchVolumePath(r.instance.Spec.ScratchVolume)
-	reposFile := scratchPath + "/" + renovate.FilenameRepositories
+	reposFile := filepath.Join(scratchPath, renovate.FilenameRepositories)
 
 	// Build scratch mounts for discovery containers (volume is created by DefaultJobSpec)
 	_, scratchMounts := renovate.BuildScratchVolumeAndMounts(r.instance.Spec.ScratchVolume)

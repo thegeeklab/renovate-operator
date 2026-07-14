@@ -50,7 +50,7 @@ const (
 	DefaultSuccessLimit           int32 = 3
 	DefaultFailedLimit            int32 = 1
 	DefaultBackoffLimit           int32 = 0
-	DefaultScratchVolumePath            = "/tmp"
+	DefaultScratchVolumePath            = "/tmp/renovate"
 )
 
 type LoggingSpec struct {
@@ -115,7 +115,7 @@ type JobSpec struct {
 // ScratchVolumeSpec configures a scratch volume for RENOVATE_BASE_DIR.
 type ScratchVolumeSpec struct {
 	// Path is the mount path for the scratch volume (RENOVATE_BASE_DIR).
-	// +kubebuilder:default="/tmp"
+	// Must be an absolute path.
 	Path string `json:"path,omitempty"`
 
 	// Ephemeral uses a Kubernetes generic ephemeral volume for scratch (volume.ephemeral).

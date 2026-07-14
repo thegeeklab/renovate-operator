@@ -4141,8 +4141,9 @@ spec:
                           description: Medium specifies the storage medium (empty or memory/tmpfs).
                           type: string
                         path:
-                          default: /tmp
-                          description: Path is the mount path for the scratch volume (RENOVATE_BASE_DIR).
+                          description: |-
+                            Path is the mount path for the scratch volume (RENOVATE_BASE_DIR).
+                            Must be an absolute path.
                           type: string
                         sizeLimit:
                           anyOf:
@@ -10209,8 +10210,9 @@ spec:
                           description: Medium specifies the storage medium (empty or memory/tmpfs).
                           type: string
                         path:
-                          default: /tmp
-                          description: Path is the mount path for the scratch volume (RENOVATE_BASE_DIR).
+                          description: |-
+                            Path is the mount path for the scratch volume (RENOVATE_BASE_DIR).
+                            Must be an absolute path.
                           type: string
                         sizeLimit:
                           anyOf:
@@ -10882,8 +10884,9 @@ spec:
                       description: Medium specifies the storage medium (empty or memory/tmpfs).
                       type: string
                     path:
-                      default: /tmp
-                      description: Path is the mount path for the scratch volume (RENOVATE_BASE_DIR).
+                      description: |-
+                        Path is the mount path for the scratch volume (RENOVATE_BASE_DIR).
+                        Must be an absolute path.
                       type: string
                     sizeLimit:
                       anyOf:
