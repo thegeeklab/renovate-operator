@@ -649,5 +649,142 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(existingRunner.Spec.ExtraVolumes).To(HaveLen(1))
 			Expect(existingRunner.Spec.ExtraVolumes[0].Name).To(Equal("runner-vol"))
 		})
+
+		It("should inherit RuntimeClassName from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						RuntimeClassName: new("gvisor"),
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.RuntimeClassName).NotTo(BeNil())
+			Expect(*existingRunner.Spec.RuntimeClassName).To(Equal("gvisor"))
+		})
+
+		It("should override global RuntimeClassName with runner-specific RuntimeClassName", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						RuntimeClassName: new("gvisor"),
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							RuntimeClassName: new("kata"),
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.RuntimeClassName).NotTo(BeNil())
+			Expect(*existingRunner.Spec.RuntimeClassName).To(Equal("kata"))
+		})
+
+		It("should inherit PodAnnotations from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						PodAnnotations: map[string]string{"prometheus.io/scrape": "true"},
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.PodAnnotations).To(HaveKeyWithValue("prometheus.io/scrape", "true"))
+		})
+
+		It("should override global PodAnnotations with runner-specific PodAnnotations", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						PodAnnotations: map[string]string{"prometheus.io/scrape": "true"},
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							PodAnnotations: map[string]string{"istio-injection": "enabled"},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.PodAnnotations).To(HaveKeyWithValue("istio-injection", "enabled"))
+			Expect(existingRunner.Spec.PodAnnotations).NotTo(HaveKey("prometheus.io/scrape"))
+		})
+
+		It("should inherit ScratchVolume from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
+							Path: "/scratch",
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.ScratchVolume).NotTo(BeNil())
+			Expect(existingRunner.Spec.ScratchVolume.Path).To(Equal("/scratch"))
+		})
+
+		It("should override global ScratchVolume with runner-specific ScratchVolume", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
+							Path: "/scratch",
+						},
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
+								Path: "/runner-scratch",
+							},
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.ScratchVolume).NotTo(BeNil())
+			Expect(existingRunner.Spec.ScratchVolume.Path).To(Equal("/runner-scratch"))
+		})
 	})
 })

@@ -5,6 +5,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
+	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -21,6 +22,7 @@ type jobConfig struct {
 	VolumeMutators            []containers.VolumeMutator
 	EnvVars                   []corev1.EnvVar
 	PodLabels                 map[string]string
+	PodAnnotations            map[string]string
 	ImagePullSecrets          []corev1.LocalObjectReference
 	NodeSelector              map[string]string
 	Affinity                  *corev1.Affinity
@@ -28,6 +30,8 @@ type jobConfig struct {
 	TopologySpreadConstraints []corev1.TopologySpreadConstraint
 	Resources                 corev1.ResourceRequirements
 	SecurityContext           *corev1.SecurityContext
+	RuntimeClassName          *string
+	ScratchVolume             *renovatev1beta1.ScratchVolumeSpec
 }
 
 // JobOption defines a function that modifies the job configuration.
@@ -39,12 +43,9 @@ func DefaultJobSpec(
 ) {
 	// Initialize Configuration with Safe Defaults
 	cfg := &jobConfig{
-		Renovate:   renovate,
-		RenovateCM: renovateCM,
-		VolumeMutators: []containers.VolumeMutator{
-			containers.WithEmptyDirVolume(VolumeRenovateTmp),
-			containers.WithConfigMapVolume(VolumeRenovateConfig, renovateCM),
-		},
+		Renovate:         renovate,
+		RenovateCM:       renovateCM,
+		VolumeMutators:   []containers.VolumeMutator{containers.WithConfigMapVolume(VolumeRenovateConfig, renovateCM)},
 		EnvVars:          DefaultEnvVars(&renovate.Spec),
 		ImagePullSecrets: append([]corev1.LocalObjectReference(nil), renovate.Spec.ImagePullSecrets...),
 	}
@@ -54,6 +55,18 @@ func DefaultJobSpec(
 		opt(cfg)
 	}
 
+	// Build scratch volume and mounts
+	scratchVolumes, scratchMounts := BuildScratchVolumeAndMounts(cfg.ScratchVolume)
+	cfg.VolumeMutators = append(cfg.VolumeMutators, scratchVolumes...)
+
+	// Add RENOVATE_BASE_DIR env var if not already set by the user.
+	if !k8s.EnvVarExists(cfg.EnvVars, "RENOVATE_BASE_DIR") {
+		cfg.EnvVars = append(cfg.EnvVars, corev1.EnvVar{
+			Name:  "RENOVATE_BASE_DIR",
+			Value: GetScratchVolumePath(cfg.ScratchVolume),
+		})
+	}
+
 	// Construct the Job Spec from the Config
 	spec.CompletionMode = new(batchv1.NonIndexedCompletion)
 	spec.Parallelism = new(int32(1))
@@ -61,6 +74,7 @@ func DefaultJobSpec(
 	spec.TTLSecondsAfterFinished = cfg.TTLSecondsAfterFinished
 
 	spec.Template.Labels = cfg.PodLabels
+	spec.Template.Annotations = cfg.PodAnnotations
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 	spec.Template.Spec.InitContainers = cfg.InitContainers
 	spec.Template.Spec.Volumes = containers.VolumesTemplate(cfg.VolumeMutators...)
@@ -69,16 +83,20 @@ func DefaultJobSpec(
 	spec.Template.Spec.Affinity = cfg.Affinity
 	spec.Template.Spec.Tolerations = cfg.Tolerations
 	spec.Template.Spec.TopologySpreadConstraints = cfg.TopologySpreadConstraints
+	spec.Template.Spec.RuntimeClassName = cfg.RuntimeClassName
 
 	// Build Main Container
+	volumeMounts := []corev1.VolumeMount{
+		{
+			Name:      VolumeRenovateConfig,
+			MountPath: DirRenovateConfig,
+		},
+	}
+	volumeMounts = append(volumeMounts, scratchMounts...)
+
 	containerMutators := []containers.ContainerMutator{
 		containers.WithEnvVars(cfg.EnvVars),
-		containers.WithVolumeMounts([]corev1.VolumeMount{
-			{
-				Name:      VolumeRenovateConfig,
-				MountPath: DirRenovateConfig,
-			},
-		}),
+		containers.WithVolumeMounts(volumeMounts),
 	}
 
 	if cfg.Resources.Limits != nil || cfg.Resources.Requests != nil {
@@ -115,6 +133,9 @@ func WithPodSpec(podSpec renovatev1beta1.PodSpec) JobOption {
 		c.TopologySpreadConstraints = podSpec.TopologySpreadConstraints
 		c.Resources = podSpec.Resources
 		c.SecurityContext = podSpec.SecurityContext
+		c.RuntimeClassName = podSpec.RuntimeClassName
+		c.PodAnnotations = podSpec.PodAnnotations
+		c.ScratchVolume = podSpec.ScratchVolume
 	}
 }
 
@@ -207,4 +228,51 @@ func GetActiveJobs(
 	}
 
 	return active, nil
+}
+
+// BuildScratchVolumeAndMounts creates the scratch volume and mount based on the spec.
+func BuildScratchVolumeAndMounts(
+	scratch *renovatev1beta1.ScratchVolumeSpec,
+) ([]containers.VolumeMutator, []corev1.VolumeMount) {
+	path := GetScratchVolumePath(scratch)
+	volumeSource := corev1.VolumeSource{}
+
+	switch {
+	case scratch != nil && scratch.Ephemeral != nil:
+		volumeSource.Ephemeral = scratch.Ephemeral
+	case scratch != nil:
+		volumeSource.EmptyDir = &corev1.EmptyDirVolumeSource{
+			Medium:    scratch.Medium,
+			SizeLimit: scratch.SizeLimit,
+		}
+	default:
+		volumeSource.EmptyDir = &corev1.EmptyDirVolumeSource{}
+	}
+
+	volumes := []containers.VolumeMutator{
+		func(v *[]corev1.Volume) {
+			*v = append(*v, corev1.Volume{
+				Name:         VolumeRenovateTmp,
+				VolumeSource: volumeSource,
+			})
+		},
+	}
+
+	mounts := []corev1.VolumeMount{
+		{
+			Name:      VolumeRenovateTmp,
+			MountPath: path,
+		},
+	}
+
+	return volumes, mounts
+}
+
+// GetScratchVolumePath returns the effective mount path for the scratch volume.
+func GetScratchVolumePath(scratch *renovatev1beta1.ScratchVolumeSpec) string {
+	if scratch != nil && scratch.Path != "" {
+		return scratch.Path
+	}
+
+	return renovatev1beta1.DefaultScratchVolumePath
 }

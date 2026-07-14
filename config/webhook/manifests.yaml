@@ -84,3 +84,69 @@ webhooks:
         resources:
           - runners
     sideEffects: None
+---
+apiVersion: admissionregistration.k8s.io/v1
+kind: ValidatingWebhookConfiguration
+metadata:
+  name: webhook-configuration
+webhooks:
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: renovate-operator-webhook-service
+        namespace: system
+        path: /validate-renovate-thegeeklab-de-v1beta1-discovery
+    failurePolicy: Fail
+    name: vdiscovery-v1beta1.kb.io
+    rules:
+      - apiGroups:
+          - renovate.thegeeklab.de
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - discoveries
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: renovate-operator-webhook-service
+        namespace: system
+        path: /validate-renovate-thegeeklab-de-v1beta1-renovator
+    failurePolicy: Fail
+    name: vrenovator-v1beta1.kb.io
+    rules:
+      - apiGroups:
+          - renovate.thegeeklab.de
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - renovators
+    sideEffects: None
+  - admissionReviewVersions:
+      - v1
+    clientConfig:
+      service:
+        name: renovate-operator-webhook-service
+        namespace: system
+        path: /validate-renovate-thegeeklab-de-v1beta1-runner
+    failurePolicy: Fail
+    name: vrunner-v1beta1.kb.io
+    rules:
+      - apiGroups:
+          - renovate.thegeeklab.de
+        apiVersions:
+          - v1beta1
+        operations:
+          - CREATE
+          - UPDATE
+        resources:
+          - runners
+    sideEffects: None

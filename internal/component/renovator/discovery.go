@@ -117,6 +117,21 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Spec.ExtraVolumes = discoverySpec.ExtraVolumes
 	}
 
+	discovery.Spec.RuntimeClassName = spec.RuntimeClassName
+	if discoverySpec.RuntimeClassName != nil {
+		discovery.Spec.RuntimeClassName = discoverySpec.RuntimeClassName
+	}
+
+	discovery.Spec.PodAnnotations = spec.PodAnnotations
+	if discoverySpec.PodAnnotations != nil {
+		discovery.Spec.PodAnnotations = discoverySpec.PodAnnotations
+	}
+
+	discovery.Spec.ScratchVolume = spec.ScratchVolume
+	if discoverySpec.ScratchVolume != nil {
+		discovery.Spec.ScratchVolume = discoverySpec.ScratchVolume
+	}
+
 	discovery.Spec.SkipForks = discoverySpec.SkipForks
 	discovery.Spec.Topics = discoverySpec.Topics
 

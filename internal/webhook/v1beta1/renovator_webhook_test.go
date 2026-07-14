@@ -148,5 +148,208 @@ var _ = Describe("Renovator Webhook", func() {
 			Expect(obj.Labels).NotTo(BeNil())
 			Expect(len(obj.Labels[renovatev1beta1.LabelAuthProvider])).To(BeNumerically("<=", 63))
 		})
+
+		It("Should default scratch volume path when empty", func() {
+			By("setting scratch volume without path")
+
+			obj.Spec.ScratchVolume = &renovatev1beta1.ScratchVolumeSpec{
+				Medium: corev1.StorageMediumMemory,
+			}
+
+			By("calling the Default method")
+
+			err := defaulter.Default(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj.Spec.ScratchVolume.Path).To(Equal(renovatev1beta1.DefaultScratchVolumePath))
+		})
+
+		It("Should not override existing scratch volume path", func() {
+			By("setting scratch volume with custom path")
+
+			obj.Spec.ScratchVolume = &renovatev1beta1.ScratchVolumeSpec{
+				Path:   "/custom/path",
+				Medium: corev1.StorageMediumMemory,
+			}
+
+			By("calling the Default method")
+
+			err := defaulter.Default(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj.Spec.ScratchVolume.Path).To(Equal("/custom/path"))
+		})
+	})
+
+	Context("When creating Renovator under Validating Webhook", func() {
+		var validator RenovatorCustomValidator
+
+		BeforeEach(func() {
+			validator = RenovatorCustomValidator{}
+		})
+
+		It("Should accept valid timezone", func() {
+			By("setting a valid timezone")
+
+			obj.Spec.Timezone = "America/New_York"
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should accept empty timezone", func() {
+			By("leaving timezone empty")
+
+			obj.Spec.Timezone = ""
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should reject invalid timezone", func() {
+			By("setting an invalid timezone")
+
+			obj.Spec.Timezone = "Invalid/Timezone"
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid timezone"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should validate timezone in discovery spec", func() {
+			By("setting an invalid timezone in discovery")
+
+			obj.Spec.Discovery.Timezone = "Invalid/Timezone"
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid timezone"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should validate timezone in runner spec", func() {
+			By("setting an invalid timezone in runner")
+
+			obj.Spec.Runner.Timezone = "Invalid/Timezone"
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid timezone"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should return error when object is nil on ValidateCreate", func() {
+			By("calling the ValidateCreate method with nil object")
+
+			warnings, err := validator.ValidateCreate(ctx, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("expected a Renovator object but got other type"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should validate timezone on update", func() {
+			By("setting an invalid timezone")
+
+			obj.Spec.Timezone = "Invalid/Timezone"
+
+			By("calling the ValidateUpdate method")
+
+			warnings, err := validator.ValidateUpdate(ctx, oldObj, obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("invalid timezone"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should accept valid timezone on update", func() {
+			By("setting a valid timezone")
+
+			obj.Spec.Timezone = "America/New_York"
+
+			By("calling the ValidateUpdate method")
+
+			warnings, err := validator.ValidateUpdate(ctx, oldObj, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should accept valid absolute scratch volume path", func() {
+			By("setting a valid absolute path")
+
+			obj.Spec.ScratchVolume = &renovatev1beta1.ScratchVolumeSpec{
+				Path: "/tmp/renovate",
+			}
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should reject relative scratch volume path", func() {
+			By("setting a relative path")
+
+			obj.Spec.ScratchVolume = &renovatev1beta1.ScratchVolumeSpec{
+				Path: "relative/path",
+			}
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("path must be absolute"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should accept empty scratch volume path", func() {
+			By("leaving path empty (will be defaulted)")
+
+			obj.Spec.ScratchVolume = &renovatev1beta1.ScratchVolumeSpec{
+				Path: "",
+			}
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should return error when object is nil on ValidateUpdate", func() {
+			By("calling the ValidateUpdate method with nil object")
+
+			warnings, err := validator.ValidateUpdate(ctx, oldObj, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("expected a Renovator object but got other type"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should accept valid object on ValidateDelete", func() {
+			By("calling the ValidateDelete method")
+
+			warnings, err := validator.ValidateDelete(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should return error when object is nil on ValidateDelete", func() {
+			By("calling the ValidateDelete method with nil object")
+
+			warnings, err := validator.ValidateDelete(ctx, nil)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("expected a Renovator object but got other type"))
+			Expect(warnings).To(BeNil())
+		})
 	})
 })

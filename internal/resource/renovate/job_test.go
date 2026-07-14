@@ -78,6 +78,32 @@ var _ = Describe("Renovate Job Library", func() {
 			Expect(jobSpec.Template.Spec.ImagePullSecrets).To(BeEmpty())
 		})
 
+		It("should create scratch volume at /tmp/renovate by default", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
+
+			var scratchVol *corev1.Volume
+
+			for i := range jobSpec.Template.Spec.Volumes {
+				if jobSpec.Template.Spec.Volumes[i].Name == renovate.VolumeRenovateTmp {
+					scratchVol = &jobSpec.Template.Spec.Volumes[i]
+
+					break
+				}
+			}
+
+			Expect(scratchVol).NotTo(BeNil())
+			Expect(scratchVol.EmptyDir).NotTo(BeNil())
+
+			env := jobSpec.Template.Spec.Containers[0].Env
+			Expect(env).To(ContainElement(HaveField("Name", "RENOVATE_BASE_DIR")))
+			Expect(env).To(ContainElement(HaveField("Value", "/tmp/renovate")))
+
+			mounts := jobSpec.Template.Spec.Containers[0].VolumeMounts
+			Expect(mounts).To(ContainElement(HaveField("Name", renovate.VolumeRenovateTmp)))
+			Expect(mounts).To(ContainElement(HaveField("MountPath", "/tmp/renovate")))
+		})
+
 		It("should apply ImagePullSecrets from RenovateConfig", func() {
 			renovateCR.Spec.ImagePullSecrets = []corev1.LocalObjectReference{
 				{Name: "renovate-registry-secret"},
@@ -282,6 +308,93 @@ var _ = Describe("Renovate Job Library", func() {
 					container := spec.Template.Spec.Containers[0]
 					Expect(container.SecurityContext).NotTo(BeNil())
 					Expect(*container.SecurityContext.ReadOnlyRootFilesystem).To(BeTrue())
+				},
+			),
+			Entry(
+				"WithPodSpec RuntimeClassName",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					RuntimeClassName: new("gvisor"),
+				})},
+				func(spec *batchv1.JobSpec) {
+					Expect(spec.Template.Spec.RuntimeClassName).NotTo(BeNil())
+					Expect(*spec.Template.Spec.RuntimeClassName).To(Equal("gvisor"))
+				},
+			),
+			Entry(
+				"WithPodSpec PodAnnotations",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					PodAnnotations: map[string]string{"prometheus.io/scrape": "true"},
+				})},
+				func(spec *batchv1.JobSpec) {
+					Expect(spec.Template.Annotations).To(HaveKeyWithValue("prometheus.io/scrape", "true"))
+				},
+			),
+			Entry(
+				"WithPodSpec ScratchVolume",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
+						Path:      "/scratch",
+						Medium:    corev1.StorageMediumMemory,
+						SizeLimit: new(resource.MustParse("1Gi")),
+					},
+				})},
+				func(spec *batchv1.JobSpec) {
+					var scratchVol *corev1.Volume
+
+					for i := range spec.Template.Spec.Volumes {
+						if spec.Template.Spec.Volumes[i].Name == renovate.VolumeRenovateTmp {
+							scratchVol = &spec.Template.Spec.Volumes[i]
+
+							break
+						}
+					}
+
+					Expect(scratchVol).NotTo(BeNil())
+					Expect(scratchVol.EmptyDir).NotTo(BeNil())
+					Expect(scratchVol.EmptyDir.Medium).To(Equal(corev1.StorageMediumMemory))
+					Expect(scratchVol.EmptyDir.SizeLimit).To(Equal(new(resource.MustParse("1Gi"))))
+
+					env := spec.Template.Spec.Containers[0].Env
+					Expect(env).To(ContainElement(HaveField("Name", "RENOVATE_BASE_DIR")))
+					Expect(env).To(ContainElement(HaveField("Value", "/scratch")))
+
+					mounts := spec.Template.Spec.Containers[0].VolumeMounts
+					Expect(mounts).To(ContainElement(HaveField("Name", renovate.VolumeRenovateTmp)))
+					Expect(mounts).To(ContainElement(HaveField("MountPath", "/scratch")))
+				},
+			),
+			Entry(
+				"WithPodSpec ScratchVolume Ephemeral",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					ScratchVolume: &renovatev1beta1.ScratchVolumeSpec{
+						Path: "/ephemeral",
+						Ephemeral: &corev1.EphemeralVolumeSource{
+							VolumeClaimTemplate: &corev1.PersistentVolumeClaimTemplate{
+								Spec: corev1.PersistentVolumeClaimSpec{
+									AccessModes: []corev1.PersistentVolumeAccessMode{corev1.ReadWriteOnce},
+								},
+							},
+						},
+					},
+				})},
+				func(spec *batchv1.JobSpec) {
+					var scratchVol *corev1.Volume
+
+					for i := range spec.Template.Spec.Volumes {
+						if spec.Template.Spec.Volumes[i].Name == renovate.VolumeRenovateTmp {
+							scratchVol = &spec.Template.Spec.Volumes[i]
+
+							break
+						}
+					}
+
+					Expect(scratchVol).NotTo(BeNil())
+					Expect(scratchVol.Ephemeral).NotTo(BeNil())
+					Expect(scratchVol.EmptyDir).To(BeNil())
+
+					env := spec.Template.Spec.Containers[0].Env
+					Expect(env).To(ContainElement(HaveField("Name", "RENOVATE_BASE_DIR")))
+					Expect(env).To(ContainElement(HaveField("Value", "/ephemeral")))
 				},
 			),
 			Entry(

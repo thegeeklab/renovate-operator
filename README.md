@@ -65,7 +65,7 @@ helm install renovate-operator oci://quay.io/thegeeklab/renovate-operator \
 Download `install.yaml` from the [GitHub Releases](https://github.com/thegeeklab/renovate-operator/releases) page, then:
 
 ```bash
-kubectl apply -f install.yaml
+kubectl apply --server-side --force-conflicts -f install.yaml
 ```
 
 ### Create Your First Renovator

@@ -3,6 +3,7 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	api_meta "k8s.io/apimachinery/pkg/api/meta"
+	"k8s.io/apimachinery/pkg/api/resource"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
@@ -49,6 +50,7 @@ const (
 	DefaultSuccessLimit           int32 = 3
 	DefaultFailedLimit            int32 = 1
 	DefaultBackoffLimit           int32 = 0
+	DefaultScratchVolumePath            = "/tmp/renovate"
 )
 
 type LoggingSpec struct {
@@ -110,6 +112,23 @@ type JobSpec struct {
 	TTLSecondsAfterFinished *int32 `json:"ttlSecondsAfterFinished,omitempty"`
 }
 
+// ScratchVolumeSpec configures a scratch volume for RENOVATE_BASE_DIR.
+type ScratchVolumeSpec struct {
+	// Path is the mount path for the scratch volume (RENOVATE_BASE_DIR).
+	// Must be an absolute path.
+	Path string `json:"path,omitempty"`
+
+	// Ephemeral uses a Kubernetes generic ephemeral volume for scratch (volume.ephemeral).
+	// When set, Medium and SizeLimit are ignored.
+	Ephemeral *corev1.EphemeralVolumeSource `json:"ephemeral,omitempty"`
+
+	// Medium specifies the storage medium.
+	Medium corev1.StorageMedium `json:"medium,omitempty"`
+
+	// SizeLimit is the maximum size of the volume.
+	SizeLimit *resource.Quantity `json:"sizeLimit,omitempty"`
+}
+
 // PodSpec defines pod-level scheduling configuration.
 type PodSpec struct {
 	// NodeSelector specifies the node selector for scheduling the renovate pod.
@@ -143,6 +162,18 @@ type PodSpec struct {
 	// ExtraVolumes specifies additional volumes for the renovate pod.
 	// +kubebuilder:validation:Optional
 	ExtraVolumes []corev1.Volume `json:"extraVolumes,omitempty"`
+
+	// RuntimeClassName specifies the runtime class for the renovate pod.
+	// +kubebuilder:validation:Optional
+	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
+
+	// PodAnnotations specifies additional annotations for the renovate pod.
+	// +kubebuilder:validation:Optional
+	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`
+
+	// ScratchVolume configures a scratch volume for RENOVATE_BASE_DIR.
+	// +kubebuilder:validation:Optional
+	ScratchVolume *ScratchVolumeSpec `json:"scratchVolume,omitempty"`
 }
 
 // RenovatorSpec defines the desired state of Renovator.

@@ -116,6 +116,21 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.ExtraVolumes = runnerSpec.ExtraVolumes
 	}
 
+	runner.Spec.RuntimeClassName = spec.RuntimeClassName
+	if runnerSpec.RuntimeClassName != nil {
+		runner.Spec.RuntimeClassName = runnerSpec.RuntimeClassName
+	}
+
+	runner.Spec.PodAnnotations = spec.PodAnnotations
+	if runnerSpec.PodAnnotations != nil {
+		runner.Spec.PodAnnotations = runnerSpec.PodAnnotations
+	}
+
+	runner.Spec.ScratchVolume = spec.ScratchVolume
+	if runnerSpec.ScratchVolume != nil {
+		runner.Spec.ScratchVolume = runnerSpec.ScratchVolume
+	}
+
 	runner.Spec.MaxParallel = runnerSpec.MaxParallel
 
 	logging := &spec.Logging

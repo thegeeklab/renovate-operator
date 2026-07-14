@@ -3,6 +3,7 @@ package discovery
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 	"time"
 
@@ -90,6 +91,11 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 // updateJob configures the job spec for discovery.
 func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
+	scratchPath := renovate.GetScratchVolumePath(r.instance.Spec.ScratchVolume)
+	reposFile := filepath.Join(scratchPath, renovate.FilenameRepositories)
+
+	// Build scratch mounts for discovery containers (volume is created by DefaultJobSpec)
+	_, scratchMounts := renovate.BuildScratchVolumeAndMounts(r.instance.Spec.ScratchVolume)
 
 	initContainer := containers.ContainerTemplate(
 		"renovate-init",
@@ -97,7 +103,7 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 		r.renovate.Spec.ImagePullPolicy,
 		containers.WithContainerArgs([]string{
 			"--write-discovered-repos",
-			renovate.FileRenovateRepositories,
+			reposFile,
 		}),
 		containers.WithEnvVars(renovate.DefaultEnvVars(&r.renovate.Spec)),
 		containers.WithEnvVars([]corev1.EnvVar{
@@ -110,16 +116,10 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 				Value: strings.Join(r.instance.Spec.Filter, ","),
 			},
 		}),
-		containers.WithVolumeMounts([]corev1.VolumeMount{
-			{
-				Name:      renovate.VolumeRenovateTmp,
-				MountPath: renovate.DirRenovateTmp,
-			},
-			{
-				Name:      renovate.VolumeRenovateConfig,
-				MountPath: renovate.DirRenovateConfig,
-			},
-		}),
+		containers.WithVolumeMounts(append(scratchMounts, corev1.VolumeMount{
+			Name:      renovate.VolumeRenovateConfig,
+			MountPath: renovate.DirRenovateConfig,
+		})),
 	)
 
 	renovate.DefaultJobSpec(
@@ -148,16 +148,11 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 			},
 			{
 				Name:  discovery.EnvRenovateOutputFile,
-				Value: renovate.FileRenovateRepositories,
+				Value: reposFile,
 			},
 		}),
 		containers.WithEnvVars(r.instance.Spec.ExtraEnv),
-		containers.WithVolumeMounts([]corev1.VolumeMount{
-			{
-				Name:      renovate.VolumeRenovateTmp,
-				MountPath: renovate.DirRenovateTmp,
-			},
-		}),
+		containers.WithVolumeMounts(scratchMounts),
 	}
 
 	if r.instance.Spec.Resources.Limits != nil || r.instance.Spec.Resources.Requests != nil {

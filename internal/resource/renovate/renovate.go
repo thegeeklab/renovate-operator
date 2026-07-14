@@ -12,7 +12,6 @@ const (
 	VolumeRenovateTmp    = "renovate-tmp"
 
 	DirRenovateConfig = "/etc/config/renovate"
-	DirRenovateTmp    = "/tmp/renovate"
 
 	FilenameRenovateConfig = "renovate.json"
 	FilenameRepositories   = "repositories.json"
@@ -24,11 +23,7 @@ const (
 	LabelRepoName = "renovate.thegeeklab.de/repo"
 )
 
-var (
-	FileRenovateConfig       = filepath.Join(DirRenovateConfig, FilenameRenovateConfig)
-	FileRenovateTmp          = filepath.Join(DirRenovateTmp, FilenameRenovateConfig)
-	FileRenovateRepositories = filepath.Join(DirRenovateTmp, FilenameRepositories)
-)
+var FileRenovateConfig = filepath.Join(DirRenovateConfig, FilenameRenovateConfig)
 
 func DefaultEnvVars(renovate *renovatev1beta1.RenovateConfigSpec) []corev1.EnvVar {
 	containerVars := []corev1.EnvVar{
