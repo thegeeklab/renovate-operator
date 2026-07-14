@@ -127,6 +127,7 @@ vet: ## Run go vet against code.
 fmt: gofumpt ## Run go fmt against code.
 	$(GOFUMPT_BIN) -extra -w $(SOURCES)
 	@$(MAKE) --no-print-directory templ-fmt
+	@$(MAKE) --no-print-directory yamlfmt
 
 .PHONY: yamlfmt
 yamlfmt: yamlfmt-bin ## Run yamlfmt.
@@ -240,7 +241,7 @@ IGNORE_NOT_FOUND ?= false
 
 .PHONY: install
 install: manifests kustomize ## Install CRDs into the K8s cluster specified in ~/.kube/config.
-	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply -f -
+	$(KUSTOMIZE) build config/crd | $(KUBECTL) apply --server-side --force-conflicts -f -
 
 .PHONY: uninstall
 uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified in ~/.kube/config. Call with IGNORE_NOT_FOUND=true to ignore resource not found errors during deletion.
@@ -249,7 +250,7 @@ uninstall: manifests kustomize ## Uninstall CRDs from the K8s cluster specified 
 .PHONY: deploy
 deploy: manifests kustomize ## Deploy controller to the K8s cluster specified in ~/.kube/config.
 	cd config/manager && $(KUSTOMIZE) edit set image controller=${IMG}
-	$(KUSTOMIZE) build --enable-helm config/dev | $(KUBECTL) apply -f -
+	$(KUSTOMIZE) build --enable-helm config/dev | $(KUBECTL) apply --server-side --force-conflicts -f -
 	@$(KUBECTL) set env deployments -n renovate-system renovate-operator-controller-manager ENABLE_CONTROLLERS-
 	@$(MAKE) --no-print-directory yamlfmt
 

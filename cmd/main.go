@@ -400,6 +400,10 @@ func setupWebhooks(mgr manager.Manager, cfg Config) error {
 				Name: cfg.WebhookName,
 				Type: rotator.Mutating,
 			},
+			{
+				Name: cfg.WebhookName,
+				Type: rotator.Validating,
+			},
 		}
 
 		if err := waitForWebhooks(mgr.GetAPIReader(), webhooks); err != nil {

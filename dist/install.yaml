@@ -3436,7 +3436,7 @@ spec:
                           type: object
                       type: object
                     medium:
-                      description: Medium specifies the storage medium (empty or memory/tmpfs).
+                      description: Medium specifies the storage medium.
                       type: string
                     path:
                       description: |-
@@ -8646,7 +8646,7 @@ spec:
                               type: object
                           type: object
                         medium:
-                          description: Medium specifies the storage medium (empty or memory/tmpfs).
+                          description: Medium specifies the storage medium.
                           type: string
                         path:
                           description: |-
@@ -14715,7 +14715,7 @@ spec:
                               type: object
                           type: object
                         medium:
-                          description: Medium specifies the storage medium (empty or memory/tmpfs).
+                          description: Medium specifies the storage medium.
                           type: string
                         path:
                           description: |-
@@ -15389,7 +15389,7 @@ spec:
                           type: object
                       type: object
                     medium:
-                      description: Medium specifies the storage medium (empty or memory/tmpfs).
+                      description: Medium specifies the storage medium.
                       type: string
                     path:
                       description: |-
@@ -19139,7 +19139,7 @@ spec:
                           type: object
                       type: object
                     medium:
-                      description: Medium specifies the storage medium (empty or memory/tmpfs).
+                      description: Medium specifies the storage medium.
                       type: string
                     path:
                       description: |-

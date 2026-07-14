@@ -122,7 +122,7 @@ type ScratchVolumeSpec struct {
 	// When set, Medium and SizeLimit are ignored.
 	Ephemeral *corev1.EphemeralVolumeSource `json:"ephemeral,omitempty"`
 
-	// Medium specifies the storage medium (empty or memory/tmpfs).
+	// Medium specifies the storage medium.
 	Medium corev1.StorageMedium `json:"medium,omitempty"`
 
 	// SizeLimit is the maximum size of the volume.
