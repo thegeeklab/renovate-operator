@@ -33,7 +33,6 @@ steps:
     depends_on: [helm-docs]
     commands:
       - prettier -w dist/chart/README.md
-      - cat dist/chart/README.md
 
   - name: publish-github
     image: docker.io/plugins/github-release
