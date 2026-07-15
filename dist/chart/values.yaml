@@ -1,6 +1,6 @@
 ---
 # -- String to partially override chart.fullname template (will maintain the release name)
-nameOverride: ""
+nameOverride: renovate-operator
 
 # -- String to fully override chart.fullname template
 fullnameOverride: ""

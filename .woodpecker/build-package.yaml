@@ -79,21 +79,6 @@ steps:
     when:
       - event: [tag]
 
-  - name: push-chart-update
-    image: quay.io/thegeeklab/wp-git-action
-    depends_on: [publish-github]
-    settings:
-      action:
-        - commit
-        - push
-      author_email: bot@thegeeklab.de
-      author_name: thegeeklab-bot
-      message: "[skip ci] auto-update chart version and documentation"
-      netrc_password:
-        from_secret: github_token
-    when:
-      - event: [tag]
-
 depends_on:
   - static
   - test

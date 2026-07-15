@@ -1,10 +1,10 @@
 ---
 apiVersion: v2
-name: renovate-operator
+name: renovate-operator-chart
 description: A Helm chart to distribute the project renovate-operator
 type: application
-version: "0.1.0"
-appVersion: "0.1.0"
+version: "0.0.0"
+appVersion: "0.0.0"
 maintainers:
   - name: Renovate Operator Maintainers
     email: mail@thegeeklab.de

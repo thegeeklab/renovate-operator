@@ -56,7 +56,7 @@ The Helm chart and container images are published to:
 Install using Quay.io:
 
 ```bash
-helm install renovate-operator oci://quay.io/thegeeklab/renovate-operator \
+helm install renovate-operator oci://quay.io/thegeeklab/renovate-operator-chart \
   --namespace renovate-system --create-namespace
 ```
 
