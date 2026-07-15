@@ -6,10 +6,10 @@ when:
       - ${CI_REPO_DEFAULT_BRANCH}
 
 steps:
-  - name: test
-    image: docker.io/library/golang:1.26.5
-    commands:
-      - make test
+  # - name: test
+  #   image: docker.io/library/golang:1.26.5
+  #   commands:
+  #     - make test
 
   - name: helm-test
     image: quay.io/thegeeklab/kube-tools

@@ -12,6 +12,8 @@ steps:
       - git sv current-version
       - git sv release-notes -t ${CI_COMMIT_TAG:-next} -o CHANGELOG.md
       - cat CHANGELOG.md
+      - ls -la dist
+      - ls -la dist/chart
 
   - name: chart-version
     image: quay.io/thegeeklab/kube-tools
@@ -19,17 +21,23 @@ steps:
       - VERSION="${CI_COMMIT_TAG#v}"
       - yq eval '.version = strenv(VERSION)' -i dist/chart/Chart.yaml
       - yq eval '.appVersion = strenv(VERSION)' -i dist/chart/Chart.yaml
+      - ls -la dist
+      - ls -la dist/chart
 
   - name: helm-docs
     image: docker.io/jnorwood/helm-docs:v1.14.2
     commands:
       - helm-docs -c dist/chart/
+      - ls -la dist
+      - ls -la dist/chart
 
   - name: prettier
     image: docker.io/jauderho/prettier:3.9.5
     commands:
       - prettier -w dist/chart/README.md
       - cat dist/chart/README.md
+      - ls -la dist
+      - ls -la dist/chart
 
   - name: publish-github
     image: docker.io/plugins/github-release
