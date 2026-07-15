@@ -19,23 +19,19 @@ steps:
       - VERSION="${CI_COMMIT_TAG#v}"
       - yq eval '.version = strenv(VERSION)' -i dist/chart/Chart.yaml
       - yq eval '.appVersion = strenv(VERSION)' -i dist/chart/Chart.yaml
-    when:
-      - event: [tag]
 
   - name: helm-docs
     image: docker.io/jnorwood/helm-docs:v1.14.2
     commands:
       - helm-docs -c dist/chart/
-    when:
-      - event: [tag]
 
   - name: prettier
     image: docker.io/jauderho/prettier:3.9.5
     commands:
       - prettier -w dist/chart/README.md
       - cat dist/chart/README.md
-    when:
-      - event: [tag]
+      - ls -la dist
+      - ls -la dist/chart
 
   - name: publish-github
     image: docker.io/plugins/github-release
@@ -80,7 +76,7 @@ steps:
     when:
       - event: [tag]
 
-  - name: publish
+  - name: push-chart-update
     image: quay.io/thegeeklab/wp-git-action
     settings:
       action:
