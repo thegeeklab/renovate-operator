@@ -30,8 +30,6 @@ steps:
     commands:
       - prettier -w dist/chart/README.md
       - cat dist/chart/README.md
-      - ls -la dist
-      - ls -la dist/chart
 
   - name: publish-github
     image: docker.io/plugins/github-release
