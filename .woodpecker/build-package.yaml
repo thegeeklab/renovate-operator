@@ -18,7 +18,7 @@ steps:
     image: quay.io/thegeeklab/kube-tools
     depends_on: []
     commands:
-      - VERSION="${CI_COMMIT_TAG#v}"
+      - export VERSION="${CI_COMMIT_TAG#v}"
       - yq eval '.version = strenv(VERSION)' -i dist/chart/Chart.yaml
       - yq eval '.appVersion = strenv(VERSION)' -i dist/chart/Chart.yaml
 
