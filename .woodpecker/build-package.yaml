@@ -59,8 +59,8 @@ steps:
         from_secret: docker_password
     commands:
       - echo "$DOCKER_PASSWORD" | helm registry login docker.io --username "$DOCKER_USERNAME" --password-stdin
-      - helm package dist/chart/
-      - helm push *.tgz oci://docker.io/thegeeklab
+      - helm package dist/chart/ --destination dist/
+      - helm push dist/*.tgz oci://docker.io/thegeeklab
     when:
       - event: [tag]
 
@@ -74,8 +74,8 @@ steps:
         from_secret: quay_password
     commands:
       - echo "$QUAY_PASSWORD" | helm registry login quay.io --username "$QUAY_USERNAME" --password-stdin
-      - helm package dist/chart/
-      - helm push *.tgz oci://quay.io/thegeeklab
+      - helm package dist/chart/ --destination dist/
+      - helm push dist/*.tgz oci://quay.io/thegeeklab
     when:
       - event: [tag]
 
