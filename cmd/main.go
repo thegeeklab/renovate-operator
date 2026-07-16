@@ -29,6 +29,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/receiver"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/github"
+	"github.com/thegeeklab/renovate-operator/internal/receiver/gitlab"
 	"github.com/thegeeklab/renovate-operator/internal/telemetry"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
@@ -647,6 +648,8 @@ func buildReceiverFactory() receiver.ReceiverFactory {
 			return gitea.NewReceiver()
 		case renovatev1beta1.PlatformType_GITHUB:
 			return github.NewReceiver()
+		case renovatev1beta1.PlatformType_GITLAB:
+			return gitlab.NewReceiver()
 		default:
 			return nil
 		}
