@@ -7,39 +7,256 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: renovator-sample
 spec:
+  # Container image for the operator components.
+  # Defaults to "docker.io/thegeeklab/renovate-operator:latest".
   image: docker.io/thegeeklab/renovate-operator:latest
 
+  # Image pull policy. One of Always, Never, IfNotPresent.
+  # Defaults to IfNotPresent.
+  # imagePullPolicy: IfNotPresent
+
+  # List of secrets for pulling images from private registries.
+  # imagePullSecrets:
+  #   - name: registry-credentials
+
+  # Operator log level. One of: trace, debug, info, warn, error, fatal.
+  # Defaults to "info".
   logging:
     level: info
 
+  # Pause all scheduling for this Renovator (discovery and runner).
+  # Defaults to false.
   suspend: false
+
+  # Cron schedule for the top-level reconciler.
+  # Defaults to "0 */2 * * *".
   schedule: "0 */2 * * *"
 
+  # IANA timezone for evaluating cron schedules (e.g. "Europe/Berlin").
+  # Defaults to the operator pod's local timezone.
+  # timezone: "UTC"
+
+  # Number of completed jobs to retain for history.
+  # Defaults to 3.
+  # successLimit: 3
+
+  # Number of failed jobs to retain for history.
+  # Defaults to 1.
+  # failedLimit: 1
+
+  # Number of retries before marking a job as failed.
+  # Defaults to 0.
+  # backoffLimit: 0
+
+  # Automatically delete finished jobs after this many seconds.
+  # ttlSecondsAfterFinished: 3600
+
+  # Pod scheduling and resource configuration.
+  # These settings apply to all child jobs unless overridden in discovery/runner.
+
+  # nodeSelector:
+  #   kubernetes.io/arch: amd64
+
+  # affinity:
+  #   nodeAffinity:
+  #     preferredDuringSchedulingIgnoredDuringExecution:
+  #       - weight: 1
+  #         preference:
+  #           matchExpressions:
+  #             - key: node-role
+  #               operator: In
+  #               values: ["worker"]
+
+  # tolerations:
+  #   - key: "dedicated"
+  #     operator: "Equal"
+  #     value: "renovate"
+  #     effect: "NoSchedule"
+
+  # resources:
+  #   requests:
+  #     cpu: 100m
+  #     memory: 128Mi
+  #   limits:
+  #     cpu: 500m
+  #     memory: 512Mi
+
+  # securityContext:
+  #   runAsNonRoot: true
+  #   runAsUser: 1000
+
+  # extraEnv:
+  #   - name: MY_VAR
+  #     value: "my-value"
+  #   - name: MY_SECRET
+  #     valueFrom:
+  #       secretKeyRef:
+  #         name: my-secret
+  #         key: my-key
+
+  # extraVolumes:
+  #   - name: custom-config
+  #     configMap:
+  #       name: my-config
+
+  # runtimeClassName: gvisor
+
+  # podAnnotations:
+  #   prometheus.io/scrape: "true"
+
+  # Scratch volume for RENOVATE_BASE_DIR.
+  # scratchVolume:
+  #   path: /tmp/renovate
+  #   medium: ""          # "" for default storage, "Memory" for tmpfs
+  #   sizeLimit: 1Gi
+
+  # Discovery configuration for finding repositories.
   discovery:
+    # Container image override for discovery jobs.
+    # image: docker.io/thegeeklab/renovate-operator:latest
+
+    # Image pull policy override for discovery jobs.
+    # imagePullPolicy: IfNotPresent
+
+    # Log level override for discovery jobs.
+    # logging:
+    #   level: info
+
+    # Reference to a ConfigMap with additional discovery configuration.
+    # configRef: discovery-config
+
+    # Pause discovery scheduling. Defaults to false.
     suspend: false
+
+    # Cron schedule for repository discovery.
+    # Defaults to "0 */2 * * *".
     schedule: "0 */2 * * *"
+
+    # IANA timezone for discovery cron schedule.
+    # timezone: "UTC"
+
+    # History limits for discovery jobs.
+    # successLimit: 3
+    # failedLimit: 1
+
+    # Repository filter patterns. Supports glob patterns.
+    # Prefix with "!" to exclude matching repositories.
     filter:
       - "octocat/*"
 
-  runner:
-    suspend: false
-    schedule: "0 */2 * * *"
-    # Number of parallel job instances (workers) to run simultaneously
-    instances: 3
+    # Exclude forked repositories from discovery.
+    # Defaults to false.
+    # skipForks: true
 
+    # Only discover repositories matching ALL specified topics.
+    # topics:
+    #   - "renovate"
+    #   - "automated"
+
+    # Pod scheduling overrides for discovery jobs.
+    # resources:
+    #   requests:
+    #     cpu: 50m
+    #     memory: 64Mi
+
+  # Runner configuration for executing Renovate jobs.
+  runner:
+    # Container image override for runner jobs.
+    # image: docker.io/thegeeklab/renovate-operator:latest
+
+    # Image pull policy override for runner jobs.
+    # imagePullPolicy: IfNotPresent
+
+    # Log level override for runner jobs.
+    # logging:
+    #   level: info
+
+    # Reference to a ConfigMap with additional runner configuration.
+    # configRef: runner-config
+
+    # Pause runner scheduling. Defaults to false.
+    suspend: false
+
+    # Cron schedule for running Renovate against discovered repositories.
+    # Defaults to "0 */2 * * *".
+    schedule: "0 */2 * * *"
+
+    # IANA timezone for runner cron schedule.
+    # timezone: "UTC"
+
+    # History limits for runner jobs.
+    # successLimit: 3
+    # failedLimit: 1
+
+    # Maximum number of Renovate jobs running concurrently.
+    # 0 means unlimited. Defaults to 0.
+    # maxParallel: 5
+
+    # Pod scheduling overrides for runner jobs.
+    # resources:
+    #   requests:
+    #     cpu: 200m
+    #     memory: 256Mi
+    #   limits:
+    #     cpu: "1"
+    #     memory: 1Gi
+
+  # Renovate configuration.
   renovate:
+    # Container image for Renovate itself.
+    # Defaults to "ghcr.io/renovatebot/renovate:latest".
+    # image: ghcr.io/renovatebot/renovate:latest
+
+    # Image pull policy for the Renovate container.
+    # imagePullPolicy: IfNotPresent
+
+    # Log level override for Renovate jobs.
+    # logging:
+    #   level: info
+
+    # Git platform configuration (required).
     platform:
-      type: "gitea"
+      # Platform type. One of: github, gitea.
+      type: gitea
+
+      # API endpoint URL for the Git platform.
       endpoint: https://gitea.example.com/api/v1
+
+      # Reference to a Secret containing the platform access token.
       token:
         secretKeyRef:
-          name: "my-secret"
-          key: "platform_token"
+          name: my-secret
+          key: platform_token
 
-    dryRun: "extract"
+    # Dry-run mode. One of: extract, lookup, full.
+    # extract: only extract dependencies, no lookup.
+    # lookup: extract + lookup, no PR creation.
+    # full: complete run without pushing changes.
+    dryRun: extract
+
+    # Enable Renovate onboarding for repositories.
+    # Defaults to false.
     onboarding: true
 
+    # Maximum number of PRs created per hour per repository.
+    # prHourlyLimit: 2
+
+    # Labels to add to every Renovate PR.
+    # addLabels:
+    #   - "renovate"
+    #   - "dependencies"
+
+    # GitHub API token for accessing GitHub-hosted repositories
+    # when using a different platform (e.g. Gitea).
     githubToken:
       secretKeyRef:
-        name: "my-secret"
-        key: "github_token"
+        name: my-secret
+        key: github_token
+
+    # Fail the job when Renovate encounters configuration validation errors.
+    # Defaults to false.
+    # failOnConfigValidationError: true
+
+  # Reference to an AuthProvider resource for web UI authentication.
+  # Multiple Renovators can share the same AuthProvider.
+  # authProviderRef: my-auth-provider
