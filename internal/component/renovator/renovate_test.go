@@ -78,6 +78,26 @@ var _ = Describe("Renovator Renovate Functions", func() {
 	})
 
 	Describe("updateRenovateConfig", func() {
+		It("should copy the GitLab platform into RenovateConfig", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					Renovate: renovatev1beta1.RenovateConfigSpec{
+						Platform: renovatev1beta1.PlatformSpec{
+							Type:     renovatev1beta1.PlatformType_GITLAB,
+							Endpoint: "https://gitlab.example.com/api/v4/",
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			renovateConfig := &renovatev1beta1.RenovateConfig{}
+			Expect(reconciler.updateRenovateConfig(renovateConfig)).To(Succeed())
+			Expect(renovateConfig.Spec.Platform).To(Equal(renovator.Spec.Renovate.Platform))
+		})
+
 		It("should update RenovateConfig spec and labels", func() {
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
@@ -148,6 +168,29 @@ var _ = Describe("Renovator Renovate Functions", func() {
 	})
 
 	Describe("updateConfigMap", func() {
+		It("should serialize the GitLab platform and API endpoint", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					Renovate: renovatev1beta1.RenovateConfigSpec{
+						Platform: renovatev1beta1.PlatformSpec{
+							Type:     renovatev1beta1.PlatformType_GITLAB,
+							Endpoint: "https://gitlab.example.com/api/v4/",
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := &corev1.ConfigMap{}
+			Expect(reconciler.updateConfigMap(configMap)).To(Succeed())
+			Expect(configMap.Data).To(HaveKeyWithValue(
+				"renovate.json",
+				`{"onboarding":false,"prHourlyLimit":0,"platform":"gitlab","endpoint":"https://gitlab.example.com/api/v4/"}`,
+			))
+		})
+
 		It("should update ConfigMap with renovate config", func() {
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{

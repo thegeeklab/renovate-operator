@@ -66,6 +66,29 @@ var _ = Describe("Renovate Job Library", func() {
 	})
 
 	Describe("DefaultJobSpec", func() {
+		It("should expose a GitLab token as RENOVATE_TOKEN", func() {
+			renovateCR.Spec.Platform = renovatev1beta1.PlatformSpec{
+				Type:     renovatev1beta1.PlatformType_GITLAB,
+				Endpoint: "https://gitlab.example.com/api/v4/",
+				Token: corev1.EnvVarSource{
+					SecretKeyRef: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "gitlab-token"},
+						Key:                  "token",
+					},
+				},
+			}
+
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
+
+			env := jobSpec.Template.Spec.Containers[0].Env
+			Expect(env).To(ContainElement(And(
+				HaveField("Name", "RENOVATE_TOKEN"),
+				HaveField("ValueFrom.SecretKeyRef.Name", "gitlab-token"),
+				HaveField("ValueFrom.SecretKeyRef.Key", "token"),
+			)))
+		})
+
 		It("should create a valid default job spec", func() {
 			jobSpec := &batchv1.JobSpec{}
 			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)

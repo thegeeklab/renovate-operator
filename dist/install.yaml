@@ -103,6 +103,7 @@ spec:
                   enum:
                     - github
                     - gitea
+                    - gitlab
                   type: string
               required:
                 - clientId
@@ -4462,6 +4463,7 @@ spec:
                       enum:
                         - github
                         - gitea
+                        - gitlab
                       type: string
                   required:
                     - endpoint
@@ -11472,6 +11474,7 @@ spec:
                           enum:
                             - github
                             - gitea
+                            - gitlab
                           type: string
                       required:
                         - endpoint
