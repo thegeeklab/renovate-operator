@@ -7,6 +7,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/internal/provider/gitea"
 	"github.com/thegeeklab/renovate-operator/internal/provider/github"
+	"github.com/thegeeklab/renovate-operator/internal/provider/gitlab"
 )
 
 var ErrNotImplemented = errors.New("provider not implemented")
@@ -33,6 +34,8 @@ func DefaultProviderFactory(
 		return gitea.NewProvider(ctx, config.Endpoint, config.Token)
 	case "github":
 		return github.NewProvider(ctx, config.Endpoint, config.Token)
+	case "gitlab":
+		return gitlab.NewProvider(ctx, config.Endpoint, config.Token)
 	default:
 		return nil, ErrNotImplemented
 	}

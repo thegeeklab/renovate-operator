@@ -12,7 +12,7 @@ type ListReposOptions struct {
 
 // Repo is the platform-agnostic representation of a repository returned by ListRepos.
 type Repo struct {
-	// Name is the full repository name in "owner/repo" format.
+	// Name is the full platform repository or project path and may include nested namespaces.
 	Name string
 	// IsFork reports whether the repository is a fork of another repository.
 	IsFork bool
