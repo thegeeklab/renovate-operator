@@ -45,7 +45,7 @@ spec:
   dryRun: full
 
   # Enable Renovate onboarding for repositories.
-  # Defaults to false.
+  # Defaults to true.
   onboarding: true
 
   # Maximum number of PRs created per hour per repository.
@@ -66,32 +66,3 @@ spec:
   # Fail the job when Renovate encounters configuration validation errors.
   # Defaults to false.
   # failOnConfigValidationError: true
-
-  # Pod scheduling and resource configuration.
-
-  # nodeSelector:
-  #   kubernetes.io/arch: amd64
-
-  # resources:
-  #   requests:
-  #     cpu: 100m
-  #     memory: 128Mi
-  #   limits:
-  #     cpu: 500m
-  #     memory: 512Mi
-
-  # securityContext:
-  #   runAsNonRoot: true
-  #   runAsUser: 1000
-
-  # extraEnv:
-  #   - name: MY_VAR
-  #     value: "my-value"
-
-  # extraVolumes:
-  #   - name: custom-config
-  #     configMap:
-  #       name: my-config
-
-  # podAnnotations:
-  #   prometheus.io/scrape: "true"
