@@ -7,4 +7,39 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: authprovider-sample
 spec:
-# TODO(user): Add fields here
+  # Platform type. One of: github, gitea.
+  type: gitea
+
+  # Base URL of the Git platform.
+  endpoint: https://gitea.example.com
+
+  # OAuth2 client ID.
+  clientId: your-client-id
+
+  # Reference to a Secret containing the OAuth2 client secret.
+  clientSecret:
+    name: oauth2-secret
+    key: client-secret
+
+  # OAuth2 callback URL.
+  # Must match the redirect URL configured in your OAuth2 application.
+  redirectUrl: https://renovate-ui.example.com/callback
+
+  # API URL for the Git platform. Defaults to Endpoint.
+  # forgeUrl: https://gitea.example.com/api/v1
+
+  # Custom OAuth2 authorization URL.
+  # Derived from Type and Endpoint if not specified.
+  # authUrl: https://gitea.example.com/login/oauth/authorize
+
+  # Disable TLS verification (not recommended for production).
+  # Defaults to false.
+  # insecure: false
+
+  # Human-readable name shown in the login UI.
+  # Derived from the Endpoint hostname when empty.
+  # displayName: My Gitea
+
+  # URL of an icon shown next to the provider in the login UI.
+  # Defaults to the Endpoint's favicon.ico when empty.
+  # iconUrl: https://gitea.example.com/assets/img/favicon.png

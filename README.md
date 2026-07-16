@@ -108,6 +108,8 @@ kubectl apply --server-side --force-conflicts -f install.yaml
        schedule: "0 3 * * *"
    ```
 
+   See [config/samples/](https://github.com/thegeeklab/renovate-operator/tree/main/config/samples) for a full example with all available options.
+
    ```bash
    kubectl apply -f renovator.yaml
    ```

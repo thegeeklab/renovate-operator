@@ -7,5 +7,14 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: gitrepo-sample
 spec:
-  name: "my-repository"
-  webhookId: "12345"
+  # Repository name in the format "owner/repo".
+  name: my-repository
+
+  # Reference to a RenovateConfig resource for repository-specific configuration.
+  # configRef: my-renovate-config
+
+# Note: The following fields are managed by the operator and should not be set manually:
+# - webhookId: ID of the webhook registered on the remote Git provider
+# - platform: Type of the Git provider (github, gitea)
+# - repoUrl: Web-accessible URL for the repository
+# - lastRenovateTime: Timestamp of the most recently completed renovate job

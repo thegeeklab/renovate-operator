@@ -7,17 +7,95 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: discovery-sample
 spec:
-  image: "ghcr.io/thegeeklab/renovate-operator:latest"
-  imagePullPolicy: "IfNotPresent"
+  # Container image for the discovery job.
+  # Defaults to "docker.io/thegeeklab/renovate-operator:latest".
+  image: ghcr.io/thegeeklab/renovate-operator:latest
 
+  # Image pull policy. One of Always, Never, IfNotPresent.
+  # Defaults to IfNotPresent.
+  imagePullPolicy: IfNotPresent
+
+  # List of secrets for pulling images from private registries.
+  # imagePullSecrets:
+  #   - name: registry-credentials
+
+  # Discovery log level. One of: trace, debug, info, warn, error, fatal.
+  # Defaults to "info".
   logging:
-    level: "info"
+    level: info
 
-  configRef: "renovate-config"
+  # Reference to a ConfigMap with additional discovery configuration.
+  # configRef: discovery-config
 
+  # Pause discovery scheduling. Defaults to false.
   suspend: false
+
+  # Cron schedule for repository discovery.
+  # Defaults to "0 */2 * * *".
   schedule: "0 */2 * * *"
 
+  # IANA timezone for evaluating the cron schedule (e.g. "Europe/Berlin").
+  # Defaults to the operator pod's local timezone.
+  # timezone: "UTC"
+
+  # Number of completed jobs to retain for history.
+  # Defaults to 3.
+  # successLimit: 3
+
+  # Number of failed jobs to retain for history.
+  # Defaults to 1.
+  # failedLimit: 1
+
+  # Number of retries before marking a job as failed.
+  # Defaults to 0.
+  # backoffLimit: 0
+
+  # Repository filter patterns. Supports glob patterns.
+  # Prefix with "!" to exclude matching repositories.
   filter:
     - "my-org/*"
     - "another-org/important-repo"
+
+  # Exclude forked repositories from autodiscovery.
+  # Defaults to false.
+  # skipForks: true
+
+  # Only discover repositories matching ALL specified topics.
+  # topics:
+  #   - "renovate"
+  #   - "automated"
+
+  # Pod scheduling and resource configuration.
+
+  # nodeSelector:
+  #   kubernetes.io/arch: amd64
+
+  # resources:
+  #   requests:
+  #     cpu: 50m
+  #     memory: 64Mi
+  #   limits:
+  #     cpu: 200m
+  #     memory: 256Mi
+
+  # securityContext:
+  #   runAsNonRoot: true
+  #   runAsUser: 1000
+
+  # extraEnv:
+  #   - name: MY_VAR
+  #     value: "my-value"
+
+  # extraVolumes:
+  #   - name: custom-config
+  #     configMap:
+  #       name: my-config
+
+  # podAnnotations:
+  #   prometheus.io/scrape: "true"
+
+  # Scratch volume for RENOVATE_BASE_DIR.
+  # scratchVolume:
+  #   path: /tmp/renovate
+  #   medium: ""
+  #   sizeLimit: 1Gi

@@ -7,23 +7,91 @@ metadata:
     app.kubernetes.io/managed-by: kustomize
   name: renovateconfig-sample
 spec:
-  image: "ghcr.io/renovatebot/renovate:latest"
-  imagePullPolicy: "IfNotPresent"
+  # Container image for Renovate.
+  # Defaults to "ghcr.io/renovatebot/renovate:latest".
+  image: ghcr.io/renovatebot/renovate:latest
 
+  # Image pull policy. One of Always, Never, IfNotPresent.
+  # Defaults to IfNotPresent.
+  imagePullPolicy: IfNotPresent
+
+  # List of secrets for pulling images from private registries.
+  # imagePullSecrets:
+  #   - name: registry-credentials
+
+  # Renovate log level. One of: trace, debug, info, warn, error, fatal.
+  # Defaults to "info".
   logging:
-    level: "info"
+    level: info
 
+  # Git platform configuration (required).
   platform:
-    type: "github"
-    endpoint: "https://api.github.com"
+    # Platform type. One of: github, gitea.
+    type: github
+
+    # API endpoint URL for the Git platform.
+    endpoint: https://api.github.com
+
+    # Reference to a Secret containing the platform access token.
     token:
       secretKeyRef:
-        name: "github-token"
-        key: "token"
+        name: github-token
+        key: token
 
-  dryRun: "full"
+  # Dry-run mode. One of: extract, lookup, full.
+  # extract: only extract dependencies, no lookup.
+  # lookup: extract + lookup, no PR creation.
+  # full: complete run without pushing changes.
+  dryRun: full
+
+  # Enable Renovate onboarding for repositories.
+  # Defaults to false.
   onboarding: true
+
+  # Maximum number of PRs created per hour per repository.
   prHourlyLimit: 10
+
+  # Labels to add to every Renovate PR.
   addLabels:
-    - "renovate"
-    - "dependencies"
+    - renovate
+    - dependencies
+
+  # GitHub API token for accessing GitHub-hosted repositories
+  # when using a different platform (e.g. Gitea).
+  # githubToken:
+  #   secretKeyRef:
+  #     name: github-token
+  #     key: token
+
+  # Fail the job when Renovate encounters configuration validation errors.
+  # Defaults to false.
+  # failOnConfigValidationError: true
+
+  # Pod scheduling and resource configuration.
+
+  # nodeSelector:
+  #   kubernetes.io/arch: amd64
+
+  # resources:
+  #   requests:
+  #     cpu: 100m
+  #     memory: 128Mi
+  #   limits:
+  #     cpu: 500m
+  #     memory: 512Mi
+
+  # securityContext:
+  #   runAsNonRoot: true
+  #   runAsUser: 1000
+
+  # extraEnv:
+  #   - name: MY_VAR
+  #     value: "my-value"
+
+  # extraVolumes:
+  #   - name: custom-config
+  #     configMap:
+  #       name: my-config
+
+  # podAnnotations:
+  #   prometheus.io/scrape: "true"
