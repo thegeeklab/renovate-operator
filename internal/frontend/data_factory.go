@@ -274,7 +274,7 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 
 		// Filter Renovators by AuthProvider label
 		listOpts = append(listOpts, client.MatchingLabels{
-			renovatev1beta1.LabelAuthProvider: k8s.LabelValue(session.Provider),
+			renovatev1beta1.LabelAuthProvider: k8s.SanitizeLabel(session.Provider),
 		})
 	} else if err := df.checkAuthReady(); err != nil {
 		return nil, err
@@ -588,7 +588,7 @@ func (df *DataFactory) computePRActivityForRenovator(
 	g.SetLimit(defaultPRActivityConcurrency)
 
 	for _, repo := range repos {
-		job, ok := latestByRepo[k8s.LabelValue(repo.Name)]
+		job, ok := latestByRepo[k8s.SanitizeLabel(repo.Name)]
 		if !ok {
 			continue
 		}
@@ -766,7 +766,7 @@ func (df *DataFactory) GetJobsForRepo(
 	var jobList batchv1.JobList
 
 	listOpts := []client.ListOption{
-		client.MatchingLabels{renovatev1beta1.LabelGitRepo: k8s.LabelValue(repoName)},
+		client.MatchingLabels{renovatev1beta1.LabelGitRepo: k8s.SanitizeLabel(repoName)},
 	}
 
 	if opt.Namespace != "" {

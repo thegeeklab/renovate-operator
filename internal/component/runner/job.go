@@ -108,7 +108,7 @@ func (r *Reconciler) processGitRepos(
 	for _, repo := range gitRepos.Items {
 		repoLabels := make(map[string]string, len(labels)+1)
 		maps.Copy(repoLabels, labels)
-		repoLabels[renovatev1beta1.LabelGitRepo] = k8s.LabelValue(repo.Name)
+		repoLabels[renovatev1beta1.LabelGitRepo] = k8s.SanitizeLabel(repo.Name)
 
 		if err := r.updateJobStatus(ctx, &repo, repoLabels); err != nil {
 			log.Error(err, "Failed to update job status", "repo", repo.Name)

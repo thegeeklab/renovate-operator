@@ -571,7 +571,7 @@ func (h *WebHandler) HandleJobLogsDownload(w http.ResponseWriter, r *http.Reques
 	w.Header().Set("Content-Type", "text/plain; charset=utf-8")
 
 	safeJobName := "job"
-	if sanitized, err := k8s.SanitizeName(job); err == nil && sanitized != "" {
+	if sanitized, err := k8s.SanitizeSubdomain(job); err == nil && sanitized != "" {
 		safeJobName = sanitized
 	}
 

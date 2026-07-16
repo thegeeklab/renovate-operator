@@ -93,7 +93,7 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 	}
 
 	if renovator.Spec.AuthProviderRef != "" {
-		renovator.Labels[renovatev1beta1.LabelAuthProvider] = k8s.LabelValue(renovator.Spec.AuthProviderRef)
+		renovator.Labels[renovatev1beta1.LabelAuthProvider] = k8s.SanitizeLabel(renovator.Spec.AuthProviderRef)
 	} else {
 		delete(renovator.Labels, renovatev1beta1.LabelAuthProvider)
 	}

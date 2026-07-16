@@ -28,7 +28,7 @@ func RunnerName(request ctrl.Request) string {
 func RunnerLabels(request ctrl.Request) map[string]string {
 	return map[string]string{
 		renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
-		renovatev1beta1.LabelAppInstance:  k8s.LabelValue(request.Name),
+		renovatev1beta1.LabelAppInstance:  k8s.SanitizeLabel(request.Name),
 		renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentRunner,
 		renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
 	}
