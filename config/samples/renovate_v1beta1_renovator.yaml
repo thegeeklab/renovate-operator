@@ -216,7 +216,7 @@ spec:
 
     # Git platform configuration (required).
     platform:
-      # Platform type. One of: github, gitea.
+      # Platform type. One of: github, gitea, gitlab.
       type: gitea
 
       # API endpoint URL for the Git platform.
