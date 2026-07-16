@@ -24,6 +24,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	auth_gitea "github.com/thegeeklab/renovate-operator/internal/frontend/auth/gitea"
 	auth_github "github.com/thegeeklab/renovate-operator/internal/frontend/auth/github"
+	auth_gitlab "github.com/thegeeklab/renovate-operator/internal/frontend/auth/gitlab"
 )
 
 const (
@@ -225,6 +226,8 @@ func (r *Reconciler) createAuthProvider(
 		return auth_gitea.NewGiteaProvider(ctx, cfg)
 	case renovatev1beta1.PlatformType_GITHUB:
 		return auth_github.NewGitHubProvider(ctx, cfg)
+	case renovatev1beta1.PlatformType_GITLAB:
+		return auth_gitlab.NewGitLabProvider(ctx, cfg)
 	default:
 		return nil, fmt.Errorf("%w: %s", errUnsupportedType, ap.Spec.Type)
 	}

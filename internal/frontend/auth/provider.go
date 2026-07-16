@@ -15,6 +15,7 @@ import (
 const (
 	ProviderTypeGitea  = "gitea"
 	ProviderTypeGitHub = "github"
+	ProviderTypeGitLab = "gitlab"
 )
 
 var (

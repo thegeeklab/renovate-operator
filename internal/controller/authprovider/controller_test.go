@@ -219,6 +219,36 @@ var _ = Describe("AuthProvider Controller", func() {
 		})
 	})
 
+	It("should create a GitLab auth provider with configured values", func() {
+		provider, err := reconciler.createAuthProvider(ctx, &renovatev1beta1.AuthProvider{
+			ObjectMeta: metav1.ObjectMeta{Name: "gitlab-auth"},
+			Spec: renovatev1beta1.AuthProviderSpec{
+				Type:        renovatev1beta1.PlatformType_GITLAB,
+				Endpoint:    "https://gitlab.example.com",
+				ForgeURL:    "https://gitlab.example.com/api/v4",
+				AuthURL:     "https://login.example.com/authorize",
+				DisplayName: "Company GitLab",
+				IconURL:     "https://example.com/gitlab.svg",
+				ClientID:    "client-id",
+				RedirectURL: "https://operator.example.com/auth/callback",
+				Insecure:    true,
+			},
+		}, "client-secret")
+		Expect(err).NotTo(HaveOccurred())
+		Expect(provider.Type()).To(Equal(auth.ProviderTypeGitLab))
+		Expect(provider.Name()).To(Equal("gitlab-auth"))
+		Expect(provider.DisplayName()).To(Equal("Company GitLab"))
+		Expect(provider.IconURL()).To(Equal("https://example.com/gitlab.svg"))
+	})
+
+	It("should reject an unknown auth provider type", func() {
+		provider, err := reconciler.createAuthProvider(ctx, &renovatev1beta1.AuthProvider{
+			Spec: renovatev1beta1.AuthProviderSpec{Type: renovatev1beta1.PlatformType("unknown")},
+		}, "client-secret")
+		Expect(err).To(MatchError(ContainSubstring("unsupported platform type")))
+		Expect(provider).To(BeNil())
+	})
+
 	It("should handle missing AuthProvider resource gracefully", func() {
 		nonExistentName := types.NamespacedName{
 			Name:      "non-existent-authprovider",
