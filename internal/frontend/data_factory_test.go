@@ -366,7 +366,8 @@ var _ = Describe("DataFactory", func() {
 			longName := "this-is-a-very-long-repo-name-that-exceeds-the-63-character-dns-label-limit-yes"
 			Expect(len(longName)).To(BeNumerically(">", 63))
 
-			normalized := k8s.SanitizeLabel(longName)
+			normalized, err := k8s.SanitizeLabel(longName)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(normalized).NotTo(Equal(longName))
 
 			now := metav1.NewTime(time.Now().Add(-1 * time.Minute))

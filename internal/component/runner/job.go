@@ -25,7 +25,10 @@ import (
 func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	runnerLabels := RunnerLabels(r.req)
+	runnerLabels, err := RunnerLabels(r.req)
+	if err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to build runner labels: %w", err)
+	}
 
 	if val, ok := r.instance.Labels[renovatev1beta1.LabelRenovator]; ok {
 		runnerLabels[renovatev1beta1.LabelRenovator] = val
@@ -108,7 +111,15 @@ func (r *Reconciler) processGitRepos(
 	for _, repo := range gitRepos.Items {
 		repoLabels := make(map[string]string, len(labels)+1)
 		maps.Copy(repoLabels, labels)
-		repoLabels[renovatev1beta1.LabelGitRepo] = k8s.SanitizeLabel(repo.Name)
+
+		repoLabel, err := k8s.SanitizeLabel(repo.Name)
+		if err != nil {
+			log.Error(err, "Failed to sanitize repo name for label", "repo", repo.Name)
+
+			continue
+		}
+
+		repoLabels[renovatev1beta1.LabelGitRepo] = repoLabel
 
 		if err := r.updateJobStatus(ctx, &repo, repoLabels); err != nil {
 			log.Error(err, "Failed to update job status", "repo", repo.Name)

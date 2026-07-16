@@ -104,7 +104,8 @@ var _ = Describe("ReconcileJob", func() {
 
 	Describe("reconcileJob", func() {
 		expectedLabels := func() map[string]string {
-			expected := DiscoveryLabels(reconciler.req)
+			expected, err := DiscoveryLabels(reconciler.req)
+			Expect(err).NotTo(HaveOccurred())
 
 			if val, ok := instance.Labels[renovatev1beta1.LabelRenovator]; ok {
 				expected[renovatev1beta1.LabelRenovator] = val

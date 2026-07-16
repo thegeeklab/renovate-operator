@@ -84,7 +84,8 @@ var _ = Describe("RunnerLabels", func() {
 	})
 
 	It("should generate the correct set of base labels", func() {
-		labels := RunnerLabels(request)
+		labels, err := RunnerLabels(request)
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(labels).To(HaveLen(4))
 		Expect(labels).To(HaveKeyWithValue(renovatev1beta1.LabelAppName, renovatev1beta1.OperatorName))
@@ -95,14 +96,16 @@ var _ = Describe("RunnerLabels", func() {
 
 	It("should handle empty name in request", func() {
 		request.Name = ""
-		labels := RunnerLabels(request)
+		labels, err := RunnerLabels(request)
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(labels).To(HaveKeyWithValue(renovatev1beta1.LabelAppInstance, ""))
 	})
 
 	It("should truncate label values exceeding 63 characters", func() {
 		request.Name = strings.Repeat("a", 100)
-		labels := RunnerLabels(request)
+		labels, err := RunnerLabels(request)
+		Expect(err).ToNot(HaveOccurred())
 
 		Expect(len(labels[renovatev1beta1.LabelAppInstance])).To(BeNumerically("<=", 63))
 	})

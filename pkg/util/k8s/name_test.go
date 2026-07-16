@@ -10,13 +10,16 @@ import (
 
 var _ = Describe("truncateWithHash", func() {
 	It("should truncate and append hash within maxLen", func() {
-		result := truncateWithHash(strings.Repeat("a", 100), "original", 30, "-")
-		Expect(len(result)).To(BeNumerically("<=", 30))
-		Expect(result).To(HavePrefix(strings.Repeat("a", 30-1-hashLength)))
+		result, err := truncateWithHash(strings.Repeat("a", 100), "original", 50, "-")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(result)).To(BeNumerically("<=", 50))
+		Expect(result).To(HavePrefix(strings.Repeat("a", 50-1-hashLength)))
 	})
 
 	It("should trim specified trailing characters", func() {
-		result := truncateWithHash(strings.Repeat("a", 50)+"-_.", "original", 30, "-_.")
+		result, err := truncateWithHash(strings.Repeat("a", 50)+"-_.", "original", 50, "-_.")
+		Expect(err).ToNot(HaveOccurred())
+
 		lastCharOfTruncated := result[len(result)-hashLength-2]
 		Expect(lastCharOfTruncated).NotTo(Equal(byte('-')))
 		Expect(lastCharOfTruncated).NotTo(Equal(byte('_')))
@@ -24,41 +27,65 @@ var _ = Describe("truncateWithHash", func() {
 	})
 
 	It("should hash the original input, not the truncated string", func() {
-		result1 := truncateWithHash(strings.Repeat("a", 50), "original1", 30, "-")
-		result2 := truncateWithHash(strings.Repeat("a", 50), "original2", 30, "-")
+		result1, err1 := truncateWithHash(strings.Repeat("a", 50), "original1", 50, "-")
+		result2, err2 := truncateWithHash(strings.Repeat("a", 50), "original2", 50, "-")
+
+		Expect(err1).ToNot(HaveOccurred())
+		Expect(err2).ToNot(HaveOccurred())
 		Expect(result1).NotTo(Equal(result2))
 	})
 
 	It("should be deterministic", func() {
-		result1 := truncateWithHash(strings.Repeat("a", 100), "test", 30, "-")
-		result2 := truncateWithHash(strings.Repeat("a", 100), "test", 30, "-")
+		result1, err1 := truncateWithHash(strings.Repeat("a", 100), "test", 50, "-")
+		result2, err2 := truncateWithHash(strings.Repeat("a", 100), "test", 50, "-")
+
+		Expect(err1).ToNot(HaveOccurred())
+		Expect(err2).ToNot(HaveOccurred())
 		Expect(result1).To(Equal(result2))
 	})
 
 	It("should handle empty string", func() {
-		result := truncateWithHash("", "original", 30, "-")
-		Expect(len(result)).To(BeNumerically("<=", 30))
+		result, err := truncateWithHash("", "original", 50, "-")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(result)).To(BeNumerically("<=", 50))
 		Expect(result).To(HaveLen(hashLength))
 	})
 
 	It("should handle string exactly at maxLen", func() {
-		s := strings.Repeat("a", 30)
-		result := truncateWithHash(s, "original", 30, "-")
-		Expect(len(result)).To(BeNumerically("<=", 30))
+		s := strings.Repeat("a", 50)
+		result, err := truncateWithHash(s, "original", 50, "-")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(result)).To(BeNumerically("<=", 50))
 	})
 
 	It("should handle string at maxLen-1", func() {
-		s := strings.Repeat("a", 29)
-		result := truncateWithHash(s, "original", 30, "-")
-		Expect(len(result)).To(BeNumerically("<=", 30))
+		s := strings.Repeat("a", 49)
+		result, err := truncateWithHash(s, "original", 50, "-")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(result)).To(BeNumerically("<=", 50))
 	})
 
 	It("should handle string with all trimChars at end", func() {
 		s := strings.Repeat("a", 50) + "---"
-		result := truncateWithHash(s, "original", 30, "-")
-		Expect(len(result)).To(BeNumerically("<=", 30))
-		// After trimming, the last 'a' should be followed by the hash separator
+		result, err := truncateWithHash(s, "original", 50, "-")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(len(result)).To(BeNumerically("<=", 50))
 		Expect(result).To(HaveSuffix("-" + result[len(result)-hashLength:]))
+	})
+
+	It("should return error when maxLen is too small", func() {
+		_, err := truncateWithHash("test", "original", hashLength, "-")
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should return error when maxLen is zero", func() {
+		_, err := truncateWithHash("test", "original", 0, "-")
+		Expect(err).To(HaveOccurred())
+	})
+
+	It("should return error when maxLen is negative", func() {
+		_, err := truncateWithHash("test", "original", -1, "-")
+		Expect(err).To(HaveOccurred())
 	})
 })
 
@@ -135,11 +162,11 @@ var _ = Describe("SanitizeSubdomain", func() {
 		Expect(result).To(Equal("owner-repo-name"))
 	})
 
-	It("should truncate very long names to 253 characters", func() {
+	It("should truncate very long names to at most 253 characters", func() {
 		longName := "owner/" + strings.Repeat("very-long-repo-name-", 20)
 		result, err := SanitizeSubdomain(longName)
 		Expect(err).ToNot(HaveOccurred())
-		Expect(result).To(HaveLen(validation.DNS1123SubdomainMaxLength))
+		Expect(len(result)).To(BeNumerically("<=", validation.DNS1123SubdomainMaxLength))
 		Expect(result).To(HavePrefix("owner-very-long-repo-name-"))
 		Expect(result[len(result)-1:]).To(MatchRegexp(`[a-z0-9]`))
 	})
@@ -224,70 +251,94 @@ var _ = Describe("SanitizeSubdomain", func() {
 
 var _ = Describe("SanitizeLabel", func() {
 	It("should return short names unchanged", func() {
-		Expect(SanitizeLabel("my-repo")).To(Equal("my-repo"))
+		result, err := SanitizeLabel("my-repo")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal("my-repo"))
 	})
 
 	It("should return names at exactly 63 characters unchanged", func() {
 		name := strings.Repeat("a", 63)
-		Expect(SanitizeLabel(name)).To(Equal(name))
-		Expect(SanitizeLabel(name)).To(HaveLen(63))
+		result, err := SanitizeLabel(name)
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(Equal(name))
+		Expect(result).To(HaveLen(63))
 	})
 
 	It("should truncate names exceeding 63 characters with a hash suffix", func() {
 		name := strings.Repeat("a", 100)
-		result := SanitizeLabel(name)
+		result, err := SanitizeLabel(name)
+		Expect(err).ToNot(HaveOccurred())
 		Expect(len(result)).To(BeNumerically("<=", 63))
 		Expect(result).To(HavePrefix(strings.Repeat("a", validation.DNS1035LabelMaxLength-1-hashLength)))
 	})
 
 	It("should be deterministic", func() {
 		name := strings.Repeat("b", 100)
-		Expect(SanitizeLabel(name)).To(Equal(SanitizeLabel(name)))
+
+		result1, err1 := SanitizeLabel(name)
+		result2, err2 := SanitizeLabel(name)
+
+		Expect(err1).ToNot(HaveOccurred())
+		Expect(err2).ToNot(HaveOccurred())
+		Expect(result1).To(Equal(result2))
 	})
 
 	It("should produce different values for different long inputs", func() {
 		name1 := strings.Repeat("a", 80) + "x"
 		name2 := strings.Repeat("a", 80) + "y"
-		Expect(SanitizeLabel(name1)).NotTo(Equal(SanitizeLabel(name2)))
+
+		result1, err1 := SanitizeLabel(name1)
+		result2, err2 := SanitizeLabel(name2)
+
+		Expect(err1).ToNot(HaveOccurred())
+		Expect(err2).ToNot(HaveOccurred())
+		Expect(result1).NotTo(Equal(result2))
 	})
 
 	It("should not end with a trailing hyphen before the hash", func() {
 		name := strings.Repeat("a", 53) + "-" + strings.Repeat("b", 20)
-		result := SanitizeLabel(name)
+		result, err := SanitizeLabel(name)
+		Expect(err).ToNot(HaveOccurred())
 		Expect(len(result)).To(BeNumerically("<=", 63))
 		Expect(result).NotTo(ContainSubstring("--"))
 	})
 
 	It("should trim trailing dots from short names", func() {
-		result := SanitizeLabel("my-repo.")
+		result, err := SanitizeLabel("my-repo.")
+		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(Equal("my-repo"))
 	})
 
 	It("should trim leading dots from short names", func() {
-		result := SanitizeLabel(".my-repo")
+		result, err := SanitizeLabel(".my-repo")
+		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(Equal("my-repo"))
 	})
 
 	It("should trim trailing dots from long names before truncation", func() {
 		name := strings.Repeat("a", 60) + "."
-		result := SanitizeLabel(name)
+		result, err := SanitizeLabel(name)
+		Expect(err).ToNot(HaveOccurred())
 		Expect(len(result)).To(BeNumerically("<=", 63))
 		Expect(result[len(result)-1:]).To(MatchRegexp(`[a-zA-Z0-9]`))
 	})
 
 	It("should trim leading and trailing non-alphanumeric characters", func() {
-		result := SanitizeLabel("-_.repo._-")
+		result, err := SanitizeLabel("-_.repo._-")
+		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(Equal("repo"))
 	})
 
-	It("should handle names that are entirely non-alphanumeric", func() {
-		result := SanitizeLabel("---")
+	It("should return error for names that are entirely non-alphanumeric", func() {
+		result, err := SanitizeLabel("---")
+		Expect(err).To(HaveOccurred())
 		Expect(result).To(BeEmpty())
 	})
 
 	It("should trim trailing underscores and hyphens from truncated names", func() {
 		name := strings.Repeat("a", 50) + "-_" + strings.Repeat("b", 20)
-		result := SanitizeLabel(name)
+		result, err := SanitizeLabel(name)
+		Expect(err).ToNot(HaveOccurred())
 		Expect(len(result)).To(BeNumerically("<=", 63))
 		Expect(result[len(result)-1:]).To(MatchRegexp(`[a-zA-Z0-9]`))
 	})
@@ -308,7 +359,9 @@ var _ = Describe("SanitizeLabel", func() {
 		}
 
 		for _, input := range inputs {
-			result := SanitizeLabel(input)
+			result, err := SanitizeLabel(input)
+			Expect(err).ToNot(HaveOccurred())
+
 			if result == "" {
 				continue
 			}
@@ -317,38 +370,50 @@ var _ = Describe("SanitizeLabel", func() {
 		}
 	})
 
-	It("should handle names with only underscores and dots", func() {
-		result := SanitizeLabel("___...")
+	It("should return error for names with only underscores and dots", func() {
+		result, err := SanitizeLabel("___...")
+		Expect(err).To(HaveOccurred())
 		Expect(result).To(BeEmpty())
 	})
 
-	It("should handle names with mixed separators that become empty", func() {
-		result := SanitizeLabel("-_.-_.-_")
+	It("should return error for names with mixed separators that become empty", func() {
+		result, err := SanitizeLabel("-_.-_.-_")
+		Expect(err).To(HaveOccurred())
 		Expect(result).To(BeEmpty())
 	})
 
 	It("should handle names with spaces", func() {
-		result := SanitizeLabel("repo name")
+		result, err := SanitizeLabel("repo name")
+		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(Equal("repo-name"))
 		Expect(validation.IsDNS1035Label(result)).To(BeEmpty())
 	})
 
 	It("should handle names with unicode characters", func() {
-		result := SanitizeLabel("repo-名前")
+		result, err := SanitizeLabel("repo-名前")
+		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(Equal("repo"))
 		Expect(validation.IsDNS1035Label(result)).To(BeEmpty())
 	})
 
 	It("should handle names with special chars in middle", func() {
-		result := SanitizeLabel("repo@name#test")
+		result, err := SanitizeLabel("repo@name#test")
+		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(Equal("repo-name-test"))
 		Expect(validation.IsDNS1035Label(result)).To(BeEmpty())
 	})
 
 	It("should handle names with multiple consecutive separators", func() {
-		result := SanitizeLabel("repo--__..name")
+		result, err := SanitizeLabel("repo--__..name")
+		Expect(err).ToNot(HaveOccurred())
 		Expect(result).To(Equal("repo-name"))
 		Expect(validation.IsDNS1035Label(result)).To(BeEmpty())
+	})
+
+	It("should return empty string with no error for empty input", func() {
+		result, err := SanitizeLabel("")
+		Expect(err).ToNot(HaveOccurred())
+		Expect(result).To(BeEmpty())
 	})
 })
 
