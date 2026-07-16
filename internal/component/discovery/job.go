@@ -25,7 +25,10 @@ import (
 func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
-	discoveryLabels := DiscoveryLabels(r.req)
+	discoveryLabels, err := DiscoveryLabels(r.req)
+	if err != nil {
+		return &ctrl.Result{}, fmt.Errorf("failed to build discovery labels: %w", err)
+	}
 
 	if val, ok := r.instance.Labels[renovatev1beta1.LabelRenovator]; ok {
 		discoveryLabels[renovatev1beta1.LabelRenovator] = val

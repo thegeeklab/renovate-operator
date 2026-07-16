@@ -359,14 +359,15 @@ var _ = Describe("DataFactory", func() {
 		})
 
 		It("keys the map by the same label value the runner writes (truncated/hashed for long names)", func() {
-			// Reproduces the bug where jobs are labeled with k8s.LabelValue(repo.Name)
+			// Reproduces the bug where jobs are labeled with k8s.SanitizeLabel(repo.Name)
 			// (a 63-char DNS-1035 normalization) but the aggregator was looking them
 			// up by the un-normalized repo.Name, missing any GitRepo whose name
 			// exceeded 63 characters.
 			longName := "this-is-a-very-long-repo-name-that-exceeds-the-63-character-dns-label-limit-yes"
 			Expect(len(longName)).To(BeNumerically(">", 63))
 
-			normalized := k8s.LabelValue(longName)
+			normalized, err := k8s.SanitizeLabel(longName)
+			Expect(err).NotTo(HaveOccurred())
 			Expect(normalized).NotTo(Equal(longName))
 
 			now := metav1.NewTime(time.Now().Add(-1 * time.Minute))

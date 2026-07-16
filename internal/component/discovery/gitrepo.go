@@ -69,7 +69,7 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 	repoMatcher := make(map[string]bool, len(filteredRepos))
 
 	for _, repoName := range filteredRepos {
-		sanitizedName, err := k8s.SanitizeName(repoName)
+		sanitizedName, err := k8s.SanitizeSubdomain(repoName)
 		if err != nil {
 			log.Error(err, "Failed to sanitize repository name", "repo", repoName)
 			allErrors = append(allErrors, fmt.Errorf("failed to sanitize repo name %s: %w", repoName, err))

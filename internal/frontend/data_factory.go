@@ -273,8 +273,13 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 		}
 
 		// Filter Renovators by AuthProvider label
+		providerLabel, err := k8s.SanitizeLabel(session.Provider)
+		if err != nil {
+			return nil, fmt.Errorf("failed to sanitize provider label: %w", err)
+		}
+
 		listOpts = append(listOpts, client.MatchingLabels{
-			renovatev1beta1.LabelAuthProvider: k8s.LabelValue(session.Provider),
+			renovatev1beta1.LabelAuthProvider: providerLabel,
 		})
 	} else if err := df.checkAuthReady(); err != nil {
 		return nil, err
@@ -588,7 +593,12 @@ func (df *DataFactory) computePRActivityForRenovator(
 	g.SetLimit(defaultPRActivityConcurrency)
 
 	for _, repo := range repos {
-		job, ok := latestByRepo[k8s.LabelValue(repo.Name)]
+		repoLabel, err := k8s.SanitizeLabel(repo.Name)
+		if err != nil {
+			continue
+		}
+
+		job, ok := latestByRepo[repoLabel]
 		if !ok {
 			continue
 		}
@@ -765,8 +775,13 @@ func (df *DataFactory) GetJobsForRepo(
 
 	var jobList batchv1.JobList
 
+	repoLabel, err := k8s.SanitizeLabel(repoName)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sanitize repo name: %w", err)
+	}
+
 	listOpts := []client.ListOption{
-		client.MatchingLabels{renovatev1beta1.LabelGitRepo: k8s.LabelValue(repoName)},
+		client.MatchingLabels{renovatev1beta1.LabelGitRepo: repoLabel},
 	}
 
 	if opt.Namespace != "" {

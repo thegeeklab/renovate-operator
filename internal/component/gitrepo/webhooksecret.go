@@ -24,7 +24,7 @@ func (r *Reconciler) reconcileWebhookSecret(ctx context.Context) (*ctrl.Result, 
 		return &ctrl.Result{}, nil
 	}
 
-	secretName, err := k8s.DeterministicSubdomainName(r.instance.Name, "-webhook-secret")
+	secretName, err := k8s.DeterministicSubdomain(r.instance.Name, "-webhook-secret")
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to generate webhook secret name: %w", err)
 	}

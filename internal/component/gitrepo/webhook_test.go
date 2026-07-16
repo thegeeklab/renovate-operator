@@ -74,7 +74,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			},
 		}
 
-		secretName, _ = k8s.DeterministicSubdomainName(instance.Name, "-webhook-secret")
+		secretName, _ = k8s.DeterministicSubdomain(instance.Name, "-webhook-secret")
 		externalURL = "https://renovate.example.com"
 		expectedWebhookURL = fmt.Sprintf("%s/hooks/%s/%s", externalURL, instance.Namespace, instance.Name)
 

@@ -24,11 +24,16 @@ func DiscoveryName(request ctrl.Request) string {
 }
 
 // DiscoveryLabels returns the standard base labels for discovery resources.
-func DiscoveryLabels(request ctrl.Request) map[string]string {
+func DiscoveryLabels(request ctrl.Request) (map[string]string, error) {
+	instanceLabel, err := k8s.SanitizeLabel(request.Name)
+	if err != nil {
+		return nil, err
+	}
+
 	return map[string]string{
 		renovatev1beta1.LabelAppName:      renovatev1beta1.OperatorName,
-		renovatev1beta1.LabelAppInstance:  k8s.LabelValue(request.Name),
+		renovatev1beta1.LabelAppInstance:  instanceLabel,
 		renovatev1beta1.LabelAppComponent: renovatev1beta1.ComponentDiscovery,
 		renovatev1beta1.LabelAppManagedBy: renovatev1beta1.OperatorManagedBy,
-	}
+	}, nil
 }

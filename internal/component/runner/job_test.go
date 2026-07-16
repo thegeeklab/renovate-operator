@@ -139,14 +139,18 @@ var _ = Describe("ReconcileJob", func() {
 
 	Describe("reconcileJob", func() {
 		expectedLabels := func(repoName string) map[string]string {
-			expected := RunnerLabels(reconciler.req)
+			expected, err := RunnerLabels(reconciler.req)
+			Expect(err).NotTo(HaveOccurred())
 
 			if val, ok := instance.Labels[renovatev1beta1.LabelRenovator]; ok {
 				expected[renovatev1beta1.LabelRenovator] = val
 			}
 
 			if repoName != "" {
-				expected[renovatev1beta1.LabelGitRepo] = k8s.LabelValue(repoName)
+				label, err := k8s.SanitizeLabel(repoName)
+				Expect(err).NotTo(HaveOccurred())
+
+				expected[renovatev1beta1.LabelGitRepo] = label
 			}
 
 			return expected
@@ -316,10 +320,13 @@ var _ = Describe("ReconcileJob", func() {
 				jobList := &batchv1.JobList{}
 				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
 
+				longRepoLabel, err := k8s.SanitizeLabel(longRepo.Name)
+				Expect(err).NotTo(HaveOccurred())
+
 				var longRepoJob *batchv1.Job
 
 				for i := range jobList.Items {
-					if jobList.Items[i].Labels[renovatev1beta1.LabelGitRepo] == k8s.LabelValue(longRepo.Name) {
+					if jobList.Items[i].Labels[renovatev1beta1.LabelGitRepo] == longRepoLabel {
 						longRepoJob = &jobList.Items[i]
 
 						break
@@ -330,14 +337,16 @@ var _ = Describe("ReconcileJob", func() {
 
 				gitRepoLabel := longRepoJob.Labels[renovatev1beta1.LabelGitRepo]
 				Expect(len(gitRepoLabel)).To(BeNumerically("<=", 63), "label value must not exceed 63 chars")
-				Expect(gitRepoLabel).To(Equal(k8s.LabelValue(longRepo.Name)))
+				Expect(gitRepoLabel).To(Equal(longRepoLabel))
 			})
 
 			It("should allow querying jobs by truncated label value", func() {
 				_, err := reconciler.reconcileJob(ctx)
 				Expect(err).NotTo(HaveOccurred())
 
-				truncatedLabel := k8s.LabelValue(longRepo.Name)
+				truncatedLabel, err := k8s.SanitizeLabel(longRepo.Name)
+				Expect(err).NotTo(HaveOccurred())
+
 				jobList := &batchv1.JobList{}
 				err = fakeClient.List(
 					ctx, jobList,
