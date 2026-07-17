@@ -403,7 +403,7 @@ func RenovatorList(data viewmodel.DashboardData) templ.Component {
 				return templ_7745c5c3_Err
 			}
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div></div></div><div class=\"mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 27, "</div></div></div><div data-kb-nav-scope=\"dashboard\" class=\"mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -482,7 +482,7 @@ func RenovatorCard(v viewmodel.WebView) templ.Component {
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
-		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"group bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700\"><summary class=\"cursor-pointer bg-white dark:bg-gray-800 px-4 py-5 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors\"><div class=\"flex items-center justify-between\"><div class=\"flex items-center gap-4\">")
+		templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 32, "\" class=\"group bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700\"><summary data-kb-nav tabindex=\"0\" class=\"cursor-pointer bg-white dark:bg-gray-800 px-4 py-5 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500\"><div class=\"flex items-center justify-between\"><div class=\"flex items-center gap-4\">")
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}

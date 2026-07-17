@@ -14,10 +14,11 @@ func getRepoClass(status viewmodel.Status) string {
 
 templ GitRepoList(repos []viewmodel.GitRepoInfo) {
 	if len(repos) > 0 {
-		<ul class="grid grid-cols-1 gap-4" role="list">
+		<ul data-kb-nav-scope="repo-list" class="grid grid-cols-1 gap-4" role="list">
 			for _, r := range repos {
 				<li>
 					<a
+						data-kb-nav
 						href={ sanitize.GitrepoURL(r.Namespace, r.Name) }
 						hx-get={ sanitize.GitrepoURL(r.Namespace, r.Name) }
 						hx-push-url="true"

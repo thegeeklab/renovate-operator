@@ -81,6 +81,10 @@ eslint: ## Run eslint.
 typecheck: ## Run TypeScript type checking.
 	npm run typecheck
 
+.PHONY: cspell
+cspell: frontend-deps ## Run cspell spell checker.
+	npx --no-install cspell --config .cspell.json lint --gitignore --color .
+
 .PHONY: frontend-build
 frontend-build: frontend-deps ## Build the frontend assets for production.
 	@echo "Building Vite assets for production..."
@@ -181,12 +185,12 @@ golangci-lint: golangci-lint-bin ## Run golangci-lint.
 	$(GOLANGCI_LINT) run
 
 .PHONY: lint
-lint: yamlfmt-dry golangci-lint eslint typecheck
+lint: yamlfmt-dry golangci-lint eslint typecheck cspell
 
 .PHONY: helm-docs
-helm-docs: helm-docs-bin ## Generate helm documentation.
+helm-docs: frontend-deps helm-docs-bin ## Generate helm documentation.
 	$(HELM_DOCS_BIN) -c dist/chart/
-	npx prettier --write "dist/chart/**/*.md"
+	npx --no-install prettier --write "dist/chart/**/*.md"
 
 .PHONY: helm-test
 helm-test: ## Run helm unit tests.

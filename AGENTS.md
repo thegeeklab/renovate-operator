@@ -1,8 +1,19 @@
 # AGENTS.md - Development Guidelines
 
-<!-- cSpell:ignore mirrord envtest golangci deepcopy gofumpt Errorf logr keyup afterend subpackages noctx Gomega gotestsum Codegen -->
+<!-- cSpell:ignore mirrord envtest golangci deepcopy gofumpt Errorf logr keyup afterend subpackages noctx Gomega gotestsum Codegen cspell -->
 
 This file contains comprehensive guidelines for AI coding agents working in the renovate-operator repository.
+
+## AI Agent Tool Usage (Mandatory)
+
+**AI agents MUST use `make` targets for all build, test, lint, generate, and dependency operations.** Never invoke underlying tools directly (e.g. `go build`, `go test`, `go vet`, `go mod`, `npm install`, `npm run ...`, `npx ...`, `eslint`, `tsc`, `cspell`).
+
+- ✅ Correct: `make build`, `make test`, `make lint`, `make frontend-deps`, `make cspell`
+- ❌ Incorrect: `go build ./...`, `go test ./...`, `npm install`, `npx cspell ...`, `eslint ...`, `tsc --noEmit`
+
+Rationale: make targets encapsulate the exact tool versions, flags, and environment variables (e.g. `KUBEBUILDER_ASSETS` for envtest) that CI runs. Bypassing them causes drift from CI and breaks reproducibility.
+
+If a needed operation has no make target, **add one first** instead of running the tool directly.
 
 ## Build/Test/Lint Commands
 
@@ -22,16 +33,16 @@ This file contains comprehensive guidelines for AI coding agents working in the 
 - **Skip tests**: `make test SKIP="TestName"` (uses Ginkgo skip)
 - **E2E tests**: `make test-e2e` (requires Kind cluster with image loaded) — **DO NOT RUN**: E2E tests are not fully implemented; never run them autonomously
 - **Helm unit tests**: `make helm-test`
-- **Test with race detector**: `go test -race ./...` (only for packages not requiring envtest)
+- **Test with race detector**: `go test -race ./...` (only for packages not requiring envtest) — acceptable exception; envtest-based packages still need `make test`
 
 ### Linting
 
-- **Lint all**: `make lint` (runs yamlfmt-dry, golangci-lint, eslint, typecheck)
+- **Lint all**: `make lint` (runs yamlfmt-dry, golangci-lint, eslint, typecheck, cspell)
 - **Go lint only**: `make golangci-lint`
-- **Lint with fixes**: `golangci-lint run --fix`
-- **Frontend lint**: `npm run lint` or `make eslint`
-- **TypeScript check**: `npm run typecheck` or `make typecheck`
+- **Frontend lint**: `make eslint`
+- **TypeScript check**: `make typecheck`
 - **YAML format check**: `make yamlfmt-lint`
+- **Spell check**: `make cspell`
 
 ### Code Generation
 
@@ -47,7 +58,7 @@ This file contains comprehensive guidelines for AI coding agents working in the 
 - **Update all Go deps**: `go get -u ./...`
 - **Tidy Go modules**: `go mod tidy`
 - **Update npm deps**: `npm update`
-- **Install frontend deps**: `npm install` or `make frontend-deps`
+- **Install frontend deps**: `make frontend-deps`
 
 ## Code Style & Conventions
 
@@ -307,7 +318,7 @@ After editing any `*.templ` file, always run `make templ`. After editing any `ap
 Woodpecker CI pipelines in `.woodpecker/`:
 
 - `test.yaml` — runs `make test-ci` (manifests, generate, fmt, vet, test)
-- `static.yaml` — linting (golangci-lint, eslint, typecheck, yamlfmt)
+- `static.yaml` — linting (golangci-lint, eslint, typecheck, yamlfmt, cspell)
 - `build-container.yaml` — multi-arch container build
 - `build-package.yaml` — release packaging
 - `docs.yaml` — documentation builds

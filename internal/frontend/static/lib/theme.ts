@@ -18,7 +18,7 @@ function applyClass(dark: boolean): void {
   document.documentElement.classList.toggle(DARK_CLASS, dark)
 }
 
-function getStoredMode(): ThemeMode {
+export function getStoredMode(): ThemeMode {
   const stored = getPersisted<string>(STORAGE_KEY, "auto")
   if (stored === "light" || stored === "dark" || stored === "auto") {
     return stored
