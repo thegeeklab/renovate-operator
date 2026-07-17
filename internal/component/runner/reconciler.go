@@ -6,6 +6,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -24,6 +25,7 @@ type Reconciler struct {
 	req       ctrl.Request
 	instance  *renovatev1beta1.Runner
 	renovate  *renovatev1beta1.RenovateConfig
+	metrics   metrics.Recorder
 }
 
 type JobData struct {
@@ -36,6 +38,7 @@ func NewReconciler(
 	broker *frontend.SSEBroker,
 	instance *renovatev1beta1.Runner,
 	renovate *renovatev1beta1.RenovateConfig,
+	metricsRecorder metrics.Recorder,
 ) (*Reconciler, error) {
 	return &Reconciler{
 		Client:    c,
@@ -45,6 +48,7 @@ func NewReconciler(
 		req:       ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
 		instance:  instance,
 		renovate:  renovate,
+		metrics:   metricsRecorder,
 	}, nil
 }
 

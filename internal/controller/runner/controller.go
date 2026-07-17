@@ -2,12 +2,14 @@ package runner
 
 import (
 	"context"
+	"time"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/component/runner"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -29,6 +31,7 @@ type Reconciler struct {
 	Scheme        *runtime.Scheme
 	Broker        *frontend.SSEBroker
 	EventRecorder events.EventRecorder
+	Metrics       metrics.Recorder
 }
 
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
@@ -45,6 +48,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
+	start := time.Now()
+
 	rr := &renovatev1beta1.Runner{}
 	if err := r.Get(ctx, req.NamespacedName, rr); err != nil {
 		if api_errors.IsNotFound(err) {
@@ -59,6 +64,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	outcome := r.reconcile(ctx, rr)
 	controller.FinalizeStatus(ctx, r.Client, r.EventRecorder, original, rr, outcome,
 		controller.FinalizeStatusOptions{SuccessMessage: "Runner reconciled successfully"})
+
+	if r.Metrics != nil {
+		result := "success"
+		if outcome.Err != nil {
+			result = "error"
+		}
+
+		r.Metrics.RecordRunnerReconcileDuration(time.Since(start), result)
+	}
 
 	return controller.HandleReconcileResult(outcome.Result, outcome.Err)
 }
@@ -86,7 +100,7 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: err}
 	}
 
-	componentReconciler, err := runner.NewReconciler(r.Client, r.Scheme, r.Broker, rr, rc)
+	componentReconciler, err := runner.NewReconciler(r.Client, r.Scheme, r.Broker, rr, rc, r.Metrics)
 	if err != nil {
 		return controller.Outcome{Err: err}
 	}
