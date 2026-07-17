@@ -111,7 +111,18 @@ templ JobLogs(data viewmodel.JobLogData) {
 							role="listbox"
 							aria-multiselectable="true"
 						>
-							<div class="px-1">
+							<div class="px-1 pb-1 border-b border-gray-700">
+								<label class={ dropdownMenuItem() + " hover:bg-gray-700/50 rounded-md" }>
+									<input
+										type="checkbox"
+										data-level="all"
+										checked
+										class="log-level-checkbox"
+									/>
+									<span class="font-mono font-medium text-gray-300">All</span>
+								</label>
+							</div>
+							<div class="px-1 pt-1">
 								for _, level := range logLevelOptions() {
 									<label class={ dropdownMenuItem() + " hover:bg-gray-700/50 rounded-md" }>
 										<input

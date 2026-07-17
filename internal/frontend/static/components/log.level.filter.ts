@@ -45,25 +45,38 @@ export class LogLevelFilter extends Dropdown {
   }
 
   private handleLevelChange(checkbox: HTMLInputElement): void {
-    const level = parseInt(checkbox.dataset.level || "0", 10)
-    if (!level) return
-
-    if (checkbox.checked) {
-      this.activeLevels.add(level)
+    const raw = checkbox.dataset.level || ""
+    if (raw === "all") {
+      this.activeLevels = checkbox.checked ? new Set(ALL_LEVELS) : new Set()
     } else {
-      this.activeLevels.delete(level)
+      const level = parseInt(raw, 10)
+      if (!level) return
+
+      if (checkbox.checked) {
+        this.activeLevels.add(level)
+      } else {
+        this.activeLevels.delete(level)
+      }
     }
 
+    this.syncCheckboxes()
     this.persist()
     this.applyFilter()
     this.updateCount()
   }
 
   private syncCheckboxes(): void {
+    const allCb = this.menu.querySelector<HTMLInputElement>('input[data-level="all"]')
     this.menu.querySelectorAll<HTMLInputElement>('input[type="checkbox"]').forEach((cb) => {
+      if (cb === allCb) return
       const level = parseInt(cb.dataset.level || "0", 10)
       cb.checked = this.activeLevels.has(level)
     })
+    if (allCb) {
+      allCb.checked = this.activeLevels.size === ALL_LEVELS.length
+      allCb.indeterminate =
+        this.activeLevels.size > 0 && this.activeLevels.size < ALL_LEVELS.length
+    }
   }
 
   private applyFilter(): void {
