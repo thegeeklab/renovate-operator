@@ -41,7 +41,7 @@ func GitRepoList(repos []viewmodel.GitRepoInfo) templ.Component {
 		}
 		ctx = templ.ClearChildren(ctx)
 		if len(repos) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<ul data-kbnav-scope=\"repo-list\" class=\"grid grid-cols-1 gap-4\" role=\"list\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 1, "<ul data-kb-nav-scope=\"repo-list\" class=\"grid grid-cols-1 gap-4\" role=\"list\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -55,7 +55,7 @@ func GitRepoList(repos []viewmodel.GitRepoInfo) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<a data-kbnav href=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 3, "<a data-kb-nav href=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}

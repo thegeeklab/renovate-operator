@@ -50,12 +50,12 @@ function navigate(path: string): void {
   })
 }
 
-function getKbnavItems(): HTMLElement[] {
+function getKbNavItems(): HTMLElement[] {
   const scope = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
-    "[data-kbnav-scope]"
+    "[data-kb-nav-scope]"
   )
   const root: ParentNode = scope ?? document
-  return Array.from(root.querySelectorAll<HTMLElement>("[data-kbnav]"))
+  return Array.from(root.querySelectorAll<HTMLElement>("[data-kb-nav]"))
 }
 
 function findFocusedIndex(items: HTMLElement[]): number {
@@ -71,7 +71,7 @@ function focusItem(el: HTMLElement | undefined): void {
 }
 
 function moveFocus(delta: number): boolean {
-  const items = getKbnavItems()
+  const items = getKbNavItems()
   if (items.length === 0) return false
   const currentIdx = findFocusedIndex(items)
   let nextIdx: number
@@ -85,7 +85,7 @@ function moveFocus(delta: number): boolean {
 }
 
 function focusEdge(edge: "first" | "last"): void {
-  const items = getKbnavItems()
+  const items = getKbNavItems()
   if (items.length === 0) return
   focusItem(edge === "first" ? items[0] : items[items.length - 1])
 }
@@ -93,7 +93,7 @@ function focusEdge(edge: "first" | "last"): void {
 function activateFocused(): void {
   const active = document.activeElement as HTMLElement | null
   if (!active) return
-  const target = active.closest<HTMLElement>("[data-kbnav]") ?? active
+  const target = active.closest<HTMLElement>("[data-kb-nav]") ?? active
   if (target.tagName === "A" || target.tagName === "BUTTON") {
     target.click()
     return
@@ -236,9 +236,10 @@ export function initKeyboard(): void {
     }
     if (e.key === "Enter" || e.key === "o") {
       const active = document.activeElement as HTMLElement | null
-      const isKbnav =
-        active?.hasAttribute("data-kbnav") || active?.closest<HTMLElement>("[data-kbnav]") !== null
-      if (isKbnav) {
+      const isKbNav =
+        active?.hasAttribute("data-kb-nav") ||
+        active?.closest<HTMLElement>("[data-kb-nav]") !== null
+      if (isKbNav) {
         e.preventDefault()
         activateFocused()
       }

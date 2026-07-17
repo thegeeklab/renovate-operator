@@ -30,10 +30,10 @@ steps:
       - make yamlfmt-lint
 
   - name: spellcheck
-    image: ghcr.io/streetsidesoftware/cspell
+    image: docker.io/library/node:lts
     depends_on: [frontend-deps]
     commands:
-      - cspell-cli lint . --gitignore --color
+      - make cspell
 
   - name: golangci-lint
     image: docker.io/golangci/golangci-lint:v2.12.2
