@@ -25,6 +25,7 @@ export class Dropdown {
   private cfg: Required<DropdownConfig>
   private boundButtonClick: (e: Event) => void
   private boundDocumentClick: (e: Event) => void
+  private boundMenuPointerDown: (e: Event) => void
   private boundKeydown: (e: KeyboardEvent) => void
   private boundFocusOut: (e: FocusEvent) => void
 
@@ -43,11 +44,13 @@ export class Dropdown {
 
     this.boundButtonClick = this.handleButtonClick.bind(this)
     this.boundDocumentClick = this.handleDocumentClick.bind(this)
+    this.boundMenuPointerDown = this.handleMenuPointerDown.bind(this)
     this.boundKeydown = this.handleKeydown.bind(this)
     this.boundFocusOut = this.handleFocusOut.bind(this)
 
     this.button.addEventListener("click", this.boundButtonClick)
     document.addEventListener("click", this.boundDocumentClick)
+    this.menu.addEventListener("pointerdown", this.boundMenuPointerDown)
     document.addEventListener("keydown", this.boundKeydown)
     this.el.addEventListener("focusout", this.boundFocusOut)
   }
@@ -60,6 +63,12 @@ export class Dropdown {
   private handleDocumentClick(e: Event): void {
     if (this.isOpen && !this.el.contains(e.target as Node)) {
       this.close()
+    }
+  }
+
+  private handleMenuPointerDown(e: Event): void {
+    if (this.menu.contains(e.target as Node)) {
+      e.preventDefault()
     }
   }
 
@@ -114,6 +123,7 @@ export class Dropdown {
   destroy(): void {
     this.button.removeEventListener("click", this.boundButtonClick)
     document.removeEventListener("click", this.boundDocumentClick)
+    this.menu.removeEventListener("pointerdown", this.boundMenuPointerDown)
     document.removeEventListener("keydown", this.boundKeydown)
     this.el.removeEventListener("focusout", this.boundFocusOut)
   }
