@@ -277,8 +277,13 @@ func (r *Reconciler) updateJobStatus(
 		)
 	}
 
+	var (
+		runStatus    string
+		previousLast *metav1.Time
+	)
+
 	if latestFinishedJob != nil {
-		var runStatus string
+		previousLast = repo.GetLastRenovateTime()
 
 		switch {
 		case latestFinishedJob.Status.Succeeded > 0:
@@ -303,23 +308,12 @@ func (r *Reconciler) updateJobStatus(
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
 
-			runStatus = metrics.StatusUnknown
-		}
-
-		if r.metrics != nil && isNewTerminalRun(repo, latestFinishedJob) {
-			renovatorLabel := repo.Labels[renovatev1beta1.LabelRenovator]
-			gitrepoLabel, _ := k8s.SanitizeLabel(repo.Name)
-
-			r.metrics.RecordGitRepoRun(
-				repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, runStatus,
-			)
-			r.metrics.SetRunFailed(
-				repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel,
-				runStatus == metrics.StatusFailed,
-			)
-			r.metrics.SetLastRunTimestamp(
-				repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel,
-				float64(latestFinishedJob.CreationTimestamp.Unix()),
+			logf.FromContext(ctx).Info(
+				"finished job has no Succeeded/Failed counters, skipping metric emission",
+				"job", latestFinishedJob.Name,
+				"namespace", latestFinishedJob.Namespace,
+				"succeeded", latestFinishedJob.Status.Succeeded,
+				"failed", latestFinishedJob.Status.Failed,
 			)
 		}
 
@@ -330,14 +324,23 @@ func (r *Reconciler) updateJobStatus(
 		return fmt.Errorf("failed to patch job status: %w", err)
 	}
 
-	return nil
-}
+	if r.metrics != nil && latestFinishedJob != nil && runStatus != "" &&
+		(previousLast == nil || latestFinishedJob.CreationTimestamp.After(previousLast.Time)) {
+		renovatorLabel := repo.Labels[renovatev1beta1.LabelRenovator]
+		gitrepoLabel, _ := k8s.SanitizeLabel(repo.Name)
 
-func isNewTerminalRun(repo *renovatev1beta1.GitRepo, job *batchv1.Job) bool {
-	lastRun := repo.GetLastRenovateTime()
-	if lastRun == nil {
-		return true
+		r.metrics.RecordGitRepoRun(
+			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, runStatus,
+		)
+		r.metrics.SetRunFailed(
+			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel,
+			runStatus == metrics.StatusFailed,
+		)
+		r.metrics.SetLastRunTimestamp(
+			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel,
+			float64(latestFinishedJob.CreationTimestamp.Unix()),
+		)
 	}
 
-	return job.CreationTimestamp.After(lastRun.Time)
+	return nil
 }

@@ -2,16 +2,19 @@ package metrics
 
 import (
 	"sync"
+	"sync/atomic"
 )
 
 type CardinalityGuard struct {
-	maxCardinality int
+	maxCardinality int64
+	size           atomic.Int64
 	keys           sync.Map
+	mu             sync.Mutex
 }
 
 func NewCardinalityGuard(maxCardinality int) *CardinalityGuard {
 	return &CardinalityGuard{
-		maxCardinality: maxCardinality,
+		maxCardinality: int64(maxCardinality),
 	}
 }
 
@@ -20,28 +23,25 @@ func (c *CardinalityGuard) Allow(key string) bool {
 		return true
 	}
 
-	currentCount := c.countCount()
-	if currentCount >= c.maxCardinality {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if _, ok := c.keys.Load(key); ok {
+		return true
+	}
+
+	if c.size.Load() >= c.maxCardinality {
 		return false
 	}
 
 	c.keys.Store(key, struct{}{})
+	c.size.Add(1)
 
 	return true
 }
 
 func (c *CardinalityGuard) Remove(key string) {
-	c.keys.Delete(key)
-}
-
-func (c *CardinalityGuard) countCount() int {
-	count := 0
-
-	c.keys.Range(func(_, _ any) bool {
-		count++
-
-		return true
-	})
-
-	return count
+	if _, loaded := c.keys.LoadAndDelete(key); loaded {
+		c.size.Add(-1)
+	}
 }

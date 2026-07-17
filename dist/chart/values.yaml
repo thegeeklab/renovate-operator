@@ -144,9 +144,8 @@ crd:
   # -- Keep CRDs when uninstalling
   keep: true
 
-# -- Controller metrics endpoint.
-# Enable to expose /metrics endpoint
 metrics:
+  # -- Enable the metrics endpoint
   enabled: true
   # -- Metrics server port
   port: 8443

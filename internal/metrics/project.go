@@ -3,8 +3,6 @@ package metrics
 import (
 	"fmt"
 	"time"
-
-	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 )
 
 func (r *recorder) RecordGitRepoRun(
@@ -70,8 +68,4 @@ func (r *recorder) RecordRunnerReconcileDuration(duration time.Duration, result 
 
 func gitrepoKey(namespace, renovator, runner, gitrepo string) string {
 	return fmt.Sprintf("%s/%s/%s/%s", namespace, renovator, runner, gitrepo)
-}
-
-func SanitizeGitRepoLabel(name string) (string, error) {
-	return k8s.SanitizeLabel(name)
 }

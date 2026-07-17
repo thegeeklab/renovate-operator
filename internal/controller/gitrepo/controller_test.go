@@ -103,6 +103,9 @@ var _ = Describe("GitRepo Controller", func() {
 		})
 
 		It("should resolve RenovateConfig via labels and attempt reconciliation", func() {
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).NotTo(HaveOccurred())
+
 			result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("failed to get platform token secret"))
@@ -138,6 +141,12 @@ var _ = Describe("GitRepo Controller", func() {
 		}()
 
 		result, err := reconciler.Reconcile(ctx, reconcile.Request{
+			NamespacedName: types.NamespacedName{Name: "unlabeled-repo", Namespace: "default"},
+		})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+
+		result, err = reconciler.Reconcile(ctx, reconcile.Request{
 			NamespacedName: types.NamespacedName{Name: "unlabeled-repo", Namespace: "default"},
 		})
 		Expect(err).NotTo(HaveOccurred())
