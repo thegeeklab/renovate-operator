@@ -112,5 +112,35 @@ var _ = Describe("GitRepo Component - Finalizer Logic", func() {
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
 			Expect(controllerutil.ContainsFinalizer(updated, renovatev1beta1.FinalizerGitRepoWebhook)).To(BeTrue())
 		})
+
+		It("should not add the finalizer when webhooks are disabled", func() {
+			disabled := false
+			reconciler.instance.Spec.Webhooks.Enabled = &disabled
+
+			_, err := reconciler.reconcileGitRepo(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(controllerutil.ContainsFinalizer(updated, renovatev1beta1.FinalizerGitRepoWebhook)).To(BeFalse())
+		})
+
+		It("should remove the finalizer when webhooks are disabled after being enabled", func() {
+			controllerutil.AddFinalizer(instance, renovatev1beta1.FinalizerGitRepoWebhook)
+			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			disabled := false
+			reconciler.instance.Spec.Webhooks.Enabled = &disabled
+			Expect(fakeClient.Update(ctx, reconciler.instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			_, err := reconciler.reconcileGitRepo(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(controllerutil.ContainsFinalizer(updated, renovatev1beta1.FinalizerGitRepoWebhook)).To(BeFalse())
+		})
 	})
 })

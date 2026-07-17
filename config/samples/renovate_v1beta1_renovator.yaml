@@ -260,3 +260,10 @@ spec:
   # Reference to an AuthProvider resource for web UI authentication.
   # Multiple Renovators can share the same AuthProvider.
   # authProviderRef: my-auth-provider
+
+  # Webhook management for discovered repositories. When disabled, the operator
+  # will not create, update, or delete webhooks on the remote Git provider, will
+  # not generate webhook secrets, and will remove any existing managed webhook.
+  # Defaults to true.
+  # webhooks:
+  #   enabled: false

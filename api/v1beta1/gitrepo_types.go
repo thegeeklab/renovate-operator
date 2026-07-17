@@ -20,6 +20,13 @@ type GitRepoSpec struct {
 
 	//+kubebuilder:validation:Optional
 	ConfigRef string `json:"configRef,omitempty"`
+
+	// Webhooks configures webhook management for this repository. When set to
+	// disabled, the operator will not create or maintain a webhook on the
+	// remote Git provider, will not generate webhook secrets, and will remove
+	// any previously managed webhook.
+	// +kubebuilder:validation:Optional
+	Webhooks WebhooksSpec `json:"webhooks,omitempty"`
 }
 
 // GitRepoStatus defines the observed state of GitRepo.
@@ -100,4 +107,20 @@ func (g *GitRepo) GetCondition(conditionType string) *metav1.Condition {
 
 func (g *GitRepo) RemoveCondition(conditionType string) {
 	api_meta.RemoveStatusCondition(&g.Status.Conditions, conditionType)
+}
+
+// WebhooksEnabled returns true when webhook management is enabled for this
+// resource. Defaults to true when the field is not set.
+func (g *GitRepo) WebhooksEnabled() bool {
+	return GetWebhooksEnabled(g.Spec.Webhooks.Enabled)
+}
+
+// GetWebhooksEnabled returns the dereferenced value of a *bool with a default
+// of true. A nil pointer is treated as enabled.
+func GetWebhooksEnabled(enabled *bool) bool {
+	if enabled == nil {
+		return true
+	}
+
+	return *enabled
 }

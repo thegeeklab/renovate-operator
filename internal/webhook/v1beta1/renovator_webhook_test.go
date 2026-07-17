@@ -48,6 +48,22 @@ var _ = Describe("Renovator Webhook", func() {
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
 			Expect(obj.Spec.Renovate.Image).To(Equal(renovatev1beta1.DefaultRenovateContainerImage))
 			Expect(obj.Spec.Renovate.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
+			Expect(obj.Spec.Webhooks.Enabled).NotTo(BeNil())
+			Expect(*obj.Spec.Webhooks.Enabled).To(BeTrue())
+		})
+
+		It("Should default webhooks.enabled to true and preserve explicit false", func() {
+			err := defaulter.Default(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj.Spec.Webhooks.Enabled).NotTo(BeNil())
+			Expect(*obj.Spec.Webhooks.Enabled).To(BeTrue())
+
+			disabled := false
+			obj.Spec.Webhooks.Enabled = &disabled
+			err = defaulter.Default(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj.Spec.Webhooks.Enabled).NotTo(BeNil())
+			Expect(*obj.Spec.Webhooks.Enabled).To(BeFalse())
 		})
 
 		It("Should not override existing values when defaults are applied", func() {

@@ -11,6 +11,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -19,6 +20,10 @@ import (
 func (r *Reconciler) reconcileWebhook(ctx context.Context) (*ctrl.Result, error) {
 	if !r.instance.DeletionTimestamp.IsZero() {
 		return r.deleteWebhook(ctx)
+	}
+
+	if !r.instance.WebhooksEnabled() {
+		return r.disableWebhook(ctx)
 	}
 
 	return r.createWebhook(ctx)
@@ -184,6 +189,53 @@ func (r *Reconciler) clearWebhookIDStatus(ctx context.Context) error {
 
 	if err := r.Status().Patch(ctx, r.instance, patch); err != nil && !api_errors.IsNotFound(err) {
 		return fmt.Errorf("failed to clear webhook ID in status: %w", err)
+	}
+
+	return nil
+}
+
+// disableWebhook removes any existing managed webhook and clears the status
+// when webhook management has been disabled on the resource. It is a no-op
+// when there is no webhook to remove.
+func (r *Reconciler) disableWebhook(ctx context.Context) (*ctrl.Result, error) {
+	log := logf.FromContext(ctx)
+
+	if r.instance.Status.WebhookID == "" {
+		return &ctrl.Result{}, nil
+	}
+
+	log.Info("Webhooks disabled, removing previously managed webhook",
+		"name", r.instance.Name, "webhookID", r.instance.Status.WebhookID)
+
+	res, err := r.deleteWebhook(ctx)
+	if err != nil {
+		return res, err
+	}
+
+	if err := r.deleteWebhookSecret(ctx); err != nil {
+		return &ctrl.Result{}, err
+	}
+
+	return &ctrl.Result{}, nil
+}
+
+// deleteWebhookSecret removes the managed webhook secret if it exists. Missing
+// secrets are treated as success.
+func (r *Reconciler) deleteWebhookSecret(ctx context.Context) error {
+	secretName, err := k8s.DeterministicSubdomain(r.instance.Name, "-webhook-secret")
+	if err != nil {
+		return fmt.Errorf("failed to generate webhook secret name: %w", err)
+	}
+
+	secret := &corev1.Secret{
+		ObjectMeta: metav1.ObjectMeta{
+			Name:      secretName,
+			Namespace: r.instance.Namespace,
+		},
+	}
+
+	if err := r.Delete(ctx, secret); err != nil && !api_errors.IsNotFound(err) {
+		return fmt.Errorf("failed to delete webhook secret: %w", err)
 	}
 
 	return nil

@@ -29,6 +29,11 @@ type DiscoverySpec struct {
 	// Topics filters autodiscovery to repositories matching all specified topics.
 	// +kubebuilder:validation:Optional
 	Topics []string `json:"topics,omitempty"`
+
+	// Webhooks configures webhook management for the repositories discovered
+	// by this Discovery. Propagated to the child GitRepo resources.
+	// +kubebuilder:validation:Optional
+	Webhooks WebhooksSpec `json:"webhooks,omitempty"`
 }
 
 // DiscoveryStatus defines the observed state of Discovery.
@@ -134,4 +139,10 @@ func (d *Discovery) GetCondition(conditionType string) *metav1.Condition {
 
 func (d *Discovery) RemoveCondition(conditionType string) {
 	api_meta.RemoveStatusCondition(&d.Status.Conditions, conditionType)
+}
+
+// WebhooksEnabled returns true when webhook management is enabled for this
+// Discovery. Defaults to true when the field is not set.
+func (d *Discovery) WebhooksEnabled() bool {
+	return GetWebhooksEnabled(d.Spec.Webhooks.Enabled)
 }

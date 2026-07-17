@@ -52,13 +52,23 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 
 	var reconcileFuncs []func(context.Context) (*ctrl.Result, error)
 
+	webhooksEnabled := r.instance.WebhooksEnabled()
+
 	if r.instance.DeletionTimestamp.IsZero() {
-		reconcileFuncs = []func(context.Context) (*ctrl.Result, error){
-			r.reconcileGitRepo,
-			r.reconcileMetrics,
-			r.reconcileWebhookSecret,
-			r.reconcilePlatformInfo,
-			r.reconcileWebhook,
+		if webhooksEnabled {
+			reconcileFuncs = []func(context.Context) (*ctrl.Result, error){
+				r.reconcileGitRepo,
+				r.reconcileMetrics,
+				r.reconcileWebhookSecret,
+				r.reconcilePlatformInfo,
+				r.reconcileWebhook,
+			}
+		} else {
+			reconcileFuncs = []func(context.Context) (*ctrl.Result, error){
+				r.reconcileGitRepo,
+				r.reconcileMetrics,
+				r.reconcilePlatformInfo,
+			}
 		}
 	} else {
 		reconcileFuncs = []func(context.Context) (*ctrl.Result, error){

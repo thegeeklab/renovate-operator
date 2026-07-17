@@ -88,6 +88,10 @@ func (d *RenovatorCustomDefaulter) Default(_ context.Context, renovator *renovat
 		renovator.Spec.Renovate.FailOnConfigValidationError = new(false)
 	}
 
+	if renovator.Spec.Webhooks.Enabled == nil {
+		renovator.Spec.Webhooks.Enabled = new(true)
+	}
+
 	if renovator.Labels == nil {
 		renovator.Labels = make(map[string]string)
 	}

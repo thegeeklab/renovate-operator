@@ -926,4 +926,54 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(existingDiscovery.Spec.ScratchVolume.Path).To(Equal("/discovery-scratch"))
 		})
 	})
+
+	Describe("Webhooks propagation", func() {
+		It("should propagate webhooks config from Renovator to Discovery", func() {
+			disabled := false
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					Webhooks: renovatev1beta1.WebhooksSpec{
+						Enabled: &disabled,
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			discovery := &renovatev1beta1.Discovery{}
+			err = reconciler.updateDiscovery(discovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(discovery.Spec.Webhooks.Enabled).NotTo(BeNil())
+			Expect(*discovery.Spec.Webhooks.Enabled).To(BeFalse())
+		})
+
+		It("should let discovery-level webhooks override Renovator-level webhooks", func() {
+			renovatorDisabled := false
+			discoveryEnabled := true
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					Webhooks: renovatev1beta1.WebhooksSpec{
+						Enabled: &renovatorDisabled,
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						Webhooks: renovatev1beta1.WebhooksSpec{
+							Enabled: &discoveryEnabled,
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			discovery := &renovatev1beta1.Discovery{}
+			err = reconciler.updateDiscovery(discovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(discovery.Spec.Webhooks.Enabled).NotTo(BeNil())
+			Expect(*discovery.Spec.Webhooks.Enabled).To(BeTrue())
+		})
+	})
 })

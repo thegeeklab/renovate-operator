@@ -3689,6 +3689,20 @@ spec:
                     automatically deleted after the specified number of seconds.
                   format: int32
                   type: integer
+                webhooks:
+                  description: |-
+                    Webhooks configures webhook management for the repositories discovered
+                    by this Discovery. Propagated to the child GitRepo resources.
+                  properties:
+                    enabled:
+                      description: |-
+                        Enabled controls whether the operator manages webhooks on the remote Git
+                        provider for discovered repositories. When set to false, no webhooks
+                        will be created, no webhook secrets will be generated, and any existing
+                        managed webhook will be removed.
+                        Defaults to true.
+                      type: boolean
+                  type: object
               type: object
             status:
               description: DiscoveryStatus defines the observed state of Discovery.

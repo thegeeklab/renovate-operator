@@ -321,4 +321,60 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(updated.Status.WebhookID).To(BeEmpty())
 		})
 	})
+
+	Describe("disableWebhook", func() {
+		It("should be a no-op when there is no existing webhook to remove", func() {
+			_, err := reconciler.disableWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
+		})
+
+		It("should remove the webhook from the provider and clear the status", func() {
+			instance.Status.WebhookID = "mock-id-123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			webhookSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      secretName,
+					Namespace: instance.Namespace,
+				},
+			}
+			Expect(fakeClient.Create(ctx, webhookSecret)).To(Succeed())
+
+			mockMgr.On("DeleteWebhook", mock.Anything, "org/repo", "mock-id-123").
+				Return(nil).
+				Once()
+
+			_, err := reconciler.disableWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
+
+			secret := &corev1.Secret{}
+			err = fakeClient.Get(ctx, client.ObjectKey{Name: secretName, Namespace: instance.Namespace}, secret)
+			Expect(client.IgnoreNotFound(err)).To(Succeed())
+			Expect(err).To(HaveOccurred())
+		})
+
+		It("should not call the provider when the platform token secret is missing", func() {
+			instance.Status.WebhookID = "mock-id-123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			renovate.Spec.Platform.Token.SecretKeyRef = nil
+
+			_, err := reconciler.disableWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
+		})
+	})
 })
