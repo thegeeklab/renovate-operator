@@ -11,13 +11,9 @@ import (
 	"github.com/a-h/templ"
 	"github.com/go-chi/chi/v5"
 	"golang.org/x/sync/semaphore"
-	batchv1 "k8s.io/api/batch/v1"
-	corev1 "k8s.io/api/core/v1"
-	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
-	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
@@ -31,7 +27,6 @@ type FrontendAssets struct {
 }
 
 type WebHandler struct {
-	client      client.Client
 	dataFactory *DataFactory
 	Broker      *SSEBroker
 	assets      FrontendAssets
@@ -46,7 +41,6 @@ func NewWebHandler(
 	authManager *auth.Manager,
 ) *WebHandler {
 	return &WebHandler{
-		client:      client,
 		dataFactory: NewDataFactory(client, clientset, authManager),
 		Broker:      broker,
 		assets:      assets,
@@ -128,28 +122,6 @@ func (h *WebHandler) buildAuthInfo(r *http.Request) viewmodel.AuthInfo {
 	}
 
 	return info
-}
-
-// isJobRunning reports whether the given Kubernetes Job is still running.
-// A job is considered running if it has not reached a terminal state (completed
-// or permanently failed).
-func (h *WebHandler) isJobRunning(ctx context.Context, namespace, job string) bool {
-	var k8sJob batchv1.Job
-	if err := h.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: job}, &k8sJob); err != nil {
-		return false
-	}
-
-	if k8sJob.Status.CompletionTime != nil {
-		return false
-	}
-
-	for _, cond := range k8sJob.Status.Conditions {
-		if (cond.Type == batchv1.JobComplete || cond.Type == batchv1.JobFailed) && cond.Status == corev1.ConditionTrue {
-			return false
-		}
-	}
-
-	return true
 }
 
 func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
@@ -405,24 +377,12 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	var repo renovatev1beta1.GitRepo
-	if err := h.client.Get(ctx, types.NamespacedName{Namespace: opts.Namespace, Name: name}, &repo); err != nil {
+	repoInfo, err := h.dataFactory.GetGitRepo(ctx, opts.Namespace, name)
+	if err != nil {
 		http.Error(w, "GitRepo not found", http.StatusNotFound)
 
 		return
 	}
-
-	repoInfo := viewmodel.GitRepoInfo{
-		Name:      repo.Name,
-		FullName:  repo.Spec.Name,
-		Namespace: repo.Namespace,
-		WebhookID: repo.Status.WebhookID,
-		Platform:  repo.Status.Platform,
-		RepoURL:   repo.Status.RepoURL,
-		CreatedAt: repo.CreationTimestamp.Time,
-	}
-
-	repoInfo.LastRenovateStatus, repoInfo.LastRenovateAt = getRenovateStatusFromConditions(&repo)
 
 	if !h.dataFactory.IsUserRepo(ctx, repoInfo.FullName) {
 		http.Error(w, "GitRepo not found", http.StatusNotFound)
@@ -439,7 +399,7 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 	}
 
 	data := viewmodel.GitRepoViewData{
-		Repo: repoInfo,
+		Repo: *repoInfo,
 		Jobs: jobs,
 	}
 
@@ -467,7 +427,7 @@ func (h *WebHandler) getJobLogStream(
 func (h *WebHandler) buildJobLogData(
 	ctx context.Context, namespace, runner, job, platform, repoURL string,
 ) viewmodel.JobLogData {
-	isRunning := h.isJobRunning(ctx, namespace, job)
+	isRunning := h.dataFactory.IsJobRunning(ctx, namespace, job)
 
 	data := viewmodel.JobLogData{
 		JobName:   job,
@@ -553,7 +513,7 @@ func (h *WebHandler) HandleJobLogsDownload(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	stream, err := h.getJobLogStream(ctx, namespace, job, h.isJobRunning(ctx, namespace, job))
+	stream, err := h.getJobLogStream(ctx, namespace, job, h.dataFactory.IsJobRunning(ctx, namespace, job))
 	if err != nil {
 		if errors.Is(err, errPodInitializing) {
 			http.Error(w, "Logs are not yet available. The pods may still be initializing.", http.StatusNotFound)

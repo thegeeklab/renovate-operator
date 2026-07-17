@@ -351,9 +351,9 @@ var _ = Describe("WebHandler", func() {
 		})
 	})
 
-	Describe("isJobRunning", func() {
+	Describe("IsJobRunning", func() {
 		It("should return false when job does not exist", func() {
-			running := handler.isJobRunning(context.Background(), "test-namespace", "non-existent-job")
+			running := handler.dataFactory.IsJobRunning(context.Background(), "test-namespace", "non-existent-job")
 			Expect(running).To(BeFalse())
 		})
 
@@ -364,7 +364,7 @@ var _ = Describe("WebHandler", func() {
 			}
 			Expect(fakeClient.Create(context.Background(), job)).To(Succeed())
 
-			running := handler.isJobRunning(context.Background(), "test-namespace", "running-job")
+			running := handler.dataFactory.IsJobRunning(context.Background(), "test-namespace", "running-job")
 			Expect(running).To(BeTrue())
 		})
 
@@ -376,7 +376,7 @@ var _ = Describe("WebHandler", func() {
 			}
 			Expect(fakeClient.Create(context.Background(), job)).To(Succeed())
 
-			running := handler.isJobRunning(context.Background(), "test-namespace", "completed-job")
+			running := handler.dataFactory.IsJobRunning(context.Background(), "test-namespace", "completed-job")
 			Expect(running).To(BeFalse())
 		})
 
@@ -391,7 +391,7 @@ var _ = Describe("WebHandler", func() {
 			}
 			Expect(fakeClient.Create(context.Background(), job)).To(Succeed())
 
-			running := handler.isJobRunning(context.Background(), "test-namespace", "failed-job")
+			running := handler.dataFactory.IsJobRunning(context.Background(), "test-namespace", "failed-job")
 			Expect(running).To(BeFalse())
 		})
 	})

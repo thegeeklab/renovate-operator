@@ -314,6 +314,18 @@ func (df *DataFactory) GetRenovators(ctx context.Context, opts ...ListOptions) (
 	return result, nil
 }
 
+// GetGitRepo fetches a single GitRepo resource by namespace and name.
+func (df *DataFactory) GetGitRepo(ctx context.Context, namespace, name string) (*viewmodel.GitRepoInfo, error) {
+	var gitrepo renovatev1beta1.GitRepo
+	if err := df.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: name}, &gitrepo); err != nil {
+		return nil, err
+	}
+
+	info := gitRepoToInfo(&gitrepo)
+
+	return &info, nil
+}
+
 // GetGitRepos fetches GitRepo resources with optional filtering.
 func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]viewmodel.GitRepoInfo, error) {
 	opt := getListOptions(opts)
@@ -332,18 +344,7 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 			continue
 		}
 
-		lastStatus, lastTime := getRenovateStatusFromConditions(&gitrepo)
-
-		result = append(result, viewmodel.GitRepoInfo{
-			Name:               gitrepo.Name,
-			FullName:           gitrepo.Spec.Name,
-			Namespace:          gitrepo.Namespace,
-			WebhookID:          gitrepo.Status.WebhookID,
-			LastRenovateAt:     lastTime,
-			LastRenovateStatus: lastStatus,
-			CreatedAt:          gitrepo.CreationTimestamp.Time,
-			RenovatorUID:       extractRenovatorUID(gitrepo.Labels),
-		})
+		result = append(result, gitRepoToInfo(&gitrepo))
 	}
 
 	// Apply authorization filtering when auth is enabled
@@ -381,6 +382,24 @@ func (df *DataFactory) GetGitRepos(ctx context.Context, opts ...ListOptions) ([]
 	)
 
 	return result, nil
+}
+
+// gitRepoToInfo converts a GitRepo CRD to a GitRepoInfo view model.
+func gitRepoToInfo(gitrepo *renovatev1beta1.GitRepo) viewmodel.GitRepoInfo {
+	lastStatus, lastTime := getRenovateStatusFromConditions(gitrepo)
+
+	return viewmodel.GitRepoInfo{
+		Name:               gitrepo.Name,
+		FullName:           gitrepo.Spec.Name,
+		Namespace:          gitrepo.Namespace,
+		WebhookID:          gitrepo.Status.WebhookID,
+		Platform:           gitrepo.Status.Platform,
+		RepoURL:            gitrepo.Status.RepoURL,
+		LastRenovateAt:     lastTime,
+		LastRenovateStatus: lastStatus,
+		CreatedAt:          gitrepo.CreationTimestamp.Time,
+		RenovatorUID:       extractRenovatorUID(gitrepo.Labels),
+	}
 }
 
 func getRenovateStatusFromConditions(repo *renovatev1beta1.GitRepo) (viewmodel.Status, time.Time) {
@@ -680,7 +699,7 @@ func (df *DataFactory) findLatestTerminalJobsByRepo(
 
 		for i := range page.Items {
 			job := &page.Items[i]
-			if !isJobTerminal(job) {
+			if !isJobFinished(job) {
 				continue
 			}
 
@@ -745,9 +764,9 @@ func (df *DataFactory) parseJobPRActivity(
 	}
 }
 
-// isJobTerminal reports whether the given Job has reached a terminal state
+// isJobFinished reports whether the given Job has reached a terminal state
 // (successful completion or failure).
-func isJobTerminal(job *batchv1.Job) bool {
+func isJobFinished(job *batchv1.Job) bool {
 	if job.Status.CompletionTime != nil {
 		return true
 	}
@@ -838,6 +857,18 @@ func (df *DataFactory) GetJobsForRepo(
 	)
 
 	return result, nil
+}
+
+// IsJobRunning reports whether the given Kubernetes Job is still running.
+// A job is considered running if it has not reached a terminal state (completed
+// or permanently failed).
+func (df *DataFactory) IsJobRunning(ctx context.Context, namespace, job string) bool {
+	var k8sJob batchv1.Job
+	if err := df.client.Get(ctx, client.ObjectKey{Namespace: namespace, Name: job}, &k8sJob); err != nil {
+		return false
+	}
+
+	return !isJobFinished(&k8sJob)
 }
 
 // GetJobLogs fetches the log stream from the most recent Pod created by the specified Job.

@@ -47,14 +47,12 @@ type DiscoveryInfo struct {
 
 // APIHandler manages the web UI API endpoints.
 type APIHandler struct {
-	client      client.Client
 	dataFactory *DataFactory
 }
 
 // NewAPIHandler creates a new APIHandler.
 func NewAPIHandler(client client.Client, clientset kubernetes.Interface, authManager *auth.Manager) *APIHandler {
 	return &APIHandler{
-		client:      client,
 		dataFactory: NewDataFactory(client, clientset, authManager),
 	}
 }
