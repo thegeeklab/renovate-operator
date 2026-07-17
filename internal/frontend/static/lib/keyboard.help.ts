@@ -1,26 +1,54 @@
 interface Shortcut {
-  keys: string
+  steps: string[][]
   description: string
 }
 
 interface ShortcutSection {
   title: string
-  shortcuts: Shortcut[]
+  columns: Shortcut[][]
+  wide?: boolean
 }
 
 const sections: ShortcutSection[] = [
   {
-    title: "Navigation",
-    shortcuts: [
-      { keys: "/", description: "Focus search" },
-      { keys: "g h", description: "Go to home" }
+    title: "General",
+    wide: true,
+    columns: [
+      [
+        { steps: [["?"]], description: "Show keyboard shortcuts" },
+        { steps: [["Esc"]], description: "Close modal or blur input" }
+      ],
+      [
+        { steps: [["r"]], description: "Refresh current view" },
+        { steps: [["t"]], description: "Cycle theme" }
+      ]
     ]
   },
   {
-    title: "General",
-    shortcuts: [
-      { keys: "?", description: "Show keyboard shortcuts" },
-      { keys: "Esc", description: "Close modal or blur input" }
+    title: "Navigation",
+    wide: true,
+    columns: [
+      [
+        { steps: [["j", "↓"]], description: "Next item" },
+        { steps: [["k", "↑"]], description: "Previous item" },
+        { steps: [["g"], ["g"]], description: "First item" },
+        { steps: [["G"]], description: "Last item" }
+      ],
+      [
+        { steps: [["/"]], description: "Focus search" },
+        { steps: [["g"], ["h"]], description: "Go to home" },
+        { steps: [["Enter", "o"]], description: "Open focused item" }
+      ]
+    ]
+  },
+  {
+    title: "Log viewer",
+    columns: [
+      [
+        { steps: [["c"]], description: "Close log viewer" },
+        { steps: [["d"]], description: "Download log" },
+        { steps: [["i"]], description: "Toggle details" }
+      ]
     ]
   }
 ]
@@ -97,25 +125,32 @@ function ensureInstance(): void {
   }
 }
 
+function renderShortcutRow(shortcut: Shortcut): string {
+  return `
+    <div class="flex items-center justify-between gap-4 px-4 py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
+      <span class="text-sm text-gray-700 dark:text-gray-300">${shortcut.description}</span>
+      <div class="flex items-center gap-1 shrink-0">
+        ${renderShortcut(shortcut.steps)}
+      </div>
+    </div>
+  `
+}
+
 function renderSections(): string {
   return sections
     .map(
       (section) => `
-        <div class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden">
+        <div class="rounded-lg border border-gray-200 dark:border-gray-700 overflow-hidden ${
+          section.wide ? "sm:col-span-2" : ""
+        }">
           <div class="bg-gray-50 dark:bg-gray-900 px-4 py-2 border-b border-gray-200 dark:border-gray-700">
             <h4 class="text-sm font-semibold text-gray-900 dark:text-gray-100">${section.title}</h4>
           </div>
-          <div class="flex flex-col">
-            ${section.shortcuts
+          <div class="${section.wide ? "sm:grid sm:grid-cols-2 sm:gap-x-6" : "flex flex-col"}">
+            ${section.columns
               .map(
-                (shortcut) => `
-              <div class="flex items-center justify-between gap-4 px-4 py-2 border-b border-gray-100 dark:border-gray-700 last:border-b-0">
-                <span class="text-sm text-gray-700 dark:text-gray-300">${shortcut.description}</span>
-                <div class="flex items-center gap-1 shrink-0">
-                  ${renderKeys(shortcut.keys)}
-                </div>
-              </div>
-            `
+                (column) =>
+                  `<div class="flex flex-col">${column.map(renderShortcutRow).join("")}</div>`
               )
               .join("")}
           </div>
@@ -125,10 +160,16 @@ function renderSections(): string {
     .join("")
 }
 
-function renderKeys(keys: string): string {
-  return keys
-    .split(" ")
-    .map((key) => `<kbd>${key}</kbd>`)
+function renderShortcut(steps: string[][]): string {
+  return steps
+    .map((step) =>
+      step
+        .map((key, keyIdx) => {
+          const sep = keyIdx > 0 ? `<span class="text-gray-500 text-[10px] px-0.5">or</span>` : ""
+          return `${sep}<kbd>${key}</kbd>`
+        })
+        .join("")
+    )
     .join("")
 }
 

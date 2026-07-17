@@ -124,7 +124,7 @@ templ RenovatorList(data viewmodel.DashboardData) {
 			</div>
 		</div>
 	</div>
-	<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
+	<div data-kbnav-scope="dashboard" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
 		if data.SearchQuery != "" {
 			if len(data.SearchResults) > 0 {
 				@GitRepoList(data.SearchResults)
@@ -150,7 +150,7 @@ templ RenovatorCard(v viewmodel.WebView) {
 		data-persist-key={ sanitize.RenovatorPersistKey(v.Name) }
 		class="group bg-white dark:bg-gray-800 shadow-sm rounded-lg overflow-hidden border border-gray-200 dark:border-gray-700"
 	>
-		<summary class="cursor-pointer bg-white dark:bg-gray-800 px-4 py-5 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+		<summary data-kbnav tabindex="0" class="cursor-pointer bg-white dark:bg-gray-800 px-4 py-5 sm:p-6 hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors focus:outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-indigo-500">
 			<div class="flex items-center justify-between">
 				<div class="flex items-center gap-4">
 					@IconChevronRight("chevron h-5 w-5 text-gray-400 dark:text-gray-500")

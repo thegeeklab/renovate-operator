@@ -1,5 +1,6 @@
 import { tinykeys } from "tinykeys"
 import * as keyboardHelp from "./keyboard.help"
+import { setTheme, getStoredMode, type ThemeMode } from "./theme"
 
 type Unsubscribe = () => void
 
@@ -49,10 +50,115 @@ function navigate(path: string): void {
   })
 }
 
+function getKbnavItems(): HTMLElement[] {
+  const scope = (document.activeElement as HTMLElement | null)?.closest<HTMLElement>(
+    "[data-kbnav-scope]"
+  )
+  const root: ParentNode = scope ?? document
+  return Array.from(root.querySelectorAll<HTMLElement>("[data-kbnav]"))
+}
+
+function findFocusedIndex(items: HTMLElement[]): number {
+  const active = document.activeElement as HTMLElement | null
+  if (!active) return -1
+  return items.findIndex((el) => el === active || el.contains(active))
+}
+
+function focusItem(el: HTMLElement | undefined): void {
+  if (!el) return
+  el.focus({ preventScroll: false })
+  el.scrollIntoView({ block: "nearest", behavior: "instant" })
+}
+
+function moveFocus(delta: number): boolean {
+  const items = getKbnavItems()
+  if (items.length === 0) return false
+  const currentIdx = findFocusedIndex(items)
+  let nextIdx: number
+  if (currentIdx === -1) {
+    nextIdx = delta > 0 ? 0 : items.length - 1
+  } else {
+    nextIdx = (currentIdx + delta + items.length) % items.length
+  }
+  focusItem(items[nextIdx])
+  return true
+}
+
+function focusEdge(edge: "first" | "last"): void {
+  const items = getKbnavItems()
+  if (items.length === 0) return
+  focusItem(edge === "first" ? items[0] : items[items.length - 1])
+}
+
+function activateFocused(): void {
+  const active = document.activeElement as HTMLElement | null
+  if (!active) return
+  const target = active.closest<HTMLElement>("[data-kbnav]") ?? active
+  if (target.tagName === "A" || target.tagName === "BUTTON") {
+    target.click()
+    return
+  }
+  if (target.tagName === "SUMMARY") {
+    const details = target.closest<HTMLDetailsElement>("details")
+    if (details) {
+      const summary = details.querySelector<HTMLElement>("summary")
+      summary?.click()
+    }
+  }
+}
+
+function isLogViewerOpen(): boolean {
+  const logViewer = document.getElementById("log-viewer")
+  return !!logViewer && !logViewer.classList.contains("hidden")
+}
+
+function triggerLogAction(action: string): boolean {
+  if (!isLogViewerOpen()) return false
+  const btn = document
+    .getElementById("log-viewer")
+    ?.querySelector<HTMLButtonElement>(`[data-action="${action}"]`)
+  if (!btn) return false
+  btn.click()
+  return true
+}
+
+function closeLogViewer(): boolean {
+  return triggerLogAction("close-logs")
+}
+
+let refreshInFlight = false
+
+function refreshCurrentView(): void {
+  if (!window.htmx) return
+  const dashboard = document.getElementById("dashboard-content")
+  if (!dashboard) return
+  if (refreshInFlight) return
+  refreshInFlight = true
+  const path = window.location.pathname + window.location.search
+  window.htmx.ajax("get", path, {
+    target: "#dashboard-content",
+    swap: "innerHTML",
+    headers: { "HX-Boosted": "true" }
+  })
+  setTimeout(() => {
+    refreshInFlight = false
+  }, 500)
+}
+
+const THEME_CYCLE: ThemeMode[] = ["light", "dark", "auto"]
+
+function cycleTheme(): void {
+  const current = getStoredMode()
+  const idx = THEME_CYCLE.indexOf(current)
+  const next = THEME_CYCLE[(idx + 1) % THEME_CYCLE.length]
+  setTheme(next)
+}
+
 let u: Unsubscribe | null = null
 let slashHandler: ((e: KeyboardEvent) => void) | null = null
 let questionHandler: ((e: KeyboardEvent) => void) | null = null
 let searchEscHandler: ((e: KeyboardEvent) => void) | null = null
+let navigationHandler: ((e: KeyboardEvent) => void) | null = null
 
 function cleanup(): void {
   if (u) {
@@ -70,6 +176,10 @@ function cleanup(): void {
   if (searchEscHandler) {
     document.removeEventListener("keydown", searchEscHandler, true)
     searchEscHandler = null
+  }
+  if (navigationHandler) {
+    window.removeEventListener("keydown", navigationHandler)
+    navigationHandler = null
   }
   keyboardHelp.destroy()
 }
@@ -108,9 +218,74 @@ export function initKeyboard(): void {
   }
   document.addEventListener("keydown", searchEscHandler, true)
 
+  navigationHandler = (e: KeyboardEvent) => {
+    if (isEditableTarget()) return
+    if (e.metaKey || e.ctrlKey || e.altKey) return
+
+    if (e.key === "j" || e.key === "ArrowDown") {
+      if (moveFocus(1)) {
+        e.preventDefault()
+      }
+      return
+    }
+    if (e.key === "k" || e.key === "ArrowUp") {
+      if (moveFocus(-1)) {
+        e.preventDefault()
+      }
+      return
+    }
+    if (e.key === "Enter" || e.key === "o") {
+      const active = document.activeElement as HTMLElement | null
+      const isKbnav =
+        active?.hasAttribute("data-kbnav") || active?.closest<HTMLElement>("[data-kbnav]") !== null
+      if (isKbnav) {
+        e.preventDefault()
+        activateFocused()
+      }
+      return
+    }
+    if (e.key === "c") {
+      if (closeLogViewer()) {
+        e.preventDefault()
+      }
+      return
+    }
+    if (e.key === "d") {
+      if (triggerLogAction("download-log")) {
+        e.preventDefault()
+      }
+      return
+    }
+    if (e.key === "i") {
+      if (triggerLogAction("toggle-details")) {
+        e.preventDefault()
+      }
+      return
+    }
+    if (e.key === "r") {
+      e.preventDefault()
+      refreshCurrentView()
+      return
+    }
+    if (e.key === "t") {
+      e.preventDefault()
+      cycleTheme()
+      return
+    }
+    if (e.key === "G") {
+      e.preventDefault()
+      focusEdge("last")
+      return
+    }
+  }
+  window.addEventListener("keydown", navigationHandler)
+
   u = tinykeys(window, {
     "g h": guard(() => {
       navigate("/")
+    }),
+    "g g": guard(() => {
+      focusEdge("first")
     })
   })
 }

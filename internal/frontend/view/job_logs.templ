@@ -156,20 +156,20 @@ templ JobLogs(data viewmodel.JobLogData) {
 					}
 				}
 				if !data.IsRunning {
-					@Tooltip("Download full log") {
-						<button
-							type="button"
-							data-action="download-log"
-							data-url={ sanitize.JobLogsDownloadURL(data.Namespace, data.JobName) }
-							data-filename={ data.JobName + ".log" }
-							aria-label="Download full log"
-							class={ btnGhostIcon() }
-						>
-							@IconDownload("h-4 w-4")
-						</button>
-					}
+				@Tooltip("Download full log [d]") {
+					<button
+						type="button"
+						data-action="download-log"
+						data-url={ sanitize.JobLogsDownloadURL(data.Namespace, data.JobName) }
+						data-filename={ data.JobName + ".log" }
+						aria-label="Download full log"
+						class={ btnGhostIcon() }
+					>
+						@IconDownload("h-4 w-4")
+					</button>
 				}
-				@Tooltip("Close logs") {
+				}
+				@Tooltip("Close logs [c]") {
 					<button
 						type="button"
 						data-action="close-logs"
@@ -287,17 +287,19 @@ templ logSummaryPanel(parsed *parser.ParseResult, platform, repoURL string) {
 				}
 			</div>
 			<div class="flex items-center gap-1">
-				<button
-					type="button"
-					data-action="toggle-details"
-					class={ btnGhostLabel() }
-					aria-expanded="false"
-				>
-					<span>Details</span>
-					<span data-role="details-chevron" class="inline-flex transition-transform">
-						@IconChevronRight("h-4 w-4")
-					</span>
-				</button>
+				@Tooltip("Toggle details [i]") {
+					<button
+						type="button"
+						data-action="toggle-details"
+						class={ btnGhostLabel() }
+						aria-expanded="false"
+					>
+						<span>Details</span>
+						<span data-role="details-chevron" class="inline-flex transition-transform">
+							@IconChevronRight("h-4 w-4")
+						</span>
+					</button>
+				}
 			</div>
 		</div>
 		<div class="mt-3 space-y-3 hidden" data-role="details-content">

@@ -127,7 +127,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 			return templ_7745c5c3_Err
 		}
 		if len(data.Jobs) > 0 {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<ul class=\"flex flex-col gap-3 overflow-y-auto p-1 -m-1 pr-2 pb-4 flex-1\" role=\"list\">")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 9, "<ul data-kbnav-scope=\"job-list\" class=\"flex flex-col gap-3 overflow-y-auto p-1 -m-1 pr-2 pb-4 flex-1\" role=\"list\">")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
@@ -141,14 +141,14 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
-				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<button type=\"button\" hx-get=\"")
+				templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 11, "<button data-kbnav type=\"button\" hx-get=\"")
 				if templ_7745c5c3_Err != nil {
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var9 string
 				templ_7745c5c3_Var9, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.JobLogsURL(job.Namespace, job.Runner, job.Name, data.Repo.Platform, data.Repo.RepoURL))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 67, Col: 114}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 68, Col: 114}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var9)
 				if templ_7745c5c3_Err != nil {
@@ -161,7 +161,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 				var templ_7745c5c3_Var10 string
 				templ_7745c5c3_Var10, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("View logs for job %s in namespace %s", job.Name, job.Namespace))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 70, Col: 99}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 71, Col: 99}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var10)
 				if templ_7745c5c3_Err != nil {
@@ -187,7 +187,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 				var templ_7745c5c3_Var12 string
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.ResolveAttributeValue(job.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 72, Col: 34}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 73, Col: 34}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var12)
 				if templ_7745c5c3_Err != nil {
@@ -200,7 +200,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.JoinStringErrs(job.Name)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 75, Col: 94}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 76, Col: 94}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var13))
 				if templ_7745c5c3_Err != nil {
@@ -229,7 +229,7 @@ func GitRepoView(data viewmodel.GitRepoViewData) templ.Component {
 					var templ_7745c5c3_Var15 string
 					templ_7745c5c3_Var15, templ_7745c5c3_Err = templ.JoinStringErrs(humanize.Time(job.CreatedAt))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 79, Col: 44}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_view.templ`, Line: 80, Col: 44}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var15))
 					if templ_7745c5c3_Err != nil {

@@ -222,7 +222,7 @@ func NavBar(auth viewmodel.AuthInfo) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Tooltip("Light mode").Render(templ.WithChildren(ctx, templ_7745c5c3_Var7), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Tooltip("Light mode [t]").Render(templ.WithChildren(ctx, templ_7745c5c3_Var7), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -252,7 +252,7 @@ func NavBar(auth viewmodel.AuthInfo) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Tooltip("Auto (system)").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Tooltip("Auto (system) [t]").Render(templ.WithChildren(ctx, templ_7745c5c3_Var8), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -282,7 +282,7 @@ func NavBar(auth viewmodel.AuthInfo) templ.Component {
 			}
 			return nil
 		})
-		templ_7745c5c3_Err = Tooltip("Dark mode").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Tooltip("Dark mode [t]").Render(templ.WithChildren(ctx, templ_7745c5c3_Var9), templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
