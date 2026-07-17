@@ -68,6 +68,8 @@ type GiteaProvider struct {
 	httpClient   *http.Client
 }
 
+var _ auth.AuthProvider = (*GiteaProvider)(nil)
+
 func NewGiteaProvider(ctx context.Context, cfg auth.ProviderConfig) (*GiteaProvider, error) {
 	httpClient := &http.Client{
 		Timeout: defaultHTTPTimeout,
@@ -353,7 +355,7 @@ func (p *GiteaProvider) fetchPage(ctx context.Context, client *http.Client, page
 
 	defer resp.Body.Close()
 
-	retryAfter := p.parseRetryAfter(resp)
+	retryAfter := parseRetryAfter(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		// Drain the body so the underlying connection can be reused (keep-alive).
@@ -371,7 +373,7 @@ func (p *GiteaProvider) fetchPage(ctx context.Context, client *http.Client, page
 	return data, resp.StatusCode, 0, nil
 }
 
-func (p *GiteaProvider) parseRetryAfter(resp *http.Response) time.Duration {
+func parseRetryAfter(resp *http.Response) time.Duration {
 	retryAfter := resp.Header.Get("Retry-After")
 	if retryAfter == "" {
 		return 0

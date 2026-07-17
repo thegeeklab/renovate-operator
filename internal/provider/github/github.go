@@ -60,7 +60,7 @@ func (p *Provider) GetIdentity() (string, error) {
 
 	user, _, err := p.client.Users.Get(ctx, "")
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to fetch current user: %w", err)
 	}
 
 	return user.GetLogin(), nil
@@ -162,7 +162,9 @@ func (p *Provider) DeleteWebhook(ctx context.Context, repoName, webhookID string
 
 	resp, err := p.client.Repositories.DeleteHook(ctx, owner, repo, id)
 	if err != nil {
-		if resp != nil && resp.StatusCode == http.StatusNotFound {
+		var errResp *github.ErrorResponse
+		if (resp != nil && resp.StatusCode == http.StatusNotFound) ||
+			(errors.As(err, &errResp) && errResp.Response.StatusCode == http.StatusNotFound) {
 			return nil
 		}
 

@@ -72,6 +72,8 @@ type GitHubProvider struct {
 	httpClient   *http.Client
 }
 
+var _ auth.AuthProvider = (*GitHubProvider)(nil)
+
 func NewGitHubProvider(ctx context.Context, cfg auth.ProviderConfig) (*GitHubProvider, error) {
 	httpClient := &http.Client{
 		Timeout: defaultHTTPTimeout,
@@ -481,7 +483,7 @@ func (p *GitHubProvider) fetchPage(ctx context.Context, client *http.Client, pag
 
 	defer resp.Body.Close()
 
-	retryAfter := p.parseRetryAfter(resp)
+	retryAfter := parseRetryAfter(resp)
 
 	if resp.StatusCode != http.StatusOK {
 		_, _ = io.Copy(io.Discard, resp.Body)
@@ -497,7 +499,7 @@ func (p *GitHubProvider) fetchPage(ctx context.Context, client *http.Client, pag
 	return data, resp.StatusCode, 0, nil
 }
 
-func (p *GitHubProvider) parseRetryAfter(resp *http.Response) time.Duration {
+func parseRetryAfter(resp *http.Response) time.Duration {
 	retryAfter := resp.Header.Get("Retry-After")
 	if retryAfter == "" {
 		return 0
