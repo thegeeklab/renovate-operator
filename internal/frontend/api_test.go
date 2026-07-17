@@ -40,8 +40,13 @@ var _ = Describe("APIHandler", func() {
 					Name:      "test-repo",
 					Namespace: "test-namespace",
 				},
+				Spec: renovatev1beta1.GitRepoSpec{
+					Name: "testorg/test-repo",
+				},
 				Status: renovatev1beta1.GitRepoStatus{
 					WebhookID: "12345",
+					Platform:  "gitea",
+					RepoURL:   "https://gitea.example.com/testorg/test-repo",
 				},
 			},
 			&renovatev1beta1.Runner{
@@ -146,6 +151,17 @@ var _ = Describe("APIHandler", func() {
 				Expect(w.Code).To(Equal(http.StatusOK))
 				Expect(w.Body.String()).To(ContainSubstring("lastRenovateAt"))
 				Expect(w.Body.String()).To(ContainSubstring("lastRenovateStatus"))
+			})
+
+			It("should include platform and repoUrl fields in response", func() {
+				req := httptest.NewRequest(http.MethodGet, "/api/v1/gitrepos", nil)
+				w := httptest.NewRecorder()
+
+				handler.getGitRepos(w, req)
+
+				Expect(w.Code).To(Equal(http.StatusOK))
+				Expect(w.Body.String()).To(ContainSubstring(`"platform":"gitea"`))
+				Expect(w.Body.String()).To(ContainSubstring(`"repoUrl":"https://gitea.example.com/testorg/test-repo"`))
 			})
 		})
 

@@ -2,18 +2,24 @@ package frontend
 
 import (
 	"context"
+	"errors"
+	"net/http"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	mock "github.com/stretchr/testify/mock"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/auth/mocks"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/apimachinery/pkg/types"
 	kubernetesfake "k8s.io/client-go/kubernetes/fake"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -195,6 +201,99 @@ var _ = Describe("DataFactory", func() {
 				}
 			}
 		})
+
+		It("should populate Platform and RepoURL from GitRepo status", func() {
+			repoWithPlatform := &renovatev1beta1.GitRepo{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "repo-with-platform",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+					},
+					CreationTimestamp: metav1.NewTime(time.Now()),
+				},
+				Spec: renovatev1beta1.GitRepoSpec{
+					Name: "testorg/repo-with-platform",
+				},
+				Status: renovatev1beta1.GitRepoStatus{
+					Platform:  "github",
+					RepoURL:   "https://github.com/testorg/repo-with-platform",
+					WebhookID: "99",
+				},
+			}
+			Expect(fakeClient.Create(context.Background(), repoWithPlatform)).To(Succeed())
+
+			repos, err := dataFactory.GetGitRepos(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			var foundRepo *viewmodel.GitRepoInfo
+
+			for i := range repos {
+				if repos[i].Name == "repo-with-platform" {
+					foundRepo = &repos[i]
+
+					break
+				}
+			}
+
+			Expect(foundRepo).NotTo(BeNil())
+			Expect(foundRepo.Platform).To(Equal("github"))
+			Expect(foundRepo.RepoURL).To(Equal("https://github.com/testorg/repo-with-platform"))
+			Expect(foundRepo.WebhookID).To(Equal("99"))
+		})
+
+		It("should return empty Platform and RepoURL when not set in status", func() {
+			repos, err := dataFactory.GetGitRepos(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, repo := range repos {
+				if repo.Name == "test-repo-a" || repo.Name == "test-repo-b" {
+					Expect(repo.Platform).To(BeEmpty())
+					Expect(repo.RepoURL).To(BeEmpty())
+				}
+			}
+		})
+	})
+
+	Describe("GetGitRepo", func() {
+		It("should return a single git repo with all fields populated", func() {
+			repoWithPlatform := &renovatev1beta1.GitRepo{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "single-repo",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+					},
+					CreationTimestamp: metav1.NewTime(time.Now()),
+				},
+				Spec: renovatev1beta1.GitRepoSpec{
+					Name: "testorg/single-repo",
+				},
+				Status: renovatev1beta1.GitRepoStatus{
+					Platform:  "github",
+					RepoURL:   "https://github.com/testorg/single-repo",
+					WebhookID: "42",
+				},
+			}
+			Expect(fakeClient.Create(context.Background(), repoWithPlatform)).To(Succeed())
+
+			repo, err := dataFactory.GetGitRepo(context.Background(), "test-namespace", "single-repo")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repo).NotTo(BeNil())
+			Expect(repo.Name).To(Equal("single-repo"))
+			Expect(repo.FullName).To(Equal("testorg/single-repo"))
+			Expect(repo.Namespace).To(Equal("test-namespace"))
+			Expect(repo.Platform).To(Equal("github"))
+			Expect(repo.RepoURL).To(Equal("https://github.com/testorg/single-repo"))
+			Expect(repo.WebhookID).To(Equal("42"))
+			Expect(repo.RenovatorUID).To(Equal("test-renovator"))
+		})
+
+		It("should return error when repo does not exist", func() {
+			repo, err := dataFactory.GetGitRepo(context.Background(), "test-namespace", "nonexistent")
+			Expect(err).To(HaveOccurred())
+			Expect(repo).To(BeNil())
+		})
 	})
 
 	Describe("GetRunners", func() {
@@ -266,16 +365,16 @@ var _ = Describe("DataFactory", func() {
 		})
 	})
 
-	Describe("isJobTerminal", func() {
+	Describe("isJobFinished", func() {
 		It("returns false for a fresh job", func() {
 			job := &batchv1.Job{Status: batchv1.JobStatus{}}
-			Expect(isJobTerminal(job)).To(BeFalse())
+			Expect(isJobFinished(job)).To(BeFalse())
 		})
 
 		It("returns true when CompletionTime is set", func() {
 			now := metav1.Now()
 			job := &batchv1.Job{Status: batchv1.JobStatus{CompletionTime: &now}}
-			Expect(isJobTerminal(job)).To(BeTrue())
+			Expect(isJobFinished(job)).To(BeTrue())
 		})
 
 		It("returns true when JobComplete condition is True", func() {
@@ -284,7 +383,7 @@ var _ = Describe("DataFactory", func() {
 					{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
 				},
 			}}
-			Expect(isJobTerminal(job)).To(BeTrue())
+			Expect(isJobFinished(job)).To(BeTrue())
 		})
 
 		It("returns true when JobFailed condition is True", func() {
@@ -293,7 +392,7 @@ var _ = Describe("DataFactory", func() {
 					{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
 				},
 			}}
-			Expect(isJobTerminal(job)).To(BeTrue())
+			Expect(isJobFinished(job)).To(BeTrue())
 		})
 	})
 
@@ -423,6 +522,295 @@ var _ = Describe("DataFactory", func() {
 			second, err := dataFactory.GetPRActivityForRenovator(ctx, opts)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(second).To(Equal(first))
+		})
+	})
+})
+
+// mockAuthProvider is a thin wrapper around the generated testify mock that
+// pre-configures the access-control behavior we need across most tests:
+//   - GetUserRepos returns the provided repo map
+//   - IsUserRepo returns false for anything not explicitly mapped
+//   - perIsUserRepo overrides the IsUserRepo result for specific repos (used
+//     to test the single-repo fallback path in IsUserRepo)
+type mockAuthProvider struct {
+	*mocks.AuthProvider
+	name          string
+	userRepos     map[string]bool
+	perIsUserRepo map[string]bool
+	getErr        error
+}
+
+func newMockAuthProvider(name string) *mockAuthProvider {
+	m := &mockAuthProvider{
+		AuthProvider:  &mocks.AuthProvider{},
+		name:          name,
+		userRepos:     map[string]bool{},
+		perIsUserRepo: map[string]bool{},
+	}
+	m.setupDefaults()
+
+	return m
+}
+
+func (m *mockAuthProvider) setupDefaults() {
+	// Simple, fixed returns for methods that don't affect access control.
+	_ = m.AuthProvider.On("Type").Return("mock")
+	_ = m.AuthProvider.On("Name").Return(m.name)
+	_ = m.AuthProvider.On("DisplayName").Return(m.name)
+	_ = m.AuthProvider.On("IconURL").Return("")
+	_ = m.AuthProvider.On("LoginURL", mock.Anything).Return("")
+
+	// Access-control methods read from the wrapper's fields, so we set up
+	// the expectations once and they dynamically reflect field changes.
+	_ = m.AuthProvider.On("GetUserRepos", mock.Anything, mock.Anything).
+		Return(func(_ context.Context, _ *http.Client) (map[string]bool, error) {
+			return m.userRepos, m.getErr
+		})
+	_ = m.AuthProvider.On("IsUserRepo", mock.Anything, mock.Anything, mock.Anything).
+		Return(func(_ context.Context, _ *http.Client, fullName string) (bool, error) {
+			if v, ok := m.perIsUserRepo[fullName]; ok {
+				return v, nil
+			}
+
+			return false, nil
+		})
+}
+
+func (m *mockAuthProvider) setUserRepos(repos map[string]bool) {
+	m.userRepos = repos
+}
+
+func (m *mockAuthProvider) setGetErr(err error) {
+	m.getErr = err
+}
+
+func (m *mockAuthProvider) setPerIsUserRepo(repos map[string]bool) {
+	m.perIsUserRepo = repos
+}
+
+var _ = Describe("DataFactory access filtering", func() {
+	const (
+		provName   = "mock-prov"
+		renovatorA = "renovator-a-uid"
+		renovatorB = "renovator-b-uid"
+	)
+
+	var (
+		fakeClient    client.Client
+		fakeClientset *kubernetesfake.Clientset
+		authManager   *auth.Manager
+		provider      *mockAuthProvider
+		dataFactory   *DataFactory
+	)
+
+	BeforeEach(func() {
+		scheme := runtime.NewScheme()
+		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
+		Expect(batchv1.AddToScheme(scheme)).To(Succeed())
+
+		// Two Renovators: renovator-a (accessible to user) and renovator-b (not).
+		// Two GitRepos: one per Renovator.
+		objects := []runtime.Object{
+			&renovatev1beta1.Renovator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "renovator-a",
+					Namespace: "test-namespace",
+					UID:       types.UID(renovatorA),
+					Labels:    map[string]string{renovatev1beta1.LabelAuthProvider: provName},
+				},
+			},
+			&renovatev1beta1.Renovator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "renovator-b",
+					Namespace: "test-namespace",
+					UID:       types.UID(renovatorB),
+					Labels:    map[string]string{renovatev1beta1.LabelAuthProvider: provName},
+				},
+			},
+			&renovatev1beta1.GitRepo{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "repo-a",
+					Namespace: "test-namespace",
+					Labels:    map[string]string{renovatev1beta1.LabelRenovator: renovatorA},
+				},
+				Spec: renovatev1beta1.GitRepoSpec{Name: "org/repo-a"},
+			},
+			&renovatev1beta1.GitRepo{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "repo-b",
+					Namespace: "test-namespace",
+					Labels:    map[string]string{renovatev1beta1.LabelRenovator: renovatorB},
+				},
+				Spec: renovatev1beta1.GitRepoSpec{Name: "org/repo-b"},
+			},
+		}
+
+		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(objects...).Build()
+		fakeClientset = kubernetesfake.NewClientset()
+
+		authManager = auth.NewManager(false)
+		authManager.SetIntended(true)
+
+		provider = newMockAuthProvider(provName)
+		provider.setUserRepos(map[string]bool{"org/repo-a": true, "org/repo-b": false})
+		authManager.Register(provider)
+
+		dataFactory = NewDataFactory(fakeClient, fakeClientset, authManager)
+	})
+
+	// ctxWithSession returns a request context carrying a mock API session.
+	// This is the same mechanism the real auth middleware uses for Bearer-token auth.
+	// We also load the scs session into the context because the auth HTTP client
+	// reads the session via the scs session manager on every request.
+	ctxWithSession := func() context.Context {
+		ctx := auth.SetAPISessionData(context.Background(), auth.SessionData{
+			Subject:     "user-1",
+			Provider:    provName,
+			AccessToken: "test-token",
+		})
+
+		// Load scs session so the session manager can read/write without panicking.
+		// The token is empty; the API session in context takes precedence.
+		loaded, err := authManager.SessionManager().Load(ctx, "")
+		Expect(err).NotTo(HaveOccurred())
+
+		return loaded
+	}
+
+	Describe("GetGitRepos with auth enabled", func() {
+		It("returns repos from all Renovators (Renovator-level authz)", func() {
+			// GetGitRepos applies the Renovator-level authorization filter.
+			// Both Renovators carry the AuthProvider label matching the session,
+			// so both pass. The per-repo access filter is applied separately
+			// by the handler via ApplyAccessFilter.
+			repos, err := dataFactory.GetGitRepos(ctxWithSession())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repos).To(HaveLen(2))
+		})
+
+		It("excludes repos from Renovators with a different AuthProvider label", func() {
+			// Replace renovator-b's label so it doesn't match the session provider.
+			// Renovator-level authz should then exclude repo-b. Re-fetch first
+			// to get the current resource version (other tests may have read it).
+			var b renovatev1beta1.Renovator
+			Expect(fakeClient.Get(context.Background(),
+				client.ObjectKey{Namespace: "test-namespace", Name: "renovator-b"}, &b)).To(Succeed())
+			b.Labels = map[string]string{renovatev1beta1.LabelAuthProvider: "other-prov"}
+			Expect(fakeClient.Update(context.Background(), &b)).To(Succeed())
+
+			repos, err := dataFactory.GetGitRepos(ctxWithSession())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repos).To(HaveLen(1))
+			Expect(repos[0].FullName).To(Equal("org/repo-a"))
+		})
+
+		It("returns all repos when auth manager is nil", func() {
+			df := NewDataFactory(fakeClient, fakeClientset, nil)
+			repos, err := df.GetGitRepos(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repos).To(HaveLen(2))
+		})
+
+		It("rejects requests without a session", func() {
+			// Simulate a request that passed through the auth middleware but
+			// has no session cookie and no API session token.
+			ctx, err := authManager.SessionManager().Load(context.Background(), "")
+			Expect(err).NotTo(HaveOccurred())
+
+			repos, err := dataFactory.GetGitRepos(ctx)
+			Expect(err).To(HaveOccurred())
+			Expect(repos).To(BeNil())
+		})
+
+		It("rejects requests when auth is intended but not yet ready", func() {
+			// Manager with no providers but auth intended -> should fail closed
+			empty := auth.NewManager(false)
+			empty.SetIntended(true)
+			df := NewDataFactory(fakeClient, fakeClientset, empty)
+
+			_, err := df.GetGitRepos(ctxWithSession())
+			Expect(err).To(Equal(errAuthNotReady))
+		})
+	})
+
+	Describe("ApplyAccessFilter", func() {
+		It("returns the input unchanged when auth is disabled", func() {
+			df := NewDataFactory(fakeClient, fakeClientset, nil)
+			repos := []viewmodel.GitRepoInfo{
+				{FullName: "org/repo-a"},
+				{FullName: "org/repo-b"},
+			}
+			filtered := df.ApplyAccessFilter(context.Background(), repos)
+			Expect(filtered).To(HaveLen(2))
+		})
+
+		It("filters repos based on the user's accessible repo list", func() {
+			repos := []viewmodel.GitRepoInfo{
+				{FullName: "org/repo-a"},
+				{FullName: "org/repo-b"},
+				{FullName: "org/repo-c"},
+			}
+			filtered := dataFactory.ApplyAccessFilter(ctxWithSession(), repos)
+			// Only org/repo-a is in the user's accessible set
+			Expect(filtered).To(HaveLen(1))
+			Expect(filtered[0].FullName).To(Equal("org/repo-a"))
+		})
+
+		It("returns empty list when provider returns an error (fail closed)", func() {
+			provider.setGetErr(errors.New("upstream failure"))
+
+			repos := []viewmodel.GitRepoInfo{{FullName: "org/repo-a"}}
+			filtered := dataFactory.ApplyAccessFilter(ctxWithSession(), repos)
+			Expect(filtered).To(BeEmpty())
+		})
+
+		It("returns empty list when session is missing", func() {
+			ctx, err := authManager.SessionManager().Load(context.Background(), "")
+			Expect(err).NotTo(HaveOccurred())
+
+			repos := []viewmodel.GitRepoInfo{{FullName: "org/repo-a"}}
+			filtered := dataFactory.ApplyAccessFilter(ctx, repos)
+			Expect(filtered).To(BeEmpty())
+		})
+	})
+
+	Describe("IsUserRepo", func() {
+		It("returns true when the repo is in the user's accessible list", func() {
+			Expect(dataFactory.IsUserRepo(ctxWithSession(), "org/repo-a")).To(BeTrue())
+		})
+
+		It("returns false when the repo is not in the user's accessible list", func() {
+			Expect(dataFactory.IsUserRepo(ctxWithSession(), "org/repo-b")).To(BeFalse())
+		})
+
+		It("returns true when auth is disabled", func() {
+			df := NewDataFactory(fakeClient, fakeClientset, nil)
+			Expect(df.IsUserRepo(context.Background(), "any/repo")).To(BeTrue())
+		})
+
+		It("returns false when session is missing", func() {
+			ctx, err := authManager.SessionManager().Load(context.Background(), "")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(dataFactory.IsUserRepo(ctx, "org/repo-a")).To(BeFalse())
+		})
+
+		It("falls back to provider.IsUserRepo for repos not in the cached list", func() {
+			// Populate the cache with one repo so the cache is non-empty (avoiding
+			// the empty-cache fast path), but exclude the repo we're about to
+			// check. This forces the single-repo fallback to provider.IsUserRepo.
+			provider.setUserRepos(map[string]bool{"org/repo-a": true})
+			provider.setPerIsUserRepo(map[string]bool{"org/extra": true})
+
+			ctx := auth.SetAPISessionData(context.Background(), auth.SessionData{
+				Subject:     "user-2",
+				Provider:    provName,
+				AccessToken: "test-token-2",
+			})
+			loaded, err := authManager.SessionManager().Load(ctx, "")
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(dataFactory.IsUserRepo(loaded, "org/extra")).To(BeTrue())
 		})
 	})
 })
