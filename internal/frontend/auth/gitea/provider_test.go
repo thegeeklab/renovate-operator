@@ -285,9 +285,7 @@ var _ = Describe("GiteaProvider", func() {
 			resp := &http.Response{Header: http.Header{}}
 			resp.Header.Set("Retry-After", "30")
 
-			provider := newTestProvider("http://example.com", &http.Client{})
-
-			duration := provider.parseRetryAfter(resp)
+			duration := parseRetryAfter(resp)
 			Expect(duration).To(Equal(30 * time.Second))
 		})
 
@@ -296,18 +294,14 @@ var _ = Describe("GiteaProvider", func() {
 			resp := &http.Response{Header: http.Header{}}
 			resp.Header.Set("Retry-After", futureTime.UTC().Format(http.TimeFormat))
 
-			provider := newTestProvider("http://example.com", &http.Client{})
-
-			duration := provider.parseRetryAfter(resp)
+			duration := parseRetryAfter(resp)
 			Expect(duration).To(BeNumerically("~", 60*time.Second, 2*time.Second))
 		})
 
 		It("returns 0 for empty header", func() {
 			resp := &http.Response{Header: http.Header{}}
 
-			provider := newTestProvider("http://example.com", &http.Client{})
-
-			duration := provider.parseRetryAfter(resp)
+			duration := parseRetryAfter(resp)
 			Expect(duration).To(BeZero())
 		})
 
@@ -315,9 +309,7 @@ var _ = Describe("GiteaProvider", func() {
 			resp := &http.Response{Header: http.Header{}}
 			resp.Header.Set("Retry-After", "not-a-valid-value")
 
-			provider := newTestProvider("http://example.com", &http.Client{})
-
-			duration := provider.parseRetryAfter(resp)
+			duration := parseRetryAfter(resp)
 			Expect(duration).To(BeZero())
 		})
 	})

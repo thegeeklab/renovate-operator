@@ -45,7 +45,7 @@ func NewProvider(ctx context.Context, endpoint, token string) (*Provider, error)
 func (p *Provider) GetIdentity() (string, error) {
 	user, _, err := p.client.GetMyUserInfo()
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("failed to fetch current user: %w", err)
 	}
 
 	return user.UserName, nil
