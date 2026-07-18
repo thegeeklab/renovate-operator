@@ -3,7 +3,6 @@ package gitrepo
 import (
 	"context"
 	"errors"
-	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/gitrepo"
@@ -15,7 +14,6 @@ import (
 	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
-	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -65,21 +63,6 @@ func (r *Reconciler) reconcile(
 ) controller.Outcome {
 	log := logf.FromContext(ctx)
 
-	if !gr.DeletionTimestamp.IsZero() {
-		return r.finalize(ctx, gr)
-	}
-
-	if !controllerutil.ContainsFinalizer(gr, renovatev1beta1.FinalizerGitRepoMetrics) {
-		patch := client.MergeFrom(gr.DeepCopy())
-		controllerutil.AddFinalizer(gr, renovatev1beta1.FinalizerGitRepoMetrics)
-
-		if err := r.Patch(ctx, gr, patch); err != nil {
-			return controller.Outcome{Err: fmt.Errorf("failed to add metrics finalizer: %w", err)}
-		}
-
-		return controller.Outcome{Result: &ctrl.Result{}}
-	}
-
 	rcKey, err := r.resolveRenovateConfig(ctx, gr.Namespace, gr)
 	if err != nil {
 		if errors.Is(err, controller.ErrRenovateConfigNotFound) {
@@ -105,7 +88,7 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: err}
 	}
 
-	componentReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, r.Broker, gr, rc)
+	componentReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, r.Broker, gr, rc, r.Metrics)
 	if err != nil {
 		return controller.Outcome{Err: err}
 	}
@@ -113,53 +96,6 @@ func (r *Reconciler) reconcile(
 	res, err := componentReconciler.Reconcile(ctx)
 
 	return controller.Outcome{Result: res, Err: err}
-}
-
-// finalize handles GitRepo deletion by releasing the per-repo Prometheus
-// metric series for every Runner that may have observed this repo before
-// the finalizer is removed.
-func (r *Reconciler) finalize(
-	ctx context.Context, gr *renovatev1beta1.GitRepo,
-) controller.Outcome {
-	if !controllerutil.ContainsFinalizer(gr, renovatev1beta1.FinalizerGitRepoMetrics) {
-		return controller.Outcome{Result: &ctrl.Result{}}
-	}
-
-	if r.Metrics != nil {
-		r.releaseMetricsForGitRepo(ctx, gr)
-	}
-
-	patch := client.MergeFrom(gr.DeepCopy())
-	controllerutil.RemoveFinalizer(gr, renovatev1beta1.FinalizerGitRepoMetrics)
-
-	if err := r.Patch(ctx, gr, patch); err != nil && !api_errors.IsNotFound(err) {
-		return controller.Outcome{Err: fmt.Errorf("failed to remove metrics finalizer: %w", err)}
-	}
-
-	return controller.Outcome{Result: &ctrl.Result{}}
-}
-
-// releaseMetricsForGitRepo enumerates Runner resources in the GitRepo's
-// namespace and releases the per-runner metric series for the given GitRepo.
-// A single GitRepo can be observed by multiple Runner instances (one per
-// operator deployment), so all matching runner label combinations must be
-// cleaned up to free the cardinality cap.
-func (r *Reconciler) releaseMetricsForGitRepo(
-	ctx context.Context, gr *renovatev1beta1.GitRepo,
-) {
-	renovatorLabel := gr.Labels[renovatev1beta1.LabelRenovator]
-
-	runnerList := &renovatev1beta1.RunnerList{}
-	if err := r.List(ctx, runnerList, client.InNamespace(gr.Namespace)); err != nil {
-		logf.FromContext(ctx).Error(err, "failed to list Runners for metrics cleanup",
-			"gitrepo", client.ObjectKeyFromObject(gr))
-
-		return
-	}
-
-	for i := range runnerList.Items {
-		r.Metrics.DeleteGitRepo(gr.Namespace, renovatorLabel, runnerList.Items[i].Name, gr.Name)
-	}
 }
 
 // SetupWithManager sets up the controller with the Manager.

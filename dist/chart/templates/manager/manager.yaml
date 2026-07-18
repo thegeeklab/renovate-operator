@@ -76,7 +76,6 @@ spec:
       - args:
         {{- if .Values.metrics.enabled }}
         - --metrics-bind-address=:{{ .Values.metrics.port }}
-        - --enable-metrics=true
         - --metrics-cardinality-cap={{ .Values.metrics.cardinalityCap }}
         {{- if .Values.metrics.secure }}
         - --metrics-cert-path=/tmp/k8s-metrics-server/serving-certs
@@ -91,7 +90,6 @@ spec:
         {{- else }}
         # Bind to :0 to disable the controller-runtime managed metrics server
         - --metrics-bind-address=0
-        - --enable-metrics=false
         {{- end }}
         - --health-probe-bind-address=:8081
         {{- range .Values.manager.args }}

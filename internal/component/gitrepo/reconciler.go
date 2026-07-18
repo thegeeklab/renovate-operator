@@ -5,6 +5,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,6 +22,7 @@ type Reconciler struct {
 	instance        *renovatev1beta1.GitRepo
 	renovate        *renovatev1beta1.RenovateConfig
 	providerFactory factory.ProviderFactory
+	metrics         metrics.Recorder
 }
 
 func NewReconciler(
@@ -30,6 +32,7 @@ func NewReconciler(
 	broker *frontend.SSEBroker,
 	instance *renovatev1beta1.GitRepo,
 	renovate *renovatev1beta1.RenovateConfig,
+	metricsRecorder metrics.Recorder,
 ) (*Reconciler, error) {
 	return &Reconciler{
 		Client:          c,
@@ -40,6 +43,7 @@ func NewReconciler(
 		instance:        instance,
 		renovate:        renovate,
 		providerFactory: factory.DefaultProviderFactory,
+		metrics:         metricsRecorder,
 	}, nil
 }
 
@@ -51,6 +55,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	if r.instance.DeletionTimestamp.IsZero() {
 		reconcileFuncs = []func(context.Context) (*ctrl.Result, error){
 			r.reconcileGitRepo,
+			r.reconcileMetrics,
 			r.reconcileWebhookSecret,
 			r.reconcilePlatformInfo,
 			r.reconcileWebhook,
@@ -58,6 +63,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	} else {
 		reconcileFuncs = []func(context.Context) (*ctrl.Result, error){
 			r.reconcileWebhook,
+			r.reconcileMetrics,
 			r.reconcileGitRepo,
 		}
 	}

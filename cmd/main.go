@@ -61,8 +61,6 @@ var (
 const (
 	webhookCAName         = "renovate-operator-ca"
 	webhookCAOrganization = "renovate-operator"
-
-	defaultMetricsCardinalityCap = 5000
 )
 
 // Namespace Scoped
@@ -106,7 +104,6 @@ type Config struct {
 	ReceiverAddr          string
 	ExternalURL           string
 	SecureCookies         bool
-	EnableMetrics         bool
 	MetricsCardinalityCap int
 }
 
@@ -128,10 +125,7 @@ func main() {
 	sseBroker := frontend.NewSSEBroker()
 	authManager := auth.NewManager(cfg.SecureCookies)
 
-	var metricsRecorder metrics.Recorder
-	if cfg.EnableMetrics {
-		metricsRecorder = metrics.New(ctrlmetrics.Registry, ctrlmetrics.Registry, cfg.MetricsCardinalityCap)
-	}
+	metricsRecorder := metrics.New(ctrlmetrics.Registry, ctrlmetrics.Registry, cfg.MetricsCardinalityCap)
 
 	if err := setupControllers(mgr, cfg, sseBroker, authManager, metricsRecorder); err != nil {
 		setupLog.Error(err, "Unable to setup controllers")
@@ -174,6 +168,8 @@ func main() {
 }
 
 // parseFlags binds and parses command line flags into a Config struct.
+//
+//nolint:mnd
 func parseFlags() Config {
 	var cfg Config
 
@@ -217,9 +213,7 @@ func parseFlags() Config {
 		"The public base URL of the operator (e.g., https://operator.example.com). Required for webhooks.")
 	flag.BoolVar(&cfg.SecureCookies, "secure-cookies", true,
 		"Force Secure attribute on auth cookies. Set to false for localhost-only development.")
-	flag.BoolVar(&cfg.EnableMetrics, "enable-metrics", true,
-		"Enable Prometheus metrics export. Set to false to disable the metrics recorder.")
-	flag.IntVar(&cfg.MetricsCardinalityCap, "metrics-cardinality-cap", defaultMetricsCardinalityCap,
+	flag.IntVar(&cfg.MetricsCardinalityCap, "metrics-cardinality-cap", 5000,
 		"Maximum number of unique label combinations tracked before series are dropped.")
 
 	opts := zap.Options{

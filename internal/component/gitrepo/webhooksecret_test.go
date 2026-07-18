@@ -54,7 +54,7 @@ var _ = Describe("GitRepo Component - Webhook Secret Logic", func() {
 
 		externalURL := "https://renovate.example.com"
 		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, nil, instance,
-			&renovatev1beta1.RenovateConfig{})
+			&renovatev1beta1.RenovateConfig{}, nil)
 		Expect(err).NotTo(HaveOccurred())
 	})
 
