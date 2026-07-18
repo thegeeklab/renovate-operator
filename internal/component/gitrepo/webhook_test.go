@@ -97,7 +97,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 		var err error
 
-		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, nil, instance, renovate)
+		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, nil, instance, renovate, nil)
 		Expect(err).NotTo(HaveOccurred())
 
 		mockMgr = mocks.NewProviderManager(GinkgoT())

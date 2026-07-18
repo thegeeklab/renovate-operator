@@ -144,15 +144,16 @@ crd:
   # -- Keep CRDs when uninstalling
   keep: true
 
-# -- Controller metrics endpoint.
-# Enable to expose /metrics endpoint
 metrics:
+  # -- Enable the metrics endpoint
   enabled: true
   # -- Metrics server port
   port: 8443
   # -- Enable secure metrics: HTTPS with certs/auth (true) or HTTP (false).
   # Note: Metrics authn/authz needs ClusterRole access.
   secure: true
+  # -- Maximum number of unique label combinations tracked before series are dropped.
+  cardinalityCap: 5000
 
 certRotation:
   # -- Enable the operator's built-in certificate rotation (cert-controller).

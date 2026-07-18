@@ -9,6 +9,7 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
@@ -276,7 +277,14 @@ func (r *Reconciler) updateJobStatus(
 		)
 	}
 
+	var (
+		runStatus    string
+		previousLast *metav1.Time
+	)
+
 	if latestFinishedJob != nil {
+		previousLast = repo.GetLastRenovateTime()
+
 		switch {
 		case latestFinishedJob.Status.Succeeded > 0:
 			repo.SetCondition(
@@ -285,7 +293,8 @@ func (r *Reconciler) updateJobStatus(
 				"JobSucceeded", "Renovate job completed successfully",
 			)
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
-			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
+
+			runStatus = metrics.StatusSucceeded
 		case latestFinishedJob.Status.Failed > 0:
 			repo.SetCondition(
 				renovatev1beta1.GitRepoConditionRenovateFailed,
@@ -293,16 +302,44 @@ func (r *Reconciler) updateJobStatus(
 				"JobFailed", "Renovate job failed",
 			)
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
-			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
+
+			runStatus = metrics.StatusFailed
 		default:
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
-			repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
+
+			logf.FromContext(ctx).Info(
+				"finished job has no Succeeded/Failed counters, skipping metric emission",
+				"job", latestFinishedJob.Name,
+				"namespace", latestFinishedJob.Namespace,
+				"succeeded", latestFinishedJob.Status.Succeeded,
+				"failed", latestFinishedJob.Status.Failed,
+			)
 		}
+
+		repo.SetLastRenovateTime(&latestFinishedJob.CreationTimestamp)
 	}
 
 	if err := r.Status().Patch(ctx, repo, patch); err != nil {
 		return fmt.Errorf("failed to patch job status: %w", err)
+	}
+
+	if r.metrics != nil && latestFinishedJob != nil && runStatus != "" &&
+		(previousLast == nil || latestFinishedJob.CreationTimestamp.After(previousLast.Time)) {
+		renovatorLabel := repo.Labels[renovatev1beta1.LabelRenovator]
+		gitrepoLabel, _ := k8s.SanitizeLabel(repo.Name)
+
+		r.metrics.RecordGitRepoRun(
+			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, runStatus,
+		)
+		r.metrics.SetRunFailed(
+			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel,
+			runStatus == metrics.StatusFailed,
+		)
+		r.metrics.SetLastRunTimestamp(
+			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel,
+			float64(latestFinishedJob.CreationTimestamp.Unix()),
+		)
 	}
 
 	return nil

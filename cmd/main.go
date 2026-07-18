@@ -23,6 +23,7 @@ import (
 	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/receiver"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/github"
@@ -41,6 +42,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	"sigs.k8s.io/controller-runtime/pkg/log/zap"
 	"sigs.k8s.io/controller-runtime/pkg/manager"
+	ctrlmetrics "sigs.k8s.io/controller-runtime/pkg/metrics"
 	"sigs.k8s.io/controller-runtime/pkg/metrics/filters"
 	metricsserver "sigs.k8s.io/controller-runtime/pkg/metrics/server"
 	"sigs.k8s.io/controller-runtime/pkg/webhook"
@@ -83,25 +85,26 @@ func init() {
 
 // Config holds all command-line configuration for the operator.
 type Config struct {
-	MetricsAddr          string
-	EnableLeaderElection bool
-	ProbeAddr            string
-	SecureMetrics        bool
-	MetricsCertRotation  bool
-	MetricsCertPath      string
-	MetricsSecretName    string
-	MetricsServiceName   string
-	WebhookCertRotation  bool
-	WebhookCertPath      string
-	WebhookName          string
-	WebhookSecretName    string
-	WebhookServiceName   string
-	EnableHTTP2          bool
-	WatchNamespace       string
-	FrontendAddr         string
-	ReceiverAddr         string
-	ExternalURL          string
-	SecureCookies        bool
+	MetricsAddr           string
+	EnableLeaderElection  bool
+	ProbeAddr             string
+	SecureMetrics         bool
+	MetricsCertRotation   bool
+	MetricsCertPath       string
+	MetricsSecretName     string
+	MetricsServiceName    string
+	WebhookCertRotation   bool
+	WebhookCertPath       string
+	WebhookName           string
+	WebhookSecretName     string
+	WebhookServiceName    string
+	EnableHTTP2           bool
+	WatchNamespace        string
+	FrontendAddr          string
+	ReceiverAddr          string
+	ExternalURL           string
+	SecureCookies         bool
+	MetricsCardinalityCap int
 }
 
 func main() {
@@ -122,7 +125,9 @@ func main() {
 	sseBroker := frontend.NewSSEBroker()
 	authManager := auth.NewManager(cfg.SecureCookies)
 
-	if err := setupControllers(mgr, cfg, sseBroker, authManager); err != nil {
+	metricsRecorder := metrics.New(ctrlmetrics.Registry, ctrlmetrics.Registry, cfg.MetricsCardinalityCap)
+
+	if err := setupControllers(mgr, cfg, sseBroker, authManager, metricsRecorder); err != nil {
 		setupLog.Error(err, "Unable to setup controllers")
 		os.Exit(1)
 	}
@@ -163,6 +168,8 @@ func main() {
 }
 
 // parseFlags binds and parses command line flags into a Config struct.
+//
+//nolint:mnd
 func parseFlags() Config {
 	var cfg Config
 
@@ -206,6 +213,8 @@ func parseFlags() Config {
 		"The public base URL of the operator (e.g., https://operator.example.com). Required for webhooks.")
 	flag.BoolVar(&cfg.SecureCookies, "secure-cookies", true,
 		"Force Secure attribute on auth cookies. Set to false for localhost-only development.")
+	flag.IntVar(&cfg.MetricsCardinalityCap, "metrics-cardinality-cap", 5000,
+		"Maximum number of unique label combinations tracked before series are dropped.")
 
 	opts := zap.Options{
 		Development: false,
@@ -295,7 +304,13 @@ func setupManager(cfg Config) (manager.Manager, error) {
 }
 
 // setupControllers registers all reconcilers with the Manager.
-func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBroker, authManager *auth.Manager) error {
+func setupControllers(
+	mgr manager.Manager,
+	cfg Config,
+	sseBroker *frontend.SSEBroker,
+	authManager *auth.Manager,
+	metricsRecorder metrics.Recorder,
+) error {
 	if os.Getenv("ENABLE_CONTROLLERS") == "false" {
 		return nil
 	}
@@ -315,9 +330,10 @@ func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBr
 	}
 
 	if err := (&runner.Reconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
-		Broker: sseBroker,
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Broker:  sseBroker,
+		Metrics: metricsRecorder,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller %s: %w", runner.ControllerName, err)
 	}
@@ -327,6 +343,7 @@ func setupControllers(mgr manager.Manager, cfg Config, sseBroker *frontend.SSEBr
 		Scheme:      mgr.GetScheme(),
 		ExternalURL: cfg.ExternalURL,
 		Broker:      sseBroker,
+		Metrics:     metricsRecorder,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller %s: %w", gitrepo.ControllerName, err)
 	}

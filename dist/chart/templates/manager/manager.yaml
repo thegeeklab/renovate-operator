@@ -76,6 +76,7 @@ spec:
       - args:
         {{- if .Values.metrics.enabled }}
         - --metrics-bind-address=:{{ .Values.metrics.port }}
+        - --metrics-cardinality-cap={{ .Values.metrics.cardinalityCap }}
         {{- if .Values.metrics.secure }}
         - --metrics-cert-path=/tmp/k8s-metrics-server/serving-certs
         - --metrics-cert-secret-name={{ include "renovate-operator.resourceName" (dict "suffix" "metrics-server-cert" "context" $) }}

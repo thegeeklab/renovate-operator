@@ -3,7 +3,7 @@ tmp_dir = "tmp"
 
 [build]
 cmd = "make gen-icons && make templ && make build-go"
-full_bin = "ENABLE_CONTROLLERS=true ENABLE_WEBHOOKS=false ./bin/manager -zap-log-level=debug"
+full_bin = "ENABLE_CONTROLLERS=true ENABLE_WEBHOOKS=false ./bin/manager -zap-log-level=debug --metrics-bind-address=:8080 --metrics-secure=false"
 
 include_ext = ["go", "templ"]
 exclude_dir = ["tmp", "vendor", "node_modules", "dist", "test", "config"]

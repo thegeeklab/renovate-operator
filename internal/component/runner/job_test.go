@@ -8,8 +8,10 @@ import (
 	. "github.com/onsi/gomega"
 	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 
+	"github.com/prometheus/client_golang/prometheus"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
@@ -134,6 +136,7 @@ var _ = Describe("ReconcileJob", func() {
 			},
 			instance: instance,
 			renovate: renovate,
+			metrics:  nil,
 		}
 	})
 
@@ -611,6 +614,408 @@ var _ = Describe("ReconcileJob", func() {
 			env := job.Spec.Template.Spec.Containers[0].Env
 			Expect(env).To(ContainElement(HaveField("Name", "RENOVATE_BASE_DIR")))
 			Expect(env).To(ContainElement(HaveField("Value", "/scratch")))
+		})
+	})
+
+	Describe("updateJobStatus", func() {
+		var metricsRecorder metrics.Recorder
+
+		BeforeEach(func() {
+			reg := prometheus.NewRegistry()
+			metricsRecorder = metrics.New(reg, reg, 5000)
+			reconciler.metrics = metricsRecorder
+		})
+
+		It("should emit metrics when a job succeeds", func() {
+			// Ensure repo doesn't have LastRenovateTime set
+			repo1.Status.LastRenovateTime = nil
+			Expect(fakeClient.Status().Update(ctx, repo1)).To(Succeed())
+
+			finishedJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "finished-job",
+					Namespace:         "default",
+					CreationTimestamp: metav1.Now(),
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "renovator-id",
+						renovatev1beta1.LabelGitRepo:   "repo-1",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:   batchv1.JobComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, finishedJob)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, repo1, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "repo-1",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify metrics were recorded
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(metricFamilies).ToNot(BeEmpty())
+		})
+
+		It("should emit metrics when a job fails", func() {
+			// Ensure repo doesn't have LastRenovateTime set
+			repo2.Status.LastRenovateTime = nil
+			Expect(fakeClient.Status().Update(ctx, repo2)).To(Succeed())
+
+			failedJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "failed-job",
+					Namespace:         "default",
+					CreationTimestamp: metav1.Now(),
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "renovator-id",
+						renovatev1beta1.LabelGitRepo:   "repo-2",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Failed: 1,
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:   batchv1.JobFailed,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, failedJob)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, repo2, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "repo-2",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify metrics were recorded
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+			Expect(metricFamilies).ToNot(BeEmpty())
+		})
+
+		It("should not double-count metrics on subsequent reconciles", func() {
+			// Ensure repo doesn't have LastRenovateTime set
+			repo1.Status.LastRenovateTime = nil
+			Expect(fakeClient.Status().Update(ctx, repo1)).To(Succeed())
+
+			finishedJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "finished-job-idempotent",
+					Namespace:         "default",
+					CreationTimestamp: metav1.Now(),
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "renovator-id",
+						renovatev1beta1.LabelGitRepo:   "repo-1",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:   batchv1.JobComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, finishedJob)).To(Succeed())
+
+			// First reconcile
+			err := reconciler.updateJobStatus(ctx, repo1, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "repo-1",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Get metric count after first reconcile
+			metricFamilies1, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Second reconcile (same job, should not increment)
+			err = reconciler.updateJobStatus(ctx, repo1, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "repo-1",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Get metric count after second reconcile
+			metricFamilies2, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			// Counts should be the same (idempotent)
+			Expect(metricFamilies2).To(HaveLen(len(metricFamilies1)))
+		})
+
+		It("should correctly increment counter values across multiple runs", func() {
+			// Ensure repo doesn't have LastRenovateTime set
+			repo1.Status.LastRenovateTime = nil
+			Expect(fakeClient.Status().Update(ctx, repo1)).To(Succeed())
+
+			// First successful run
+			job1 := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "job-1",
+					Namespace:         "default",
+					CreationTimestamp: metav1.Now(),
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "renovator-id",
+						renovatev1beta1.LabelGitRepo:   "repo-1",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, job1)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, repo1, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "repo-1",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Get metric families and find the counter
+			metricFamilies1, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var runsTotal1 float64
+
+			for _, mf := range metricFamilies1 {
+				if mf.GetName() == "renovate_operator_gitrepo_runs_total" {
+					for _, m := range mf.GetMetric() {
+						for _, label := range m.GetLabel() {
+							if label.GetName() == "status" && label.GetValue() == "succeeded" {
+								runsTotal1 = m.GetCounter().GetValue()
+							}
+						}
+					}
+				}
+			}
+
+			Expect(runsTotal1).To(Equal(float64(1)))
+
+			// Update repo's LastRenovateTime to allow second run
+			repo1.Status.LastRenovateTime = &metav1.Time{Time: job1.CreationTimestamp.Time}
+			Expect(fakeClient.Status().Update(ctx, repo1)).To(Succeed())
+
+			// Second successful run
+			job2 := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "job-2",
+					Namespace:         "default",
+					CreationTimestamp: metav1.NewTime(job1.CreationTimestamp.Add(time.Minute)),
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "renovator-id",
+						renovatev1beta1.LabelGitRepo:   "repo-1",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, job2)).To(Succeed())
+
+			err = reconciler.updateJobStatus(ctx, repo1, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "repo-1",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify counter incremented
+			metricFamilies2, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var runsTotal2 float64
+
+			for _, mf := range metricFamilies2 {
+				if mf.GetName() == "renovate_operator_gitrepo_runs_total" {
+					for _, m := range mf.GetMetric() {
+						for _, label := range m.GetLabel() {
+							if label.GetName() == "status" && label.GetValue() == "succeeded" {
+								runsTotal2 = m.GetCounter().GetValue()
+							}
+						}
+					}
+				}
+			}
+
+			Expect(runsTotal2).To(Equal(float64(2)))
+		})
+
+		It("should handle status transitions correctly", func() {
+			// Ensure repo doesn't have LastRenovateTime set
+			repo1.Status.LastRenovateTime = nil
+			Expect(fakeClient.Status().Update(ctx, repo1)).To(Succeed())
+
+			// First run succeeds
+			job1 := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "job-success",
+					Namespace:         "default",
+					CreationTimestamp: metav1.Now(),
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "renovator-id",
+						renovatev1beta1.LabelGitRepo:   "repo-1",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, job1)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, repo1, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "repo-1",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify run_failed gauge is 0
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var runFailed float64
+
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "renovate_operator_gitrepo_run_failed" {
+					for _, m := range mf.GetMetric() {
+						runFailed = m.GetGauge().GetValue()
+					}
+				}
+			}
+
+			Expect(runFailed).To(Equal(float64(0)))
+
+			// Update repo's LastRenovateTime to allow second run
+			repo1.Status.LastRenovateTime = &metav1.Time{Time: job1.CreationTimestamp.Time}
+			Expect(fakeClient.Status().Update(ctx, repo1)).To(Succeed())
+
+			// Second run fails
+			job2 := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "job-fail",
+					Namespace:         "default",
+					CreationTimestamp: metav1.NewTime(job1.CreationTimestamp.Add(time.Minute)),
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "renovator-id",
+						renovatev1beta1.LabelGitRepo:   "repo-1",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Failed: 1,
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, job2)).To(Succeed())
+
+			err = reconciler.updateJobStatus(ctx, repo1, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "repo-1",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify run_failed gauge is now 1
+			metricFamilies, err = metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "renovate_operator_gitrepo_run_failed" {
+					for _, m := range mf.GetMetric() {
+						runFailed = m.GetGauge().GetValue()
+					}
+				}
+			}
+
+			Expect(runFailed).To(Equal(float64(1)))
+		})
+
+		It("should sanitize long repository names in metric labels", func() {
+			// Create repo with very long name (>63 chars)
+			longRepo := &renovatev1beta1.GitRepo{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "very-long-repository-name-that-exceeds-the-kubernetes-label-limit-of-63-characters",
+					Namespace: "default",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "renovator-id",
+					},
+				},
+				Spec: renovatev1beta1.GitRepoSpec{Name: "test/long-repo"},
+			}
+			Expect(fakeClient.Create(ctx, longRepo)).To(Succeed())
+
+			// Ensure repo doesn't have LastRenovateTime set
+			longRepo.Status.LastRenovateTime = nil
+			Expect(fakeClient.Status().Update(ctx, longRepo)).To(Succeed())
+
+			finishedJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "job-long-name",
+					Namespace:         "default",
+					CreationTimestamp: metav1.Now(),
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "renovator-id",
+						renovatev1beta1.LabelGitRepo:   "very-long-repository-name-that-exceeds-the-kubernetes-label",
+					},
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, finishedJob)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, longRepo, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "very-long-repository-name-that-exceeds-the-kubernetes-label",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			// Verify metrics were recorded with sanitized label
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var foundSanitizedLabel bool
+
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "renovate_operator_gitrepo_runs_total" {
+					for _, m := range mf.GetMetric() {
+						for _, label := range m.GetLabel() {
+							if label.GetName() == "gitrepo" {
+								// Label should be sanitized and <= 63 chars
+								Expect(len(label.GetValue())).To(BeNumerically("<=", 63))
+
+								foundSanitizedLabel = true
+							}
+						}
+					}
+				}
+			}
+
+			Expect(foundSanitizedLabel).To(BeTrue())
 		})
 	})
 })
