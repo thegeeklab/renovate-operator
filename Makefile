@@ -18,6 +18,15 @@ MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
 # Image URL to use all building image targets
 IMG ?= docker.io/thegeeklab/renovate-operator:latest
 
+# Version injected into binaries via ldflags
+ifndef VERSION
+	ifneq ($(CI_COMMIT_TAG),)
+		VERSION ?= $(subst v,,$(CI_COMMIT_TAG))
+	else
+		VERSION ?= $(shell git rev-parse --short HEAD)
+	endif
+endif
+
 # Toggle for Vite dev server during 'make run'
 FRONTEND_DEV ?= false
 
@@ -201,7 +210,7 @@ helm-test: ## Run helm unit tests.
 
 .PHONY: build-go
 build-go: ## Build the Go binaries.
-	$(GO) build -o bin/manager cmd/main.go
+	$(GO) build -ldflags "-X main.version=$(VERSION)" -o bin/manager cmd/main.go
 	$(GO) build -o bin/discovery cmd/discovery/main.go
 
 .PHONY: build

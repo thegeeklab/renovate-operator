@@ -79,7 +79,16 @@
     "tinykeys",
     "Tolerations",
     "ctrlmetrics",
-    "cicd"
+    "cicd",
+    "otel",
+    "otlp",
+    "sdkmetric",
+    "sdktrace",
+    "otlptracehttp",
+    "otlptracegrpc",
+    "otlpmetrichttp",
+    "otlpmetricgrpc",
+    "prombridge"
   ],
   "ignorePaths": [
     ".woodpecker",
