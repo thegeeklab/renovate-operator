@@ -109,18 +109,12 @@ func (g *GitRepo) RemoveCondition(conditionType string) {
 	api_meta.RemoveStatusCondition(&g.Status.Conditions, conditionType)
 }
 
-// WebhooksEnabled returns true when webhook management is enabled for this
+// GetWebhooksEnabled returns true when webhook management is enabled for this
 // resource. Defaults to true when the field is not set.
-func (g *GitRepo) WebhooksEnabled() bool {
-	return GetWebhooksEnabled(g.Spec.Webhooks.Enabled)
-}
-
-// GetWebhooksEnabled returns the dereferenced value of a *bool with a default
-// of true. A nil pointer is treated as enabled.
-func GetWebhooksEnabled(enabled *bool) bool {
-	if enabled == nil {
+func (g *GitRepo) GetWebhooksEnabled() bool {
+	if g.Spec.Webhooks.Enabled == nil {
 		return true
 	}
 
-	return *enabled
+	return *g.Spec.Webhooks.Enabled
 }

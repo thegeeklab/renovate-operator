@@ -267,9 +267,3 @@ func (r *Renovator) GetCondition(conditionType string) *metav1.Condition {
 func (r *Renovator) RemoveCondition(conditionType string) {
 	api_meta.RemoveStatusCondition(&r.Status.Conditions, conditionType)
 }
-
-// WebhooksEnabled returns true when webhook management is enabled for this
-// Renovator. Defaults to true when the field is not set.
-func (r *Renovator) WebhooksEnabled() bool {
-	return GetWebhooksEnabled(r.Spec.Webhooks.Enabled)
-}

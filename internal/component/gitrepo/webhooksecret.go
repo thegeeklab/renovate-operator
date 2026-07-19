@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -24,7 +23,7 @@ func (r *Reconciler) reconcileWebhookSecret(ctx context.Context) (*ctrl.Result, 
 		return &ctrl.Result{}, nil
 	}
 
-	secretName, err := k8s.DeterministicSubdomain(r.instance.Name, "-webhook-secret")
+	secretName, err := r.webhookSecretName()
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to generate webhook secret name: %w", err)
 	}

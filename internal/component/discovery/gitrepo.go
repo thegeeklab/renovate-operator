@@ -185,7 +185,7 @@ func (r *Reconciler) updateGitRepo(gr *renovatev1beta1.GitRepo, repoName string)
 	}
 
 	gr.Spec.Name = repoName
-	gr.Spec.Webhooks = r.instance.Spec.Webhooks
+	gr.Spec.Webhooks.Enabled = r.instance.Spec.Webhooks.Enabled
 
 	return nil
 }

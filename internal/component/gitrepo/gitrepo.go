@@ -30,14 +30,15 @@ func (r *Reconciler) reconcileGitRepo(ctx context.Context) (*ctrl.Result, error)
 		return &ctrl.Result{}, nil
 	}
 
-	if !r.instance.WebhooksEnabled() &&
+	if !r.instance.GetWebhooksEnabled() &&
 		!controllerutil.ContainsFinalizer(r.instance, renovatev1beta1.FinalizerGitRepoWebhook) {
 		return &ctrl.Result{}, nil
 	}
 
 	_, err := k8s.CreateOrUpdate(ctx, r.Client, r.instance, nil, func() error {
-		if !r.instance.WebhooksEnabled() {
-			if controllerutil.ContainsFinalizer(r.instance, renovatev1beta1.FinalizerGitRepoWebhook) {
+		if !r.instance.GetWebhooksEnabled() {
+			if r.instance.Status.WebhookID == "" &&
+				controllerutil.ContainsFinalizer(r.instance, renovatev1beta1.FinalizerGitRepoWebhook) {
 				controllerutil.RemoveFinalizer(r.instance, renovatev1beta1.FinalizerGitRepoWebhook)
 			}
 

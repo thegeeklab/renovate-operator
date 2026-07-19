@@ -22,7 +22,7 @@ func (r *Reconciler) reconcileWebhook(ctx context.Context) (*ctrl.Result, error)
 		return r.deleteWebhook(ctx)
 	}
 
-	if !r.instance.WebhooksEnabled() {
+	if !r.instance.GetWebhooksEnabled() {
 		return r.disableWebhook(ctx)
 	}
 
@@ -69,7 +69,7 @@ func (r *Reconciler) createWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, err
 	}
 
-	secretName, err := k8s.DeterministicSubdomain(r.instance.Name, "-webhook-secret")
+	secretName, err := r.webhookSecretName()
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to generate webhook secret name: %w", err)
 	}
@@ -201,6 +201,10 @@ func (r *Reconciler) disableWebhook(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
 	if r.instance.Status.WebhookID == "" {
+		if err := r.deleteWebhookSecret(ctx); err != nil {
+			return &ctrl.Result{}, err
+		}
+
 		return &ctrl.Result{}, nil
 	}
 
@@ -221,8 +225,12 @@ func (r *Reconciler) disableWebhook(ctx context.Context) (*ctrl.Result, error) {
 
 // deleteWebhookSecret removes the managed webhook secret if it exists. Missing
 // secrets are treated as success.
+func (r *Reconciler) webhookSecretName() (string, error) {
+	return k8s.DeterministicSubdomain(r.instance.Name, "-webhook-secret")
+}
+
 func (r *Reconciler) deleteWebhookSecret(ctx context.Context) error {
-	secretName, err := k8s.DeterministicSubdomain(r.instance.Name, "-webhook-secret")
+	secretName, err := r.webhookSecretName()
 	if err != nil {
 		return fmt.Errorf("failed to generate webhook secret name: %w", err)
 	}

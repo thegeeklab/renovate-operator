@@ -140,9 +140,3 @@ func (d *Discovery) GetCondition(conditionType string) *metav1.Condition {
 func (d *Discovery) RemoveCondition(conditionType string) {
 	api_meta.RemoveStatusCondition(&d.Status.Conditions, conditionType)
 }
-
-// WebhooksEnabled returns true when webhook management is enabled for this
-// Discovery. Defaults to true when the field is not set.
-func (d *Discovery) WebhooksEnabled() bool {
-	return GetWebhooksEnabled(d.Spec.Webhooks.Enabled)
-}
