@@ -33,7 +33,6 @@ type recorder struct {
 	seriesDropped      *prometheus.CounterVec
 	guard              *CardinalityGuard
 	gatherer           prometheus.Gatherer
-	otel               *otelMirror
 }
 
 var _ Recorder = (*recorder)(nil)
@@ -93,7 +92,6 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		seriesDropped:      seriesDropped,
 		guard:              guard,
 		gatherer:           gatherer,
-		otel:               newOTelMirror(),
 	}
 
 	return r

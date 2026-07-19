@@ -16,7 +16,6 @@ func (r *recorder) RecordGitRepoRun(
 	}
 
 	r.gitrepoRuns.WithLabelValues(namespace, renovator, runner, gitrepo, status).Inc()
-	r.otel.recordGitRepoRun(namespace, renovator, runner, gitrepo, status)
 }
 
 func (r *recorder) SetRunFailed(

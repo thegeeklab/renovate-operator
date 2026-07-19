@@ -14,6 +14,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/go-logr/logr"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/controller/authprovider"
@@ -27,6 +28,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/receiver"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/github"
+	"github.com/thegeeklab/renovate-operator/internal/telemetry"
 	webhookrenovatev1beta1 "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	admissionregistrationv1 "k8s.io/api/admissionregistration/v1"
@@ -50,17 +52,21 @@ import (
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = runtime.NewScheme()
 
 	errWebhookTimeout = errors.New("timeout waiting for webhook")
 	errFlagRequired   = errors.New("missing required flag")
 	errInvalidDNSName = errors.New("invalid DNS name")
+
+	version  = "unknown"
+	setupLog logr.Logger
 )
 
 const (
 	webhookCAName         = "renovate-operator-ca"
 	webhookCAOrganization = "renovate-operator"
+
+	otelShutdownTimeout = 5 * time.Second
 )
 
 // Namespace Scoped
@@ -108,18 +114,24 @@ type Config struct {
 }
 
 func main() {
+	if err := run(); err != nil {
+		setupLog.Error(err, "Fatal error")
+		os.Exit(1)
+	}
+}
+
+func run() error {
 	cfg := parseFlags()
+	setupLog = ctrl.Log.WithName("setup")
 
 	mgr, err := setupManager(cfg)
 	if err != nil {
-		setupLog.Error(err, "Unable to start manager")
-		os.Exit(1)
+		return fmt.Errorf("unable to start manager: %w", err)
 	}
 
 	clientset, err := kubernetes.NewForConfig(mgr.GetConfig())
 	if err != nil {
-		setupLog.Error(err, "Unable to create clientset")
-		os.Exit(1)
+		return fmt.Errorf("unable to create clientset: %w", err)
 	}
 
 	sseBroker := frontend.NewSSEBroker()
@@ -127,44 +139,58 @@ func main() {
 
 	metricsRecorder := metrics.New(ctrlmetrics.Registry, ctrlmetrics.Registry, cfg.MetricsCardinalityCap)
 
+	// Setup OpenTelemetry Prometheus bridge if OTEL_EXPORTER_OTLP_ENDPOINT is set
+	otelShutdown, err := telemetry.SetupPrometheusBridge(context.Background(), ctrlmetrics.Registry, version)
+	if err != nil {
+		setupLog.Error(err, "Failed to setup OpenTelemetry bridge, continuing without OTLP export")
+	}
+
+	if otelShutdown != nil {
+		defer func() {
+			shutdownCtx, cancel := context.WithTimeout(context.Background(), otelShutdownTimeout)
+			defer cancel()
+
+			if err := otelShutdown(shutdownCtx); err != nil {
+				setupLog.Error(err, "Failed to shutdown OpenTelemetry provider")
+			}
+		}()
+
+		setupLog.Info("OpenTelemetry Prometheus bridge enabled")
+	}
+
 	if err := setupControllers(mgr, cfg, sseBroker, authManager, metricsRecorder); err != nil {
-		setupLog.Error(err, "Unable to setup controllers")
-		os.Exit(1)
+		return fmt.Errorf("unable to setup controllers: %w", err)
 	}
 
 	// +kubebuilder:scaffold:builder
 
 	if err := mgr.AddHealthzCheck("healthz", healthz.Ping); err != nil {
-		setupLog.Error(err, "Unable to set up health check")
-		os.Exit(1)
+		return fmt.Errorf("unable to set up health check: %w", err)
 	}
 
 	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		setupLog.Error(err, "Unable to set up ready check")
-		os.Exit(1)
+		return fmt.Errorf("unable to set up ready check: %w", err)
 	}
 
 	if err := setupMetricsCertRotation(mgr, cfg); err != nil {
-		setupLog.Error(err, "Unable to setup metrics certificate rotation")
-		os.Exit(1)
+		return fmt.Errorf("unable to setup metrics certificate rotation: %w", err)
 	}
 
 	if err := setupWebhooks(mgr, cfg); err != nil {
-		setupLog.Error(err, "Unable to setup webhooks")
-		os.Exit(1)
+		return fmt.Errorf("unable to setup webhooks: %w", err)
 	}
 
 	if err := setupHTTPServers(mgr, cfg, clientset, sseBroker, authManager); err != nil {
-		setupLog.Error(err, "Unable to setup auxiliary servers")
-		os.Exit(1)
+		return fmt.Errorf("unable to setup auxiliary servers: %w", err)
 	}
 
 	setupLog.Info("Starting manager")
 
 	if err := mgr.Start(ctrl.SetupSignalHandler()); err != nil {
-		setupLog.Error(err, "Problem running manager")
-		os.Exit(1)
+		return fmt.Errorf("problem running manager: %w", err)
 	}
+
+	return nil
 }
 
 // parseFlags binds and parses command line flags into a Config struct.
