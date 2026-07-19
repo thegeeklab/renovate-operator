@@ -29,6 +29,11 @@ type DiscoverySpec struct {
 	// Topics filters autodiscovery to repositories matching all specified topics.
 	// +kubebuilder:validation:Optional
 	Topics []string `json:"topics,omitempty"`
+
+	// Webhooks configures webhook management for the repositories discovered
+	// by this Discovery. Propagated to the child GitRepo resources.
+	// +kubebuilder:validation:Optional
+	Webhooks WebhooksSpec `json:"webhooks,omitempty"`
 }
 
 // DiscoveryStatus defines the observed state of Discovery.

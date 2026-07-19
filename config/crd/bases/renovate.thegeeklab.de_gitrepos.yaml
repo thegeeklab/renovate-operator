@@ -43,6 +43,22 @@ spec:
                   type: string
                 name:
                   type: string
+                webhooks:
+                  description: |-
+                    Webhooks configures webhook management for this repository. When set to
+                    disabled, the operator will not create or maintain a webhook on the
+                    remote Git provider, will not generate webhook secrets, and will remove
+                    any previously managed webhook.
+                  properties:
+                    enabled:
+                      description: |-
+                        Enabled controls whether the operator manages webhooks on the remote Git
+                        provider for discovered repositories. When set to false, no webhooks
+                        will be created, no webhook secrets will be generated, and any existing
+                        managed webhook will be removed.
+                        Defaults to true.
+                      type: boolean
+                  type: object
               required:
                 - name
               type: object

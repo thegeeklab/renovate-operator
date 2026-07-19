@@ -135,6 +135,11 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 	discovery.Spec.SkipForks = discoverySpec.SkipForks
 	discovery.Spec.Topics = discoverySpec.Topics
 
+	discovery.Spec.Webhooks.Enabled = spec.Webhooks.Enabled
+	if discoverySpec.Webhooks.Enabled != nil {
+		discovery.Spec.Webhooks.Enabled = discoverySpec.Webhooks.Enabled
+	}
+
 	logging := &spec.Logging
 	if discoverySpec.Logging != nil {
 		logging = discoverySpec.Logging

@@ -176,6 +176,17 @@ type PodSpec struct {
 	ScratchVolume *ScratchVolumeSpec `json:"scratchVolume,omitempty"`
 }
 
+// WebhooksSpec configures webhook management for the discovered repositories.
+type WebhooksSpec struct {
+	// Enabled controls whether the operator manages webhooks on the remote Git
+	// provider for discovered repositories. When set to false, no webhooks
+	// will be created, no webhook secrets will be generated, and any existing
+	// managed webhook will be removed.
+	// Defaults to true.
+	// +kubebuilder:validation:Optional
+	Enabled *bool `json:"enabled,omitempty"`
+}
+
 // RenovatorSpec defines the desired state of Renovator.
 type RenovatorSpec struct {
 	ImageSpec `json:",inline"`
@@ -199,6 +210,12 @@ type RenovatorSpec struct {
 	// Multiple Renovators can reference the same AuthProvider to share authentication configuration.
 	// +kubebuilder:validation:Optional
 	AuthProviderRef string `json:"authProviderRef,omitempty"`
+
+	// Webhooks configures webhook management for the repositories discovered
+	// by this Renovator. This setting is propagated to the child Discovery
+	// and GitRepo resources.
+	// +kubebuilder:validation:Optional
+	Webhooks WebhooksSpec `json:"webhooks,omitempty"`
 }
 
 // RenovatorStatus defines the observed state of Renovator.

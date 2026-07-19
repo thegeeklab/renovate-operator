@@ -83,6 +83,10 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 		discovery.Spec.SkipForks = new(false)
 	}
 
+	if discovery.Spec.Webhooks.Enabled == nil {
+		discovery.Spec.Webhooks.Enabled = new(true)
+	}
+
 	defaultScratchVolume(discovery.Spec.ScratchVolume)
 
 	return nil
