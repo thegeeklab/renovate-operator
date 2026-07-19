@@ -14,6 +14,7 @@ import (
 	// to ensure that exec-entrypoint and run can make use of them.
 	_ "k8s.io/client-go/plugin/pkg/client/auth"
 
+	"github.com/go-logr/logr"
 	"github.com/open-policy-agent/cert-controller/pkg/rotator"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/controller/authprovider"
@@ -51,14 +52,14 @@ import (
 )
 
 var (
-	scheme   = runtime.NewScheme()
-	setupLog = ctrl.Log.WithName("setup")
+	scheme = runtime.NewScheme()
 
 	errWebhookTimeout = errors.New("timeout waiting for webhook")
 	errFlagRequired   = errors.New("missing required flag")
 	errInvalidDNSName = errors.New("invalid DNS name")
 
-	version = "unknown"
+	version  = "unknown"
+	setupLog logr.Logger
 )
 
 const (
@@ -139,15 +140,17 @@ func run() error {
 	metricsRecorder := metrics.New(ctrlmetrics.Registry, ctrlmetrics.Registry, cfg.MetricsCardinalityCap)
 
 	// Setup OpenTelemetry Prometheus bridge if OTEL_EXPORTER_OTLP_ENDPOINT is set
-	otelProvider, err := telemetry.SetupPrometheusBridge(context.Background(), ctrlmetrics.Registry, version)
-	if err != nil && !errors.Is(err, telemetry.ErrOTLPEndpointNotSet) {
+	otelShutdown, err := telemetry.SetupPrometheusBridge(context.Background(), ctrlmetrics.Registry, version)
+	if err != nil {
 		setupLog.Error(err, "Failed to setup OpenTelemetry bridge, continuing without OTLP export")
-	} else if otelProvider != nil {
+	}
+
+	if otelShutdown != nil {
 		defer func() {
 			shutdownCtx, cancel := context.WithTimeout(context.Background(), otelShutdownTimeout)
 			defer cancel()
 
-			if err := otelProvider.Shutdown(shutdownCtx); err != nil {
+			if err := otelShutdown(shutdownCtx); err != nil {
 				setupLog.Error(err, "Failed to shutdown OpenTelemetry provider")
 			}
 		}()

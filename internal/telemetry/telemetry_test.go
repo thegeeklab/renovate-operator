@@ -23,15 +23,11 @@ var _ = Describe("Telemetry", func() {
 
 	Describe("SetupPrometheusBridge", func() {
 		Context("when OTEL_EXPORTER_OTLP_ENDPOINT is not set", func() {
-			BeforeEach(func() {
-				os.Unsetenv("OTEL_EXPORTER_OTLP_ENDPOINT")
-			})
-
-			It("should return ErrOTLPEndpointNotSet", func() {
+			It("should return a nil closer and no error", func() {
 				gatherer := prometheus.NewRegistry()
-				provider, err := SetupPrometheusBridge(context.Background(), gatherer, "dev")
-				Expect(err).To(MatchError(ErrOTLPEndpointNotSet))
-				Expect(provider).To(BeNil())
+				shutdown, err := SetupPrometheusBridge(context.Background(), gatherer, "dev")
+				Expect(err).NotTo(HaveOccurred())
+				Expect(shutdown).To(BeNil())
 			})
 		})
 
@@ -40,26 +36,13 @@ var _ = Describe("Telemetry", func() {
 				os.Setenv("OTEL_EXPORTER_OTLP_ENDPOINT", "http://localhost:4317")
 			})
 
-			It("should return a provider", func() {
+			It("should return a non-nil closer and no error", func() {
 				gatherer := prometheus.NewRegistry()
-				provider, err := SetupPrometheusBridge(context.Background(), gatherer, "dev")
+				shutdown, err := SetupPrometheusBridge(context.Background(), gatherer, "dev")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(provider).NotTo(BeNil())
+				Expect(shutdown).NotTo(BeNil())
 
-				// Cleanup
-				if provider != nil {
-					_ = provider.Shutdown(context.Background())
-				}
-			})
-
-			It("should not panic on shutdown", func() {
-				gatherer := prometheus.NewRegistry()
-				provider, err := SetupPrometheusBridge(context.Background(), gatherer, "dev")
-				Expect(err).NotTo(HaveOccurred())
-
-				if provider != nil {
-					Expect(func() { _ = provider.Shutdown(context.Background()) }).NotTo(Panic())
-				}
+				_ = shutdown(context.Background())
 			})
 		})
 	})

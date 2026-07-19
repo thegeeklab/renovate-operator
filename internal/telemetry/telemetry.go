@@ -2,7 +2,6 @@ package telemetry
 
 import (
 	"context"
-	"errors"
 	"os"
 	"time"
 
@@ -18,19 +17,20 @@ const (
 	defaultExportInterval = 15 * time.Second
 )
 
-var ErrOTLPEndpointNotSet = errors.New("OTEL_EXPORTER_OTLP_ENDPOINT is not set")
-
-// SetupPrometheusBridge creates an OpenTelemetry MeterProvider that bridges
-// Prometheus metrics to OTLP export. This allows all existing Prometheus metrics
-// (including controller-runtime metrics) to be exported via OTLP without any
-// code changes to the metrics themselves.
+// SetupPrometheusBridge configures an OpenTelemetry MeterProvider that bridges
+// Prometheus metrics to OTLP/gRPC export. This allows all existing Prometheus
+// metrics (including controller-runtime metrics) to be exported via OTLP
+// without any code changes to the metrics themselves.
 //
-// Returns ErrOTLPEndpointNotSet if OTEL_EXPORTER_OTLP_ENDPOINT is not set (OTLP disabled).
+// When OTEL_EXPORTER_OTLP_ENDPOINT is not set the function returns (nil, nil):
+// OTLP export is disabled and no closer is needed. Otherwise it returns the
+// MeterProvider's Shutdown function, which the caller should invoke on shutdown
+// to flush pending metrics.
 func SetupPrometheusBridge(
 	ctx context.Context, gatherer prometheus.Gatherer, version string,
-) (*sdkmetric.MeterProvider, error) {
+) (func(context.Context) error, error) {
 	if os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") == "" {
-		return nil, ErrOTLPEndpointNotSet
+		return nil, nil //nolint:nilnil // disabled: no closer needed
 	}
 
 	res, err := resource.Merge(
@@ -65,5 +65,5 @@ func SetupPrometheusBridge(
 		sdkmetric.WithResource(res),
 	)
 
-	return provider, nil
+	return provider.Shutdown, nil
 }

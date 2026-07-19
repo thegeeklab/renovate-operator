@@ -88,7 +88,8 @@
     "otlptracegrpc",
     "otlpmetrichttp",
     "otlpmetricgrpc",
-    "prombridge"
+    "prombridge",
+    "logr"
   ],
   "ignorePaths": [
     ".woodpecker",
