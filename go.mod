@@ -10,7 +10,7 @@ require (
 	github.com/coreos/go-oidc/v3 v3.20.0
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-chi/chi/v5 v5.3.1
-	github.com/go-logr/logr v1.4.3
+	github.com/go-logr/logr v1.4.4
 	github.com/google/go-github/v89 v89.0.0
 	github.com/maypok86/otter/v2 v2.3.0
 	github.com/netresearch/go-cron v0.15.0
