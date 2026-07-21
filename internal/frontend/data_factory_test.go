@@ -343,7 +343,7 @@ var _ = Describe("DataFactory", func() {
 		It("should return an error if no pods are found for the job", func() {
 			dataFactory.logReader = logreader.NewKubernetesReader(fakeClientset)
 
-			_, err := dataFactory.GetJobLogs(context.Background(), "test-namespace", "test-job-1")
+			_, err := dataFactory.GetJobLogs(context.Background(), "test-namespace", "test-job-1", 0)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("no pods found for job: test-job-1"))
 		})

@@ -29,7 +29,7 @@ var ErrPodsNotReady = errors.New("pods not ready for job")
 // Implementations return the full retained log for the named container.
 // The returned ReadCloser must be closed by the caller.
 type Reader interface {
-	ReadJobLogs(ctx context.Context, namespace, jobName, container string) (io.ReadCloser, error)
+	ReadJobLogs(ctx context.Context, namespace, jobName, container string, tailLines int64) (io.ReadCloser, error)
 }
 
 // KubernetesReader implements Reader using the Kubernetes API.
@@ -45,15 +45,27 @@ func NewKubernetesReader(clientset kubernetes.Interface) *KubernetesReader {
 }
 
 func (r *KubernetesReader) readPodLogs(
-	ctx context.Context, namespace, podName, container string,
+	ctx context.Context, namespace, podName, container string, tailLines int64,
 ) (io.ReadCloser, error) {
 	var stream io.ReadCloser
 
 	err := retry.OnError(retry.DefaultRetry, shouldRetry, func() error {
-		req := r.clientset.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
+		opts := &corev1.PodLogOptions{
 			Container: container,
 			Follow:    false,
-		})
+		}
+
+		if tailLines > 0 {
+			// Over-read by one line so callers can detect truncation
+			// without a second API call. The extra line is negligible
+			// in transfer cost but lets us distinguish "exactly N
+			// lines returned because the pod had exactly N" from
+			// "exactly N lines returned because we asked for N".
+			tail := tailLines + 1
+			opts.TailLines = &tail
+		}
+
+		req := r.clientset.CoreV1().Pods(namespace).GetLogs(podName, opts)
 
 		s, err := req.Stream(ctx)
 		if err != nil {
@@ -75,8 +87,12 @@ func (r *KubernetesReader) readPodLogs(
 // logs. It prefers a Succeeded pod; if none exist, it falls back to the most
 // recent non-pending pod. Pods in the Pending phase are skipped because
 // reading their logs would either fail or return no useful content.
+//
+// A positive tailLines asks the kubelet to return only the last N lines
+// (server-side filter, no wasted transfer). A value <= 0 returns the full
+// retained log.
 func (r *KubernetesReader) ReadJobLogs(
-	ctx context.Context, namespace, jobName, container string,
+	ctx context.Context, namespace, jobName, container string, tailLines int64,
 ) (io.ReadCloser, error) {
 	podList, err := r.clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
 		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
@@ -120,7 +136,7 @@ func (r *KubernetesReader) ReadJobLogs(
 		return nil, fmt.Errorf("%w: %s", ErrPodsNotReady, jobName)
 	}
 
-	return r.readPodLogs(ctx, namespace, target.Name, container)
+	return r.readPodLogs(ctx, namespace, target.Name, container, tailLines)
 }
 
 // shouldRetry reports whether a Pods/GetLogs error is worth retrying.

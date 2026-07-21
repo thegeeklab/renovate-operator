@@ -53,6 +53,12 @@ func JobLogsURL(namespace, runner, job, platform, repoURL string) string {
 		"&repoUrl=" + QueryEscape(repoURL)
 }
 
+// JobLogsLoadAllURL builds a /joblogs URL that requests the full log
+// instead of the default display tail. Used by the "Load full log" button.
+func JobLogsLoadAllURL(namespace, runner, job, platform, repoURL string) string {
+	return JobLogsURL(namespace, runner, job, platform, repoURL) + "&all=1"
+}
+
 // JobLogsDownloadURL builds a /joblogs/download URL with safely escaped query parameters.
 func JobLogsDownloadURL(namespace, job string) string {
 	return "/joblogs/download?namespace=" + QueryEscape(namespace) +

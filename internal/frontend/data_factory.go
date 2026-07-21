@@ -666,12 +666,30 @@ type prJobSample struct {
 	OK            bool
 }
 
-// readJobLogStream reads the full log stream from a pod up to maxLogReadSize
-// bytes. Used by the job-logs viewer to bound memory usage.
-func readJobLogStream(stream io.Reader) (string, error) {
-	content, err := io.ReadAll(io.LimitReader(stream, maxLogReadSize))
+// readJobLogStream reads the log stream and reports whether the kubelet
+// had more lines than the requested tailLines. The caller passes
+// tailLines > 0 only when the upstream logreader over-read by one
+// line for this purpose; the helper trims the extra line and returns
+// truncated=true. When tailLines <= 0, the full stream is returned
+// and truncated is always false.
+func readJobLogStream(stream io.Reader, tailLines int64) (string, bool, error) {
+	content, err := io.ReadAll(stream)
+	if err != nil {
+		return "", false, err
+	}
 
-	return string(content), err
+	if tailLines <= 0 {
+		return string(content), false, nil
+	}
+
+	lines := strings.Split(string(content), "\n")
+	if int64(len(lines)) <= tailLines {
+		return string(content), false, nil
+	}
+
+	trimmed := strings.Join(lines[:tailLines], "\n")
+
+	return trimmed, true, nil
 }
 
 // findLatestTerminalJobsByRepo lists Jobs for a Renovator (paginated to
@@ -743,7 +761,7 @@ func (df *DataFactory) parseJobPRActivity(
 	namespace string,
 	job *batchv1.Job,
 ) prJobSample {
-	stream, err := df.GetJobLogs(ctx, namespace, job.Name)
+	stream, err := df.GetJobLogs(ctx, namespace, job.Name, 0)
 	if err != nil {
 		frontendLog.Info("Job logs unavailable",
 			"namespace", namespace, "job", job.Name, "error", err)
@@ -752,7 +770,7 @@ func (df *DataFactory) parseJobPRActivity(
 	}
 	defer stream.Close()
 
-	res, err := parser.ParseLogs(stream, maxLogReadSize)
+	res, err := parser.ParseLogs(stream, -1)
 	if err != nil {
 		frontendLog.Error(err, "Failed to parse PR activity from job logs",
 			"namespace", namespace, "job", job.Name)
@@ -877,13 +895,17 @@ func (df *DataFactory) IsJobRunning(ctx context.Context, namespace, job string) 
 	return !isJobFinished(&k8sJob)
 }
 
-// GetJobLogs fetches the log stream from the most recent Pod created by the specified Job.
-func (df *DataFactory) GetJobLogs(ctx context.Context, namespace, jobName string) (io.ReadCloser, error) {
+// GetJobLogs fetches the log stream from the most recent Pod created by the
+// specified Job. A positive tailLines asks the kubelet for only the last N
+// lines; a value <= 0 returns the full retained log.
+func (df *DataFactory) GetJobLogs(
+	ctx context.Context, namespace, jobName string, tailLines int64,
+) (io.ReadCloser, error) {
 	if df.logReader == nil {
 		return nil, errLogReaderNotConfigured
 	}
 
-	return df.logReader.ReadJobLogs(ctx, namespace, jobName, renovate.ContainerName)
+	return df.logReader.ReadJobLogs(ctx, namespace, jobName, renovate.ContainerName, tailLines)
 }
 
 // getUserReposMap returns the user's accessible repo map, handling auth checks,

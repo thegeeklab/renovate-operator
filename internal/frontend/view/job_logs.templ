@@ -197,6 +197,27 @@ templ JobLogs(data viewmodel.JobLogData) {
 				@logMessageRaw(data.Content)
 			}
 		</div>
+		if data.Truncated && !data.IsRunning {
+			<div
+				data-component="log-load-full"
+				class="shrink-0 border-t border-gray-700 bg-gray-800 px-4 py-2 flex items-center justify-between gap-3"
+			>
+				<span class="text-xs font-mono text-gray-400">
+					Showing the last { strconv.FormatInt(data.DisplayTailLines, 10) } lines. More lines are available.
+				</span>
+				<button
+					type="button"
+					data-action="load-full-log"
+					hx-get={ sanitize.JobLogsLoadAllURL(data.Namespace, data.Runner, data.JobName, data.Platform, data.RepoURL) }
+					hx-target={ "#logs-" + data.JobName }
+					hx-swap="outerHTML"
+					class={ btnGhostLabel() }
+				>
+					@IconDownload("h-4 w-4")
+					<span>Load full log</span>
+				</button>
+			</div>
+		}
 	</div>
 }
 
