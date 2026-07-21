@@ -416,7 +416,7 @@ func (h *WebHandler) getJobLogStream(
 ) (io.ReadCloser, error) {
 	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
 	if err != nil {
-		if isRunning && errors.Is(err, logreader.ErrNoPodsForJob) {
+		if isRunning && (errors.Is(err, logreader.ErrNoPodsForJob) || errors.Is(err, logreader.ErrPodsNotReady)) {
 			return nil, errPodInitializing
 		}
 

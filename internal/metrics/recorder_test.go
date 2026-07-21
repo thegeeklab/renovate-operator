@@ -87,7 +87,7 @@ var _ = Describe("Recorder", func() {
 
 			//nolint:lll
 			expected := `
-				# HELP renovate_operator_gitrepo_dependency_issues Whether the last Renovate run had dependency issues (1=issues found, 0=clean).
+				# HELP renovate_operator_gitrepo_dependency_issues Whether the last Renovate run produced WARN or ERROR log entries (1=issues found, 0=clean).
 				# TYPE renovate_operator_gitrepo_dependency_issues gauge
 				renovate_operator_gitrepo_dependency_issues{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner"} 1
 			`

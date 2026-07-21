@@ -81,7 +81,7 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 	gitrepoDependencyIssues := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "renovate_operator_gitrepo_dependency_issues",
-			Help: "Whether the last Renovate run had dependency issues (1=issues found, 0=clean).",
+			Help: "Whether the last Renovate run produced WARN or ERROR log entries (1=issues found, 0=clean).",
 		},
 		[]string{"namespace", "renovator", "runner", "gitrepo"},
 	)

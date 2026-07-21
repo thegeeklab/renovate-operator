@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"time"
 
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -19,15 +18,12 @@ import (
 // transient (5xx). 4xx errors (NotFound, BadRequest, etc.) are not retried.
 const httpServerError = 500
 
-// streamAttemptTimeout caps the wall-clock time a single GetLogs stream
-// attempt is allowed to take before the attempt is retried. It prevents a
-// stalled kubelet connection from holding the reconciler across the full
-// default retry backoff.
-const streamAttemptTimeout = 30 * time.Second
-
-// ErrNoPodsForJob is returned when a job has no associated pods that can
-// be used to read logs.
+// ErrNoPodsForJob is returned when a job has no associated pods at all.
 var ErrNoPodsForJob = errors.New("no pods found for job")
+
+// ErrPodsNotReady is returned when a job's pods exist but none have reached
+// a phase (Running/Succeeded/Failed) that can serve logs.
+var ErrPodsNotReady = errors.New("pods not ready for job")
 
 // Reader streams logs from a job's latest pod.
 // Implementations return the full retained log for the named container.
@@ -54,15 +50,12 @@ func (r *KubernetesReader) readPodLogs(
 	var stream io.ReadCloser
 
 	err := retry.OnError(retry.DefaultRetry, shouldRetry, func() error {
-		attemptCtx, cancel := context.WithTimeout(ctx, streamAttemptTimeout)
-		defer cancel()
-
 		req := r.clientset.CoreV1().Pods(namespace).GetLogs(podName, &corev1.PodLogOptions{
 			Container: container,
 			Follow:    false,
 		})
 
-		s, err := req.Stream(attemptCtx)
+		s, err := req.Stream(ctx)
 		if err != nil {
 			return err
 		}
@@ -124,16 +117,21 @@ func (r *KubernetesReader) ReadJobLogs(
 	}
 
 	if target == nil {
-		return nil, fmt.Errorf("%w: %s", ErrNoPodsForJob, jobName)
+		return nil, fmt.Errorf("%w: %s", ErrPodsNotReady, jobName)
 	}
 
 	return r.readPodLogs(ctx, namespace, target.Name, container)
 }
 
 // shouldRetry reports whether a Pods/GetLogs error is worth retrying.
-// 5xx and network errors retry; 4xx (NotFound, BadRequest, etc.) do not.
+// Context cancellation and 4xx (NotFound, BadRequest, Invalid) are terminal.
+// 5xx and other transient errors retry.
 func shouldRetry(err error) bool {
 	if err == nil {
+		return false
+	}
+
+	if errors.Is(err, context.Canceled) || errors.Is(err, context.DeadlineExceeded) {
 		return false
 	}
 

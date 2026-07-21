@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/logreader"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -94,7 +95,10 @@ var _ = Describe("WebHandler", func() {
 		}
 
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		handler = NewWebHandler(fakeClient, fakeClientset, broker, dummyAssets, nil, nil)
+		handler = NewWebHandler(
+			fakeClient, fakeClientset, broker, dummyAssets, nil,
+			logreader.NewKubernetesReader(fakeClientset),
+		)
 	})
 
 	Describe("NewWebHandler", func() {

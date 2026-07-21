@@ -29,12 +29,12 @@ import (
 )
 
 var (
+	errLogReaderNotConfigured = errors.New("log reader not configured")
 	errUnableToDeriveCacheKey = errors.New("unable to derive cache key for session")
 	errUnexpectedCacheResult  = errors.New("unexpected cache result type")
 	errAuthNotEnabled         = errors.New("auth not enabled")
 	errAuthNotReady           = errors.New("auth not ready")
 	errNotAuthenticated       = errors.New("not authenticated")
-	errLogReaderNotConfigured = errors.New("log reader not configured")
 )
 
 // ListOptions holds optional parameters for filtering and sorting data.
