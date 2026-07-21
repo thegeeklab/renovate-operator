@@ -9,3 +9,6 @@ packages:
   github.com/thegeeklab/renovate-operator/internal/frontend/auth:
     interfaces:
       AuthProvider:
+  github.com/thegeeklab/renovate-operator/internal/logreader:
+    interfaces:
+      Reader:

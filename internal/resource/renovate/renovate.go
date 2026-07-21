@@ -18,6 +18,9 @@ const (
 
 	EnvRenovateConfig = "RENOVATE_CONFIG_FILE"
 
+	// ContainerName is the name of the main container in the Renovate Job pod.
+	ContainerName = "renovate"
+
 	// LabelRepoName is the label key used for the locking mechanism.
 	// The controller uses this to find active jobs for a specific repository.
 	LabelRepoName = "renovate.thegeeklab.de/repo"

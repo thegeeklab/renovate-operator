@@ -14,6 +14,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth/mocks"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+	"github.com/thegeeklab/renovate-operator/internal/logreader"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -27,10 +28,11 @@ import (
 
 var _ = Describe("DataFactory", func() {
 	var (
-		fakeClient  client.Client
-		dataFactory *DataFactory
-		scheme      *runtime.Scheme
-		testObjects []runtime.Object
+		fakeClient    client.Client
+		fakeClientset *kubernetesfake.Clientset
+		dataFactory   *DataFactory
+		scheme        *runtime.Scheme
+		testObjects   []runtime.Object
 	)
 
 	BeforeEach(func() {
@@ -111,9 +113,9 @@ var _ = Describe("DataFactory", func() {
 		}
 
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).WithRuntimeObjects(testObjects...).Build()
-		fakeClientset := kubernetesfake.NewClientset()
+		fakeClientset = kubernetesfake.NewClientset()
 
-		dataFactory = NewDataFactory(fakeClient, fakeClientset, nil)
+		dataFactory = NewDataFactory(fakeClient, fakeClientset, nil, nil)
 	})
 
 	Describe("GetRenovators", func() {
@@ -339,6 +341,8 @@ var _ = Describe("DataFactory", func() {
 
 	Describe("GetJobLogs", func() {
 		It("should return an error if no pods are found for the job", func() {
+			dataFactory.logReader = logreader.NewKubernetesReader(fakeClientset)
+
 			_, err := dataFactory.GetJobLogs(context.Background(), "test-namespace", "test-job-1")
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("no pods found for job: test-job-1"))
@@ -655,7 +659,7 @@ var _ = Describe("DataFactory access filtering", func() {
 		provider.setUserRepos(map[string]bool{"org/repo-a": true, "org/repo-b": false})
 		authManager.Register(provider)
 
-		dataFactory = NewDataFactory(fakeClient, fakeClientset, authManager)
+		dataFactory = NewDataFactory(fakeClient, fakeClientset, authManager, nil)
 	})
 
 	// ctxWithSession returns a request context carrying a mock API session.
@@ -705,7 +709,7 @@ var _ = Describe("DataFactory access filtering", func() {
 		})
 
 		It("returns all repos when auth manager is nil", func() {
-			df := NewDataFactory(fakeClient, fakeClientset, nil)
+			df := NewDataFactory(fakeClient, fakeClientset, nil, nil)
 			repos, err := df.GetGitRepos(context.Background())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(repos).To(HaveLen(2))
@@ -726,7 +730,7 @@ var _ = Describe("DataFactory access filtering", func() {
 			// Manager with no providers but auth intended -> should fail closed
 			empty := auth.NewManager(false)
 			empty.SetIntended(true)
-			df := NewDataFactory(fakeClient, fakeClientset, empty)
+			df := NewDataFactory(fakeClient, fakeClientset, empty, nil)
 
 			_, err := df.GetGitRepos(ctxWithSession())
 			Expect(err).To(Equal(errAuthNotReady))
@@ -735,7 +739,7 @@ var _ = Describe("DataFactory access filtering", func() {
 
 	Describe("ApplyAccessFilter", func() {
 		It("returns the input unchanged when auth is disabled", func() {
-			df := NewDataFactory(fakeClient, fakeClientset, nil)
+			df := NewDataFactory(fakeClient, fakeClientset, nil, nil)
 			repos := []viewmodel.GitRepoInfo{
 				{FullName: "org/repo-a"},
 				{FullName: "org/repo-b"},
@@ -784,7 +788,7 @@ var _ = Describe("DataFactory access filtering", func() {
 		})
 
 		It("returns true when auth is disabled", func() {
-			df := NewDataFactory(fakeClient, fakeClientset, nil)
+			df := NewDataFactory(fakeClient, fakeClientset, nil, nil)
 			Expect(df.IsUserRepo(context.Background(), "any/repo")).To(BeTrue())
 		})
 

@@ -82,16 +82,48 @@ var _ = Describe("Recorder", func() {
 			Expect(count).To(BeNumerically(">", 0))
 		})
 
+		It("should set dependency issues gauge", func() {
+			rec.SetDependencyIssues("default", "test-renovator", "test-runner", "test-repo", true)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_gitrepo_dependency_issues Whether the last Renovate run had dependency issues (1=issues found, 0=clean).
+				# TYPE renovate_operator_gitrepo_dependency_issues gauge
+				renovate_operator_gitrepo_dependency_issues{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.gitrepoDependencyIssues, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should set approvals needed gauge", func() {
+			rec.SetApprovalsNeeded("default", "test-renovator", "test-runner", "test-repo", 5)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_gitrepo_approvals_needed Number of dependency updates awaiting approval.
+				# TYPE renovate_operator_gitrepo_approvals_needed gauge
+				renovate_operator_gitrepo_approvals_needed{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner"} 5
+			`
+
+			err := testutil.CollectAndCompare(recImpl.gitrepoApprovalsNeeded, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("should delete gitrepo metrics", func() {
 			rec.RecordGitRepoRun("default", "test-renovator", "test-runner", "test-repo", StatusSucceeded)
 			rec.SetRunFailed("default", "test-renovator", "test-runner", "test-repo", false)
 			rec.SetLastRunTimestamp("default", "test-renovator", "test-runner", "test-repo", 1234567890)
+			rec.SetDependencyIssues("default", "test-renovator", "test-runner", "test-repo", false)
+			rec.SetApprovalsNeeded("default", "test-renovator", "test-runner", "test-repo", 3)
 
 			rec.DeleteGitRepo("default", "test-renovator", "test-runner", "test-repo")
 
 			Expect(testutil.CollectAndCount(recImpl.gitrepoRuns)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoRunFailed)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoLastRun)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.gitrepoDependencyIssues)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.gitrepoApprovalsNeeded)).To(Equal(0))
 		})
 
 		It("should enforce cardinality cap", func() {

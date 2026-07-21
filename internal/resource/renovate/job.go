@@ -109,7 +109,7 @@ func DefaultJobSpec(
 
 	spec.Template.Spec.Containers = []corev1.Container{
 		containers.ContainerTemplate(
-			"renovate",
+			ContainerName,
 			renovate.Spec.Image,
 			renovate.Spec.ImagePullPolicy,
 			containerMutators...,

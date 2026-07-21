@@ -6,6 +6,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
+	"github.com/thegeeklab/renovate-operator/internal/logreader"
 	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
@@ -26,6 +27,7 @@ type Reconciler struct {
 	instance  *renovatev1beta1.Runner
 	renovate  *renovatev1beta1.RenovateConfig
 	metrics   metrics.Recorder
+	logReader logreader.Reader
 }
 
 type JobData struct {
@@ -39,6 +41,7 @@ func NewReconciler(
 	instance *renovatev1beta1.Runner,
 	renovate *renovatev1beta1.RenovateConfig,
 	metricsRecorder metrics.Recorder,
+	logReader logreader.Reader,
 ) (*Reconciler, error) {
 	return &Reconciler{
 		Client:    c,
@@ -49,6 +52,7 @@ func NewReconciler(
 		instance:  instance,
 		renovate:  renovate,
 		metrics:   metricsRecorder,
+		logReader: logReader,
 	}, nil
 }
 

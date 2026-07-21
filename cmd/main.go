@@ -21,9 +21,10 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/controller/discovery"
 	"github.com/thegeeklab/renovate-operator/internal/controller/gitrepo"
 	"github.com/thegeeklab/renovate-operator/internal/controller/renovator"
-	runner "github.com/thegeeklab/renovate-operator/internal/controller/runner"
+	"github.com/thegeeklab/renovate-operator/internal/controller/runner"
 	"github.com/thegeeklab/renovate-operator/internal/frontend"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
+	"github.com/thegeeklab/renovate-operator/internal/logreader"
 	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/receiver"
 	"github.com/thegeeklab/renovate-operator/internal/receiver/gitea"
@@ -139,6 +140,8 @@ func run() error {
 
 	metricsRecorder := metrics.New(ctrlmetrics.Registry, ctrlmetrics.Registry, cfg.MetricsCardinalityCap)
 
+	logReader := logreader.NewKubernetesReader(clientset)
+
 	// Setup OpenTelemetry Prometheus bridge if OTEL_EXPORTER_OTLP_ENDPOINT is set
 	otelShutdown, err := telemetry.SetupPrometheusBridge(context.Background(), ctrlmetrics.Registry, version)
 	if err != nil {
@@ -158,7 +161,7 @@ func run() error {
 		setupLog.Info("OpenTelemetry Prometheus bridge enabled")
 	}
 
-	if err := setupControllers(mgr, cfg, sseBroker, authManager, metricsRecorder); err != nil {
+	if err := setupControllers(mgr, cfg, sseBroker, authManager, metricsRecorder, logReader); err != nil {
 		return fmt.Errorf("unable to setup controllers: %w", err)
 	}
 
@@ -180,7 +183,7 @@ func run() error {
 		return fmt.Errorf("unable to setup webhooks: %w", err)
 	}
 
-	if err := setupHTTPServers(mgr, cfg, clientset, sseBroker, authManager); err != nil {
+	if err := setupHTTPServers(mgr, cfg, clientset, sseBroker, authManager, logReader); err != nil {
 		return fmt.Errorf("unable to setup auxiliary servers: %w", err)
 	}
 
@@ -336,6 +339,7 @@ func setupControllers(
 	sseBroker *frontend.SSEBroker,
 	authManager *auth.Manager,
 	metricsRecorder metrics.Recorder,
+	logReader logreader.Reader,
 ) error {
 	if os.Getenv("ENABLE_CONTROLLERS") == "false" {
 		return nil
@@ -356,10 +360,11 @@ func setupControllers(
 	}
 
 	if err := (&runner.Reconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Broker:  sseBroker,
-		Metrics: metricsRecorder,
+		Client:    mgr.GetClient(),
+		Scheme:    mgr.GetScheme(),
+		Broker:    sseBroker,
+		Metrics:   metricsRecorder,
+		LogReader: logReader,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller %s: %w", runner.ControllerName, err)
 	}
@@ -520,6 +525,7 @@ func setupHTTPServers(
 	clientset kubernetes.Interface,
 	sseBroker *frontend.SSEBroker,
 	authManager *auth.Manager,
+	logReader logreader.Reader,
 ) error {
 	if cfg.FrontendAddr != "0" {
 		frontendConfig := frontend.DefaultServerConfig()
@@ -533,6 +539,7 @@ func setupHTTPServers(
 			clientset,
 			sseBroker,
 			authManager,
+			logReader,
 		)
 
 		setupLog.Info("Adding HTTP server to manager", "server", "frontend", "addr", cfg.FrontendAddr)

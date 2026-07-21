@@ -8,6 +8,7 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+	"github.com/thegeeklab/renovate-operator/internal/logreader"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -51,9 +52,14 @@ type APIHandler struct {
 }
 
 // NewAPIHandler creates a new APIHandler.
-func NewAPIHandler(client client.Client, clientset kubernetes.Interface, authManager *auth.Manager) *APIHandler {
+func NewAPIHandler(
+	client client.Client,
+	clientset kubernetes.Interface,
+	authManager *auth.Manager,
+	logReader logreader.Reader,
+) *APIHandler {
 	return &APIHandler{
-		dataFactory: NewDataFactory(client, clientset, authManager),
+		dataFactory: NewDataFactory(client, clientset, authManager, logReader),
 	}
 }
 

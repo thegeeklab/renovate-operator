@@ -2,6 +2,9 @@ package runner
 
 import (
 	"context"
+	"errors"
+	"io"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -9,7 +12,10 @@ import (
 	. "github.com/thegeeklab/renovate-operator/internal/webhook/v1beta1"
 
 	"github.com/prometheus/client_golang/prometheus"
+	"github.com/stretchr/testify/mock"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/logreader"
+	"github.com/thegeeklab/renovate-operator/internal/logreader/mocks"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
@@ -1018,4 +1024,171 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(foundSanitizedLabel).To(BeTrue())
 		})
 	})
+
+	Describe("updateLogMetrics", func() {
+		var (
+			metricsRecorder metrics.Recorder
+			testJob         *batchv1.Job
+		)
+
+		BeforeEach(func() {
+			reg := prometheus.NewRegistry()
+			metricsRecorder = metrics.New(reg, reg, 5000)
+			reconciler.metrics = metricsRecorder
+
+			testJob = &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+					UID:       types.UID("test-uid"),
+				},
+			}
+
+			testPod := &corev1.Pod{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-pod",
+					Namespace: "default",
+					Labels:    map[string]string{"job-name": "test-job"},
+				},
+				Status: corev1.PodStatus{Phase: corev1.PodSucceeded},
+			}
+
+			Expect(fakeClient.Create(ctx, testJob)).To(Succeed())
+			Expect(fakeClient.Create(ctx, testPod)).To(Succeed())
+		})
+
+		It("sets dependency_issues=1 when logs have warnings", func() {
+			reconciler.logReader = newLogReaderMock(`{"level":40,"msg":"Config warning"}`, nil)
+
+			reconciler.updateLogMetrics(ctx, testJob, "renovator-1", "repo-1")
+
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var issues float64
+
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "renovate_operator_gitrepo_dependency_issues" {
+					for _, m := range mf.GetMetric() {
+						issues = m.GetGauge().GetValue()
+					}
+				}
+			}
+
+			Expect(issues).To(Equal(float64(1)))
+		})
+
+		It("sets dependency_issues=0 when logs are clean", func() {
+			reconciler.logReader = newLogReaderMock(`{"level":30,"msg":"Repository finished","result":"done"}`, nil)
+
+			reconciler.updateLogMetrics(ctx, testJob, "renovator-1", "repo-1")
+
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var issues float64
+
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "renovate_operator_gitrepo_dependency_issues" {
+					for _, m := range mf.GetMetric() {
+						issues = m.GetGauge().GetValue()
+					}
+				}
+			}
+
+			Expect(issues).To(Equal(float64(0)))
+		})
+
+		It("sets approvals_needed count from log entries", func() {
+			ba := `{"branchName":"renovate/dep-a","prNo":null,"prTitle":"Update dep-a","result":"needs-approval"}`
+			bb := `{"branchName":"renovate/dep-b","prNo":null,"prTitle":"Update dep-b","result":"needs-approval"}`
+			bi := `{"level":30,"msg":"branches info extended","branchesInformation":[` + ba + `,` + bb + `]}`
+			reconciler.logReader = newLogReaderMock(bi, nil)
+
+			reconciler.updateLogMetrics(ctx, testJob, "renovator-1", "repo-1")
+
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var approvals float64
+
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "renovate_operator_gitrepo_approvals_needed" {
+					for _, m := range mf.GetMetric() {
+						approvals = m.GetGauge().GetValue()
+					}
+				}
+			}
+
+			Expect(approvals).To(Equal(float64(2)))
+		})
+
+		It("does nothing when logReader is nil", func() {
+			reconciler.logReader = nil
+
+			reconciler.updateLogMetrics(ctx, testJob, "renovator-1", "repo-1")
+
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "renovate_operator_gitrepo_dependency_issues" {
+					Expect(mf.GetMetric()).To(BeEmpty())
+				}
+
+				if mf.GetName() == "renovate_operator_gitrepo_approvals_needed" {
+					Expect(mf.GetMetric()).To(BeEmpty())
+				}
+			}
+		})
+
+		It("does not crash when logReader returns an error", func() {
+			reconciler.logReader = newLogReaderMock("", errors.New("pod not found"))
+
+			Expect(func() {
+				reconciler.updateLogMetrics(ctx, testJob, "renovator-1", "repo-1")
+			}).NotTo(Panic())
+		})
+
+		It("sets both dependency_issues and approvals_needed from the same log", func() {
+			errLog := `{"level":50,"msg":"Fatal error in dependency lookup"}`
+			ba := `{"branchName":"renovate/dep-x","prNo":null,"prTitle":"Update dep-x","result":"needs-approval"}`
+			bi := `{"level":30,"msg":"branches info extended","branchesInformation":[` + ba + `]}`
+
+			reconciler.logReader = newLogReaderMock(errLog+"\n"+bi, nil)
+
+			reconciler.updateLogMetrics(ctx, testJob, "renovator-1", "repo-1")
+
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var issues, approvals float64
+
+			for _, mf := range metricFamilies {
+				switch mf.GetName() {
+				case "renovate_operator_gitrepo_dependency_issues":
+					for _, m := range mf.GetMetric() {
+						issues = m.GetGauge().GetValue()
+					}
+				case "renovate_operator_gitrepo_approvals_needed":
+					for _, m := range mf.GetMetric() {
+						approvals = m.GetGauge().GetValue()
+					}
+				}
+			}
+
+			Expect(issues).To(Equal(float64(1)))
+			Expect(approvals).To(Equal(float64(1)))
+		})
+	})
 })
+
+func newLogReaderMock(logs string, err error) *mocks.Reader {
+	m := &mocks.Reader{}
+	m.On("ReadJobLogs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+		Return(io.NopCloser(strings.NewReader(logs)), err)
+
+	return m
+}
+
+var _ logreader.Reader = (*mocks.Reader)(nil)

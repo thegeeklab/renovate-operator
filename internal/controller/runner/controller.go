@@ -4,12 +4,6 @@ import (
 	"context"
 	"time"
 
-	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
-	"github.com/thegeeklab/renovate-operator/internal/component/runner"
-	"github.com/thegeeklab/renovate-operator/internal/controller"
-	"github.com/thegeeklab/renovate-operator/internal/frontend"
-	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	batchv1 "k8s.io/api/batch/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/runtime"
@@ -21,6 +15,14 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/handler"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 	"sigs.k8s.io/controller-runtime/pkg/predicate"
+
+	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
+	"github.com/thegeeklab/renovate-operator/internal/component/runner"
+	"github.com/thegeeklab/renovate-operator/internal/controller"
+	"github.com/thegeeklab/renovate-operator/internal/frontend"
+	"github.com/thegeeklab/renovate-operator/internal/logreader"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 )
 
 const ControllerName = "runner"
@@ -32,6 +34,7 @@ type Reconciler struct {
 	Broker        *frontend.SSEBroker
 	EventRecorder events.EventRecorder
 	Metrics       metrics.Recorder
+	LogReader     logreader.Reader
 }
 
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
@@ -100,7 +103,7 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: err}
 	}
 
-	componentReconciler, err := runner.NewReconciler(r.Client, r.Scheme, r.Broker, rr, rc, r.Metrics)
+	componentReconciler, err := runner.NewReconciler(r.Client, r.Scheme, r.Broker, rr, rc, r.Metrics, r.LogReader)
 	if err != nil {
 		return controller.Outcome{Err: err}
 	}

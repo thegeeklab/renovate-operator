@@ -17,6 +17,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+	"github.com/thegeeklab/renovate-operator/internal/logreader"
 	"github.com/thegeeklab/renovate-operator/internal/parser"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 )
@@ -39,9 +40,10 @@ func NewWebHandler(
 	broker *SSEBroker,
 	assets FrontendAssets,
 	authManager *auth.Manager,
+	logReader logreader.Reader,
 ) *WebHandler {
 	return &WebHandler{
-		dataFactory: NewDataFactory(client, clientset, authManager),
+		dataFactory: NewDataFactory(client, clientset, authManager, logReader),
 		Broker:      broker,
 		assets:      assets,
 		authManager: authManager,
@@ -414,7 +416,7 @@ func (h *WebHandler) getJobLogStream(
 ) (io.ReadCloser, error) {
 	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
 	if err != nil {
-		if isRunning && (errors.Is(err, errPodNotFound) || errors.Is(err, errPodNotReady)) {
+		if isRunning && errors.Is(err, logreader.ErrNoPodsForJob) {
 			return nil, errPodInitializing
 		}
 
