@@ -17,6 +17,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+	"github.com/thegeeklab/renovate-operator/internal/logreader"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -80,6 +81,7 @@ func NewServer(
 	clientset kubernetes.Interface,
 	broker *SSEBroker,
 	authManager *auth.Manager,
+	logReader logreader.Reader,
 ) *Server {
 	s := &Server{
 		config:      config,
@@ -93,8 +95,8 @@ func NewServer(
 		frontendLog.Info("Frontend assets loaded", "devMode", s.config.DevMode)
 	}
 
-	s.apiHandler = NewAPIHandler(client, clientset, authManager)
-	s.webHandler = NewWebHandler(client, clientset, broker, s.assets, authManager)
+	s.apiHandler = NewAPIHandler(client, clientset, authManager, logReader)
+	s.webHandler = NewWebHandler(client, clientset, broker, s.assets, authManager, logReader)
 
 	s.router.Use(errorPageMiddleware(s.assets.Styles, s.assets.Scripts, authManager))
 

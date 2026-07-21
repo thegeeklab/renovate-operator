@@ -14,7 +14,9 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+	"github.com/thegeeklab/renovate-operator/internal/logreader"
 	"github.com/thegeeklab/renovate-operator/internal/parser"
+	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	"golang.org/x/sync/errgroup"
@@ -27,8 +29,7 @@ import (
 )
 
 var (
-	errPodNotFound            = errors.New("no pods found for job")
-	errPodNotReady            = errors.New("pod not ready")
+	errLogReaderNotConfigured = errors.New("log reader not configured")
 	errUnableToDeriveCacheKey = errors.New("unable to derive cache key for session")
 	errUnexpectedCacheResult  = errors.New("unexpected cache result type")
 	errAuthNotEnabled         = errors.New("auth not enabled")
@@ -74,6 +75,7 @@ func (df *DataFactory) deriveCacheKey(session auth.SessionData) string {
 type DataFactory struct {
 	client                    client.Client
 	clientset                 kubernetes.Interface
+	logReader                 logreader.Reader
 	authManager               *auth.Manager
 	accessCache               *otter.Cache[string, map[string]bool]
 	accessGroup               singleflight.Group
@@ -85,7 +87,12 @@ type DataFactory struct {
 }
 
 // NewDataFactory creates a new DataFactory instance.
-func NewDataFactory(client client.Client, clientset kubernetes.Interface, authManager *auth.Manager) *DataFactory {
+func NewDataFactory(
+	client client.Client,
+	clientset kubernetes.Interface,
+	authManager *auth.Manager,
+	logReader logreader.Reader,
+) *DataFactory {
 	accessCache := otter.Must(&otter.Options[string, map[string]bool]{
 		ExpiryCalculator: otter.ExpiryAccessing[string, map[string]bool](defaultAccessCacheTTL),
 		MaximumSize:      defaultAccessCacheMax,
@@ -109,6 +116,7 @@ func NewDataFactory(client client.Client, clientset kubernetes.Interface, authMa
 	return &DataFactory{
 		client:                    client,
 		clientset:                 clientset,
+		logReader:                 logReader,
 		authManager:               authManager,
 		accessCache:               accessCache,
 		authorizedRenovatorsCache: authorizedRenovatorsCache,
@@ -727,7 +735,7 @@ func (df *DataFactory) findLatestTerminalJobsByRepo(
 	return latest, nil
 }
 
-// parseJobPRActivity streams a Job's pod logs through parser.ParsePRActivity
+// parseJobPRActivity streams a Job's pod logs through parser.ParseLogs
 // and returns the parsed open-PR counts. Line-by-line parsing keeps memory
 // bounded by per-line allocations rather than the full log buffer.
 func (df *DataFactory) parseJobPRActivity(
@@ -744,7 +752,7 @@ func (df *DataFactory) parseJobPRActivity(
 	}
 	defer stream.Close()
 
-	activity, err := parser.ParsePRActivity(stream, maxLogReadSize)
+	res, err := parser.ParseLogs(stream, maxLogReadSize)
 	if err != nil {
 		frontendLog.Error(err, "Failed to parse PR activity from job logs",
 			"namespace", namespace, "job", job.Name)
@@ -752,9 +760,7 @@ func (df *DataFactory) parseJobPRActivity(
 		return prJobSample{}
 	}
 
-	if activity == nil {
-		return prJobSample{}
-	}
+	activity := res.PRActivity
 
 	return prJobSample{
 		Open:          activity.Created + activity.Updated + activity.Unchanged,
@@ -873,34 +879,11 @@ func (df *DataFactory) IsJobRunning(ctx context.Context, namespace, job string) 
 
 // GetJobLogs fetches the log stream from the most recent Pod created by the specified Job.
 func (df *DataFactory) GetJobLogs(ctx context.Context, namespace, jobName string) (io.ReadCloser, error) {
-	podList, err := df.clientset.CoreV1().Pods(namespace).List(ctx, metav1.ListOptions{
-		LabelSelector: fmt.Sprintf("job-name=%s", jobName),
-	})
-	if err != nil {
-		return nil, fmt.Errorf("failed to list pods for job %s: %w", jobName, err)
+	if df.logReader == nil {
+		return nil, errLogReaderNotConfigured
 	}
 
-	if len(podList.Items) == 0 {
-		return nil, fmt.Errorf("%w: %s", errPodNotFound, jobName)
-	}
-
-	slices.SortFunc(podList.Items, func(a, b corev1.Pod) int {
-		return a.CreationTimestamp.Compare(b.CreationTimestamp.Time)
-	})
-	latestPod := podList.Items[len(podList.Items)-1]
-
-	if latestPod.Status.Phase == corev1.PodPending {
-		return nil, fmt.Errorf("%w: %s", errPodNotReady, latestPod.Name)
-	}
-
-	req := df.clientset.CoreV1().Pods(namespace).GetLogs(latestPod.Name, &corev1.PodLogOptions{})
-
-	stream, err := req.Stream(ctx)
-	if err != nil {
-		return nil, fmt.Errorf("failed to open log stream for pod %s: %w", latestPod.Name, err)
-	}
-
-	return stream, nil
+	return df.logReader.ReadJobLogs(ctx, namespace, jobName, renovate.ContainerName)
 }
 
 // getUserReposMap returns the user's accessible repo map, handling auth checks,

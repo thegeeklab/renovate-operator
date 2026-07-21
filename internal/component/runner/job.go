@@ -10,6 +10,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	"github.com/thegeeklab/renovate-operator/internal/metrics"
+	"github.com/thegeeklab/renovate-operator/internal/parser"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
@@ -340,7 +341,45 @@ func (r *Reconciler) updateJobStatus(
 			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel,
 			float64(latestFinishedJob.CreationTimestamp.Unix()),
 		)
+
+		r.updateLogMetrics(ctx, latestFinishedJob, renovatorLabel, gitrepoLabel)
 	}
 
 	return nil
+}
+
+// updateLogMetrics parses the Renovate job logs and updates the
+// dependency_issues and approvals_needed gauge metrics.
+func (r *Reconciler) updateLogMetrics(
+	ctx context.Context, job *batchv1.Job, renovatorLabel, gitrepoLabel string,
+) {
+	if r.logReader == nil {
+		return
+	}
+
+	stream, err := r.logReader.ReadJobLogs(ctx, job.Namespace, job.Name, renovate.ContainerName)
+	if err != nil {
+		logf.FromContext(ctx).V(1).Info(
+			"Failed to read job logs for metrics", "job", job.Name, "error", err,
+		)
+
+		return
+	}
+	defer stream.Close()
+
+	res, err := parser.ParseLogs(stream, -1)
+	if err != nil {
+		logf.FromContext(ctx).V(1).Info(
+			"Failed to parse job logs for metrics", "job", job.Name, "error", err,
+		)
+
+		return
+	}
+
+	r.metrics.SetDependencyIssues(
+		job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, res.HasIssues,
+	)
+	r.metrics.SetApprovalsNeeded(
+		job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, res.PRActivity.NeedsApproval,
+	)
 }

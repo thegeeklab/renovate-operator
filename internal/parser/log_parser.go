@@ -183,14 +183,17 @@ var (
 	}
 )
 
-// ParsePRActivity streams a Renovate NDJSON log from r and returns the
-// aggregated PR activity. Unlike ParseRenovateLogs it skips the
-// FormattedLine/issue passes, so memory stays proportional to the branch
-// count. The reader is consumed up to maxBytes; pass a negative value for
-// no cap.
-func ParsePRActivity(r io.Reader, maxBytes int64) (*PRActivity, error) {
-	branchMap := make(map[string]*PRDetail)
+// ParseLogsResult is the aggregated result of scanning a Renovate NDJSON log.
+type ParseLogsResult struct {
+	HasIssues  bool
+	PRActivity *PRActivity
+}
 
+// ParseLogs streams a Renovate NDJSON log from r and returns the aggregated
+// PR activity along with whether WARN/ERROR entries were seen. A single
+// scanner pass feeds both the metrics and UI consumers so they cannot drift.
+// The reader is consumed up to maxBytes; pass a negative value for no cap.
+func ParseLogs(r io.Reader, maxBytes int64) (*ParseLogsResult, error) {
 	reader := r
 	if maxBytes >= 0 {
 		reader = io.LimitReader(r, maxBytes)
@@ -199,6 +202,7 @@ func ParsePRActivity(r io.Reader, maxBytes int64) (*PRActivity, error) {
 	scanner := bufio.NewScanner(reader)
 	scanner.Buffer(make([]byte, scannerInitialBuf), scannerMaxBuf)
 
+	branchMap := make(map[string]*PRDetail)
 	result := &ParseResult{}
 
 	for scanner.Scan() {
@@ -212,6 +216,10 @@ func ParsePRActivity(r io.Reader, maxBytes int64) (*PRActivity, error) {
 			continue
 		}
 
+		if entry.Level >= levelWarn {
+			result.HasIssues = true
+		}
+
 		processLogEntry(line, entry, branchMap, result)
 	}
 
@@ -219,7 +227,12 @@ func ParsePRActivity(r io.Reader, maxBytes int64) (*PRActivity, error) {
 		return nil, fmt.Errorf("scan renovate logs: %w", err)
 	}
 
-	return buildPRActivity(branchMap), nil
+	activity := buildPRActivity(branchMap)
+
+	return &ParseLogsResult{
+		HasIssues:  result.HasIssues,
+		PRActivity: activity,
+	}, nil
 }
 
 func ParseRenovateLogs(logs string) *ParseResult {

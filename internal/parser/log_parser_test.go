@@ -247,46 +247,71 @@ var _ = Describe("LogParser", func() {
 		})
 	})
 
-	Describe("ParsePRActivity", func() {
-		It("returns an empty PRActivity for empty logs", func() {
-			activity, err := ParsePRActivity(strings.NewReader(""), -1)
+	Describe("ParseLogs", func() {
+		It("detects warnings and needs-approval from mixed logs", func() {
+			logs := strings.Join([]string{
+				fixtures.WarnAndError,
+				fixtures.BranchesInfoExtended,
+			}, "\n")
+
+			res, err := ParseLogs(strings.NewReader(logs), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(activity).NotTo(BeNil())
-			Expect(activity.Created).To(BeZero())
+			Expect(res).NotTo(BeNil())
+			Expect(res.HasIssues).To(BeTrue())
+			Expect(res.PRActivity.NeedsApproval).To(Equal(1))
 		})
 
-		It("counts created PRs from a stream", func() {
-			activity, err := ParsePRActivity(strings.NewReader(fixtures.PRCreated), -1)
+		It("returns clean result for logs without issues or PRs", func() {
+			res, err := ParseLogs(strings.NewReader(fixtures.PRCreated), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(activity).NotTo(BeNil())
-			Expect(activity.Created).To(Equal(1))
+			Expect(res).NotTo(BeNil())
+			Expect(res.HasIssues).To(BeFalse())
+			Expect(res.PRActivity.NeedsApproval).To(Equal(0))
 		})
 
-		It("counts needs-approval PRs from a stream", func() {
-			activity, err := ParsePRActivity(strings.NewReader(fixtures.BranchesInfoExtended), -1)
+		It("detects issues but no approvals for warn-only logs", func() {
+			res, err := ParseLogs(strings.NewReader(fixtures.WarnAndError), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(activity).NotTo(BeNil())
-			Expect(activity.NeedsApproval).To(Equal(1))
+			Expect(res).NotTo(BeNil())
+			Expect(res.HasIssues).To(BeTrue())
+			Expect(res.PRActivity.NeedsApproval).To(Equal(0))
 		})
 
-		It("respects the maxBytes cap", func() {
-			activity, err := ParsePRActivity(
-				strings.NewReader(fixtures.PRCreated),
-				16,
-			)
+		It("detects approvals but no issues for clean PR logs", func() {
+			res, err := ParseLogs(strings.NewReader(fixtures.BranchesInfoExtended), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(activity).NotTo(BeNil())
-			Expect(activity.Created).To(BeZero())
+			Expect(res).NotTo(BeNil())
+			Expect(res.HasIssues).To(BeFalse())
+			Expect(res.PRActivity.NeedsApproval).To(Equal(1))
 		})
 
-		It("counts unchanged PRs (they still exist on the platform)", func() {
-			activity, err := ParsePRActivity(
-				strings.NewReader(fixtures.PRUnchanged),
-				-1,
-			)
+		It("returns clean result for empty reader", func() {
+			res, err := ParseLogs(strings.NewReader(""), -1)
 			Expect(err).NotTo(HaveOccurred())
-			Expect(activity).NotTo(BeNil())
-			Expect(activity.Unchanged).To(Equal(1))
+			Expect(res).NotTo(BeNil())
+			Expect(res.HasIssues).To(BeFalse())
+			Expect(res.PRActivity.NeedsApproval).To(Equal(0))
+		})
+
+		It("returns clean result for non-NDJSON logs", func() {
+			logs := "INFO: Renovate started\nDEBUG: Processing\n"
+			res, err := ParseLogs(strings.NewReader(logs), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).NotTo(BeNil())
+			Expect(res.HasIssues).To(BeFalse())
+			Expect(res.PRActivity.NeedsApproval).To(Equal(0))
+		})
+
+		It("counts multiple needs-approval PRs correctly", func() {
+			ba := `{"branchName":"renovate/dep-a","prNo":null,"prTitle":"Update dep-a","result":"needs-approval"}`
+			bb := `{"branchName":"renovate/dep-b","prNo":null,"prTitle":"Update dep-b","result":"needs-approval"}`
+			bc := `{"branchName":"renovate/dep-c","prNo":null,"prTitle":"Update dep-c","result":"needs-approval"}`
+			bi := `{"level":30,"msg":"branches info extended","branchesInformation":[` + ba + `,` + bb + `,` + bc + `]}`
+
+			res, err := ParseLogs(strings.NewReader(bi), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).NotTo(BeNil())
+			Expect(res.PRActivity.NeedsApproval).To(Equal(3))
 		})
 	})
 })
