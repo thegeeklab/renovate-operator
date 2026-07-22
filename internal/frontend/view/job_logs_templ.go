@@ -637,14 +637,14 @@ func JobLogs(data viewmodel.JobLogData) templ.Component {
 			}
 		}
 		if data.Truncated {
-			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div data-component=\"log-load-full\" class=\"flex flex-col items-center justify-center py-6 gap-2\"><span class=\"text-xs font-mono text-gray-500\">Log truncated to ")
+			templ_7745c5c3_Err = templruntime.WriteString(templ_7745c5c3_Buffer, 51, "<div data-component=\"log-load-full\" class=\"flex flex-col items-center justify-center py-6 gap-2\"><span class=\"text-xs font-mono text-gray-500\">Log truncated to the last ")
 			if templ_7745c5c3_Err != nil {
 				return templ_7745c5c3_Err
 			}
 			var templ_7745c5c3_Var36 string
 			templ_7745c5c3_Var36, templ_7745c5c3_Err = templ.JoinStringErrs(strconv.FormatInt(data.DisplayTailLines, 10))
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `job_logs.templ`, Line: 205, Col: 69}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `job_logs.templ`, Line: 205, Col: 78}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var36))
 			if templ_7745c5c3_Err != nil {
