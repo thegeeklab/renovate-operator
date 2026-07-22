@@ -39,8 +39,8 @@ func (_m *Reader) EXPECT() *Reader_Expecter {
 }
 
 // ReadJobLogs provides a mock function for the type Reader
-func (_mock *Reader) ReadJobLogs(ctx context.Context, namespace string, jobName string, container string) (io.ReadCloser, error) {
-	ret := _mock.Called(ctx, namespace, jobName, container)
+func (_mock *Reader) ReadJobLogs(ctx context.Context, namespace string, jobName string, container string, tailLines int64) (io.ReadCloser, error) {
+	ret := _mock.Called(ctx, namespace, jobName, container, tailLines)
 
 	if len(ret) == 0 {
 		panic("no return value specified for ReadJobLogs")
@@ -48,18 +48,18 @@ func (_mock *Reader) ReadJobLogs(ctx context.Context, namespace string, jobName 
 
 	var r0 io.ReadCloser
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) (io.ReadCloser, error)); ok {
-		return returnFunc(ctx, namespace, jobName, container)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, int64) (io.ReadCloser, error)); ok {
+		return returnFunc(ctx, namespace, jobName, container, tailLines)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string) io.ReadCloser); ok {
-		r0 = returnFunc(ctx, namespace, jobName, container)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string, string, int64) io.ReadCloser); ok {
+		r0 = returnFunc(ctx, namespace, jobName, container, tailLines)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(io.ReadCloser)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string) error); ok {
-		r1 = returnFunc(ctx, namespace, jobName, container)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string, string, int64) error); ok {
+		r1 = returnFunc(ctx, namespace, jobName, container, tailLines)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -76,11 +76,12 @@ type Reader_ReadJobLogs_Call struct {
 //   - namespace string
 //   - jobName string
 //   - container string
-func (_e *Reader_Expecter) ReadJobLogs(ctx any, namespace any, jobName any, container any) *Reader_ReadJobLogs_Call {
-	return &Reader_ReadJobLogs_Call{Call: _e.mock.On("ReadJobLogs", ctx, namespace, jobName, container)}
+//   - tailLines int64
+func (_e *Reader_Expecter) ReadJobLogs(ctx any, namespace any, jobName any, container any, tailLines any) *Reader_ReadJobLogs_Call {
+	return &Reader_ReadJobLogs_Call{Call: _e.mock.On("ReadJobLogs", ctx, namespace, jobName, container, tailLines)}
 }
 
-func (_c *Reader_ReadJobLogs_Call) Run(run func(ctx context.Context, namespace string, jobName string, container string)) *Reader_ReadJobLogs_Call {
+func (_c *Reader_ReadJobLogs_Call) Run(run func(ctx context.Context, namespace string, jobName string, container string, tailLines int64)) *Reader_ReadJobLogs_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -98,11 +99,16 @@ func (_c *Reader_ReadJobLogs_Call) Run(run func(ctx context.Context, namespace s
 		if args[3] != nil {
 			arg3 = args[3].(string)
 		}
+		var arg4 int64
+		if args[4] != nil {
+			arg4 = args[4].(int64)
+		}
 		run(
 			arg0,
 			arg1,
 			arg2,
 			arg3,
+			arg4,
 		)
 	})
 	return _c
@@ -113,7 +119,7 @@ func (_c *Reader_ReadJobLogs_Call) Return(readCloser io.ReadCloser, err error) *
 	return _c
 }
 
-func (_c *Reader_ReadJobLogs_Call) RunAndReturn(run func(ctx context.Context, namespace string, jobName string, container string) (io.ReadCloser, error)) *Reader_ReadJobLogs_Call {
+func (_c *Reader_ReadJobLogs_Call) RunAndReturn(run func(ctx context.Context, namespace string, jobName string, container string, tailLines int64) (io.ReadCloser, error)) *Reader_ReadJobLogs_Call {
 	_c.Call.Return(run)
 	return _c
 }

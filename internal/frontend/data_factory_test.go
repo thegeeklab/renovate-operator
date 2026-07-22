@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 	"net/http"
+	"strings"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -343,7 +344,7 @@ var _ = Describe("DataFactory", func() {
 		It("should return an error if no pods are found for the job", func() {
 			dataFactory.logReader = logreader.NewKubernetesReader(fakeClientset)
 
-			_, err := dataFactory.GetJobLogs(context.Background(), "test-namespace", "test-job-1")
+			_, err := dataFactory.GetJobLogs(context.Background(), "test-namespace", "test-job-1", 0)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("no pods found for job: test-job-1"))
 		})
@@ -818,3 +819,36 @@ var _ = Describe("DataFactory access filtering", func() {
 		})
 	})
 })
+
+var _ = Describe("readJobLogStream", func() {
+	DescribeTable(
+		"truncation detection",
+		func(input string, tailLines int64, expectedContent string, expectedTruncated bool) {
+			content, truncated, err := readJobLogStream(strings.NewReader(input), tailLines)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(content).To(Equal(expectedContent))
+			Expect(truncated).To(Equal(expectedTruncated))
+		},
+		Entry("tailLines=0 returns full content", "line1\nline2\nline3\n", int64(0), "line1\nline2\nline3\n", false),
+		Entry("fewer lines than tail", "line1\nline2\n", int64(5), "line1\nline2\n", false),
+		Entry("exactly tailLines lines", "line1\nline2\nline3\n", int64(3), "line1\nline2\nline3\n", false),
+		Entry("more lines than tail (truncated)", "line1\nline2\nline3\nline4\n", int64(2), "line1\nline2", true),
+		Entry("empty content", "", int64(5), "", false),
+		Entry("single line with tail", "line1\n", int64(1), "line1\n", false),
+		Entry("single line without tail", "line1\n", int64(0), "line1\n", false),
+		Entry("content without trailing newline", "line1\nline2\nline3", int64(2), "line1\nline2", true),
+	)
+
+	It("returns an error when reading fails", func() {
+		failingReader := &failingReader{}
+		_, _, err := readJobLogStream(failingReader, int64(5))
+		Expect(err).To(HaveOccurred())
+		Expect(err.Error()).To(Equal("read error"))
+	})
+})
+
+type failingReader struct{}
+
+func (f *failingReader) Read([]byte) (int, error) {
+	return 0, errors.New("read error")
+}

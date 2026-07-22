@@ -48,7 +48,7 @@ var _ = Describe("KubernetesReader", func() {
 		_, err := clientset.CoreV1().Pods(namespace).Create(ctx, pod, metav1.CreateOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
-		stream, err := reader.ReadJobLogs(ctx, namespace, "test-job", "renovate")
+		stream, err := reader.ReadJobLogs(ctx, namespace, "test-job", "renovate", 0)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(stream).NotTo(BeNil())
 
@@ -71,7 +71,7 @@ var _ = Describe("KubernetesReader", func() {
 		_, err := clientset.CoreV1().Pods(namespace).Create(ctx, pod, metav1.CreateOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
-		stream, err := reader.ReadJobLogs(ctx, namespace, "test-job", "renovate")
+		stream, err := reader.ReadJobLogs(ctx, namespace, "test-job", "renovate", 0)
 		Expect(err).NotTo(HaveOccurred())
 
 		defer stream.Close()
@@ -88,12 +88,12 @@ var _ = Describe("KubernetesReader", func() {
 			return true, nil, errors.New("connection refused")
 		})
 
-		_, err := reader.ReadJobLogs(ctx, namespace, "test-job", "renovate")
+		_, err := reader.ReadJobLogs(ctx, namespace, "test-job", "renovate", 0)
 		Expect(err).To(HaveOccurred())
 	})
 
 	It("returns ErrNoPodsForJob when no pods match the job", func() {
-		_, err := reader.ReadJobLogs(ctx, namespace, "missing-job", "renovate")
+		_, err := reader.ReadJobLogs(ctx, namespace, "missing-job", "renovate", 0)
 		Expect(err).To(HaveOccurred())
 		Expect(errors.Is(err, ErrNoPodsForJob)).To(BeTrue())
 	})
@@ -113,7 +113,7 @@ var _ = Describe("KubernetesReader", func() {
 		_, err := clientset.CoreV1().Pods(namespace).Create(ctx, pending, metav1.CreateOptions{})
 		Expect(err).NotTo(HaveOccurred())
 
-		_, err = reader.ReadJobLogs(ctx, namespace, "test-job", "renovate")
+		_, err = reader.ReadJobLogs(ctx, namespace, "test-job", "renovate", 0)
 		Expect(err).To(HaveOccurred())
 		Expect(errors.Is(err, ErrPodsNotReady)).To(BeTrue())
 		Expect(errors.Is(err, ErrNoPodsForJob)).To(BeFalse())

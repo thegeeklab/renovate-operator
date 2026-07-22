@@ -169,6 +169,13 @@ type JobLogData struct {
 	Parsed    *parser.ParseResult
 	Platform  string
 	RepoURL   string
+	// Truncated is true when the displayed log was cut to the display
+	// tail-line limit and the kubelet had more lines available.
+	Truncated bool
+	// DisplayTailLines is the tail-line limit applied to the displayed
+	// log. Zero means the full log is shown. Used in the truncation
+	// banner to tell the user how many lines they are seeing.
+	DisplayTailLines int64
 }
 
 // FormatCount returns "N label" with proper pluralization (e.g. "1 error",

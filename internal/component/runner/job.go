@@ -357,7 +357,7 @@ func (r *Reconciler) updateLogMetrics(
 		return
 	}
 
-	stream, err := r.logReader.ReadJobLogs(ctx, job.Namespace, job.Name, renovate.ContainerName)
+	stream, err := r.logReader.ReadJobLogs(ctx, job.Namespace, job.Name, renovate.ContainerName, 0)
 	if err != nil {
 		logf.FromContext(ctx).V(1).Info(
 			"Failed to read job logs for metrics", "job", job.Name, "error", err,

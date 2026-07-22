@@ -51,7 +51,11 @@ func NewWebHandler(
 }
 
 const (
-	maxLogReadSize                  = 2 * 1024 * 1024 // 2MB
+	// displayLogTailLines bounds the log shown in the job-logs viewer. The
+	// kubelet applies this server-side via PodLogOptions.TailLines, so no
+	// bytes are wasted in transfer. Use the download endpoint for the full
+	// log.
+	displayLogTailLines             = 10
 	maxConcurrentRenovatorSummaries = 10
 )
 
@@ -411,10 +415,12 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 // getJobLogStream fetches the log stream for a job. When the job is still
 // running and pods are not yet ready to provide logs, it is classified as
 // errPodInitializing so callers can surface a friendly "still starting" message.
+// A positive tailLines asks the kubelet for only the last N lines; <=0
+// returns the full retained log.
 func (h *WebHandler) getJobLogStream(
-	ctx context.Context, namespace, job string, isRunning bool,
+	ctx context.Context, namespace, job string, isRunning bool, tailLines int64,
 ) (io.ReadCloser, error) {
-	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job)
+	stream, err := h.dataFactory.GetJobLogs(ctx, namespace, job, tailLines)
 	if err != nil {
 		if isRunning && (errors.Is(err, logreader.ErrNoPodsForJob) || errors.Is(err, logreader.ErrPodsNotReady)) {
 			return nil, errPodInitializing
@@ -427,7 +433,7 @@ func (h *WebHandler) getJobLogStream(
 }
 
 func (h *WebHandler) buildJobLogData(
-	ctx context.Context, namespace, runner, job, platform, repoURL string,
+	ctx context.Context, namespace, runner, job, platform, repoURL string, tailLines int64,
 ) viewmodel.JobLogData {
 	isRunning := h.dataFactory.IsJobRunning(ctx, namespace, job)
 
@@ -440,7 +446,7 @@ func (h *WebHandler) buildJobLogData(
 		RepoURL:   repoURL,
 	}
 
-	stream, err := h.getJobLogStream(ctx, namespace, job, isRunning)
+	stream, err := h.getJobLogStream(ctx, namespace, job, isRunning, tailLines)
 
 	const msgInitializing = "Waiting for pods to initialize..."
 
@@ -460,7 +466,7 @@ func (h *WebHandler) buildJobLogData(
 
 	defer stream.Close()
 
-	content, ioErr := readJobLogStream(stream)
+	content, truncated, ioErr := readJobLogStream(stream, tailLines)
 	if ioErr != nil {
 		data.Message = "Failed to read log stream from pod."
 
@@ -468,10 +474,11 @@ func (h *WebHandler) buildJobLogData(
 	}
 
 	data.Content = content
+	data.Truncated = truncated
+	data.DisplayTailLines = tailLines
+
 	if len(data.Content) == 0 && isRunning {
 		data.Message = msgInitializing
-	} else if len(data.Content) == maxLogReadSize {
-		data.Content += "\n--- Log truncated at 2MB ---"
 	}
 
 	parsed := parser.ParseRenovateLogs(data.Content)
@@ -497,7 +504,12 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	data := h.buildJobLogData(ctx, namespace, runner, job, platform, repoURL)
+	tailLines := int64(displayLogTailLines)
+	if r.URL.Query().Get("all") == "1" {
+		tailLines = 0
+	}
+
+	data := h.buildJobLogData(ctx, namespace, runner, job, platform, repoURL, tailLines)
 
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/html")
@@ -515,7 +527,7 @@ func (h *WebHandler) HandleJobLogsDownload(w http.ResponseWriter, r *http.Reques
 		return
 	}
 
-	stream, err := h.getJobLogStream(ctx, namespace, job, h.dataFactory.IsJobRunning(ctx, namespace, job))
+	stream, err := h.getJobLogStream(ctx, namespace, job, h.dataFactory.IsJobRunning(ctx, namespace, job), 0)
 	if err != nil {
 		if errors.Is(err, errPodInitializing) {
 			http.Error(w, "Logs are not yet available. The pods may still be initializing.", http.StatusNotFound)

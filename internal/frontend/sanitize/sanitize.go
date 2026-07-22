@@ -45,12 +45,21 @@ func GitrepoURL(namespace, name string) string {
 }
 
 // JobLogsURL builds a /joblogs URL with safely escaped query parameters.
-func JobLogsURL(namespace, runner, job, platform, repoURL string) string {
-	return "/joblogs?namespace=" + QueryEscape(namespace) +
-		"&runner=" + QueryEscape(runner) +
-		"&job=" + QueryEscape(job) +
-		"&platform=" + QueryEscape(platform) +
-		"&repoUrl=" + QueryEscape(repoURL)
+// When all is true, the URL requests the full log instead of the default
+// display tail.
+func JobLogsURL(namespace, runner, job, platform, repoURL string, all bool) string {
+	params := url.Values{}
+	params.Set("namespace", namespace)
+	params.Set("runner", runner)
+	params.Set("job", job)
+	params.Set("platform", platform)
+	params.Set("repoUrl", repoURL)
+
+	if all {
+		params.Set("all", "1")
+	}
+
+	return "/joblogs?" + params.Encode()
 }
 
 // JobLogsDownloadURL builds a /joblogs/download URL with safely escaped query parameters.

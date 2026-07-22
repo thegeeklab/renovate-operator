@@ -26,6 +26,7 @@ var icons = []iconDef{
 	{fileName: "circle-check"},
 	{fileName: "chevron-right"},
 	{fileName: "chevrons-up-down"},
+	{fileName: "cloud-download"},
 	{fileName: "file-text"},
 	{fileName: "triangle-alert"},
 	{fileName: "eye"},

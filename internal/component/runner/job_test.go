@@ -1185,7 +1185,7 @@ var _ = Describe("ReconcileJob", func() {
 
 func newLogReaderMock(logs string, err error) *mocks.Reader {
 	m := &mocks.Reader{}
-	m.On("ReadJobLogs", mock.Anything, mock.Anything, mock.Anything, mock.Anything).
+	m.On("ReadJobLogs", mock.Anything, mock.Anything, mock.Anything, mock.Anything, mock.Anything).
 		Return(io.NopCloser(strings.NewReader(logs)), err)
 
 	return m
