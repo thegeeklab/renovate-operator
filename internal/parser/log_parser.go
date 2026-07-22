@@ -84,6 +84,17 @@ type LogIssues struct {
 	Truncated  bool
 }
 
+type DependencySummary struct {
+	TotalDeps               int
+	OutdatedDeps            int
+	UpdatesByType           map[string]int
+	VulnerabilityFixesAvail int
+}
+
+type BranchResultSummary struct {
+	ResultsByType map[string]int
+}
+
 type FormattedLine struct {
 	Level   LogLevel
 	Message string
@@ -101,9 +112,11 @@ type ParseResult struct {
 }
 
 type renovateLogEntry struct {
-	Level int    `json:"level"`
-	Msg   string `json:"msg"`
-	Time  string `json:"time"`
+	Level        int                          `json:"level"`
+	Msg          string                       `json:"msg"`
+	Time         string                       `json:"time"`
+	Config       map[string][]packageFileData `json:"config,omitempty"`
+	BranchesInfo []branchInfoItem             `json:"branchesInformation,omitempty"`
 }
 
 type repositoryFinishedEntry struct {
@@ -147,14 +160,54 @@ type branchInfoItem struct {
 	Result     string `json:"result"`
 }
 
-type branchesInfoEntry struct {
-	Msg          string           `json:"msg"`
-	BranchesInfo []branchInfoItem `json:"branchesInformation"`
+type packageFileData struct {
+	PackageFile string       `json:"packageFile"`
+	Deps        []dependency `json:"deps"`
+}
+
+type dependency struct {
+	Updates  []update  `json:"updates"`
+	Warnings []warning `json:"warnings"`
+}
+
+type update struct {
+	UpdateType string `json:"updateType"`
+}
+
+type warning struct {
+	Message string `json:"message"`
 }
 
 var (
 	prURLRegex    = regexp.MustCompile(`https?://[^\s"]+/(?:pulls|pull|merge_requests)/(\d+)`)
 	prNumberRegex = regexp.MustCompile(`Pull Request #(\d+)`)
+
+	knownUpdateTypes = map[string]bool{
+		"major":               true,
+		"minor":               true,
+		"patch":               true,
+		"pin":                 true,
+		"digest":              true,
+		"pinDigest":           true,
+		"replacement":         true,
+		"rollback":            true,
+		"lockFileMaintenance": true,
+		"bump":                true,
+		"inRange":             true,
+	}
+
+	knownBranchResults = map[string]bool{
+		"created":         true,
+		"updated":         true,
+		"already-existed": true,
+		"not-scheduled":   true,
+		"needs-approval":  true,
+		"done":            true,
+		"automerged":      true,
+		"pr-edited":       true,
+		"error":           true,
+		"not-created":     true,
+	}
 
 	actionOrder = map[PRAction]int{
 		PRActionAutomerged:    actionOrderAutomerged,
@@ -185,8 +238,10 @@ var (
 
 // ParseLogsResult is the aggregated result of scanning a Renovate NDJSON log.
 type ParseLogsResult struct {
-	HasIssues  bool
-	PRActivity *PRActivity
+	HasIssues     bool
+	PRActivity    *PRActivity
+	Dependencies  *DependencySummary
+	BranchResults *BranchResultSummary
 }
 
 // ParseLogs streams a Renovate NDJSON log from r and returns the aggregated
@@ -204,6 +259,12 @@ func ParseLogs(r io.Reader, maxBytes int64) (*ParseLogsResult, error) {
 
 	branchMap := make(map[string]*PRDetail)
 	result := &ParseResult{}
+	depSummary := &DependencySummary{
+		UpdatesByType: make(map[string]int),
+	}
+	branchResults := &BranchResultSummary{
+		ResultsByType: make(map[string]int),
+	}
 
 	for scanner.Scan() {
 		line := scanner.Text()
@@ -220,7 +281,7 @@ func ParseLogs(r io.Reader, maxBytes int64) (*ParseLogsResult, error) {
 			result.HasIssues = true
 		}
 
-		processLogEntry(line, entry, branchMap, result)
+		processLogEntry(line, entry, branchMap, result, depSummary, branchResults)
 	}
 
 	if err := scanner.Err(); err != nil {
@@ -230,8 +291,10 @@ func ParseLogs(r io.Reader, maxBytes int64) (*ParseLogsResult, error) {
 	activity := buildPRActivity(branchMap)
 
 	return &ParseLogsResult{
-		HasIssues:  result.HasIssues,
-		PRActivity: activity,
+		HasIssues:     result.HasIssues,
+		PRActivity:    activity,
+		Dependencies:  depSummary,
+		BranchResults: branchResults,
 	}, nil
 }
 
@@ -286,7 +349,7 @@ func ParseRenovateLogs(logs string) *ParseResult {
 			trackIssue(entry.Level, entry.Msg, &warnCount, &errorCount, &issues, seenMessages, &issuesTruncated)
 		}
 
-		processLogEntry(line, entry, branchMap, result)
+		processLogEntry(line, entry, branchMap, result, nil, nil)
 	}
 
 	if parsedAnyLine {
@@ -335,7 +398,14 @@ func trackIssue(
 	}
 }
 
-func processLogEntry(line string, entry renovateLogEntry, branchMap map[string]*PRDetail, result *ParseResult) {
+func processLogEntry(
+	line string,
+	entry renovateLogEntry,
+	branchMap map[string]*PRDetail,
+	result *ParseResult,
+	depSummary *DependencySummary,
+	branchResults *BranchResultSummary,
+) {
 	switch {
 	case entry.Msg == "Repository finished":
 		var finished repositoryFinishedEntry
@@ -392,7 +462,12 @@ func processLogEntry(line string, entry renovateLogEntry, branchMap map[string]*
 		}
 
 	case entry.Msg == "branches info extended":
-		processBranchesInfo(line, branchMap)
+		processBranchesInfo(entry, branchMap, branchResults)
+
+	case entry.Msg == "packageFiles with updates":
+		if depSummary != nil {
+			processPackageFileUpdates(entry, depSummary)
+		}
 	}
 }
 
@@ -440,13 +515,21 @@ func processGitPush(line string, branchMap map[string]*PRDetail) {
 	}
 }
 
-func processBranchesInfo(line string, branchMap map[string]*PRDetail) {
-	var bi branchesInfoEntry
-	if err := json.Unmarshal([]byte(line), &bi); err != nil {
-		return
-	}
+func processBranchesInfo(
+	entry renovateLogEntry,
+	branchMap map[string]*PRDetail,
+	branchResults *BranchResultSummary,
+) {
+	for _, b := range entry.BranchesInfo {
+		if b.Result != "" && branchResults != nil {
+			result := b.Result
+			if !knownBranchResults[result] {
+				result = "other"
+			}
 
-	for _, b := range bi.BranchesInfo {
+			branchResults.ResultsByType[result]++
+		}
+
 		if b.BranchName == "" {
 			continue
 		}
@@ -481,6 +564,66 @@ func processBranchesInfo(line string, branchMap map[string]*PRDetail) {
 
 func isActiveBranchResult(result string) bool {
 	return result == "needs-approval" || result == "done" || result == "automerged" || result == ""
+}
+
+func processPackageFileUpdates(entry renovateLogEntry, depSummary *DependencySummary) {
+	for _, files := range entry.Config {
+		for _, pf := range files {
+			for _, dep := range pf.Deps {
+				processDependency(dep, depSummary)
+			}
+		}
+	}
+}
+
+func processDependency(dep dependency, depSummary *DependencySummary) {
+	depSummary.TotalDeps++
+
+	if len(dep.Updates) > 0 {
+		depSummary.OutdatedDeps++
+	}
+
+	processWarnings(dep.Warnings, depSummary)
+	processUpdates(dep.Updates, depSummary)
+}
+
+func processWarnings(warnings []warning, depSummary *DependencySummary) {
+	for _, w := range warnings {
+		if containsFold(w.Message, "vulnerability") {
+			depSummary.VulnerabilityFixesAvail++
+
+			return
+		}
+	}
+}
+
+func processUpdates(updates []update, depSummary *DependencySummary) {
+	for _, upd := range updates {
+		if upd.UpdateType == "" {
+			continue
+		}
+
+		updateType := upd.UpdateType
+		if !knownUpdateTypes[updateType] {
+			updateType = "other"
+		}
+
+		depSummary.UpdatesByType[updateType]++
+	}
+}
+
+func containsFold(s, substr string) bool {
+	if len(substr) > len(s) {
+		return false
+	}
+
+	for i := 0; i <= len(s)-len(substr); i++ {
+		if strings.EqualFold(s[i:i+len(substr)], substr) {
+			return true
+		}
+	}
+
+	return false
 }
 
 func resolveFinishResult(finished repositoryFinishedEntry) string {

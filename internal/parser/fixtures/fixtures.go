@@ -91,3 +91,13 @@ var RepoFinishedUnknown string
 //
 //go:embed RepoFinishedDone.json
 var RepoFinishedDone string
+
+// PackageFileUpdates contains logs with package file updates.
+//
+//go:embed PackageFileUpdates.json
+var PackageFileUpdates string
+
+// VulnerabilityFixes contains logs with vulnerability fix warnings.
+//
+//go:embed VulnerabilityFixes.json
+var VulnerabilityFixes string

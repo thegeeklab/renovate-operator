@@ -382,4 +382,26 @@ func (r *Reconciler) updateLogMetrics(
 	r.metrics.SetApprovalsNeeded(
 		job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, res.PRActivity.NeedsApproval,
 	)
+
+	r.metrics.SetDependenciesTotal(
+		job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, res.Dependencies.TotalDeps,
+	)
+	r.metrics.SetDependenciesOutdated(
+		job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, res.Dependencies.OutdatedDeps,
+	)
+	r.metrics.SetVulnerabilityFixesAvailable(
+		job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, res.Dependencies.VulnerabilityFixesAvail,
+	)
+
+	for updateType, count := range res.Dependencies.UpdatesByType {
+		r.metrics.SetDependencyUpdates(
+			job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, updateType, count,
+		)
+	}
+
+	for resultType, count := range res.BranchResults.ResultsByType {
+		r.metrics.SetBranchResults(
+			job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, resultType, count,
+		)
+	}
 }

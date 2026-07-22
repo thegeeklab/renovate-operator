@@ -110,12 +110,91 @@ var _ = Describe("Recorder", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		It("should set dependencies total gauge", func() {
+			rec.SetDependenciesTotal("default", "test-renovator", "test-runner", "test-repo", 42)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_gitrepo_dependencies Total number of managed dependencies in the last Renovate run.
+				# TYPE renovate_operator_gitrepo_dependencies gauge
+				renovate_operator_gitrepo_dependencies{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner"} 42
+			`
+
+			err := testutil.CollectAndCompare(recImpl.gitrepoDependenciesTotal, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should set dependencies outdated gauge", func() {
+			rec.SetDependenciesOutdated("default", "test-renovator", "test-runner", "test-repo", 10)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_gitrepo_dependencies_outdated Number of dependencies with available updates.
+				# TYPE renovate_operator_gitrepo_dependencies_outdated gauge
+				renovate_operator_gitrepo_dependencies_outdated{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner"} 10
+			`
+
+			err := testutil.CollectAndCompare(recImpl.gitrepoDependenciesOutdated, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should set dependency updates gauge by type", func() {
+			rec.SetDependencyUpdates("default", "test-renovator", "test-runner", "test-repo", "major", 3)
+			rec.SetDependencyUpdates("default", "test-renovator", "test-runner", "test-repo", "minor", 7)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_gitrepo_dependency_updates Number of pending dependency updates by type (major, minor, patch, pin, digest).
+				# TYPE renovate_operator_gitrepo_dependency_updates gauge
+				renovate_operator_gitrepo_dependency_updates{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner",update_type="major"} 3
+				renovate_operator_gitrepo_dependency_updates{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner",update_type="minor"} 7
+			`
+
+			err := testutil.CollectAndCompare(recImpl.gitrepoDependencyUpdates, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should set vulnerability fixes available gauge", func() {
+			rec.SetVulnerabilityFixesAvailable("default", "test-renovator", "test-runner", "test-repo", 2)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_gitrepo_vulnerability_fixes_available Number of dependencies with available vulnerability fixes.
+				# TYPE renovate_operator_gitrepo_vulnerability_fixes_available gauge
+				renovate_operator_gitrepo_vulnerability_fixes_available{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner"} 2
+			`
+
+			err := testutil.CollectAndCompare(recImpl.gitrepoVulnerabilityFixes, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should set branch results gauge by result type", func() {
+			rec.SetBranchResults("default", "test-renovator", "test-runner", "test-repo", "created", 5)
+			rec.SetBranchResults("default", "test-renovator", "test-runner", "test-repo", "updated", 3)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_gitrepo_branch_results Number of branches by result type (created, updated, already-existed, not-scheduled, etc.).
+				# TYPE renovate_operator_gitrepo_branch_results gauge
+				renovate_operator_gitrepo_branch_results{gitrepo="test-repo",namespace="default",renovator="test-renovator",result="created",runner="test-runner"} 5
+				renovate_operator_gitrepo_branch_results{gitrepo="test-repo",namespace="default",renovator="test-renovator",result="updated",runner="test-runner"} 3
+			`
+
+			err := testutil.CollectAndCompare(recImpl.gitrepoBranchResults, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("should delete gitrepo metrics", func() {
 			rec.RecordGitRepoRun("default", "test-renovator", "test-runner", "test-repo", StatusSucceeded)
 			rec.SetRunFailed("default", "test-renovator", "test-runner", "test-repo", false)
 			rec.SetLastRunTimestamp("default", "test-renovator", "test-runner", "test-repo", 1234567890)
 			rec.SetDependencyIssues("default", "test-renovator", "test-runner", "test-repo", false)
 			rec.SetApprovalsNeeded("default", "test-renovator", "test-runner", "test-repo", 3)
+			rec.SetDependenciesTotal("default", "test-renovator", "test-runner", "test-repo", 50)
+			rec.SetDependenciesOutdated("default", "test-renovator", "test-runner", "test-repo", 10)
+			rec.SetDependencyUpdates("default", "test-renovator", "test-runner", "test-repo", "major", 2)
+			rec.SetVulnerabilityFixesAvailable("default", "test-renovator", "test-runner", "test-repo", 1)
+			rec.SetBranchResults("default", "test-renovator", "test-runner", "test-repo", "created", 5)
 
 			rec.DeleteGitRepo("default", "test-renovator", "test-runner", "test-repo")
 
@@ -124,6 +203,11 @@ var _ = Describe("Recorder", func() {
 			Expect(testutil.CollectAndCount(recImpl.gitrepoLastRun)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoDependencyIssues)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoApprovalsNeeded)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.gitrepoDependenciesTotal)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.gitrepoDependenciesOutdated)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.gitrepoDependencyUpdates)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.gitrepoVulnerabilityFixes)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.gitrepoBranchResults)).To(Equal(0))
 		})
 
 		It("should enforce cardinality cap", func() {
