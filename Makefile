@@ -7,7 +7,7 @@ GOLANGCI_LINT_PACKAGE_VERSION := v2.12.2
 # renovate: datasource=go depName=github.com/a-h/templ
 TEMPL_PACKAGE_VERSION := v0.3.1020
 # renovate: datasource=github-releases depName=air-verse/air
-AIR_PACKAGE_VERSION := v1.67.1
+AIR_PACKAGE_VERSION := v1.67.2
 # renovate: datasource=github-releases depName=norwoodj/helm-docs
 HELM_DOCS_PACKAGE_VERSION := v1.14.2
 # renovate: datasource=docker depName=ghcr.io/helm-unittest/helm-unittest/unittest
