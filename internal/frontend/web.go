@@ -55,7 +55,7 @@ const (
 	// kubelet applies this server-side via PodLogOptions.TailLines, so no
 	// bytes are wasted in transfer. Use the download endpoint for the full
 	// log.
-	displayLogTailLines             = 10000
+	displayLogTailLines             = 10
 	maxConcurrentRenovatorSummaries = 10
 )
 
@@ -475,7 +475,7 @@ func (h *WebHandler) buildJobLogData(
 
 	data.Content = content
 	data.Truncated = truncated
-	data.DisplayTailLines = displayLogTailLines
+	data.DisplayTailLines = tailLines
 
 	if len(data.Content) == 0 && isRunning {
 		data.Message = msgInitializing

@@ -63,9 +63,15 @@ var _ = Describe("sanitize helpers", func() {
 
 	Describe("JobLogsURL", func() {
 		It("builds a URL with namespace, runner, job, platform, and repoUrl", func() {
-			Expect(JobLogsURL("ns", "runner", "job", "github", "https://github.com/owner/repo")).
-				To(Equal("/joblogs?namespace=ns&runner=runner&job=job&platform=github" +
-					"&repoUrl=https%3A%2F%2Fgithub.com%2Fowner%2Frepo"))
+			Expect(JobLogsURL("ns", "runner", "job", "github", "https://github.com/owner/repo", false)).
+				To(Equal("/joblogs?job=job&namespace=ns&platform=github" +
+					"&repoUrl=https%3A%2F%2Fgithub.com%2Fowner%2Frepo&runner=runner"))
+		})
+
+		It("includes all=1 when all is true", func() {
+			Expect(JobLogsURL("ns", "runner", "job", "github", "https://github.com/owner/repo", true)).
+				To(Equal("/joblogs?all=1&job=job&namespace=ns&platform=github" +
+					"&repoUrl=https%3A%2F%2Fgithub.com%2Fowner%2Frepo&runner=runner"))
 		})
 	})
 

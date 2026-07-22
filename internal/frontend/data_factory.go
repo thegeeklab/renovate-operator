@@ -682,7 +682,12 @@ func readJobLogStream(stream io.Reader, tailLines int64) (string, bool, error) {
 		return string(content), false, nil
 	}
 
-	lines := strings.Split(string(content), "\n")
+	text := strings.TrimSuffix(string(content), "\n")
+	if text == "" {
+		return "", false, nil
+	}
+
+	lines := strings.Split(text, "\n")
 	if int64(len(lines)) <= tailLines {
 		return string(content), false, nil
 	}
