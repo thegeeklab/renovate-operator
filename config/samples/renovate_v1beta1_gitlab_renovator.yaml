@@ -1,0 +1,32 @@
+---
+apiVersion: renovate.thegeeklab.de/v1beta1
+kind: Renovator
+metadata:
+  labels:
+    app.kubernetes.io/name: renovate-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: gitlab-renovator-sample
+spec:
+  schedule: "0 */2 * * *"
+
+  discovery:
+    schedule: "0 */2 * * *"
+    filter:
+      - "example-group/subgroup/*"
+    skipForks: true
+    topics:
+      - renovate
+
+  runner:
+    schedule: "0 */2 * * *"
+    maxParallel: 3
+
+  renovate:
+    platform:
+      type: gitlab
+      endpoint: https://gitlab.example.com/api/v4/
+      token:
+        secretKeyRef:
+          name: gitlab-token
+          key: token
+    onboarding: true

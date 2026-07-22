@@ -4,6 +4,7 @@ package v1beta1
 const (
 	PlatformType_GITHUB = "github"
 	PlatformType_GITEA  = "gitea"
+	PlatformType_GITLAB = "gitlab"
 
 	// LabelRenovator is the label used to associate resources with a Renovator instance.
 	LabelRenovator = "renovate.thegeeklab.de/renovator"

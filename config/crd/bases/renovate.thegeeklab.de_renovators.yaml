@@ -6932,6 +6932,7 @@ spec:
                           enum:
                             - github
                             - gitea
+                            - gitlab
                           type: string
                       required:
                         - endpoint

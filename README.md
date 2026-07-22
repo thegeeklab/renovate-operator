@@ -29,12 +29,12 @@ A Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com
   - [x] Gitea
   - [x] GitHub
   - [ ] Forgejo
-  - [ ] GitLab
+  - [x] GitLab
 - [x] OAuth2 authentication
   - [x] Gitea
   - [x] GitHub
   - [ ] Forgejo
-  - [ ] GitLab
+  - [x] GitLab
 
 ## Quick Start
 

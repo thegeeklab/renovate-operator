@@ -13,7 +13,7 @@ const (
 	RenovatorConditionRenovateConfigReady = "RenovateConfigReady"
 )
 
-// +kubebuilder:validation:Enum=github;gitea
+// +kubebuilder:validation:Enum=github;gitea;gitlab
 type PlatformType string
 
 type PlatformSpec struct {

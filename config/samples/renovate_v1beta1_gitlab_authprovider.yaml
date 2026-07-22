@@ -1,0 +1,19 @@
+---
+apiVersion: renovate.thegeeklab.de/v1beta1
+kind: AuthProvider
+metadata:
+  labels:
+    app.kubernetes.io/name: renovate-operator
+    app.kubernetes.io/managed-by: kustomize
+  name: gitlab-authprovider-sample
+spec:
+  type: gitlab
+  endpoint: https://gitlab.example.com
+  # Optional explicit API base; omit to derive endpoint + /api/v4.
+  forgeUrl: https://gitlab.example.com/api/v4
+  clientId: replace-with-gitlab-oauth-application-id
+  clientSecret:
+    name: gitlab-oauth-client
+    key: client-secret
+  redirectUrl: https://renovate.example.com/auth/callback
+  displayName: Company GitLab

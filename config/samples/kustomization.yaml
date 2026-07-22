@@ -6,3 +6,6 @@ resources:
   - renovate_v1beta1_renovateconfig.yaml
   - renovate_v1beta1_runner.yaml
   - renovate_v1beta1_authprovider.yaml
+  - renovate_v1beta1_gitlab_renovator.yaml
+  - renovate_v1beta1_gitlab_authprovider.yaml
+# +kubebuilder:scaffold:manifestskustomizesamples
