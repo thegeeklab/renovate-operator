@@ -1180,6 +1180,37 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(issues).To(Equal(float64(1)))
 			Expect(approvals).To(Equal(float64(1)))
 		})
+
+		It("sets log_warnings and log_errors counts from log levels", func() {
+			warnLog := `{"level":40,"msg":"Configuration warning"}`
+			errLog := `{"level":50,"msg":"Dependency lookup failed"}`
+			infoLog := `{"level":30,"msg":"Repository finished","result":"done"}`
+
+			reconciler.logReader = newLogReaderMock(strings.Join([]string{warnLog, warnLog, errLog, infoLog}, "\n"), nil)
+
+			reconciler.updateLogMetrics(ctx, testJob, "renovator-1", "repo-1")
+
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var warns, errs float64
+
+			for _, mf := range metricFamilies {
+				switch mf.GetName() {
+				case "renovate_operator_gitrepo_log_warnings":
+					for _, m := range mf.GetMetric() {
+						warns = m.GetGauge().GetValue()
+					}
+				case "renovate_operator_gitrepo_log_errors":
+					for _, m := range mf.GetMetric() {
+						errs = m.GetGauge().GetValue()
+					}
+				}
+			}
+
+			Expect(warns).To(Equal(float64(2)))
+			Expect(errs).To(Equal(float64(1)))
+		})
 	})
 })
 

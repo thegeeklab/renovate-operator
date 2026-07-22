@@ -239,6 +239,8 @@ var (
 // ParseLogsResult is the aggregated result of scanning a Renovate NDJSON log.
 type ParseLogsResult struct {
 	HasIssues     bool
+	WarnCount     int
+	ErrorCount    int
 	PRActivity    *PRActivity
 	Dependencies  *DependencySummary
 	BranchResults *BranchResultSummary
@@ -266,6 +268,8 @@ func ParseLogs(r io.Reader, maxBytes int64) (*ParseLogsResult, error) {
 		ResultsByType: make(map[string]int),
 	}
 
+	var warnCount, errorCount int
+
 	for scanner.Scan() {
 		line := scanner.Text()
 		if line == "" {
@@ -279,6 +283,12 @@ func ParseLogs(r io.Reader, maxBytes int64) (*ParseLogsResult, error) {
 
 		if entry.Level >= levelWarn {
 			result.HasIssues = true
+
+			if entry.Level >= levelError {
+				errorCount++
+			} else {
+				warnCount++
+			}
 		}
 
 		processLogEntry(line, entry, branchMap, result, depSummary, branchResults)
@@ -292,6 +302,8 @@ func ParseLogs(r io.Reader, maxBytes int64) (*ParseLogsResult, error) {
 
 	return &ParseLogsResult{
 		HasIssues:     result.HasIssues,
+		WarnCount:     warnCount,
+		ErrorCount:    errorCount,
 		PRActivity:    activity,
 		Dependencies:  depSummary,
 		BranchResults: branchResults,

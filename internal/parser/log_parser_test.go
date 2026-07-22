@@ -274,6 +274,8 @@ var _ = Describe("LogParser", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(res).NotTo(BeNil())
 			Expect(res.HasIssues).To(BeTrue())
+			Expect(res.WarnCount).To(Equal(1))
+			Expect(res.ErrorCount).To(Equal(1))
 			Expect(res.PRActivity.NeedsApproval).To(Equal(0))
 		})
 

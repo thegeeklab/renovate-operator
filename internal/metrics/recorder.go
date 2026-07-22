@@ -28,6 +28,8 @@ type Recorder interface {
 	SetDependencyUpdates(namespace, renovator, runner, gitrepo, updateType string, count int)
 	SetVulnerabilityFixesAvailable(namespace, renovator, runner, gitrepo string, count int)
 	SetBranchResults(namespace, renovator, runner, gitrepo, result string, count int)
+	SetLogWarnCount(namespace, renovator, runner, gitrepo string, count int)
+	SetLogErrorCount(namespace, renovator, runner, gitrepo string, count int)
 	DeleteGitRepo(namespace, renovator, runner, gitrepo string)
 	RecordRunnerReconcileDuration(duration time.Duration, result string)
 	Gatherer() prometheus.Gatherer
@@ -44,6 +46,8 @@ type recorder struct {
 	gitrepoDependencyUpdates    *prometheus.GaugeVec
 	gitrepoVulnerabilityFixes   *prometheus.GaugeVec
 	gitrepoBranchResults        *prometheus.GaugeVec
+	gitrepoLogWarnings          *prometheus.GaugeVec
+	gitrepoLogErrors            *prometheus.GaugeVec
 	runnerReconcileDur          *prometheus.HistogramVec
 	seriesDropped               *prometheus.CounterVec
 	guard                       *CardinalityGuard
@@ -145,6 +149,22 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		[]string{"namespace", "renovator", "runner", "gitrepo", "result"},
 	)
 
+	gitrepoLogWarnings := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_gitrepo_log_warnings",
+			Help: "Number of WARN-level log entries observed in the last Renovate run.",
+		},
+		[]string{"namespace", "renovator", "runner", "gitrepo"},
+	)
+
+	gitrepoLogErrors := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_gitrepo_log_errors",
+			Help: "Number of ERROR-level log entries observed in the last Renovate run.",
+		},
+		[]string{"namespace", "renovator", "runner", "gitrepo"},
+	)
+
 	seriesDropped := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "renovate_operator_metrics_series_dropped_total",
@@ -158,7 +178,7 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		gitrepoDependencyIssues, gitrepoApprovalsNeeded,
 		gitrepoDependenciesTotal, gitrepoDependenciesOutdated,
 		gitrepoDependencyUpdates, gitrepoVulnerabilityFixes,
-		gitrepoBranchResults,
+		gitrepoBranchResults, gitrepoLogWarnings, gitrepoLogErrors,
 		runnerReconcileDur, seriesDropped,
 	)
 
@@ -173,6 +193,8 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		gitrepoDependencyUpdates:    gitrepoDependencyUpdates,
 		gitrepoVulnerabilityFixes:   gitrepoVulnerabilityFixes,
 		gitrepoBranchResults:        gitrepoBranchResults,
+		gitrepoLogWarnings:          gitrepoLogWarnings,
+		gitrepoLogErrors:            gitrepoLogErrors,
 		runnerReconcileDur:          runnerReconcileDur,
 		seriesDropped:               seriesDropped,
 		guard:                       guard,
