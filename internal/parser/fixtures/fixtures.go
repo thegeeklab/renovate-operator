@@ -101,3 +101,11 @@ var PackageFileUpdates string
 //
 //go:embed VulnerabilityFixes.json
 var VulnerabilityFixes string
+
+// ConfigWithNestedObject contains log lines where the config field is a
+// flat key/value object instead of a map of arrays (e.g. "File config",
+// "Env config"). These lines used to fail JSON parsing because the
+// renovateLogEntry.Config field was typed as map[string][]packageFileData.
+//
+//go:embed ConfigWithNestedObject.json
+var ConfigWithNestedObject string
