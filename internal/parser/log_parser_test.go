@@ -302,6 +302,39 @@ var _ = Describe("LogParser", func() {
 			Expect(res.PRActivity.NeedsApproval).To(Equal(0))
 		})
 
+		It("extracts dependency summary from package file updates", func() {
+			res, err := ParseLogs(strings.NewReader(fixtures.PackageFileUpdates), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).NotTo(BeNil())
+			Expect(res.Dependencies).NotTo(BeNil())
+			Expect(res.Dependencies.TotalDeps).To(Equal(5))
+			Expect(res.Dependencies.OutdatedDeps).To(Equal(4))
+			Expect(res.Dependencies.UpdatesByType["minor"]).To(Equal(1))
+			Expect(res.Dependencies.UpdatesByType["major"]).To(Equal(1))
+			Expect(res.Dependencies.UpdatesByType["patch"]).To(Equal(1))
+			Expect(res.Dependencies.UpdatesByType["pin"]).To(Equal(1))
+			Expect(res.Dependencies.VulnerabilityFixesAvail).To(Equal(0))
+		})
+
+		It("extracts vulnerability fixes from package file updates", func() {
+			res, err := ParseLogs(strings.NewReader(fixtures.VulnerabilityFixes), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).NotTo(BeNil())
+			Expect(res.Dependencies).NotTo(BeNil())
+			Expect(res.Dependencies.TotalDeps).To(Equal(2))
+			Expect(res.Dependencies.OutdatedDeps).To(Equal(2))
+			Expect(res.Dependencies.VulnerabilityFixesAvail).To(Equal(2))
+		})
+
+		It("extracts branch results from branches info extended", func() {
+			res, err := ParseLogs(strings.NewReader(fixtures.BranchesInfoExtended), -1)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(res).NotTo(BeNil())
+			Expect(res.BranchResults).NotTo(BeNil())
+			Expect(res.BranchResults.ResultsByType["needs-approval"]).To(Equal(1))
+			Expect(res.BranchResults.ResultsByType["done"]).To(Equal(1))
+		})
+
 		It("counts multiple needs-approval PRs correctly", func() {
 			ba := `{"branchName":"renovate/dep-a","prNo":null,"prTitle":"Update dep-a","result":"needs-approval"}`
 			bb := `{"branchName":"renovate/dep-b","prNo":null,"prTitle":"Update dep-b","result":"needs-approval"}`

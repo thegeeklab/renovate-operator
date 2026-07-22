@@ -16,27 +16,38 @@ const (
 	histogramBucketCount  = 15
 )
 
+//nolint:interfacebloat
 type Recorder interface {
 	RecordGitRepoRun(namespace, renovator, runner, gitrepo, status string)
 	SetRunFailed(namespace, renovator, runner, gitrepo string, failed bool)
 	SetLastRunTimestamp(namespace, renovator, runner, gitrepo string, timestamp float64)
 	SetDependencyIssues(namespace, renovator, runner, gitrepo string, hasIssues bool)
 	SetApprovalsNeeded(namespace, renovator, runner, gitrepo string, count int)
+	SetDependenciesTotal(namespace, renovator, runner, gitrepo string, count int)
+	SetDependenciesOutdated(namespace, renovator, runner, gitrepo string, count int)
+	SetDependencyUpdates(namespace, renovator, runner, gitrepo, updateType string, count int)
+	SetVulnerabilityFixesAvailable(namespace, renovator, runner, gitrepo string, count int)
+	SetBranchResults(namespace, renovator, runner, gitrepo, result string, count int)
 	DeleteGitRepo(namespace, renovator, runner, gitrepo string)
 	RecordRunnerReconcileDuration(duration time.Duration, result string)
 	Gatherer() prometheus.Gatherer
 }
 
 type recorder struct {
-	gitrepoRuns             *prometheus.CounterVec
-	gitrepoRunFailed        *prometheus.GaugeVec
-	gitrepoLastRun          *prometheus.GaugeVec
-	gitrepoDependencyIssues *prometheus.GaugeVec
-	gitrepoApprovalsNeeded  *prometheus.GaugeVec
-	runnerReconcileDur      *prometheus.HistogramVec
-	seriesDropped           *prometheus.CounterVec
-	guard                   *CardinalityGuard
-	gatherer                prometheus.Gatherer
+	gitrepoRuns                 *prometheus.CounterVec
+	gitrepoRunFailed            *prometheus.GaugeVec
+	gitrepoLastRun              *prometheus.GaugeVec
+	gitrepoDependencyIssues     *prometheus.GaugeVec
+	gitrepoApprovalsNeeded      *prometheus.GaugeVec
+	gitrepoDependenciesTotal    *prometheus.GaugeVec
+	gitrepoDependenciesOutdated *prometheus.GaugeVec
+	gitrepoDependencyUpdates    *prometheus.GaugeVec
+	gitrepoVulnerabilityFixes   *prometheus.GaugeVec
+	gitrepoBranchResults        *prometheus.GaugeVec
+	runnerReconcileDur          *prometheus.HistogramVec
+	seriesDropped               *prometheus.CounterVec
+	guard                       *CardinalityGuard
+	gatherer                    prometheus.Gatherer
 }
 
 var _ Recorder = (*recorder)(nil)
@@ -94,6 +105,46 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		[]string{"namespace", "renovator", "runner", "gitrepo"},
 	)
 
+	gitrepoDependenciesTotal := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_gitrepo_dependencies",
+			Help: "Total number of managed dependencies in the last Renovate run.",
+		},
+		[]string{"namespace", "renovator", "runner", "gitrepo"},
+	)
+
+	gitrepoDependenciesOutdated := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_gitrepo_dependencies_outdated",
+			Help: "Number of dependencies with available updates.",
+		},
+		[]string{"namespace", "renovator", "runner", "gitrepo"},
+	)
+
+	gitrepoDependencyUpdates := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_gitrepo_dependency_updates",
+			Help: "Number of pending dependency updates by type (major, minor, patch, pin, digest).",
+		},
+		[]string{"namespace", "renovator", "runner", "gitrepo", "update_type"},
+	)
+
+	gitrepoVulnerabilityFixes := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_gitrepo_vulnerability_fixes_available",
+			Help: "Number of dependencies with available vulnerability fixes.",
+		},
+		[]string{"namespace", "renovator", "runner", "gitrepo"},
+	)
+
+	gitrepoBranchResults := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_gitrepo_branch_results",
+			Help: "Number of branches by result type (created, updated, already-existed, not-scheduled, etc.).",
+		},
+		[]string{"namespace", "renovator", "runner", "gitrepo", "result"},
+	)
+
 	seriesDropped := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "renovate_operator_metrics_series_dropped_total",
@@ -105,19 +156,27 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 	reg.MustRegister(
 		gitrepoRuns, gitrepoRunFailed, gitrepoLastRun,
 		gitrepoDependencyIssues, gitrepoApprovalsNeeded,
+		gitrepoDependenciesTotal, gitrepoDependenciesOutdated,
+		gitrepoDependencyUpdates, gitrepoVulnerabilityFixes,
+		gitrepoBranchResults,
 		runnerReconcileDur, seriesDropped,
 	)
 
 	r := &recorder{
-		gitrepoRuns:             gitrepoRuns,
-		gitrepoRunFailed:        gitrepoRunFailed,
-		gitrepoLastRun:          gitrepoLastRun,
-		gitrepoDependencyIssues: gitrepoDependencyIssues,
-		gitrepoApprovalsNeeded:  gitrepoApprovalsNeeded,
-		runnerReconcileDur:      runnerReconcileDur,
-		seriesDropped:           seriesDropped,
-		guard:                   guard,
-		gatherer:                gatherer,
+		gitrepoRuns:                 gitrepoRuns,
+		gitrepoRunFailed:            gitrepoRunFailed,
+		gitrepoLastRun:              gitrepoLastRun,
+		gitrepoDependencyIssues:     gitrepoDependencyIssues,
+		gitrepoApprovalsNeeded:      gitrepoApprovalsNeeded,
+		gitrepoDependenciesTotal:    gitrepoDependenciesTotal,
+		gitrepoDependenciesOutdated: gitrepoDependenciesOutdated,
+		gitrepoDependencyUpdates:    gitrepoDependencyUpdates,
+		gitrepoVulnerabilityFixes:   gitrepoVulnerabilityFixes,
+		gitrepoBranchResults:        gitrepoBranchResults,
+		runnerReconcileDur:          runnerReconcileDur,
+		seriesDropped:               seriesDropped,
+		guard:                       guard,
+		gatherer:                    gatherer,
 	}
 
 	return r
