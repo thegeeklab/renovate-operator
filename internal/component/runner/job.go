@@ -349,7 +349,8 @@ func (r *Reconciler) updateJobStatus(
 }
 
 // updateLogMetrics parses the Renovate job logs and updates the
-// dependency_issues and approvals_needed gauge metrics.
+// dependency_issues, log_warnings_total, log_errors_total and
+// approvals_needed gauge metrics.
 func (r *Reconciler) updateLogMetrics(
 	ctx context.Context, job *batchv1.Job, renovatorLabel, gitrepoLabel string,
 ) {
@@ -378,6 +379,12 @@ func (r *Reconciler) updateLogMetrics(
 
 	r.metrics.SetDependencyIssues(
 		job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, res.HasIssues,
+	)
+	r.metrics.SetLogWarnCount(
+		job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, res.WarnCount,
+	)
+	r.metrics.SetLogErrorCount(
+		job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, res.ErrorCount,
 	)
 	r.metrics.SetApprovalsNeeded(
 		job.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, res.PRActivity.NeedsApproval,

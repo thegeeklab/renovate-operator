@@ -184,6 +184,34 @@ var _ = Describe("Recorder", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
+		It("should set log warnings count gauge", func() {
+			rec.SetLogWarnCount("default", "test-renovator", "test-runner", "test-repo", 4)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_gitrepo_log_warnings Number of WARN-level log entries observed in the last Renovate run.
+				# TYPE renovate_operator_gitrepo_log_warnings gauge
+				renovate_operator_gitrepo_log_warnings{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner"} 4
+			`
+
+			err := testutil.CollectAndCompare(recImpl.gitrepoLogWarnings, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should set log errors count gauge", func() {
+			rec.SetLogErrorCount("default", "test-renovator", "test-runner", "test-repo", 2)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_gitrepo_log_errors Number of ERROR-level log entries observed in the last Renovate run.
+				# TYPE renovate_operator_gitrepo_log_errors gauge
+				renovate_operator_gitrepo_log_errors{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner"} 2
+			`
+
+			err := testutil.CollectAndCompare(recImpl.gitrepoLogErrors, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("should delete gitrepo metrics", func() {
 			rec.RecordGitRepoRun("default", "test-renovator", "test-runner", "test-repo", StatusSucceeded)
 			rec.SetRunFailed("default", "test-renovator", "test-runner", "test-repo", false)
@@ -195,6 +223,8 @@ var _ = Describe("Recorder", func() {
 			rec.SetDependencyUpdates("default", "test-renovator", "test-runner", "test-repo", "major", 2)
 			rec.SetVulnerabilityFixesAvailable("default", "test-renovator", "test-runner", "test-repo", 1)
 			rec.SetBranchResults("default", "test-renovator", "test-runner", "test-repo", "created", 5)
+			rec.SetLogWarnCount("default", "test-renovator", "test-runner", "test-repo", 3)
+			rec.SetLogErrorCount("default", "test-renovator", "test-runner", "test-repo", 1)
 
 			rec.DeleteGitRepo("default", "test-renovator", "test-runner", "test-repo")
 
@@ -208,6 +238,8 @@ var _ = Describe("Recorder", func() {
 			Expect(testutil.CollectAndCount(recImpl.gitrepoDependencyUpdates)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoVulnerabilityFixes)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoBranchResults)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.gitrepoLogWarnings)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.gitrepoLogErrors)).To(Equal(0))
 		})
 
 		It("should enforce cardinality cap", func() {

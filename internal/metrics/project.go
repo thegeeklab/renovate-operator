@@ -133,6 +133,28 @@ func (r *recorder) SetBranchResults(namespace, renovator, runner, gitrepo, resul
 	r.gitrepoBranchResults.WithLabelValues(namespace, renovator, runner, gitrepo, result).Set(float64(count))
 }
 
+func (r *recorder) SetLogWarnCount(namespace, renovator, runner, gitrepo string, count int) {
+	key := gitrepoKey(namespace, renovator, runner, gitrepo)
+	if !r.guard.Allow(key) {
+		r.seriesDropped.WithLabelValues("cardinality_cap").Inc()
+
+		return
+	}
+
+	r.gitrepoLogWarnings.WithLabelValues(namespace, renovator, runner, gitrepo).Set(float64(count))
+}
+
+func (r *recorder) SetLogErrorCount(namespace, renovator, runner, gitrepo string, count int) {
+	key := gitrepoKey(namespace, renovator, runner, gitrepo)
+	if !r.guard.Allow(key) {
+		r.seriesDropped.WithLabelValues("cardinality_cap").Inc()
+
+		return
+	}
+
+	r.gitrepoLogErrors.WithLabelValues(namespace, renovator, runner, gitrepo).Set(float64(count))
+}
+
 func (r *recorder) DeleteGitRepo(namespace, renovator, runner, gitrepo string) {
 	for _, status := range []string{StatusSucceeded, StatusFailed, StatusUnknown} {
 		r.gitrepoRuns.DeleteLabelValues(namespace, renovator, runner, gitrepo, status)
@@ -145,6 +167,8 @@ func (r *recorder) DeleteGitRepo(namespace, renovator, runner, gitrepo string) {
 	r.gitrepoDependenciesTotal.DeleteLabelValues(namespace, renovator, runner, gitrepo)
 	r.gitrepoDependenciesOutdated.DeleteLabelValues(namespace, renovator, runner, gitrepo)
 	r.gitrepoVulnerabilityFixes.DeleteLabelValues(namespace, renovator, runner, gitrepo)
+	r.gitrepoLogWarnings.DeleteLabelValues(namespace, renovator, runner, gitrepo)
+	r.gitrepoLogErrors.DeleteLabelValues(namespace, renovator, runner, gitrepo)
 
 	r.gitrepoDependencyUpdates.DeletePartialMatch(prometheus.Labels{
 		"namespace": namespace, "renovator": renovator, "runner": runner, "gitrepo": gitrepo,
