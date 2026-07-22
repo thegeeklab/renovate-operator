@@ -21,9 +21,9 @@ var _ = Describe("GitLab Provider", func() {
 			Expect(apiURL).To(Equal(expectedAPI))
 			Expect(forgeURL).To(Equal(expectedForge))
 		},
-		Entry("empty endpoint", "", defaultAPIURL, "https://gitlab.com"),
-		Entry("GitLab.com web endpoint", "https://gitlab.com/", defaultAPIURL, "https://gitlab.com"),
-		Entry("GitLab.com API endpoint", "https://gitlab.com/api/v4/", defaultAPIURL, "https://gitlab.com"),
+		Entry("empty endpoint", "", "https://gitlab.com/api/v4/", "https://gitlab.com"),
+		Entry("GitLab.com web endpoint", "https://gitlab.com/", "https://gitlab.com/api/v4/", "https://gitlab.com"),
+		Entry("GitLab.com API endpoint", "https://gitlab.com/api/v4/", "https://gitlab.com/api/v4/", "https://gitlab.com"),
 		Entry(
 			"self-managed web endpoint",
 			"https://gitlab.example.com/",

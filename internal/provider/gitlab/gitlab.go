@@ -10,14 +10,13 @@ import (
 	"strings"
 	"time"
 
-	gitlabapi "gitlab.com/gitlab-org/api/client-go"
+	gitlab "gitlab.com/gitlab-org/api/client-go"
 
 	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
 )
 
 const (
-	defaultAPIURL          = "https://gitlab.com/api/v4/"
 	defaultPageSize        = 50
 	minProjectPathSegments = 2
 	httpTimeout            = 30 * time.Second
@@ -30,7 +29,7 @@ var (
 
 // Provider manages GitLab projects and project hooks.
 type Provider struct {
-	client   *gitlabapi.Client
+	client   *gitlab.Client
 	forgeURL string
 }
 
@@ -41,10 +40,10 @@ func NewProvider(ctx context.Context, endpoint, token string) (*Provider, error)
 	apiURL, forgeURL := normalizeEndpoint(endpoint)
 	httpClient := &http.Client{Timeout: httpTimeout}
 
-	client, err := gitlabapi.NewClient(
+	client, err := gitlab.NewClient(
 		token,
-		gitlabapi.WithBaseURL(apiURL),
-		gitlabapi.WithHTTPClient(httpClient),
+		gitlab.WithBaseURL(apiURL),
+		gitlab.WithHTTPClient(httpClient),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("failed to create gitlab client: %w", err)
@@ -57,7 +56,7 @@ func (p *Provider) GetIdentity() (string, error) {
 	ctx, cancel := context.WithTimeout(context.Background(), httpTimeout)
 	defer cancel()
 
-	user, _, err := p.client.Users.CurrentUser(gitlabapi.WithContext(ctx))
+	user, _, err := p.client.Users.CurrentUser(gitlab.WithContext(ctx))
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch current user: %w", err)
 	}
@@ -71,26 +70,26 @@ func (p *Provider) EnsureWebhook(ctx context.Context, repoName, webhookURL, secr
 		return "", err
 	}
 
-	project, _, err := p.client.Projects.GetProject(projectPath, nil, gitlabapi.WithContext(ctx))
+	project, _, err := p.client.Projects.GetProject(projectPath, nil, gitlab.WithContext(ctx))
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch project: %w", err)
 	}
 
-	if effectiveAccessLevel(project.Permissions) < gitlabapi.MaintainerPermissions {
+	if effectiveAccessLevel(project.Permissions) < gitlab.MaintainerPermissions {
 		return "", errMissingMaintainer
 	}
 
-	listOpts := &gitlabapi.ListProjectHooksOptions{
-		ListOptions: gitlabapi.ListOptions{Page: 1, PerPage: defaultPageSize},
+	listOpts := &gitlab.ListProjectHooksOptions{
+		ListOptions: gitlab.ListOptions{Page: 1, PerPage: defaultPageSize},
 	}
 
-	var existingHook *gitlabapi.ProjectHook
+	var existingHook *gitlab.ProjectHook
 
 	for {
 		hooks, resp, err := p.client.Projects.ListProjectHooks(
 			projectPath,
 			listOpts,
-			gitlabapi.WithContext(ctx),
+			gitlab.WithContext(ctx),
 		)
 		if err != nil {
 			return "", fmt.Errorf("failed to list project hooks: %w", err)
@@ -112,7 +111,7 @@ func (p *Provider) EnsureWebhook(ctx context.Context, repoName, webhookURL, secr
 	}
 
 	if existingHook != nil {
-		editOpts := &gitlabapi.EditProjectHookOptions{
+		editOpts := &gitlab.EditProjectHookOptions{
 			URL:                   new(webhookURL),
 			Token:                 new(secret),
 			PushEvents:            new(true),
@@ -125,7 +124,7 @@ func (p *Provider) EnsureWebhook(ctx context.Context, repoName, webhookURL, secr
 			projectPath,
 			existingHook.ID,
 			editOpts,
-			gitlabapi.WithContext(ctx),
+			gitlab.WithContext(ctx),
 		)
 		if err != nil {
 			return "", fmt.Errorf("failed to update existing project hook: %w", err)
@@ -134,7 +133,7 @@ func (p *Provider) EnsureWebhook(ctx context.Context, repoName, webhookURL, secr
 		return strconv.FormatInt(existingHook.ID, 10), nil
 	}
 
-	createOpts := &gitlabapi.AddProjectHookOptions{
+	createOpts := &gitlab.AddProjectHookOptions{
 		URL:                   new(webhookURL),
 		Token:                 new(secret),
 		PushEvents:            new(true),
@@ -146,7 +145,7 @@ func (p *Provider) EnsureWebhook(ctx context.Context, repoName, webhookURL, secr
 	hook, _, err := p.client.Projects.AddProjectHook(
 		projectPath,
 		createOpts,
-		gitlabapi.WithContext(ctx),
+		gitlab.WithContext(ctx),
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to create project hook: %w", err)
@@ -173,10 +172,10 @@ func (p *Provider) DeleteWebhook(ctx context.Context, repoName, webhookID string
 	resp, err := p.client.Projects.DeleteProjectHook(
 		projectPath,
 		hookID,
-		gitlabapi.WithContext(ctx),
+		gitlab.WithContext(ctx),
 	)
 	if err != nil {
-		var responseErr *gitlabapi.ErrorResponse
+		var responseErr *gitlab.ErrorResponse
 		if (resp != nil && resp.StatusCode == http.StatusNotFound) ||
 			(errors.As(err, &responseErr) && responseErr.HasStatusCode(http.StatusNotFound)) {
 			return nil
@@ -197,7 +196,7 @@ func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error)
 	project, _, err := p.client.Projects.GetProject(
 		projectPath,
 		nil,
-		gitlabapi.WithContext(ctx),
+		gitlab.WithContext(ctx),
 	)
 	if err != nil {
 		return "", fmt.Errorf("failed to fetch project: %w", err)
@@ -213,10 +212,10 @@ func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error)
 // ListRepos returns GitLab member projects with Developer-or-higher access
 // and merge requests enabled, applying portable filters locally.
 func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions) ([]provider.Repo, error) {
-	listOpts := &gitlabapi.ListProjectsOptions{
-		ListOptions:              gitlabapi.ListOptions{Page: 1, PerPage: defaultPageSize},
+	listOpts := &gitlab.ListProjectsOptions{
+		ListOptions:              gitlab.ListOptions{Page: 1, PerPage: defaultPageSize},
 		Membership:               new(true),
-		MinAccessLevel:           new(gitlabapi.DeveloperPermissions),
+		MinAccessLevel:           new(gitlab.DeveloperPermissions),
 		WithMergeRequestsEnabled: new(true),
 	}
 
@@ -225,7 +224,7 @@ func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions
 	for {
 		projects, resp, err := p.client.Projects.ListProjects(
 			listOpts,
-			gitlabapi.WithContext(ctx),
+			gitlab.WithContext(ctx),
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to list projects: %w", err)
@@ -261,12 +260,12 @@ func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions
 	return repos, nil
 }
 
-func effectiveAccessLevel(permissions *gitlabapi.Permissions) gitlabapi.AccessLevelValue {
+func effectiveAccessLevel(permissions *gitlab.Permissions) gitlab.AccessLevelValue {
 	if permissions == nil {
-		return gitlabapi.NoPermissions
+		return gitlab.NoPermissions
 	}
 
-	level := gitlabapi.NoPermissions
+	level := gitlab.NoPermissions
 	if permissions.ProjectAccess != nil {
 		level = permissions.ProjectAccess.AccessLevel
 	}
@@ -297,7 +296,7 @@ func normalizeEndpoint(endpoint string) (string, string) {
 	endpoint = strings.TrimRight(strings.TrimSpace(endpoint), "/")
 
 	if endpoint == "" || endpoint == "https://gitlab.com" || endpoint == "https://gitlab.com/api/v4" {
-		return defaultAPIURL, "https://gitlab.com"
+		return "https://gitlab.com/api/v4/", "https://gitlab.com"
 	}
 
 	forgeURL := strings.TrimSuffix(endpoint, "/api/v4")
