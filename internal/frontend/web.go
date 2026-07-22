@@ -55,7 +55,7 @@ const (
 	// kubelet applies this server-side via PodLogOptions.TailLines, so no
 	// bytes are wasted in transfer. Use the download endpoint for the full
 	// log.
-	displayLogTailLines             = 10
+	displayLogTailLines             = 10000
 	maxConcurrentRenovatorSummaries = 10
 )
 
