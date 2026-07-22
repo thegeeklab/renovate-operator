@@ -112,11 +112,11 @@ type ParseResult struct {
 }
 
 type renovateLogEntry struct {
-	Level        int                          `json:"level"`
-	Msg          string                       `json:"msg"`
-	Time         string                       `json:"time"`
-	Config       map[string][]packageFileData `json:"config,omitempty"`
-	BranchesInfo []branchInfoItem             `json:"branchesInformation,omitempty"`
+	Level        int              `json:"level"`
+	Msg          string           `json:"msg"`
+	Time         string           `json:"time"`
+	Config       json.RawMessage  `json:"config,omitempty"`
+	BranchesInfo []branchInfoItem `json:"branchesInformation,omitempty"`
 }
 
 type repositoryFinishedEntry struct {
@@ -478,7 +478,7 @@ func processLogEntry(
 
 	case entry.Msg == "packageFiles with updates":
 		if depSummary != nil {
-			processPackageFileUpdates(entry, depSummary)
+			processPackageFileUpdates(line, depSummary)
 		}
 	}
 }
@@ -578,7 +578,14 @@ func isActiveBranchResult(result string) bool {
 	return result == "needs-approval" || result == "done" || result == "automerged" || result == ""
 }
 
-func processPackageFileUpdates(entry renovateLogEntry, depSummary *DependencySummary) {
+func processPackageFileUpdates(line string, depSummary *DependencySummary) {
+	var entry struct {
+		Config map[string][]packageFileData `json:"config"`
+	}
+	if err := json.Unmarshal([]byte(line), &entry); err != nil || entry.Config == nil {
+		return
+	}
+
 	for _, files := range entry.Config {
 		for _, pf := range files {
 			for _, dep := range pf.Deps {

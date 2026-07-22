@@ -174,6 +174,15 @@ var _ = Describe("LogParser", func() {
 			Expect(result.Lines[2].Message).To(Equal("Warn message"))
 		})
 
+		It("parses log lines with flat object config (File config/Env config)", func() {
+			result := ParseRenovateLogs(fixtures.ConfigWithNestedObject)
+			Expect(result.Lines).To(HaveLen(2))
+			Expect(result.Lines[0].LevelLabel()).To(Equal("DEBUG"))
+			Expect(result.Lines[0].Message).To(Equal("File config"))
+			Expect(result.Lines[1].LevelLabel()).To(Equal("DEBUG"))
+			Expect(result.Lines[1].Message).To(Equal("Env config"))
+		})
+
 		It("sorts PRs by action priority then branch name", func() {
 			result := ParseRenovateLogs(fixtures.SortedPRs)
 			Expect(result.PRActivity).NotTo(BeNil())
