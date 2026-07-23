@@ -1,1 +1,18 @@
-{{- include "renovate-operator.componentIngress" (dict "context" $ "enabled" .Values.frontend.ingress.enabled "managerEnabled" .Values.manager.enabled "component" "frontend" "componentEnabled" .Values.frontend.enabled "ingress" .Values.frontend.ingress "svcPort" (int .Values.frontend.service.port)) }}
+{{- if and .Values.manager.enabled .Values.frontend.enabled .Values.frontend.ingress.enabled }}
+{{- $component := "frontend" }}
+{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" $component "context" $) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "renovate-operator.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+  {{- with .Values.frontend.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- include "renovate-operator.ingressSpec" (dict "ingress" .Values.frontend.ingress "svcPort" (int .Values.frontend.service.port) "fullname" $fullname) | nindent 2 }}
+{{- end }}

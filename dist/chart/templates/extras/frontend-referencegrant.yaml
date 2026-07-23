@@ -1,1 +1,30 @@
-{{- include "renovate-operator.componentReferenceGrant" (dict "context" $ "enabled" .Values.frontend.gateway.enabled "managerEnabled" .Values.manager.enabled "component" "frontend" "componentEnabled" .Values.frontend.enabled "gw" .Values.frontend.gateway) }}
+{{- if and .Values.manager.enabled .Values.frontend.enabled .Values.frontend.gateway.enabled }}
+{{- $component := "frontend" }}
+{{- $gw := .Values.frontend.gateway }}
+{{- if and $gw.gatewayName $gw.gatewayNamespace }}
+{{- $gwNamespace := $gw.gatewayNamespace }}
+{{- if ne $gwNamespace .Release.Namespace }}
+{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" $component "context" $) }}
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: {{ $fullname }}-gateway
+  namespace: {{ $gwNamespace }}
+  labels:
+    {{- include "renovate-operator.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+    {{- with $gw.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: {{ .Release.Namespace }}
+  to:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ $gw.gatewayName }}
+{{- end }}
+{{- end }}
+{{- end }}

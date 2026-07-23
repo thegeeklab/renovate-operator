@@ -1,1 +1,26 @@
-{{- include "renovate-operator.componentGateway" (dict "context" $ "enabled" .Values.receiver.gateway.enabled "managerEnabled" .Values.manager.enabled "component" "receiver" "componentEnabled" .Values.receiver.enabled "gw" .Values.receiver.gateway) }}
+{{- if and .Values.manager.enabled .Values.receiver.enabled .Values.receiver.gateway.enabled }}
+{{- $component := "receiver" }}
+{{- $gw := .Values.receiver.gateway }}
+{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" $component "context" $) }}
+{{- $gwName := default (printf "%s-gateway" $fullname) $gw.gatewayName }}
+{{- $gwNamespace := default .Release.Namespace $gw.gatewayNamespace }}
+{{- if not $gw.gatewayName }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ $gwName }}
+  namespace: {{ $gwNamespace }}
+  labels:
+    {{- include "renovate-operator.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+    {{- with $gw.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $gw.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- include "renovate-operator.gatewaySpec" (dict "gw" $gw "component" $component) | nindent 2 }}
+{{- end }}
+{{- end }}

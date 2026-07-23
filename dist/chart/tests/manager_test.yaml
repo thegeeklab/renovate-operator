@@ -118,6 +118,27 @@ tests:
       - contains:
           path: spec.template.spec.containers[0].volumeMounts
           content:
-            mountPath: /tmp/k8s-webhook-server/serving-certs
-            name: webhook-cert
-            readOnly: true
+             mountPath: /tmp/k8s-webhook-server/serving-certs
+             name: webhook-cert
+             readOnly: true
+
+  - it: should render correct selector and template labels
+    asserts:
+      - equal:
+          path: spec.selector.matchLabels["app.kubernetes.io/name"]
+          value: renovate-operator
+      - equal:
+          path: spec.selector.matchLabels["control-plane"]
+          value: controller-manager
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/name"]
+          value: renovate-operator
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+      - equal:
+          path: spec.template.metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+      - equal:
+          path: spec.template.metadata.labels["control-plane"]
+          value: controller-manager

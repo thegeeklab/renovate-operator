@@ -1,1 +1,20 @@
-{{- include "renovate-operator.componentService" (dict "context" $ "enabled" .Values.receiver.service.enabled "managerEnabled" .Values.manager.enabled "component" "receiver" "componentEnabled" .Values.receiver.enabled "svc" .Values.receiver.service) }}
+{{- if and .Values.manager.enabled .Values.receiver.enabled .Values.receiver.service.enabled }}
+{{- $component := "receiver" }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "renovate-operator.resourceName" (dict "suffix" $component "context" $) }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "renovate-operator.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+    {{- with .Values.receiver.service.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.receiver.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- include "renovate-operator.serviceSpec" (dict "svc" .Values.receiver.service "component" $component "context" $) | nindent 2 }}
+{{- end }}

@@ -55,228 +55,163 @@ Otherwise, use the standard resourceName helper with "controller-manager" suffix
 {{- end }}
 
 {{/*
-Common metadata labels for component resources.
-Takes a dict with:
-  - .context: root context ($)
-  - .component: label value (e.g. "frontend", "receiver")
-  - .extraLabels: optional map of additional labels
+Standard Kubernetes metadata labels.
+Takes the root context ($) as the single argument.
+Add component and extra labels inline in each template.
 */}}
-{{- define "renovate-operator.componentLabels" -}}
-app.kubernetes.io/managed-by: {{ .context.Release.Service }}
-app.kubernetes.io/name: {{ include "renovate-operator.name" .context }}
-helm.sh/chart: {{ .context.Chart.Name }}-{{ .context.Chart.Version | replace "+" "_" }}
-app.kubernetes.io/instance: {{ .context.Release.Name }}
-app.kubernetes.io/component: {{ .component }}
-{{- if .extraLabels }}
-{{ toYaml .extraLabels -}}
-{{- end }}
+{{- define "renovate-operator.labels" -}}
+app.kubernetes.io/managed-by: {{ .Release.Service }}
+helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+app.kubernetes.io/name: {{ include "renovate-operator.name" . }}
+app.kubernetes.io/instance: {{ .Release.Name }}
 {{- end }}
 
 {{/*
-Component Service resource.
-Takes a dict with:
-  - .context: root context ($)
-  - .enabled: service.enabled
-  - .managerEnabled: .Values.manager.enabled
-  - .component: component name
-  - .componentEnabled: .Values.<component>.enabled
-  - .svc: service values dict
+Pod selector labels for component resources.
+Takes the root context ($) as the single argument.
 */}}
-{{- define "renovate-operator.componentService" -}}
-{{- if and .managerEnabled .componentEnabled .enabled }}
+{{- define "renovate-operator.selectorLabels" -}}
+app.kubernetes.io/name: {{ include "renovate-operator.name" . }}
+control-plane: controller-manager
+{{- end }}
+
+{{/*
+Component Service spec.
+Takes a dict with:
+  - .svc: service values dict
+  - .component: component name (for default port name and targetPort)
+  - .context: root context ($)
+*/}}
+{{- define "renovate-operator.serviceSpec" -}}
+{{- $svc := .svc }}
 {{- $component := .component }}
 {{- $context := .context }}
-{{- $svc := .svc }}
-{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" $component "context" $context) }}
-apiVersion: v1
-kind: Service
-metadata:
-  name: {{ $fullname }}
-  namespace: {{ $context.Release.Namespace }}
-  labels:
-    {{- include "renovate-operator.componentLabels" (dict "component" $component "context" $context "extraLabels" $svc.labels) | nindent 4 }}
-  {{- with $svc.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-spec:
-  type: {{ $svc.type }}
-  {{- with $svc.clusterIP }}
-  clusterIP: {{ . | quote }}
-  {{- end }}
-  {{- if $svc.sessionAffinity }}
-  sessionAffinity: {{ $svc.sessionAffinity }}
-  {{- end }}
-  selector:
-    app.kubernetes.io/name: {{ include "renovate-operator.name" $context }}
-    control-plane: controller-manager
-  ports:
-    - name: {{ $svc.targetPort | default $component }}
-      port: {{ $svc.port }}
-      targetPort: {{ $svc.targetPort | default $component }}
-      protocol: TCP
-      {{- if and (eq $svc.type "NodePort") $svc.nodePort }}
-      nodePort: {{ $svc.nodePort }}
-      {{- end }}
+type: {{ $svc.type }}
+{{- with $svc.clusterIP }}
+clusterIP: {{ . | quote }}
 {{- end }}
+{{- if $svc.sessionAffinity }}
+sessionAffinity: {{ $svc.sessionAffinity }}
+{{- end }}
+selector:
+  {{- include "renovate-operator.selectorLabels" $context | nindent 2 }}
+ports:
+  - name: {{ $svc.targetPort | default $component }}
+    port: {{ $svc.port }}
+    targetPort: {{ $svc.targetPort | default $component }}
+    protocol: TCP
+    {{- if and (eq $svc.type "NodePort") $svc.nodePort }}
+    nodePort: {{ $svc.nodePort }}
+    {{- end }}
 {{- end }}
 
 {{/*
-Component Ingress resource.
+Component Ingress spec.
 Takes a dict with:
-  - .context: root context ($)
-  - .enabled: ingress.enabled
-  - .managerEnabled: .Values.manager.enabled
-  - .component: component name
-  - .componentEnabled: .Values.<component>.enabled
   - .ingress: ingress values dict
   - .svcPort: int (service port number)
+  - .fullname: resource fullname (for backend service name)
 */}}
-{{- define "renovate-operator.componentIngress" -}}
-{{- if and .managerEnabled .componentEnabled .enabled }}
-{{- $component := .component }}
-{{- $context := .context }}
+{{- define "renovate-operator.ingressSpec" -}}
 {{- $ingress := .ingress }}
 {{- $svcPort := .svcPort }}
-{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" $component "context" $context) }}
-apiVersion: networking.k8s.io/v1
-kind: Ingress
-metadata:
-  name: {{ $fullname }}
-  namespace: {{ $context.Release.Namespace }}
-  labels:
-    {{- include "renovate-operator.componentLabels" (dict "component" $component "context" $context) | nindent 4 }}
-  {{- with $ingress.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
+{{- $fullname := .fullname }}
+{{- with $ingress.className }}
+ingressClassName: {{ . | quote }}
+{{- end }}
+{{- if $ingress.tls }}
+tls:
+  {{- range $ingress.tls }}
+  - hosts:
+      {{- range .hosts }}
+      - {{ . | quote }}
+      {{- end }}
+    secretName: {{ .secretName | quote }}
   {{- end }}
-spec:
-  {{- with $ingress.className }}
-  ingressClassName: {{ . | quote }}
+{{- end }}
+rules:
+  {{- if not $ingress.hosts }}
+  - http:
+      paths:
+        - path: /
+          pathType: Prefix
+          backend:
+            service:
+              name: {{ $fullname }}
+              port:
+                number: {{ $svcPort }}
   {{- end }}
-  {{- if $ingress.tls }}
-  tls:
-    {{- range $ingress.tls }}
-    - hosts:
-        {{- range .hosts }}
-        - {{ . | quote }}
+  {{- range $h := $ingress.hosts }}
+  - host: {{ $h.host | quote }}
+    http:
+      paths:
+        {{- range $p := $h.paths }}
+        - path: {{ $p.path | quote }}
+          pathType: {{ default "Prefix" $p.pathType | quote }}
+          backend:
+            service:
+              name: {{ $fullname }}
+              port:
+                number: {{ $svcPort }}
         {{- end }}
-      secretName: {{ .secretName | quote }}
-    {{- end }}
   {{- end }}
-  rules:
-    {{- if not $ingress.hosts }}
-    - http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: {{ $fullname }}
-                port:
-                  number: {{ $svcPort }}
-    {{- end }}
-    {{- range $h := $ingress.hosts }}
-    - host: {{ $h.host | quote }}
-      http:
-        paths:
-          {{- range $p := $h.paths }}
-          - path: {{ $p.path | quote }}
-            pathType: {{ default "Prefix" $p.pathType | quote }}
-            backend:
-              service:
-                name: {{ $fullname }}
-                port:
-                  number: {{ $svcPort }}
-          {{- end }}
-    {{- end }}
-{{- end }}
 {{- end }}
 
 {{/*
-Component Gateway resource.
+Component Gateway spec.
 Takes a dict with:
-  - .context: root context ($)
-  - .enabled: gateway.enabled
-  - .managerEnabled: .Values.manager.enabled
-  - .component: component name
-  - .componentEnabled: .Values.<component>.enabled
   - .gw: gateway values dict
+  - .component: component name (for error messages)
 */}}
-{{- define "renovate-operator.componentGateway" -}}
-{{- if and .managerEnabled .componentEnabled .enabled }}
-{{- $component := .component }}
-{{- $context := .context }}
+{{- define "renovate-operator.gatewaySpec" -}}
 {{- $gw := .gw }}
-{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" $component "context" $context) }}
-{{- $gwName := default (printf "%s-gateway" $fullname) $gw.gatewayName }}
-{{- $gwNamespace := default $context.Release.Namespace $gw.gatewayNamespace }}
-{{- if not $gw.gatewayName }}
-apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
-metadata:
-  name: {{ $gwName }}
-  namespace: {{ $gwNamespace }}
-  labels:
-    {{- include "renovate-operator.componentLabels" (dict "component" $component "context" $context "extraLabels" $gw.labels) | nindent 4 }}
-  {{- with $gw.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-spec:
-  gatewayClassName: {{ required (printf "%s.gateway.className is required when %s.gateway.gatewayName is not set" $component $component) $gw.className | quote }}
-  {{- with $gw.addresses }}
-  addresses:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-  {{- if $gw.listeners }}
-  listeners:
-    {{- range $i, $l := $gw.listeners }}
-    - name: {{ $l.name | default (printf "http-%d" $i) | quote }}
-      port: {{ required "listeners[].port is required" $l.port }}
-      protocol: {{ $l.protocol | default "HTTP" | quote }}
-      {{- if $l.hostname }}
-      hostname: {{ $l.hostname | quote }}
-      {{- end }}
-      {{- with $l.tls }}
-      tls:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-      {{- with $l.allowedRoutes }}
-      allowedRoutes:
-        {{- toYaml . | nindent 8 }}
-      {{- end }}
-    {{- end }}
-  {{- else }}
-  listeners:
-    - name: http
-      port: 80
-      protocol: HTTP
-  {{- end }}
+{{- $component := .component }}
+gatewayClassName: {{ required (printf "%s.gateway.className is required when %s.gateway.gatewayName is not set" $component $component) $gw.className | quote }}
+{{- with $gw.addresses }}
+addresses:
+  {{- toYaml . | nindent 2 }}
 {{- end }}
+{{- if $gw.listeners }}
+listeners:
+  {{- range $i, $l := $gw.listeners }}
+  - name: {{ $l.name | default (printf "http-%d" $i) | quote }}
+    port: {{ required "listeners[].port is required" $l.port }}
+    protocol: {{ $l.protocol | default "HTTP" | quote }}
+    {{- if $l.hostname }}
+    hostname: {{ $l.hostname | quote }}
+    {{- end }}
+    {{- with $l.tls }}
+    tls:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    {{- with $l.allowedRoutes }}
+    allowedRoutes:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+  {{- end }}
+{{- else }}
+listeners:
+  - name: http
+    port: 80
+    protocol: HTTP
 {{- end }}
 {{- end }}
 
 {{/*
-Component HTTPRoute resource.
+Component HTTPRoute spec.
 Takes a dict with:
-  - .context: root context ($)
-  - .enabled: gateway.enabled
-  - .managerEnabled: .Values.manager.enabled
-  - .component: component name
-  - .componentEnabled: .Values.<component>.enabled
   - .gw: gateway values dict
   - .svcPort: int (service port number)
+  - .fullname: resource fullname (for backendRefs)
+  - .gwName: gateway name (for parentRefs)
+  - .gwNamespace: gateway namespace (for parentRefs)
 */}}
-{{- define "renovate-operator.componentHTTPRoute" -}}
-{{- if and .managerEnabled .componentEnabled .enabled }}
-{{- $component := .component }}
-{{- $context := .context }}
+{{- define "renovate-operator.httpRouteSpec" -}}
 {{- $gw := .gw }}
 {{- $svcPort := .svcPort }}
-{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" $component "context" $context) }}
-{{- $gwName := default (printf "%s-gateway" $fullname) $gw.gatewayName }}
-{{- $gwNamespace := default $context.Release.Namespace $gw.gatewayNamespace }}
+{{- $fullname := .fullname }}
+{{- $gwName := .gwName }}
+{{- $gwNamespace := .gwNamespace }}
 {{- $ownGW := not $gw.gatewayName }}
 {{- $sectionName := $gw.sectionName }}
 {{- if and $ownGW (not $sectionName) }}
@@ -286,93 +221,39 @@ Takes a dict with:
     {{- $sectionName = "http" }}
   {{- end }}
 {{- end }}
-apiVersion: gateway.networking.k8s.io/v1
-kind: HTTPRoute
-metadata:
-  name: {{ $fullname }}
-  namespace: {{ $context.Release.Namespace }}
-  labels:
-    {{- include "renovate-operator.componentLabels" (dict "component" $component "context" $context "extraLabels" $gw.labels) | nindent 4 }}
-  {{- with $gw.annotations }}
-  annotations:
-    {{- toYaml . | nindent 4 }}
-  {{- end }}
-spec:
-  parentRefs:
-    - name: {{ $gwName }}
-      namespace: {{ $gwNamespace }}
-      {{- if $sectionName }}
-      sectionName: {{ $sectionName | quote }}
-      {{- end }}
-  {{- with $gw.hosts }}
-  hostnames:
-    {{- range . }}
-    - {{ . | quote }}
+parentRefs:
+  - name: {{ $gwName }}
+    namespace: {{ $gwNamespace }}
+    {{- if $sectionName }}
+    sectionName: {{ $sectionName | quote }}
     {{- end }}
+{{- with $gw.hosts }}
+hostnames:
+  {{- range . }}
+  - {{ . | quote }}
   {{- end }}
-  rules:
-    - matches:
-        {{- if not $gw.paths }}
-        - path:
-            type: PathPrefix
-            value: /
-        {{- end }}
-        {{- range $p := $gw.paths }}
-        - path:
-            type: {{ default "PathPrefix" $p.pathType | quote }}
-            value: {{ $p.path | quote }}
-        {{- end }}
-      {{- with $gw.filters }}
-      filters:
-        {{- toYaml . | nindent 8 }}
+{{- end }}
+rules:
+  - matches:
+      {{- if not $gw.paths }}
+      - path:
+          type: PathPrefix
+          value: /
       {{- end }}
-      backendRefs:
-        - name: {{ $fullname }}
-          port: {{ $svcPort }}
-      {{- with $gw.timeouts }}
-      timeouts:
-        {{- toYaml . | nindent 8 }}
+      {{- range $p := $gw.paths }}
+      - path:
+          type: {{ default "PathPrefix" $p.pathType | quote }}
+          value: {{ $p.path | quote }}
       {{- end }}
-{{- end }}
-{{- end }}
-
-{{/*
-Component ReferenceGrant resource.
-Takes a dict with:
-  - .context: root context ($)
-  - .enabled: gateway.enabled
-  - .managerEnabled: .Values.manager.enabled
-  - .component: component name
-  - .componentEnabled: .Values.<component>.enabled
-  - .gw: gateway values dict
-*/}}
-{{- define "renovate-operator.componentReferenceGrant" -}}
-{{- if and .managerEnabled .componentEnabled .enabled }}
-{{- $component := .component }}
-{{- $context := .context }}
-{{- $gw := .gw }}
-{{- if and $gw.gatewayName $gw.gatewayNamespace }}
-{{- $gwNamespace := $gw.gatewayNamespace }}
-{{- if ne $gwNamespace $context.Release.Namespace }}
-{{- $gwName := $gw.gatewayName }}
-{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" $component "context" $context) }}
-apiVersion: gateway.networking.k8s.io/v1beta1
-kind: ReferenceGrant
-metadata:
-  name: {{ $fullname }}-gateway
-  namespace: {{ $gwNamespace }}
-  labels:
-    {{- include "renovate-operator.componentLabels" (dict "component" $component "context" $context "extraLabels" $gw.labels) | nindent 4 }}
-spec:
-  from:
-    - group: gateway.networking.k8s.io
-      kind: HTTPRoute
-      namespace: {{ $context.Release.Namespace }}
-  to:
-    - group: gateway.networking.k8s.io
-      kind: Gateway
-      name: {{ $gwName }}
-{{- end }}
-{{- end }}
-{{- end }}
+    {{- with $gw.filters }}
+    filters:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
+    backendRefs:
+      - name: {{ $fullname }}
+        port: {{ $svcPort }}
+    {{- with $gw.timeouts }}
+    timeouts:
+      {{- toYaml . | nindent 6 }}
+    {{- end }}
 {{- end }}

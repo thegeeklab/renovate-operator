@@ -1,1 +1,24 @@
-{{- include "renovate-operator.componentHTTPRoute" (dict "context" $ "enabled" .Values.receiver.gateway.enabled "managerEnabled" .Values.manager.enabled "component" "receiver" "componentEnabled" .Values.receiver.enabled "gw" .Values.receiver.gateway "svcPort" (int .Values.receiver.service.port)) }}
+{{- if and .Values.manager.enabled .Values.receiver.enabled .Values.receiver.gateway.enabled }}
+{{- $component := "receiver" }}
+{{- $gw := .Values.receiver.gateway }}
+{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" $component "context" $) }}
+{{- $gwName := default (printf "%s-gateway" $fullname) $gw.gatewayName }}
+{{- $gwNamespace := default .Release.Namespace $gw.gatewayNamespace }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "renovate-operator.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+    {{- with $gw.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $gw.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- include "renovate-operator.httpRouteSpec" (dict "gw" $gw "svcPort" (int .Values.receiver.service.port) "fullname" $fullname "gwName" $gwName "gwNamespace" $gwNamespace) | nindent 2 }}
+{{- end }}

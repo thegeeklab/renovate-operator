@@ -33,6 +33,18 @@ tests:
           value:
             app.kubernetes.io/name: renovate-operator
             control-plane: controller-manager
+      - equal:
+          path: metadata.labels["app.kubernetes.io/managed-by"]
+          value: Helm
+      - equal:
+          path: metadata.labels["app.kubernetes.io/name"]
+          value: renovate-operator
+      - equal:
+          path: metadata.labels["app.kubernetes.io/instance"]
+          value: RELEASE-NAME
+      - equal:
+          path: metadata.labels["app.kubernetes.io/component"]
+          value: receiver
 
   - it: should allow customizing service type and port
     set:
