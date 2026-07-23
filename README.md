@@ -48,10 +48,15 @@ A Kubernetes operator for automating [Renovate Bot](https://docs.renovatebot.com
 
 #### Helm (OCI)
 
-The Helm chart and container images are published to:
+Container images are published to:
 
-- **Quay.io**: `quay.io/thegeeklab/renovate-operator`
 - **Docker Hub**: `docker.io/thegeeklab/renovate-operator`
+- **Quay.io**: `quay.io/thegeeklab/renovate-operator`
+
+The Helm chart is published to:
+
+- **Docker Hub**: `oci://docker.io/thegeeklab/renovate-operator-chart`
+- **Quay.io**: `oci://quay.io/thegeeklab/renovate-operator-chart`
 
 Install using Quay.io:
 
