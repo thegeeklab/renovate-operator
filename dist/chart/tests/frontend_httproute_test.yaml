@@ -1,0 +1,163 @@
+---
+suite: test frontend httproute
+templates:
+  - templates/extras/frontend-httproute.yaml
+tests:
+  - it: should not render HTTPRoute by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render an HTTPRoute with default paths
+    values:
+      - ./fixtures/gateway-basic.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+      - equal:
+          path: spec.parentRefs[0].name
+          value: RELEASE-NAME-renovate-operator-frontend-gateway
+      - equal:
+          path: spec.parentRefs[0].namespace
+          value: NAMESPACE
+      - equal:
+          path: spec.rules[0].matches[0].path.type
+          value: PathPrefix
+      - equal:
+          path: spec.rules[0].matches[0].path.value
+          value: /
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 80
+
+  - it: should render an HTTPRoute with custom hostnames and shared paths
+    values:
+      - ./fixtures/gateway-hosts.yaml
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: renovate-operator.example.com
+      - equal:
+          path: spec.rules[0].matches[0].path.type
+          value: PathPrefix
+      - equal:
+          path: spec.rules[0].matches[0].path.value
+          value: /
+
+  - it: should support multiple hostnames with shared paths
+    set:
+      frontend.gateway.enabled: true
+      frontend.gateway.className: nginx
+      frontend.gateway.hosts:
+        - a.example.com
+        - b.example.com
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: a.example.com
+      - equal:
+          path: spec.hostnames[1]
+          value: b.example.com
+      - equal:
+          path: spec.rules[0].matches[0].path.value
+          value: /
+
+  - it: should set sectionName from first listener
+    values:
+      - ./fixtures/gateway-listeners.yaml
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: http
+
+  - it: should set sectionName from HTTPS listener
+    values:
+      - ./fixtures/gateway-tls.yaml
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: https
+      - equal:
+          path: spec.hostnames[0]
+          value: secure.example.com
+
+  - it: should attach HTTPRoute to existing Gateway
+    values:
+      - ./fixtures/gateway-existing.yaml
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].name
+          value: my-shared-gateway
+      - equal:
+          path: spec.parentRefs[0].namespace
+          value: NAMESPACE
+
+  - it: should attach HTTPRoute to existing Gateway in different namespace
+    values:
+      - ./fixtures/gateway-existing-cross-ns.yaml
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].name
+          value: my-shared-gateway
+      - equal:
+          path: spec.parentRefs[0].namespace
+          value: gateway-system
+
+  - it: should propagate annotations to HTTPRoute
+    values:
+      - ./fixtures/gateway-annotations.yaml
+    asserts:
+      - equal:
+          path: metadata.annotations["external-dns.alpha.kubernetes.io/hostname"]
+          value: renovate-operator.example.com
+
+  - it: should propagate labels to HTTPRoute
+    values:
+      - ./fixtures/gateway-labels.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: renovate-platform
+      - equal:
+          path: metadata.labels["custom.io/team"]
+          value: platform
+
+  - it: should add filters to HTTPRoute rules
+    values:
+      - ./fixtures/gateway-filters.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].filters[0].type
+          value: RequestHeaderModifier
+      - equal:
+          path: spec.rules[0].filters[0].requestHeaderModifier.set[0].name
+          value: X-Forwarded-Proto
+
+  - it: should add timeouts to HTTPRoute rules
+    values:
+      - ./fixtures/gateway-timeouts.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].timeouts.request
+          value: 30s
+      - equal:
+          path: spec.rules[0].timeouts.backendRequest
+          value: 60s
+
+  - it: should not render HTTPRoute when manager is disabled
+    values:
+      - ./fixtures/manager-disabled.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render HTTPRoute when frontend is disabled
+    set:
+      frontend.enabled: false
+      frontend.gateway.enabled: true
+      frontend.gateway.className: nginx
+    asserts:
+      - hasDocuments:
+          count: 0

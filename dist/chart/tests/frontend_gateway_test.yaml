@@ -1,0 +1,133 @@
+---
+suite: test frontend gateway resource
+templates:
+  - templates/extras/frontend-gateway.yaml
+tests:
+  - it: should not render gateway by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render a Gateway with default listener
+    values:
+      - ./fixtures/gateway-basic.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Gateway
+      - equal:
+          path: spec.gatewayClassName
+          value: nginx
+      - equal:
+          path: spec.listeners[0].name
+          value: http
+      - equal:
+          path: spec.listeners[0].port
+          value: 80
+      - equal:
+          path: spec.listeners[0].protocol
+          value: HTTP
+
+  - it: should render Gateway with custom listeners including TLS
+    values:
+      - ./fixtures/gateway-listeners.yaml
+    asserts:
+      - equal:
+          path: spec.listeners[1].name
+          value: https
+      - equal:
+          path: spec.listeners[1].port
+          value: 443
+      - equal:
+          path: spec.listeners[1].protocol
+          value: HTTPS
+      - equal:
+          path: spec.listeners[1].hostname
+          value: renovate-operator.example.com
+      - equal:
+          path: spec.listeners[1].tls.mode
+          value: Terminate
+      - equal:
+          path: spec.listeners[1].tls.certificateRefs[0].name
+          value: renovate-operator-tls
+
+  - it: should render gateway with HTTPS TLS listener
+    values:
+      - ./fixtures/gateway-tls.yaml
+    asserts:
+      - equal:
+          path: spec.listeners[0].name
+          value: https
+      - equal:
+          path: spec.listeners[0].port
+          value: 443
+      - equal:
+          path: spec.listeners[0].protocol
+          value: HTTPS
+      - equal:
+          path: spec.listeners[0].tls.mode
+          value: Terminate
+      - equal:
+          path: spec.listeners[0].tls.certificateRefs[0].name
+          value: renovate-operator-tls
+
+  - it: should propagate annotations to Gateway
+    values:
+      - ./fixtures/gateway-annotations.yaml
+    asserts:
+      - equal:
+          path: metadata.annotations["external-dns.alpha.kubernetes.io/hostname"]
+          value: renovate-operator.example.com
+
+  - it: should propagate labels to Gateway
+    values:
+      - ./fixtures/gateway-labels.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: renovate-platform
+      - equal:
+          path: metadata.labels["custom.io/team"]
+          value: platform
+
+  - it: should add addresses to Gateway spec
+    values:
+      - ./fixtures/gateway-addresses.yaml
+    asserts:
+      - equal:
+          path: spec.addresses[0].type
+          value: IPAddress
+      - equal:
+          path: spec.addresses[0].value
+          value: 192.168.1.100
+
+  - it: should skip Gateway creation when using existing gateway
+    values:
+      - ./fixtures/gateway-existing-cross-ns.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should require className when no existing gateway is referenced
+    set:
+      frontend.gateway.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "frontend.gateway.className is required when frontend.gateway.gatewayName is not set"
+
+  - it: should not render gateway when manager is disabled
+    values:
+      - ./fixtures/manager-disabled.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render gateway when frontend is disabled
+    set:
+      frontend.enabled: false
+      frontend.gateway.enabled: true
+      frontend.gateway.className: nginx
+    asserts:
+      - hasDocuments:
+          count: 0

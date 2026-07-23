@@ -1,0 +1,7 @@
+frontend:
+  gateway:
+    enabled: true
+    className: nginx
+    timeouts:
+      request: "30s"
+      backendRequest: "60s"

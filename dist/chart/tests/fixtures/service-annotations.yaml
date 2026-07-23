@@ -1,0 +1,6 @@
+frontend:
+  service:
+    annotations:
+      service.beta.openshift.io/serving-cert-secret-name: foo
+    labels:
+      app.kubernetes.io/part-of: renovate

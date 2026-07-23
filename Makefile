@@ -204,7 +204,7 @@ helm-docs: frontend-deps helm-docs-bin ## Generate helm documentation.
 .PHONY: helm-test
 helm-test: ## Run helm unit tests.
 	@helm plugin install https://github.com/helm-unittest/helm-unittest.git --version=$(HELM_UNITTEST_VERSION) --verify=false >/dev/null 2>&1 || true
-	helm unittest --strict -f 'tests/**/*.yaml' dist/chart/
+	helm unittest --strict -f 'tests/*_test.yaml' dist/chart/
 
 ##@ Build
 

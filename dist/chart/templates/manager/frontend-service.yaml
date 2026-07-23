@@ -1,0 +1,39 @@
+{{- if and .Values.manager.enabled .Values.frontend.enabled .Values.frontend.service.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ include "renovate-operator.resourceName" (dict "suffix" "frontend" "context" $) }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    app.kubernetes.io/managed-by: {{ .Release.Service }}
+    app.kubernetes.io/name: {{ include "renovate-operator.name" . }}
+    helm.sh/chart: {{ .Chart.Name }}-{{ .Chart.Version | replace "+" "_" }}
+    app.kubernetes.io/instance: {{ .Release.Name }}
+    app.kubernetes.io/component: frontend
+    {{- with .Values.frontend.service.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with .Values.frontend.service.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  type: {{ .Values.frontend.service.type }}
+  {{- with .Values.frontend.service.clusterIP }}
+  clusterIP: {{ . | quote }}
+  {{- end }}
+  {{- if .Values.frontend.service.sessionAffinity }}
+  sessionAffinity: {{ .Values.frontend.service.sessionAffinity }}
+  {{- end }}
+  selector:
+    app.kubernetes.io/name: {{ include "renovate-operator.name" . }}
+    control-plane: controller-manager
+  ports:
+    - name: {{ .Values.frontend.service.targetPort | default "frontend" }}
+      port: {{ .Values.frontend.service.port }}
+      targetPort: {{ .Values.frontend.service.targetPort | default "frontend" }}
+      protocol: TCP
+      {{- if and (eq .Values.frontend.service.type "NodePort") .Values.frontend.service.nodePort }}
+      nodePort: {{ .Values.frontend.service.nodePort }}
+      {{- end }}
+{{- end }}

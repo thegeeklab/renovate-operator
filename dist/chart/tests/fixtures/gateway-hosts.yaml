@@ -1,0 +1,9 @@
+frontend:
+  gateway:
+    enabled: true
+    className: nginx
+    hosts:
+      - renovate-operator.example.com
+    paths:
+      - path: /
+        pathType: PathPrefix
