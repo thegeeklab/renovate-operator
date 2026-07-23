@@ -1,0 +1,71 @@
+---
+suite: test receiver ingress
+templates:
+  - templates/extras/receiver-ingress.yaml
+tests:
+  - it: should not render ingress by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render a basic ingress
+    values:
+      - ./fixtures/receiver-ingress-basic.yaml
+    asserts:
+      - isKind:
+          of: Ingress
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-renovate-operator-receiver
+      - equal:
+          path: spec.ingressClassName
+          value: nginx
+      - equal:
+          path: spec.rules[0].host
+          value: renovate-receiver.example.com
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /hooks
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: Prefix
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 80
+
+  - it: should render ingress annotations
+    values:
+      - ./fixtures/receiver-ingress-annotations.yaml
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/rewrite-target"]
+          value: /
+
+  - it: should render TLS configuration
+    values:
+      - ./fixtures/receiver-ingress-tls.yaml
+    asserts:
+      - equal:
+          path: spec.tls[0].secretName
+          value: receiver-tls
+      - equal:
+          path: spec.tls[0].hosts[0]
+          value: secure.example.com
+
+  - it: should not render ingress when receiver is disabled
+    set:
+      receiver.ingress.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render ingress when manager is disabled
+    set:
+      manager.enabled: false
+      receiver.enabled: true
+      receiver.ingress.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0

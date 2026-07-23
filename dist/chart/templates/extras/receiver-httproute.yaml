@@ -1,0 +1,1 @@
+{{- include "renovate-operator.componentHTTPRoute" (dict "context" $ "enabled" .Values.receiver.gateway.enabled "managerEnabled" .Values.manager.enabled "component" "receiver" "componentEnabled" .Values.receiver.enabled "gw" .Values.receiver.gateway "svcPort" (int .Values.receiver.service.port)) }}

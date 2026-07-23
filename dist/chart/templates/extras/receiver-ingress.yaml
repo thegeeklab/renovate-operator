@@ -1,0 +1,1 @@
+{{- include "renovate-operator.componentIngress" (dict "context" $ "enabled" .Values.receiver.ingress.enabled "managerEnabled" .Values.manager.enabled "component" "receiver" "componentEnabled" .Values.receiver.enabled "ingress" .Values.receiver.ingress "svcPort" (int .Values.receiver.service.port)) }}

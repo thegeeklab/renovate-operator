@@ -1,0 +1,56 @@
+---
+suite: test receiver referencegrant
+templates:
+  - templates/extras/receiver-referencegrant.yaml
+tests:
+  - it: should not render ReferenceGrant by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render ReferenceGrant when gateway is in same namespace
+    set:
+      receiver.enabled: true
+      receiver.gateway.enabled: true
+      receiver.gateway.gatewayName: my-gateway
+      receiver.gateway.gatewayNamespace: NAMESPACE
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create ReferenceGrant when attaching to existing Gateway in different namespace
+    values:
+      - ./fixtures/receiver-gateway-existing-cross-ns.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ReferenceGrant
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-renovate-operator-receiver-gateway
+      - equal:
+          path: metadata.namespace
+          value: gateway-system
+      - equal:
+          path: spec.from[0].group
+          value: gateway.networking.k8s.io
+      - equal:
+          path: spec.from[0].kind
+          value: HTTPRoute
+      - equal:
+          path: spec.from[0].namespace
+          value: NAMESPACE
+      - equal:
+          path: spec.to[0].name
+          value: my-shared-gateway
+
+  - it: should not render ReferenceGrant when receiver is disabled
+    values:
+      - ./fixtures/receiver-gateway-existing-cross-ns.yaml
+    set:
+      receiver.enabled: false
+      receiver.gateway.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0

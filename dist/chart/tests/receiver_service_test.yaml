@@ -1,0 +1,83 @@
+---
+suite: test receiver service
+templates:
+  - templates/manager/receiver-service.yaml
+tests:
+  - it: should not render receiver service by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render the receiver service when enabled
+    set:
+      receiver.enabled: true
+    asserts:
+      - isKind:
+          of: Service
+      - hasDocuments:
+          count: 1
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-renovate-operator-receiver
+      - equal:
+          path: spec.type
+          value: ClusterIP
+      - equal:
+          path: spec.ports[0].port
+          value: 80
+      - equal:
+          path: spec.ports[0].targetPort
+          value: receiver
+      - equal:
+          path: spec.selector
+          value:
+            app.kubernetes.io/name: renovate-operator
+            control-plane: controller-manager
+
+  - it: should allow customizing service type and port
+    set:
+      receiver.enabled: true
+      receiver.service.type: NodePort
+      receiver.service.port: 8083
+      receiver.service.nodePort: 30083
+    asserts:
+      - equal:
+          path: spec.type
+          value: NodePort
+      - equal:
+          path: spec.ports[0].port
+          value: 8083
+      - equal:
+          path: spec.ports[0].nodePort
+          value: 30083
+
+  - it: should propagate service annotations
+    values:
+      - ./fixtures/receiver-service-annotations.yaml
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/backend-protocol"]
+          value: HTTP
+
+  - it: should not render receiver service when receiver is disabled
+    set:
+      receiver.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render receiver service when service is disabled
+    set:
+      receiver.enabled: true
+      receiver.service.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render receiver service when manager is disabled
+    set:
+      manager.enabled: false
+      receiver.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0

@@ -1,0 +1,6 @@
+receiver:
+  enabled: true
+  gateway:
+    enabled: true
+    gatewayName: my-shared-gateway
+    gatewayNamespace: NAMESPACE

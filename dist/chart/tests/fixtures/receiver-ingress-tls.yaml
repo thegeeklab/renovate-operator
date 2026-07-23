@@ -1,0 +1,8 @@
+receiver:
+  enabled: true
+  ingress:
+    enabled: true
+    tls:
+      - secretName: receiver-tls
+        hosts:
+          - secure.example.com

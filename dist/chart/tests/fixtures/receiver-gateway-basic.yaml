@@ -1,0 +1,5 @@
+receiver:
+  enabled: true
+  gateway:
+    enabled: true
+    className: nginx

@@ -1,0 +1,74 @@
+---
+suite: test receiver httproute
+templates:
+  - templates/extras/receiver-httproute.yaml
+tests:
+  - it: should not render HTTPRoute by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render an HTTPRoute with default paths
+    values:
+      - ./fixtures/receiver-gateway-basic.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: HTTPRoute
+      - equal:
+          path: spec.parentRefs[0].name
+          value: RELEASE-NAME-renovate-operator-receiver-gateway
+      - equal:
+          path: spec.rules[0].matches[0].path.type
+          value: PathPrefix
+      - equal:
+          path: spec.rules[0].matches[0].path.value
+          value: /
+      - equal:
+          path: spec.rules[0].backendRefs[0].port
+          value: 80
+
+  - it: should set sectionName from first listener
+    values:
+      - ./fixtures/receiver-gateway-listeners.yaml
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].sectionName
+          value: http
+
+  - it: should attach HTTPRoute to existing Gateway
+    values:
+      - ./fixtures/receiver-gateway-existing.yaml
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].name
+          value: my-shared-gateway
+
+  - it: should attach HTTPRoute to existing Gateway in different namespace
+    values:
+      - ./fixtures/receiver-gateway-existing-cross-ns.yaml
+    asserts:
+      - equal:
+          path: spec.parentRefs[0].name
+          value: my-shared-gateway
+      - equal:
+          path: spec.parentRefs[0].namespace
+          value: gateway-system
+
+  - it: should not render HTTPRoute when receiver is disabled
+    set:
+      receiver.gateway.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render HTTPRoute when manager is disabled
+    set:
+      manager.enabled: false
+      receiver.enabled: true
+      receiver.gateway.enabled: true
+      receiver.gateway.className: nginx
+    asserts:
+      - hasDocuments:
+          count: 0

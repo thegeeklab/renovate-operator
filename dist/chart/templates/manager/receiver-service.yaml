@@ -1,0 +1,1 @@
+{{- include "renovate-operator.componentService" (dict "context" $ "enabled" .Values.receiver.service.enabled "managerEnabled" .Values.manager.enabled "component" "receiver" "componentEnabled" .Values.receiver.enabled "svc" .Values.receiver.service) }}

@@ -1,0 +1,5 @@
+receiver:
+  enabled: true
+  service:
+    annotations:
+      nginx.ingress.kubernetes.io/backend-protocol: HTTP
