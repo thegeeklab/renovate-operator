@@ -1,0 +1,87 @@
+---
+suite: test frontend referencegrant
+templates:
+  - templates/extras/frontend-referencegrant.yaml
+tests:
+  - it: should not render ReferenceGrant by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render ReferenceGrant when gateway is in same namespace
+    set:
+      frontend.gateway.enabled: true
+      frontend.gateway.gatewayName: my-gateway
+      frontend.gateway.gatewayNamespace: NAMESPACE
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render ReferenceGrant when no existing gateway is referenced
+    values:
+      - ./fixtures/gateway-basic.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create ReferenceGrant when attaching to existing Gateway in different namespace
+    values:
+      - ./fixtures/gateway-existing-cross-ns.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ReferenceGrant
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-renovate-operator-frontend-gateway
+      - equal:
+          path: metadata.namespace
+          value: gateway-system
+      - equal:
+          path: spec.from[0].group
+          value: gateway.networking.k8s.io
+      - equal:
+          path: spec.from[0].kind
+          value: HTTPRoute
+      - equal:
+          path: spec.from[0].namespace
+          value: NAMESPACE
+      - equal:
+          path: spec.to[0].group
+          value: gateway.networking.k8s.io
+      - equal:
+          path: spec.to[0].kind
+          value: Gateway
+      - equal:
+          path: spec.to[0].name
+          value: my-shared-gateway
+
+  - it: should propagate labels to ReferenceGrant
+    set:
+      frontend.gateway.enabled: true
+      frontend.gateway.gatewayName: my-gateway
+      frontend.gateway.gatewayNamespace: gateway-system
+      frontend.gateway.labels:
+        app.kubernetes.io/part-of: renovate-platform
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: renovate-platform
+
+  - it: should not render ReferenceGrant when manager is disabled
+    values:
+      - ./fixtures/manager-disabled.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render ReferenceGrant when frontend is disabled
+    set:
+      frontend.enabled: false
+      frontend.gateway.enabled: true
+      frontend.gateway.gatewayName: my-gateway
+      frontend.gateway.gatewayNamespace: gateway-system
+    asserts:
+      - hasDocuments:
+          count: 0

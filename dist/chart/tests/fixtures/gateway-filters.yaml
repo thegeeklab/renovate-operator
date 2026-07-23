@@ -1,0 +1,12 @@
+frontend:
+  gateway:
+    enabled: true
+    className: nginx
+    hosts:
+      - renovate-operator.example.com
+    filters:
+      - type: RequestHeaderModifier
+        requestHeaderModifier:
+          set:
+            - name: X-Forwarded-Proto
+              value: https

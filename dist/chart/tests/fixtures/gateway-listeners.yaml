@@ -1,0 +1,17 @@
+frontend:
+  gateway:
+    enabled: true
+    className: nginx
+    listeners:
+      - name: http
+        port: 80
+        protocol: HTTP
+      - name: https
+        port: 443
+        protocol: HTTPS
+        hostname: renovate-operator.example.com
+        tls:
+          mode: Terminate
+          certificateRefs:
+            - name: renovate-operator-tls
+              kind: Secret

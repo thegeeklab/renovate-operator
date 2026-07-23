@@ -1,0 +1,4 @@
+frontend:
+  gateway:
+    enabled: true
+    className: nginx

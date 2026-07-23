@@ -1,0 +1,7 @@
+frontend:
+  gateway:
+    enabled: true
+    className: nginx
+    labels:
+      app.kubernetes.io/part-of: renovate-platform
+      custom.io/team: platform

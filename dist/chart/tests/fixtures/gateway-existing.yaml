@@ -1,0 +1,5 @@
+frontend:
+  gateway:
+    enabled: true
+    gatewayName: my-shared-gateway
+    gatewayNamespace: NAMESPACE

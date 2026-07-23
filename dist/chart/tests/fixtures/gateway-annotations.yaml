@@ -1,0 +1,6 @@
+frontend:
+  gateway:
+    enabled: true
+    className: nginx
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: renovate-operator.example.com

@@ -1,0 +1,16 @@
+frontend:
+  gateway:
+    enabled: true
+    className: nginx
+    hosts:
+      - secure.example.com
+    listeners:
+      - name: https
+        port: 443
+        protocol: HTTPS
+        hostname: secure.example.com
+        tls:
+          mode: Terminate
+          certificateRefs:
+            - name: renovate-operator-tls
+              kind: Secret

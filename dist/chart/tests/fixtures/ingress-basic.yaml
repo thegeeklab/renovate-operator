@@ -1,0 +1,9 @@
+frontend:
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: renovate-operator.example.com
+        paths:
+          - path: /
+            pathType: Prefix

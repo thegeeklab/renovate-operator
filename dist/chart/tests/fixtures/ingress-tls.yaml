@@ -1,0 +1,11 @@
+frontend:
+  ingress:
+    enabled: true
+    hosts:
+      - host: secure.example.com
+        paths:
+          - path: /
+    tls:
+      - secretName: renovate-operator-tls
+        hosts:
+          - secure.example.com
