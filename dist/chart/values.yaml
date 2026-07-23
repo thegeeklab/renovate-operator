@@ -108,12 +108,10 @@ manager:
   # -- Additional volume mounts on the manager container
   # extraVolumeMounts: []
 
-# -- Frontend (web UI) configuration
 frontend:
   # -- Enable frontend Service, Ingress and Gateway resources
   enabled: true
 
-  # -- Frontend Service
   service:
     # -- Enable frontend Service resource
     enabled: true
@@ -134,7 +132,6 @@ frontend:
     # -- Labels added to the Service
     labels: {}
 
-  # -- Ingress configuration for the frontend
   ingress:
     # -- Enable Ingress resource
     enabled: false
@@ -154,7 +151,6 @@ frontend:
     #     hosts:
     #       - renovate-operator.example.com
 
-  # -- Gateway API configuration for the frontend
   gateway:
     # -- Enable Gateway API HTTPRoute (and optionally a Gateway)
     enabled: false
