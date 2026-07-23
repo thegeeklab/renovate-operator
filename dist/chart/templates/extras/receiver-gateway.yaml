@@ -1,6 +1,6 @@
-{{- if and .Values.manager.enabled .Values.frontend.enabled .Values.frontend.gateway.enabled }}
-{{- $component := "frontend" }}
-{{- $gw := .Values.frontend.gateway }}
+{{- if and .Values.manager.enabled .Values.receiver.enabled .Values.receiver.gateway.enabled }}
+{{- $component := "receiver" }}
+{{- $gw := .Values.receiver.gateway }}
 {{- $fullname := include "renovate-operator.resourceName" (dict "suffix" $component "context" $) }}
 {{- $gwName := default (printf "%s-gateway" $fullname) $gw.gatewayName }}
 {{- $gwNamespace := default .Release.Namespace $gw.gatewayNamespace }}

@@ -1,5 +1,5 @@
-{{- if and .Values.manager.enabled .Values.frontend.enabled .Values.frontend.service.enabled }}
-{{- $component := "frontend" }}
+{{- if and .Values.manager.enabled .Values.receiver.enabled .Values.receiver.service.enabled }}
+{{- $component := "receiver" }}
 apiVersion: v1
 kind: Service
 metadata:
@@ -8,13 +8,13 @@ metadata:
   labels:
     {{- include "renovate-operator.labels" $ | nindent 4 }}
     app.kubernetes.io/component: {{ $component }}
-    {{- with .Values.frontend.service.labels }}
+    {{- with .Values.receiver.service.labels }}
     {{- toYaml . | nindent 4 }}
     {{- end }}
-  {{- with .Values.frontend.service.annotations }}
+  {{- with .Values.receiver.service.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  {{- include "renovate-operator.serviceSpec" (dict "svc" .Values.frontend.service "component" $component "context" $) | nindent 2 }}
+  {{- include "renovate-operator.serviceSpec" (dict "svc" .Values.receiver.service "component" $component "context" $) | nindent 2 }}
 {{- end }}

@@ -1,6 +1,6 @@
-{{- if and .Values.manager.enabled .Values.frontend.enabled .Values.frontend.gateway.enabled }}
-{{- $component := "frontend" }}
-{{- $gw := .Values.frontend.gateway }}
+{{- if and .Values.manager.enabled .Values.receiver.enabled .Values.receiver.gateway.enabled }}
+{{- $component := "receiver" }}
+{{- $gw := .Values.receiver.gateway }}
 {{- if and $gw.gatewayName $gw.gatewayNamespace }}
 {{- $gwNamespace := $gw.gatewayNamespace }}
 {{- if ne $gwNamespace .Release.Namespace }}

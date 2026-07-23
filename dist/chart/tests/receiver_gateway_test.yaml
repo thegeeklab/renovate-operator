@@ -1,0 +1,79 @@
+---
+suite: test receiver gateway resource
+templates:
+  - templates/extras/receiver-gateway.yaml
+tests:
+  - it: should not render gateway by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render a Gateway with default listener
+    values:
+      - ./fixtures/receiver-gateway-basic.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: Gateway
+      - equal:
+          path: spec.gatewayClassName
+          value: nginx
+      - equal:
+          path: spec.listeners[0].name
+          value: http
+      - equal:
+          path: spec.listeners[0].port
+          value: 80
+      - equal:
+          path: spec.listeners[0].protocol
+          value: HTTP
+
+  - it: should render Gateway with custom listeners including TLS
+    values:
+      - ./fixtures/receiver-gateway-listeners.yaml
+    asserts:
+      - equal:
+          path: spec.listeners[1].name
+          value: https
+      - equal:
+          path: spec.listeners[1].port
+          value: 443
+      - equal:
+          path: spec.listeners[1].protocol
+          value: HTTPS
+      - equal:
+          path: spec.listeners[1].tls.mode
+          value: Terminate
+
+  - it: should skip Gateway creation when using existing gateway
+    values:
+      - ./fixtures/receiver-gateway-existing-cross-ns.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should require className when no existing gateway is referenced
+    set:
+      receiver.enabled: true
+      receiver.gateway.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: "receiver.gateway.className is required when receiver.gateway.gatewayName is not set"
+
+  - it: should not render gateway when receiver is disabled
+    set:
+      receiver.gateway.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render gateway when manager is disabled
+    set:
+      manager.enabled: false
+      receiver.enabled: true
+      receiver.gateway.enabled: true
+      receiver.gateway.className: nginx
+    asserts:
+      - hasDocuments:
+          count: 0

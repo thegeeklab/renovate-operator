@@ -1,11 +1,11 @@
-{{- if and .Values.networkPolicy.enabled .Values.webhook.enabled }}
+{{- if and .Values.networkPolicy.enabled .Values.receiver.enabled }}
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   labels:
     {{- include "renovate-operator.labels" $ | nindent 4 }}
     app.kubernetes.io/component: controller-manager
-  name: {{ include "renovate-operator.resourceName" (dict "suffix" "allow-webhook-traffic" "context" $) }}
+  name: {{ include "renovate-operator.resourceName" (dict "suffix" "allow-receiver-traffic" "context" $) }}
   namespace: {{ .Release.Namespace }}
 spec:
   podSelector:
@@ -15,10 +15,8 @@ spec:
     - Ingress
   ingress:
     - from:
-      - namespaceSelector:
-          matchLabels:
-            webhook: enabled
+      - namespaceSelector: {}
       ports:
-        - port: {{ .Values.webhook.port }}
+        - port: 8083
           protocol: TCP
 {{- end }}

@@ -3,15 +3,14 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   labels:
-    app.kubernetes.io/managed-by: {{ .Release.Service }}
-    app.kubernetes.io/name: {{ include "renovate-operator.name" . }}
+    {{- include "renovate-operator.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: controller-manager
   name: {{ include "renovate-operator.resourceName" (dict "suffix" "allow-frontend-traffic" "context" $) }}
   namespace: {{ .Release.Namespace }}
 spec:
   podSelector:
     matchLabels:
-      app.kubernetes.io/name: {{ include "renovate-operator.name" . }}
-      control-plane: controller-manager
+      {{- include "renovate-operator.selectorLabels" $ | nindent 6 }}
   policyTypes:
     - Ingress
   ingress:

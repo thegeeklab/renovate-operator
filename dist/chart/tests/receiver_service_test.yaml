@@ -1,9 +1,16 @@
 ---
-suite: test frontend service
+suite: test receiver service
 templates:
-  - templates/manager/frontend-service.yaml
+  - templates/manager/receiver-service.yaml
 tests:
-  - it: should render the frontend service with default values
+  - it: should not render receiver service by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render the receiver service when enabled
+    set:
+      receiver.enabled: true
     asserts:
       - isKind:
           of: Service
@@ -11,7 +18,7 @@ tests:
           count: 1
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-renovate-operator-frontend
+          value: RELEASE-NAME-renovate-operator-receiver
       - equal:
           path: spec.type
           value: ClusterIP
@@ -20,7 +27,7 @@ tests:
           value: 80
       - equal:
           path: spec.ports[0].targetPort
-          value: frontend
+          value: receiver
       - equal:
           path: spec.selector
           value:
@@ -37,45 +44,52 @@ tests:
           value: RELEASE-NAME
       - equal:
           path: metadata.labels["app.kubernetes.io/component"]
-          value: frontend
+          value: receiver
 
   - it: should allow customizing service type and port
     set:
-      frontend.service.type: NodePort
-      frontend.service.port: 8080
-      frontend.service.nodePort: 30080
+      receiver.enabled: true
+      receiver.service.type: NodePort
+      receiver.service.port: 8083
+      receiver.service.nodePort: 30083
     asserts:
       - equal:
           path: spec.type
           value: NodePort
       - equal:
           path: spec.ports[0].port
-          value: 8080
+          value: 8083
       - equal:
           path: spec.ports[0].nodePort
-          value: 30080
+          value: 30083
 
-  - it: should propagate service annotations and labels
+  - it: should propagate service annotations
     values:
-      - ./fixtures/service-annotations.yaml
+      - ./fixtures/receiver-service-annotations.yaml
     asserts:
       - equal:
-          path: metadata.annotations["service.beta.openshift.io/serving-cert-secret-name"]
-          value: foo
-      - equal:
-          path: metadata.labels["app.kubernetes.io/part-of"]
-          value: renovate
+          path: metadata.annotations["nginx.ingress.kubernetes.io/backend-protocol"]
+          value: HTTP
 
-  - it: should not render frontend service when manager is disabled
+  - it: should not render receiver service when receiver is disabled
     set:
-      manager.enabled: false
+      receiver.enabled: false
     asserts:
       - hasDocuments:
           count: 0
 
-  - it: should not render frontend service when frontend is disabled
+  - it: should not render receiver service when service is disabled
     set:
-      frontend.enabled: false
+      receiver.enabled: true
+      receiver.service.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render receiver service when manager is disabled
+    set:
+      manager.enabled: false
+      receiver.enabled: true
     asserts:
       - hasDocuments:
           count: 0

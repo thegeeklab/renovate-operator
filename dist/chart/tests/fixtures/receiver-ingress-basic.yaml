@@ -1,0 +1,10 @@
+receiver:
+  enabled: true
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: renovate-receiver.example.com
+        paths:
+          - path: /hooks
+            pathType: Prefix
