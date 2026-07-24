@@ -12,6 +12,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+//nolint:dupl
 func (r *Reconciler) reconcileDiscovery(ctx context.Context) (*ctrl.Result, error) {
 	discovery := &renovatev1beta1.Discovery{ObjectMeta: metadata.GenericMetadata(r.req)}
 
