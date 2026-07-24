@@ -59,6 +59,11 @@ var HookPullRequestRenovateOpened string
 //go:embed HookPullRequestRenovateClosed.json
 var HookPullRequestRenovateClosed string
 
+// HookPullRequestRenovateMerged is a sample GitHub pull_request hook with action "closed" and merged=true.
+//
+//go:embed HookPullRequestRenovateMerged.json
+var HookPullRequestRenovateMerged string
+
 // HookIssueRenovateOpened is a sample GitHub issues hook with action "opened".
 //
 //go:embed HookIssueRenovateOpened.json

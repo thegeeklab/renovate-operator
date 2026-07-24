@@ -40,7 +40,8 @@ type pullRequestUser struct {
 }
 
 type pullRequest struct {
-	Body string `json:"body"`
+	Body   string `json:"body"`
+	Merged bool   `json:"merged"`
 }
 
 //nolint:tagliatelle // GitHub API uses snake_case
@@ -133,6 +134,10 @@ func (p *Receiver) parsePullRequestEvent(body []byte) (receiver.ParseResult, err
 	var payload pullRequestPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return receiver.ParseResult{}, err
+	}
+
+	if payload.Action == "closed" && payload.PullRequest.Merged {
+		return receiver.ParseResult{ShouldTrigger: true}, nil
 	}
 
 	if payload.Action != "edited" {

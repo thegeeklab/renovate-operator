@@ -84,6 +84,10 @@ func (p *Receiver) parseEditableEvent(body []byte) (receiver.ParseResult, error)
 		return receiver.ParseResult{}, err
 	}
 
+	if payload.ObjectAttributes.Action == "merge" {
+		return receiver.ParseResult{ShouldTrigger: true}, nil
+	}
+
 	if payload.ObjectAttributes.Action != "update" ||
 		!receiver.IsRenovateCheckboxChecked(payload.ObjectAttributes.Description) {
 		return receiver.ParseResult{}, nil

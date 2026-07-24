@@ -39,6 +39,7 @@ type pullRequestUser struct {
 type pullRequest struct {
 	Description string          `json:"body"`
 	User        pullRequestUser `json:"user"`
+	Merged      bool            `json:"merged"`
 }
 
 //nolint:tagliatelle // Gitea API uses snake_case
@@ -127,6 +128,10 @@ func (p *Receiver) parsePullRequestEvent(body []byte) (receiver.ParseResult, err
 	var payload pullRequestPayload
 	if err := json.Unmarshal(body, &payload); err != nil {
 		return receiver.ParseResult{}, err
+	}
+
+	if payload.Action == "closed" && payload.PullRequest.Merged {
+		return receiver.ParseResult{ShouldTrigger: true}, nil
 	}
 
 	if payload.Action != "edited" {
