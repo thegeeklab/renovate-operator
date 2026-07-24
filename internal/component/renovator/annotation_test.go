@@ -248,4 +248,94 @@ var _ = Describe("Renovator Annotation Functions", func() {
 			Expect(result["other-annotation"]).To(Equal("some-value"))
 		})
 	})
+
+	Describe("RemoveOperation", func() {
+		It("should remove a single operation leaving the annotation key deleted", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
+				"other-annotation":                 "some-value",
+			}
+
+			result := RemoveOperation(annotations, renovatev1beta1.OperationDiscover)
+			Expect(result).To(HaveLen(1))
+			Expect(result).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
+			Expect(result).To(HaveKey("other-annotation"))
+			Expect(result["other-annotation"]).To(Equal("some-value"))
+		})
+
+		It("should remove a specific operation while keeping others", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover + ";" + renovatev1beta1.OperationRenovate,
+				"other-annotation":                 "some-value",
+			}
+
+			result := RemoveOperation(annotations, renovatev1beta1.OperationDiscover)
+			Expect(result).To(HaveLen(2))
+			Expect(result).To(HaveKey(renovatev1beta1.RenovatorOperation))
+			Expect(result[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
+			Expect(result).To(HaveKey("other-annotation"))
+			Expect(result["other-annotation"]).To(Equal("some-value"))
+		})
+
+		It("should remove an operation from a list with more than two operations", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: "third-op;" + renovatev1beta1.OperationDiscover + ";second-op",
+			}
+
+			result := RemoveOperation(annotations, renovatev1beta1.OperationDiscover)
+			Expect(result).To(HaveLen(1))
+			Expect(result).To(HaveKey(renovatev1beta1.RenovatorOperation))
+			Expect(result[renovatev1beta1.RenovatorOperation]).To(Equal("third-op;second-op"))
+		})
+
+		It("should not modify annotations when target operation is not present", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
+				"other-annotation":                 "some-value",
+			}
+
+			result := RemoveOperation(annotations, renovatev1beta1.OperationDiscover)
+			Expect(result).To(HaveLen(2))
+			Expect(result).To(HaveKey(renovatev1beta1.RenovatorOperation))
+			Expect(result[renovatev1beta1.RenovatorOperation]).To(Equal(renovatev1beta1.OperationRenovate))
+			Expect(result).To(HaveKey("other-annotation"))
+		})
+
+		It("should handle nil annotations", func() {
+			var annotations map[string]string
+
+			result := RemoveOperation(annotations, renovatev1beta1.OperationDiscover)
+			Expect(result).NotTo(BeNil())
+			Expect(result).To(BeEmpty())
+		})
+
+		It("should handle empty annotations", func() {
+			annotations := map[string]string{}
+
+			result := RemoveOperation(annotations, renovatev1beta1.OperationDiscover)
+			Expect(result).NotTo(BeNil())
+			Expect(result).To(BeEmpty())
+		})
+
+		It("should handle annotations without the operation key", func() {
+			annotations := map[string]string{
+				"other-annotation": "some-value",
+			}
+
+			result := RemoveOperation(annotations, renovatev1beta1.OperationDiscover)
+			Expect(result).To(HaveLen(1))
+			Expect(result).To(HaveKey("other-annotation"))
+			Expect(result["other-annotation"]).To(Equal("some-value"))
+		})
+
+		It("should handle empty operation annotation value", func() {
+			annotations := map[string]string{
+				renovatev1beta1.RenovatorOperation: "",
+			}
+
+			result := RemoveOperation(annotations, renovatev1beta1.OperationDiscover)
+			Expect(result).To(HaveLen(1))
+			Expect(result).To(HaveKey(renovatev1beta1.RenovatorOperation))
+		})
+	})
 })

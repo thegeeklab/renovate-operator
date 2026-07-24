@@ -2,12 +2,14 @@ package renovator
 
 import (
 	"context"
+	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
 func (r *Reconciler) reconcileDiscovery(ctx context.Context) (*ctrl.Result, error) {
@@ -16,8 +18,20 @@ func (r *Reconciler) reconcileDiscovery(ctx context.Context) (*ctrl.Result, erro
 	_, err := k8s.CreateOrUpdate(ctx, r.Client, discovery, r.instance, func() error {
 		return r.updateDiscovery(discovery)
 	})
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
 
-	return &ctrl.Result{}, err
+	if HasRenovatorOperationDiscover(r.instance.Annotations) {
+		patch := client.MergeFrom(r.instance.DeepCopy())
+		r.instance.Annotations = RemoveOperation(r.instance.Annotations, renovatev1beta1.OperationDiscover)
+
+		if err := r.Patch(ctx, r.instance, patch); err != nil {
+			return &ctrl.Result{}, fmt.Errorf("remove discover operation: %w", err)
+		}
+	}
+
+	return &ctrl.Result{}, nil
 }
 
 func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error {
