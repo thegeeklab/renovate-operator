@@ -203,10 +203,6 @@ func (r *Reconciler) ensureRepoJob(
 
 	log.Info("Renovate job created", "job", job.Name, "repo", repo.Spec.Name)
 
-	if err := r.updateJobStatus(ctx, repo, repoLabels); err != nil {
-		return true, fmt.Errorf("failed to update job status condition: %w", err)
-	}
-
 	return true, nil
 }
 
