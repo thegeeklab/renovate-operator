@@ -76,7 +76,13 @@ var _ = Describe("GitLab Webhook Receiver", func() {
 			receiver.ParseResult{ShouldTrigger: true, RequireUserCheck: true, User: "renovate-bot"},
 		),
 		Entry("opened merge request", "Merge Request Hook", "open", renovateDescription, receiver.ParseResult{}),
-		Entry("closed merge request (not merged)", "Merge Request Hook", "close", renovateDescription, receiver.ParseResult{}),
+		Entry(
+			"closed merge request (not merged)",
+			"Merge Request Hook",
+			"close",
+			renovateDescription,
+			receiver.ParseResult{},
+		),
 		Entry(
 			"merged merge request",
 			"Merge Request Hook",
