@@ -304,6 +304,39 @@ var _ = Describe("ReconcileJob", func() {
 			})
 		})
 
+		Context("when jobs were created in a previous reconciliation", func() {
+			It("should update GitRepo status to show running jobs", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+				Expect(jobList.Items).To(HaveLen(2))
+
+				updatedRepo1 := &renovatev1beta1.GitRepo{}
+				Expect(fakeClient.Get(ctx, types.NamespacedName{Name: "repo-1", Namespace: "default"}, updatedRepo1)).To(Succeed())
+				runningCond := updatedRepo1.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning)
+				Expect(runningCond).NotTo(BeNil())
+				Expect(runningCond.Status).To(Equal(metav1.ConditionFalse))
+
+				_, err = reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				Expect(fakeClient.Get(ctx, types.NamespacedName{Name: "repo-1", Namespace: "default"}, updatedRepo1)).To(Succeed())
+				runningCond = updatedRepo1.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning)
+				Expect(runningCond).NotTo(BeNil())
+				Expect(runningCond.Status).To(Equal(metav1.ConditionTrue))
+				Expect(runningCond.Reason).To(Equal("JobActive"))
+
+				updatedRepo2 := &renovatev1beta1.GitRepo{}
+				Expect(fakeClient.Get(ctx, types.NamespacedName{Name: "repo-2", Namespace: "default"}, updatedRepo2)).To(Succeed())
+				runningCond = updatedRepo2.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning)
+				Expect(runningCond).NotTo(BeNil())
+				Expect(runningCond.Status).To(Equal(metav1.ConditionTrue))
+				Expect(runningCond.Reason).To(Equal("JobActive"))
+			})
+		})
+
 		Context("when repo name exceeds 63 characters", func() {
 			var longRepo *renovatev1beta1.GitRepo
 
