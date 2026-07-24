@@ -242,6 +242,17 @@ var _ = Describe("GitHub Webhook Receiver", func() {
 			Expect(result).To(Equal(receiver.ParseResult{}))
 		})
 
+		It("should trigger a run for a merged pull request", func() {
+			body := []byte(fixtures.HookPullRequestRenovateMerged)
+
+			req := httptest.NewRequest(http.MethodPost, "/webhook", bytes.NewReader(body))
+			req.Header.Set("X-GitHub-Event", "pull_request")
+
+			result, err := Receiver.Parse(req, body)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(receiver.ParseResult{ShouldTrigger: true}))
+		})
+
 		It("should NOT trigger a run for issues with action 'opened'", func() {
 			body := []byte(fixtures.HookIssueRenovateOpened)
 
