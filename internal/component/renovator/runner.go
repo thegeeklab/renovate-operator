@@ -2,22 +2,37 @@ package renovator
 
 import (
 	"context"
+	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 )
 
+//nolint:dupl
 func (r *Reconciler) reconcileRunner(ctx context.Context) (*ctrl.Result, error) {
 	runner := &renovatev1beta1.Runner{ObjectMeta: metadata.GenericMetadata(r.req)}
 
 	_, err := k8s.CreateOrUpdate(ctx, r.Client, runner, r.instance, func() error {
 		return r.updateRunner(runner)
 	})
+	if err != nil {
+		return &ctrl.Result{}, err
+	}
 
-	return &ctrl.Result{}, err
+	if HasRenovatorOperationRenovate(r.instance.Annotations) {
+		patch := client.MergeFrom(r.instance.DeepCopy())
+		r.instance.Annotations = RemoveOperation(r.instance.Annotations, renovatev1beta1.OperationRenovate)
+
+		if err := r.Patch(ctx, r.instance, patch); err != nil {
+			return &ctrl.Result{}, fmt.Errorf("remove renovate operation: %w", err)
+		}
+	}
+
+	return &ctrl.Result{}, nil
 }
 
 func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {

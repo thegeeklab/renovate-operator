@@ -173,6 +173,53 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(renovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
 		})
 
+		It("should consume discover annotation on propagation to prevent duplicate jobs", func() {
+			renovator := &renovatev1beta1.Renovator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-renovator-consume",
+					Namespace: "default",
+					Annotations: map[string]string{
+						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
+					},
+				},
+				Spec: renovatev1beta1.RenovatorSpec{
+					Discovery: renovatev1beta1.DiscoverySpec{
+						JobSpec: renovatev1beta1.JobSpec{
+							Schedule: "0 0 * * *",
+						},
+					},
+				},
+			}
+
+			fakeClient = fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(renovator).
+				Build()
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = reconciler.reconcileDiscovery(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			stored := &renovatev1beta1.Renovator{}
+			err = fakeClient.Get(ctx, client.ObjectKeyFromObject(renovator), stored)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(stored.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
+
+			Expect(renovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
+
+			secondDiscovery := &renovatev1beta1.Discovery{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-discovery-2",
+					Namespace: "default",
+				},
+			}
+			err = reconciler.updateDiscovery(secondDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(secondDiscovery.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
+		})
+
 		It("should copy Discovery configuration from Renovator spec", func() {
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{

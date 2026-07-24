@@ -173,6 +173,53 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(renovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
 		})
 
+		It("should consume renovate annotation on propagation to prevent duplicate jobs", func() {
+			renovator := &renovatev1beta1.Renovator{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-renovator-consume",
+					Namespace: "default",
+					Annotations: map[string]string{
+						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
+					},
+				},
+				Spec: renovatev1beta1.RenovatorSpec{
+					Runner: renovatev1beta1.RunnerSpec{
+						JobSpec: renovatev1beta1.JobSpec{
+							Schedule: "0 0 * * *",
+						},
+					},
+				},
+			}
+
+			fakeClient = fake.NewClientBuilder().
+				WithScheme(scheme).
+				WithObjects(renovator).
+				Build()
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = reconciler.reconcileRunner(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			stored := &renovatev1beta1.Renovator{}
+			err = fakeClient.Get(ctx, client.ObjectKeyFromObject(renovator), stored)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(stored.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
+
+			Expect(renovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
+
+			secondRunner := &renovatev1beta1.Runner{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-runner-2",
+					Namespace: "default",
+				},
+			}
+			err = reconciler.updateRunner(secondRunner)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(secondRunner.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
+		})
+
 		It("should not forward annotation when Renovator has no renovate operation", func() {
 			renovator := &renovatev1beta1.Renovator{
 				ObjectMeta: metav1.ObjectMeta{
