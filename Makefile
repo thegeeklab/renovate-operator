@@ -11,7 +11,7 @@ AIR_PACKAGE_VERSION := v1.67.2
 # renovate: datasource=github-releases depName=norwoodj/helm-docs
 HELM_DOCS_PACKAGE_VERSION := v1.14.2
 # renovate: datasource=docker depName=ghcr.io/helm-unittest/helm-unittest/unittest
-HELM_UNITTEST_VERSION := 1.1.1
+HELM_UNITTEST_VERSION := 1.1.2
 
 MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
 
