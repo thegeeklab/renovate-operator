@@ -10,6 +10,7 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/types"
@@ -64,9 +65,15 @@ type Server struct {
 
 	providerFactory factory.ProviderFactory
 	receiverFactory ReceiverFactory
+	metrics         metrics.Recorder
 }
 
-func NewServer(config ServerConfig, k8sClient client.Client, receiverFactory ReceiverFactory) *Server {
+func NewServer(
+	config ServerConfig,
+	k8sClient client.Client,
+	receiverFactory ReceiverFactory,
+	metricsRecorder metrics.Recorder,
+) *Server {
 	s := &Server{
 		config: config,
 		client: k8sClient,
@@ -74,6 +81,7 @@ func NewServer(config ServerConfig, k8sClient client.Client, receiverFactory Rec
 
 		providerFactory: factory.DefaultProviderFactory,
 		receiverFactory: receiverFactory,
+		metrics:         metricsRecorder,
 	}
 
 	s.router.Post("/hooks/{namespace}/{name}", s.handleIncomingWebhook)
@@ -114,6 +122,11 @@ func (s *Server) Start(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// ServeHTTP satisfies http.Handler for use in tests and httptest.Server.
+func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
+	s.router.ServeHTTP(w, r)
 }
 
 func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
@@ -173,6 +186,11 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		receiverLog.Error(err, "Webhook validation failed", "namespace", namespace, "name", name)
 		http.Error(w, "Invalid signature", http.StatusForbidden)
 
+		if s.metrics != nil {
+			s.metrics.RecordWebhookSignatureFailure(string(config.Spec.Platform.Type))
+			s.metrics.RecordWebhookRequest(string(config.Spec.Platform.Type), "rejected")
+		}
+
 		return
 	}
 
@@ -181,6 +199,10 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		receiverLog.Error(err, "Failed to parse webhook event")
 		http.Error(w, "Bad Request", http.StatusBadRequest)
 
+		if s.metrics != nil {
+			s.metrics.RecordWebhookRequest(string(config.Spec.Platform.Type), "rejected")
+		}
+
 		return
 	}
 
@@ -188,6 +210,10 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		receiverLog.Info("Webhook processed, no trigger required", "namespace", namespace, "name", name)
 		w.WriteHeader(http.StatusAccepted)
 		_, _ = w.Write([]byte(`{"status":"accepted"}`))
+
+		if s.metrics != nil {
+			s.metrics.RecordWebhookRequest(string(config.Spec.Platform.Type), "ignored")
+		}
 
 		return
 	}
@@ -202,6 +228,10 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 		}
 
 		if !allowed {
+			if s.metrics != nil {
+				s.metrics.RecordWebhookRequest(string(config.Spec.Platform.Type), "rejected")
+			}
+
 			w.WriteHeader(http.StatusAccepted)
 			_, _ = w.Write([]byte(`{"status":"accepted"}`))
 
@@ -226,6 +256,10 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 
 	receiverLog.Info("Renovate run triggered successfully", "namespace", namespace, "name", name)
 
+	if s.metrics != nil {
+		s.metrics.RecordWebhookRequest(string(config.Spec.Platform.Type), "accepted")
+	}
+
 	w.WriteHeader(http.StatusAccepted)
 	_, _ = w.Write([]byte(`{"status":"accepted"}`))
 }
@@ -235,11 +269,19 @@ func (s *Server) resolveWebhookSecret(ctx context.Context, namespace, name strin
 	webhookSecret := &corev1.Secret{}
 
 	if err := s.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: secretName}, webhookSecret); err != nil {
+		if s.metrics != nil {
+			s.metrics.RecordSecretResolutionError("not_found")
+		}
+
 		return nil, err
 	}
 
 	token, ok := webhookSecret.Data[renovatev1beta1.WebhookSecretDataKey]
 	if !ok {
+		if s.metrics != nil {
+			s.metrics.RecordSecretResolutionError("key_missing")
+		}
+
 		return nil, fmt.Errorf("%w: %q", ErrWebhookSecretKeyNotFound, secretName)
 	}
 

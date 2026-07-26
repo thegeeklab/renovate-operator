@@ -70,6 +70,11 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 
 		log.Info("Discovery run active", "trigger", decision.Trigger)
 
+		if r.metrics != nil {
+			renovatorLabel := r.instance.Labels[renovatev1beta1.LabelRenovator]
+			r.metrics.RecordDiscoveryJob(r.instance.Namespace, renovatorLabel, r.instance.Name, "dispatched")
+		}
+
 		if err := r.scheduler.CompleteRun(ctx, r.instance, renovator.RemoveRenovatorOperation); err != nil {
 			return &ctrl.Result{}, fmt.Errorf("failed to complete run: %w", err)
 		}

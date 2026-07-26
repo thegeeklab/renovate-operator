@@ -4,6 +4,7 @@ import (
 	"context"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
@@ -21,6 +22,7 @@ type Reconciler struct {
 	instance        *renovatev1beta1.Discovery
 	renovate        *renovatev1beta1.RenovateConfig
 	providerFactory factory.ProviderFactory
+	metrics         metrics.Recorder
 }
 
 func NewReconciler(
@@ -28,6 +30,7 @@ func NewReconciler(
 	scheme *runtime.Scheme,
 	instance *renovatev1beta1.Discovery,
 	renovate *renovatev1beta1.RenovateConfig,
+	metricsRecorder metrics.Recorder,
 ) (*Reconciler, error) {
 	return &Reconciler{
 		Client:          c,
@@ -37,6 +40,7 @@ func NewReconciler(
 		instance:        instance,
 		renovate:        renovate,
 		providerFactory: factory.DefaultProviderFactory,
+		metrics:         metricsRecorder,
 	}, nil
 }
 

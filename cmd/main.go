@@ -184,7 +184,7 @@ func run() error {
 		return fmt.Errorf("unable to setup webhooks: %w", err)
 	}
 
-	if err := setupHTTPServers(mgr, cfg, clientset, sseBroker, authManager, logReader); err != nil {
+	if err := setupHTTPServers(mgr, cfg, clientset, sseBroker, authManager, metricsRecorder, logReader); err != nil {
 		return fmt.Errorf("unable to setup auxiliary servers: %w", err)
 	}
 
@@ -354,8 +354,9 @@ func setupControllers(
 	}
 
 	if err := (&discovery.Reconciler{
-		Client: mgr.GetClient(),
-		Scheme: mgr.GetScheme(),
+		Client:  mgr.GetClient(),
+		Scheme:  mgr.GetScheme(),
+		Metrics: metricsRecorder,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller %s: %w", discovery.ControllerName, err)
 	}
@@ -526,6 +527,7 @@ func setupHTTPServers(
 	clientset kubernetes.Interface,
 	sseBroker *frontend.SSEBroker,
 	authManager *auth.Manager,
+	metricsRecorder metrics.Recorder,
 	logReader logreader.Reader,
 ) error {
 	if cfg.FrontendAddr != "0" {
@@ -570,6 +572,7 @@ func setupHTTPServers(
 			receiverConfig,
 			mgr.GetClient(),
 			buildReceiverFactory(),
+			metricsRecorder,
 		)
 
 		setupLog.Info("Adding HTTP server to manager", "server", "receiver", "addr", cfg.ReceiverAddr)
