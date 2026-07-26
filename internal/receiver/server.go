@@ -201,6 +201,7 @@ func (s *Server) handleIncomingWebhook(w http.ResponseWriter, r *http.Request) {
 
 		if s.metrics != nil {
 			s.metrics.RecordWebhookRequest(string(config.Spec.Platform.Type), "rejected")
+			s.metrics.RecordWebhookPayloadDecodeFailure(string(config.Spec.Platform.Type))
 		}
 
 		return
@@ -326,6 +327,10 @@ func (s *Server) verifyWebhookUser(
 	if err != nil {
 		receiverLog.Error(err, "Failed to resolve platform token", "namespace", namespace, "name", name)
 
+		if s.metrics != nil {
+			s.metrics.RecordWebhookAuthFailure(string(config.Spec.Platform.Type), "token_resolution")
+		}
+
 		return false, err
 	}
 
@@ -340,6 +345,10 @@ func (s *Server) verifyWebhookUser(
 	if err != nil {
 		receiverLog.Error(err, "Failed to create platform provider", "namespace", namespace, "name", name)
 
+		if s.metrics != nil {
+			s.metrics.RecordWebhookAuthFailure(string(config.Spec.Platform.Type), "provider_error")
+		}
+
 		return false, err
 	}
 
@@ -347,11 +356,19 @@ func (s *Server) verifyWebhookUser(
 	if err != nil {
 		receiverLog.Error(err, "Failed to get allowed user identity", "namespace", namespace, "name", name)
 
+		if s.metrics != nil {
+			s.metrics.RecordWebhookAuthFailure(string(config.Spec.Platform.Type), "identity_error")
+		}
+
 		return false, err
 	}
 
 	if webhookUser != allowedUser {
 		receiverLog.Info("Webhook user does not match expected identity", "user", webhookUser)
+
+		if s.metrics != nil {
+			s.metrics.RecordWebhookAuthFailure(string(config.Spec.Platform.Type), "identity_mismatch")
+		}
 
 		return false, nil
 	}

@@ -214,10 +214,6 @@ func (r *recorder) SetRunnerScheduleNextRun(namespace, renovator, runner string,
 	r.runnerScheduleNextRun.WithLabelValues(namespace, renovator, runner).Set(timestamp)
 }
 
-func (r *recorder) RecordDiscoveryJob(namespace, renovator, discovery, status string) {
-	r.discoveryJobs.WithLabelValues(namespace, renovator, discovery, status).Inc()
-}
-
 func (r *recorder) SetDiscoveryRepositories(namespace, renovator, discovery string, count int) {
 	r.discoveryRepoCount.WithLabelValues(namespace, renovator, discovery).Set(float64(count))
 }
@@ -258,9 +254,6 @@ func (r *recorder) DeleteRunner(namespace, renovator, runner string) {
 }
 
 func (r *recorder) DeleteDiscovery(namespace, renovator, discovery string) {
-	r.discoveryJobs.DeletePartialMatch(prometheus.Labels{
-		"namespace": namespace, "renovator": renovator, "discovery": discovery,
-	})
 	r.discoveryRepoCount.DeleteLabelValues(namespace, renovator, discovery)
 }
 

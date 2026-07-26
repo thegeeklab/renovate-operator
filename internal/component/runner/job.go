@@ -154,11 +154,6 @@ func (r *Reconciler) processGitRepos(
 			log.Error(err, "Failed to update job status", "repo", repo.Name)
 		}
 
-		if repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning) != nil &&
-			repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning).Status == metav1.ConditionTrue {
-			runningCount++
-		}
-
 		if err := r.scheduler.PruneJobs(
 			ctx, repo.Namespace, repoLabels, r.instance.GetSuccessLimit(), r.instance.GetFailedLimit(),
 		); err != nil {
@@ -171,6 +166,11 @@ func (r *Reconciler) processGitRepos(
 		}
 
 		eligibleCount++
+
+		if repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning) != nil &&
+			repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning).Status == metav1.ConditionTrue {
+			runningCount++
+		}
 
 		if maxParallel > 0 && activeCount >= maxParallel {
 			log.V(1).Info(

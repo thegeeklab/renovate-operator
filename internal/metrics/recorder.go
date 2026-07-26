@@ -46,7 +46,6 @@ type Recorder interface {
 	DeleteRunner(namespace, renovator, runner string)
 
 	// --- Discovery-scoped (namespace, renovator, discovery) ---
-	RecordDiscoveryJob(namespace, renovator, discovery, status string)
 	SetDiscoveryRepositories(namespace, renovator, discovery string, count int)
 	DeleteDiscovery(namespace, renovator, discovery string)
 
@@ -91,7 +90,6 @@ type recorder struct {
 	runnerScheduleNextRun *prometheus.GaugeVec
 
 	// Discovery-scoped (3 labels)
-	discoveryJobs      *prometheus.CounterVec
 	discoveryRepoCount *prometheus.GaugeVec
 
 	// Webhook (provider, result)
@@ -271,14 +269,6 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		[]string{"namespace", "renovator", "runner"},
 	)
 
-	discoveryJobs := prometheus.NewCounterVec(
-		prometheus.CounterOpts{
-			Name: "renovate_operator_discovery_jobs_total",
-			Help: "Total number of discovery Jobs completed by status.",
-		},
-		[]string{"namespace", "renovator", "discovery", "status"},
-	)
-
 	discoveryRepoCount := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "renovate_operator_discovery_repositories",
@@ -353,7 +343,7 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		runnerJobs, runnerJobDuration,
 		runnerQueueDepth, runnerRunning,
 		runnerScheduleRuns, runnerScheduleNextRun,
-		discoveryJobs, discoveryRepoCount,
+		discoveryRepoCount,
 		webhookRequests, webhookSignatureFailures,
 		webhookAuthFailures, webhookPayloadDecodeFailures,
 		secretResolutionErrors,
@@ -380,7 +370,6 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		runnerRunning:                runnerRunning,
 		runnerScheduleRuns:           runnerScheduleRuns,
 		runnerScheduleNextRun:        runnerScheduleNextRun,
-		discoveryJobs:                discoveryJobs,
 		discoveryRepoCount:           discoveryRepoCount,
 		webhookRequests:              webhookRequests,
 		webhookSignatureFailures:     webhookSignatureFailures,

@@ -373,19 +373,8 @@ var _ = Describe("Recorder", func() {
 			Expect(nextRun).To(Equal(1714000000.0))
 		})
 
-		It("should record discovery metrics", func() {
-			rec.RecordDiscoveryJob("default", "test-renovator", "test-discovery", StatusSucceeded)
+		It("should record discovery repo count", func() {
 			rec.SetDiscoveryRepositories("default", "test-renovator", "test-discovery", 25)
-
-			//nolint:lll
-			expected := `
-				# HELP renovate_operator_discovery_jobs_total Total number of discovery Jobs completed by status.
-				# TYPE renovate_operator_discovery_jobs_total counter
-				renovate_operator_discovery_jobs_total{discovery="test-discovery",namespace="default",renovator="test-renovator",status="succeeded"} 1
-			`
-
-			err := testutil.CollectAndCompare(recImpl.discoveryJobs, strings.NewReader(expected))
-			Expect(err).NotTo(HaveOccurred())
 
 			repos := testutil.ToFloat64(
 				recImpl.discoveryRepoCount.WithLabelValues("default", "test-renovator", "test-discovery"),
