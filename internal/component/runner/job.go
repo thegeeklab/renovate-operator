@@ -235,6 +235,12 @@ func (r *Reconciler) ensureRepoJob(
 		return false, nil
 	}
 
+	if r.metrics != nil {
+		renovatorLabel := r.instance.Labels[renovatev1beta1.LabelRenovator]
+
+		r.metrics.RecordRunnerJob(r.instance.Namespace, renovatorLabel, r.instance.Name, "dispatched")
+	}
+
 	log.Info("Renovate job created", "job", job.Name, "repo", repo.Spec.Name)
 
 	return true, nil

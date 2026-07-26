@@ -5,9 +5,10 @@ import (
 )
 
 const (
-	StatusSucceeded = "succeeded"
-	StatusFailed    = "failed"
-	StatusUnknown   = "unknown"
+	StatusSucceeded  = "succeeded"
+	StatusFailed     = "failed"
+	StatusUnknown    = "unknown"
+	StatusDispatched = "dispatched"
 
 	KindRunner    = "runner"
 	KindDiscovery = "discovery"
@@ -52,6 +53,8 @@ type Recorder interface {
 	// --- Webhook (provider, result) ---
 	RecordWebhookRequest(provider, result string)
 	RecordWebhookSignatureFailure(provider string)
+	RecordWebhookAuthFailure(provider, errorType string)
+	RecordWebhookPayloadDecodeFailure(provider string)
 
 	// --- Secret resolution ---
 	RecordSecretResolutionError(errorType string)
@@ -92,8 +95,10 @@ type recorder struct {
 	discoveryRepoCount *prometheus.GaugeVec
 
 	// Webhook (provider, result)
-	webhookRequests          *prometheus.CounterVec
-	webhookSignatureFailures *prometheus.CounterVec
+	webhookRequests            *prometheus.CounterVec
+	webhookSignatureFailures   *prometheus.CounterVec
+	webhookAuthFailures        *prometheus.CounterVec
+	webhookPayloadDecodeFailures *prometheus.CounterVec
 
 	// Secret resolution
 	secretResolutionErrors *prometheus.CounterVec
@@ -298,6 +303,22 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		[]string{"provider"},
 	)
 
+	webhookAuthFailures := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_webhook_auth_failures_total",
+			Help: "Total number of webhook authentication failures by error type.",
+		},
+		[]string{"provider", "error_type"},
+	)
+
+	webhookPayloadDecodeFailures := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_webhook_payload_decode_failures_total",
+			Help: "Total number of webhook payloads that failed to decode.",
+		},
+		[]string{"provider"},
+	)
+
 	secretResolutionErrors := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "renovate_operator_secret_resolution_errors_total",
@@ -334,6 +355,7 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		runnerScheduleRuns, runnerScheduleNextRun,
 		discoveryJobs, discoveryRepoCount,
 		webhookRequests, webhookSignatureFailures,
+		webhookAuthFailures, webhookPayloadDecodeFailures,
 		secretResolutionErrors,
 		reconcileDur, seriesDropped,
 	)
@@ -362,6 +384,8 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		discoveryRepoCount:          discoveryRepoCount,
 		webhookRequests:             webhookRequests,
 		webhookSignatureFailures:    webhookSignatureFailures,
+		webhookAuthFailures:         webhookAuthFailures,
+		webhookPayloadDecodeFailures: webhookPayloadDecodeFailures,
 		secretResolutionErrors:      secretResolutionErrors,
 		reconcileDur:                reconcileDur,
 		seriesDropped:               seriesDropped,

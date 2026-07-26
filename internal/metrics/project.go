@@ -230,6 +230,14 @@ func (r *recorder) RecordWebhookSignatureFailure(provider string) {
 	r.webhookSignatureFailures.WithLabelValues(provider).Inc()
 }
 
+func (r *recorder) RecordWebhookAuthFailure(provider, errorType string) {
+	r.webhookAuthFailures.WithLabelValues(provider, errorType).Inc()
+}
+
+func (r *recorder) RecordWebhookPayloadDecodeFailure(provider string) {
+	r.webhookPayloadDecodeFailures.WithLabelValues(provider).Inc()
+}
+
 func (r *recorder) RecordSecretResolutionError(errorType string) {
 	r.secretResolutionErrors.WithLabelValues(errorType).Inc()
 }

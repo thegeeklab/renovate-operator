@@ -314,11 +314,13 @@ var _ = Describe("Recorder", func() {
 		It("should record runner job counter", func() {
 			rec.RecordRunnerJob("default", "test-renovator", "test-runner", StatusSucceeded)
 			rec.RecordRunnerJob("default", "test-renovator", "test-runner", StatusFailed)
+			rec.RecordRunnerJob("default", "test-renovator", "test-runner", StatusDispatched)
 
 			//nolint:lll
 			expected := `
 				# HELP renovate_operator_runner_jobs_total Total number of completed GitRepo jobs by status.
 				# TYPE renovate_operator_runner_jobs_total counter
+				renovate_operator_runner_jobs_total{namespace="default",renovator="test-renovator",runner="test-runner",status="dispatched"} 1
 				renovate_operator_runner_jobs_total{namespace="default",renovator="test-renovator",runner="test-runner",status="failed"} 1
 				renovate_operator_runner_jobs_total{namespace="default",renovator="test-renovator",runner="test-runner",status="succeeded"} 1
 			`
@@ -410,6 +412,39 @@ var _ = Describe("Recorder", func() {
 				recImpl.webhookSignatureFailures.WithLabelValues("github"),
 			)
 			Expect(sigFail).To(Equal(1.0))
+		})
+
+		It("should record webhook auth failure", func() {
+			rec.RecordWebhookAuthFailure("github", "no_matching_job")
+			rec.RecordWebhookAuthFailure("gitlab", "secret_error")
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_webhook_auth_failures_total Total number of webhook authentication failures by error type.
+				# TYPE renovate_operator_webhook_auth_failures_total counter
+				renovate_operator_webhook_auth_failures_total{error_type="secret_error",provider="gitlab"} 1
+				renovate_operator_webhook_auth_failures_total{error_type="no_matching_job",provider="github"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.webhookAuthFailures, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should record webhook payload decode failure", func() {
+			rec.RecordWebhookPayloadDecodeFailure("github")
+			rec.RecordWebhookPayloadDecodeFailure("github")
+			rec.RecordWebhookPayloadDecodeFailure("gitlab")
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_webhook_payload_decode_failures_total Total number of webhook payloads that failed to decode.
+				# TYPE renovate_operator_webhook_payload_decode_failures_total counter
+				renovate_operator_webhook_payload_decode_failures_total{provider="github"} 2
+				renovate_operator_webhook_payload_decode_failures_total{provider="gitlab"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.webhookPayloadDecodeFailures, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should record secret resolution error", func() {
