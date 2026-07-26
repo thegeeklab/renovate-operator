@@ -31,10 +31,10 @@ const (
 	// remote webhooks are cleaned up before the resource is deleted.
 	FinalizerGitRepoWebhook = "renovate.thegeeklab.de/webhook-cleanup"
 
-	// FinalizerGitRepoMetrics is the finalizer added to GitRepo resources to ensure
-	// per-repo Prometheus metric series are removed from the operator registry
+	// FinalizerMetricsCleanup is the finalizer added to GitRepo, Runner, and Discovery resources to ensure
+	// per-resource Prometheus metric series are removed from the operator registry
 	// before the resource is deleted.
-	FinalizerGitRepoMetrics = "renovate.thegeeklab.de/metrics-cleanup"
+	FinalizerMetricsCleanup = "renovate.thegeeklab.de/metrics-cleanup"
 
 	// FinalizerAuthProviderCleanup is the finalizer added to AuthProvider resources to ensure
 	// the provider is unregistered from the auth manager before the resource is deleted.

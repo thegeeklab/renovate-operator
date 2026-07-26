@@ -48,6 +48,7 @@ func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
 	results := &reconciler.Results{}
 
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){
+		r.reconcileMetrics,
 		r.reconcileRole,
 		r.reconcileRoleBinding,
 		r.reconcileServiceAccount,

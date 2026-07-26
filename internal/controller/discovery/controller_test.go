@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -91,6 +92,13 @@ var _ = Describe("Discovery Controller", func() {
 			}
 			_ = k8sClient.Delete(ctx, resource)
 
+			if err := k8sClient.Get(ctx, client.ObjectKey{Name: resourceName, Namespace: "default"}, resource); err == nil {
+				if controllerutil.ContainsFinalizer(resource, renovatev1beta1.FinalizerMetricsCleanup) {
+					controllerutil.RemoveFinalizer(resource, renovatev1beta1.FinalizerMetricsCleanup)
+					_ = k8sClient.Update(ctx, resource)
+				}
+			}
+
 			config := &renovatev1beta1.RenovateConfig{
 				ObjectMeta: metav1.ObjectMeta{
 					Name:      "test-config-ref",
@@ -167,6 +175,13 @@ var _ = Describe("Discovery Controller", func() {
 				},
 			}
 			_ = k8sClient.Delete(ctx, resource)
+
+			if err := k8sClient.Get(ctx, client.ObjectKey{Name: discoveryName, Namespace: "default"}, resource); err == nil {
+				if controllerutil.ContainsFinalizer(resource, renovatev1beta1.FinalizerMetricsCleanup) {
+					controllerutil.RemoveFinalizer(resource, renovatev1beta1.FinalizerMetricsCleanup)
+					_ = k8sClient.Update(ctx, resource)
+				}
+			}
 
 			config := &renovatev1beta1.RenovateConfig{
 				ObjectMeta: metav1.ObjectMeta{

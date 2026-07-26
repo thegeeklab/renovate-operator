@@ -13,6 +13,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	corev1 "k8s.io/api/core/v1"
+	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -271,7 +272,11 @@ func (s *Server) resolveWebhookSecret(ctx context.Context, namespace, name strin
 
 	if err := s.client.Get(ctx, types.NamespacedName{Namespace: namespace, Name: secretName}, webhookSecret); err != nil {
 		if s.metrics != nil {
-			s.metrics.RecordSecretResolutionError("not_found")
+			if api_errors.IsNotFound(err) {
+				s.metrics.RecordSecretResolutionError("not_found")
+			} else {
+				s.metrics.RecordSecretResolutionError("fetch_error")
+			}
 		}
 
 		return nil, err

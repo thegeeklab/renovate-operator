@@ -450,6 +450,47 @@ var _ = Describe("Recorder", func() {
 			err := testutil.CollectAndCompare(recImpl.secretResolutionErrors, strings.NewReader(expected))
 			Expect(err).NotTo(HaveOccurred())
 		})
+
+		It("should delete runner metrics", func() {
+			rec.RecordRunnerJob("default", "test-renovator", "test-runner", StatusSucceeded)
+			rec.RecordRunnerJobDuration("default", "test-renovator", "test-runner", StatusSucceeded, 45.0)
+			rec.SetRunnerQueueDepth("default", "test-renovator", "test-runner", 12)
+			rec.SetRunnerRunning("default", "test-renovator", "test-runner", 3)
+			rec.RecordRunnerScheduleRun("default", "test-renovator", "test-runner", "success")
+			rec.SetRunnerScheduleNextRun("default", "test-renovator", "test-runner", 1714000000)
+
+			rec.DeleteRunner("default", "test-renovator", "test-runner")
+
+			Expect(testutil.CollectAndCount(recImpl.runnerJobs)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerJobDuration)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerQueueDepth)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerRunning)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerScheduleRuns)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerScheduleNextRun)).To(Equal(0))
+		})
+
+		It("should delete discovery metrics", func() {
+			rec.SetDiscoveryRepositories("default", "test-renovator", "test-discovery", 25)
+
+			rec.DeleteDiscovery("default", "test-renovator", "test-discovery")
+
+			Expect(testutil.CollectAndCount(recImpl.discoveryRepoCount)).To(Equal(0))
+		})
+
+		It("should only delete metrics for the specified runner", func() {
+			rec.SetRunnerQueueDepth("default", "test-renovator", "runner-1", 10)
+			rec.SetRunnerQueueDepth("default", "test-renovator", "runner-2", 20)
+
+			rec.DeleteRunner("default", "test-renovator", "runner-1")
+
+			Expect(testutil.CollectAndCount(recImpl.runnerQueueDepth)).To(Equal(1))
+
+			val := testutil.ToFloat64(
+				recImpl.runnerQueueDepth.WithLabelValues("default", "test-renovator", "runner-2"),
+			)
+			Expect(val).To(Equal(20.0))
+		})
+
 		It("should handle multiple namespaces and repos independently", func() {
 			rec.RecordGitRepoRun("ns-1", "renovator-1", "runner-1", "repo-1", StatusSucceeded)
 			rec.RecordGitRepoRun("ns-1", "renovator-1", "runner-1", "repo-2", StatusFailed)
