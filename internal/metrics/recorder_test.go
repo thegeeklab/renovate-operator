@@ -318,7 +318,7 @@ var _ = Describe("Recorder", func() {
 
 			//nolint:lll
 			expected := `
-				# HELP renovate_operator_runner_jobs_total Total number of completed GitRepo jobs by status.
+				# HELP renovate_operator_runner_jobs_total Total number of GitRepo jobs by status (dispatched, succeeded, failed).
 				# TYPE renovate_operator_runner_jobs_total counter
 				renovate_operator_runner_jobs_total{namespace="default",renovator="test-renovator",runner="test-runner",status="dispatched"} 1
 				renovate_operator_runner_jobs_total{namespace="default",renovator="test-renovator",runner="test-runner",status="failed"} 1
@@ -418,7 +418,6 @@ var _ = Describe("Recorder", func() {
 			rec.RecordWebhookAuthFailure("github", "no_matching_job")
 			rec.RecordWebhookAuthFailure("gitlab", "secret_error")
 
-			//nolint:lll
 			expected := `
 				# HELP renovate_operator_webhook_auth_failures_total Total number of webhook authentication failures by error type.
 				# TYPE renovate_operator_webhook_auth_failures_total counter

@@ -95,9 +95,9 @@ type recorder struct {
 	discoveryRepoCount *prometheus.GaugeVec
 
 	// Webhook (provider, result)
-	webhookRequests            *prometheus.CounterVec
-	webhookSignatureFailures   *prometheus.CounterVec
-	webhookAuthFailures        *prometheus.CounterVec
+	webhookRequests              *prometheus.CounterVec
+	webhookSignatureFailures     *prometheus.CounterVec
+	webhookAuthFailures          *prometheus.CounterVec
 	webhookPayloadDecodeFailures *prometheus.CounterVec
 
 	// Secret resolution
@@ -225,7 +225,7 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 	runnerJobs := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "renovate_operator_runner_jobs_total",
-			Help: "Total number of completed GitRepo jobs by status.",
+			Help: "Total number of GitRepo jobs by status (dispatched, succeeded, failed).",
 		},
 		[]string{"namespace", "renovator", "runner", "status"},
 	)
@@ -361,36 +361,36 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 	)
 
 	r := &recorder{
-		gitrepoRuns:                 gitrepoRuns,
-		gitrepoRunFailed:            gitrepoRunFailed,
-		gitrepoLastRun:              gitrepoLastRun,
-		gitrepoLastRunDur:           gitrepoLastRunDur,
-		gitrepoDependencyIssues:     gitrepoDependencyIssues,
-		gitrepoApprovalsNeeded:      gitrepoApprovalsNeeded,
-		gitrepoDependenciesTotal:    gitrepoDependenciesTotal,
-		gitrepoDependenciesOutdated: gitrepoDependenciesOutdated,
-		gitrepoDependencyUpdates:    gitrepoDependencyUpdates,
-		gitrepoVulnerabilityFixes:   gitrepoVulnerabilityFixes,
-		gitrepoBranchResults:        gitrepoBranchResults,
-		gitrepoLogWarnings:          gitrepoLogWarnings,
-		gitrepoLogErrors:            gitrepoLogErrors,
-		runnerJobs:                  runnerJobs,
-		runnerJobDuration:           runnerJobDuration,
-		runnerQueueDepth:            runnerQueueDepth,
-		runnerRunning:               runnerRunning,
-		runnerScheduleRuns:          runnerScheduleRuns,
-		runnerScheduleNextRun:       runnerScheduleNextRun,
-		discoveryJobs:               discoveryJobs,
-		discoveryRepoCount:          discoveryRepoCount,
-		webhookRequests:             webhookRequests,
-		webhookSignatureFailures:    webhookSignatureFailures,
-		webhookAuthFailures:         webhookAuthFailures,
+		gitrepoRuns:                  gitrepoRuns,
+		gitrepoRunFailed:             gitrepoRunFailed,
+		gitrepoLastRun:               gitrepoLastRun,
+		gitrepoLastRunDur:            gitrepoLastRunDur,
+		gitrepoDependencyIssues:      gitrepoDependencyIssues,
+		gitrepoApprovalsNeeded:       gitrepoApprovalsNeeded,
+		gitrepoDependenciesTotal:     gitrepoDependenciesTotal,
+		gitrepoDependenciesOutdated:  gitrepoDependenciesOutdated,
+		gitrepoDependencyUpdates:     gitrepoDependencyUpdates,
+		gitrepoVulnerabilityFixes:    gitrepoVulnerabilityFixes,
+		gitrepoBranchResults:         gitrepoBranchResults,
+		gitrepoLogWarnings:           gitrepoLogWarnings,
+		gitrepoLogErrors:             gitrepoLogErrors,
+		runnerJobs:                   runnerJobs,
+		runnerJobDuration:            runnerJobDuration,
+		runnerQueueDepth:             runnerQueueDepth,
+		runnerRunning:                runnerRunning,
+		runnerScheduleRuns:           runnerScheduleRuns,
+		runnerScheduleNextRun:        runnerScheduleNextRun,
+		discoveryJobs:                discoveryJobs,
+		discoveryRepoCount:           discoveryRepoCount,
+		webhookRequests:              webhookRequests,
+		webhookSignatureFailures:     webhookSignatureFailures,
+		webhookAuthFailures:          webhookAuthFailures,
 		webhookPayloadDecodeFailures: webhookPayloadDecodeFailures,
-		secretResolutionErrors:      secretResolutionErrors,
-		reconcileDur:                reconcileDur,
-		seriesDropped:               seriesDropped,
-		guard:                       guard,
-		gatherer:                    gatherer,
+		secretResolutionErrors:       secretResolutionErrors,
+		reconcileDur:                 reconcileDur,
+		seriesDropped:                seriesDropped,
+		guard:                        guard,
+		gatherer:                     gatherer,
 	}
 
 	return r
