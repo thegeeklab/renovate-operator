@@ -266,6 +266,44 @@ The `PROJECT` file is auto-updated by kubebuilder and tracks all registered reso
 - **envtest**: Uses `setup-envtest` for Kubernetes API testing (configured via `make test`)
 - **Note**: Do not run `go test` directly on packages that use envtest — they require the KUBEBUILDER_ASSETS environment variable set by `make test`
 
+## Test-Driven Development
+
+**Always write tests alongside implementation — never defer tests until after the feature is "done".**
+
+### Process
+
+1. **Write the test first** for the new function or behavior. Use existing test files as templates — copy the `BeforeEach` setup, fake client construction, and Ginkgo structure from the nearest sibling `*_test.go`.
+2. **Run the test** to confirm it fails for the expected reason (red).
+3. **Implement** the production code.
+4. **Run the test** again to confirm it passes (green).
+5. **Run `make lint`** to catch style, naming, and spelling issues.
+
+### Test Tiers
+
+Prefer the fastest, most isolated test tier that covers the behavior:
+
+| Tier | Tool | Use for |
+|---|---|---|
+| Component unit | `fake.NewClientBuilder()` + Ginkgo | Reconciler logic, status updates, job creation, RBAC generation |
+| Controller integration | envtest (via `make test`) | Full reconciliation loops, webhook interaction, CRD status subresources |
+| E2E | Kind cluster | **Do not run** — not yet implemented |
+
+**Component unit tests are preferred** for new logic in `internal/component/`. They run in milliseconds, require no envtest binaries, and are sufficient for most reconciler behavior. Only add envtest-based controller tests when the integration between controller predicates and the component reconciler must be verified.
+
+### Coverage Expectations
+
+- **Status update functions** (e.g., `updateJobStatus`): Test all condition transitions — running/not-running, completed, failed, and transitions between states.
+- **Error paths**: Test that errors from dependencies are handled gracefully and surfaced correctly.
+- **Edge cases**: Concurrent active + finished jobs, missing resources, label truncation, nil pointer fields.
+- **Do not test** trivial getters/setters, generated code, or Kubernetes client behavior itself.
+
+### Patterns to Follow
+
+- Copy the `BeforeEach` block from an existing test in the same package — same scheme setup, clock mocking, and object defaults.
+- Use `DiscoveryLabels()` / `RunnerLabels()` helpers (not hand-crafted label maps) to ensure label consistency between production and test code.
+- For condition assertions, use `GetCondition()` and check `Status`, `Reason`, and nil checks — do not inspect `Conditions` slice directly.
+- Use `metav1.Now()` for job creation timestamps to guarantee deterministic ordering in tests.
+
 ## Project Structure
 
 - `api/v1beta1/`: CRD types, deepcopy, groupversion, constants, resource helpers
