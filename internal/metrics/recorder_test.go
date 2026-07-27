@@ -74,12 +74,26 @@ var _ = Describe("Recorder", func() {
 			Expect(err).NotTo(HaveOccurred())
 		})
 
-		It("should record runner reconcile duration", func() {
-			rec.RecordRunnerReconcileDuration(100*time.Millisecond, "success")
-			rec.RecordRunnerReconcileDuration(200*time.Millisecond, "error")
+		It("should record reconcile duration", func() {
+			rec.RecordReconcileDuration(KindRunner, "success", 0.1)
+			rec.RecordReconcileDuration(KindDiscovery, "error", 0.2)
 
-			count := testutil.CollectAndCount(recImpl.runnerReconcileDur)
+			count := testutil.CollectAndCount(recImpl.reconcileDur)
 			Expect(count).To(BeNumerically(">", 0))
+		})
+
+		It("should set last run duration gauge", func() {
+			rec.SetLastRunDuration("default", "test-renovator", "test-runner", "test-repo", 42.5)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_gitrepo_last_run_duration_seconds Wall-clock duration of the most recent GitRepo run in seconds.
+				# TYPE renovate_operator_gitrepo_last_run_duration_seconds gauge
+				renovate_operator_gitrepo_last_run_duration_seconds{gitrepo="test-repo",namespace="default",renovator="test-renovator",runner="test-runner"} 42.5
+			`
+
+			err := testutil.CollectAndCompare(recImpl.gitrepoLastRunDur, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should set dependency issues gauge", func() {
@@ -216,6 +230,7 @@ var _ = Describe("Recorder", func() {
 			rec.RecordGitRepoRun("default", "test-renovator", "test-runner", "test-repo", StatusSucceeded)
 			rec.SetRunFailed("default", "test-renovator", "test-runner", "test-repo", false)
 			rec.SetLastRunTimestamp("default", "test-renovator", "test-runner", "test-repo", 1234567890)
+			rec.SetLastRunDuration("default", "test-renovator", "test-runner", "test-repo", 42.5)
 			rec.SetDependencyIssues("default", "test-renovator", "test-runner", "test-repo", false)
 			rec.SetApprovalsNeeded("default", "test-renovator", "test-runner", "test-repo", 3)
 			rec.SetDependenciesTotal("default", "test-renovator", "test-runner", "test-repo", 50)
@@ -231,6 +246,7 @@ var _ = Describe("Recorder", func() {
 			Expect(testutil.CollectAndCount(recImpl.gitrepoRuns)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoRunFailed)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoLastRun)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.gitrepoLastRunDur)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoDependencyIssues)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoApprovalsNeeded)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.gitrepoDependenciesTotal)).To(Equal(0))
@@ -293,6 +309,186 @@ var _ = Describe("Recorder", func() {
 				recImpl.gitrepoRunFailed.WithLabelValues("default", "test-renovator", "test-runner", "test-repo"),
 			)
 			Expect(val).To(Equal(0.0))
+		})
+
+		It("should record runner job counter", func() {
+			rec.RecordRunnerJob("default", "test-renovator", "test-runner", StatusSucceeded)
+			rec.RecordRunnerJob("default", "test-renovator", "test-runner", StatusFailed)
+			rec.RecordRunnerJob("default", "test-renovator", "test-runner", StatusDispatched)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_runner_jobs_total Total number of GitRepo jobs by status (dispatched, succeeded, failed).
+				# TYPE renovate_operator_runner_jobs_total counter
+				renovate_operator_runner_jobs_total{namespace="default",renovator="test-renovator",runner="test-runner",status="dispatched"} 1
+				renovate_operator_runner_jobs_total{namespace="default",renovator="test-renovator",runner="test-runner",status="failed"} 1
+				renovate_operator_runner_jobs_total{namespace="default",renovator="test-renovator",runner="test-runner",status="succeeded"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.runnerJobs, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should record runner job duration", func() {
+			rec.RecordRunnerJobDuration("default", "test-renovator", "test-runner", StatusSucceeded, 45.0)
+
+			count := testutil.CollectAndCount(recImpl.runnerJobDuration)
+			Expect(count).To(Equal(1))
+		})
+
+		It("should set runner queue depth and running gauges", func() {
+			rec.SetRunnerQueueDepth("default", "test-renovator", "test-runner", 12)
+			rec.SetRunnerRunning("default", "test-renovator", "test-runner", 3)
+
+			depth := testutil.ToFloat64(
+				recImpl.runnerQueueDepth.WithLabelValues("default", "test-renovator", "test-runner"),
+			)
+			Expect(depth).To(Equal(12.0))
+
+			running := testutil.ToFloat64(
+				recImpl.runnerRunning.WithLabelValues("default", "test-renovator", "test-runner"),
+			)
+			Expect(running).To(Equal(3.0))
+		})
+
+		It("should record schedule run counter and set next run timestamp", func() {
+			rec.RecordRunnerScheduleRun("default", "test-renovator", "test-runner", "success")
+			rec.RecordRunnerScheduleRun("default", "test-renovator", "test-runner", "error")
+			rec.SetRunnerScheduleNextRun("default", "test-renovator", "test-runner", 1714000000)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_runner_schedule_runs_total Total number of cron schedule firings executed by result.
+				# TYPE renovate_operator_runner_schedule_runs_total counter
+				renovate_operator_runner_schedule_runs_total{namespace="default",renovator="test-renovator",result="error",runner="test-runner"} 1
+				renovate_operator_runner_schedule_runs_total{namespace="default",renovator="test-renovator",result="success",runner="test-runner"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.runnerScheduleRuns, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+
+			nextRun := testutil.ToFloat64(
+				recImpl.runnerScheduleNextRun.WithLabelValues("default", "test-renovator", "test-runner"),
+			)
+			Expect(nextRun).To(Equal(1714000000.0))
+		})
+
+		It("should record discovery repo count", func() {
+			rec.SetDiscoveryRepositories("default", "test-renovator", "test-discovery", 25)
+
+			repos := testutil.ToFloat64(
+				recImpl.discoveryRepoCount.WithLabelValues("default", "test-renovator", "test-discovery"),
+			)
+			Expect(repos).To(Equal(25.0))
+		})
+
+		It("should record webhook metrics", func() {
+			rec.RecordWebhookRequest("github", "accepted")
+			rec.RecordWebhookRequest("github", "rejected")
+			rec.RecordWebhookSignatureFailure("github")
+
+			expected := `
+				# HELP renovate_operator_webhook_requests_total Total number of webhook requests by provider and result.
+				# TYPE renovate_operator_webhook_requests_total counter
+				renovate_operator_webhook_requests_total{provider="github",result="accepted"} 1
+				renovate_operator_webhook_requests_total{provider="github",result="rejected"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.webhookRequests, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+
+			sigFail := testutil.ToFloat64(
+				recImpl.webhookSignatureFailures.WithLabelValues("github"),
+			)
+			Expect(sigFail).To(Equal(1.0))
+		})
+
+		It("should record webhook auth failure", func() {
+			rec.RecordWebhookAuthFailure("github", "no_matching_job")
+			rec.RecordWebhookAuthFailure("gitlab", "secret_error")
+
+			expected := `
+				# HELP renovate_operator_webhook_auth_failures_total Total number of webhook authentication failures by error type.
+				# TYPE renovate_operator_webhook_auth_failures_total counter
+				renovate_operator_webhook_auth_failures_total{error_type="secret_error",provider="gitlab"} 1
+				renovate_operator_webhook_auth_failures_total{error_type="no_matching_job",provider="github"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.webhookAuthFailures, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should record webhook payload decode failure", func() {
+			rec.RecordWebhookPayloadDecodeFailure("github")
+			rec.RecordWebhookPayloadDecodeFailure("github")
+			rec.RecordWebhookPayloadDecodeFailure("gitlab")
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_webhook_payload_decode_failures_total Total number of webhook payloads that failed to decode.
+				# TYPE renovate_operator_webhook_payload_decode_failures_total counter
+				renovate_operator_webhook_payload_decode_failures_total{provider="github"} 2
+				renovate_operator_webhook_payload_decode_failures_total{provider="gitlab"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.webhookPayloadDecodeFailures, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should record secret resolution error", func() {
+			rec.RecordSecretResolutionError("not_found")
+			rec.RecordSecretResolutionError("key_missing")
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_secret_resolution_errors_total Total number of Kubernetes Secret resolution errors by error type.
+				# TYPE renovate_operator_secret_resolution_errors_total counter
+				renovate_operator_secret_resolution_errors_total{error_type="key_missing"} 1
+				renovate_operator_secret_resolution_errors_total{error_type="not_found"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.secretResolutionErrors, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should delete runner metrics", func() {
+			rec.RecordRunnerJob("default", "test-renovator", "test-runner", StatusSucceeded)
+			rec.RecordRunnerJobDuration("default", "test-renovator", "test-runner", StatusSucceeded, 45.0)
+			rec.SetRunnerQueueDepth("default", "test-renovator", "test-runner", 12)
+			rec.SetRunnerRunning("default", "test-renovator", "test-runner", 3)
+			rec.RecordRunnerScheduleRun("default", "test-renovator", "test-runner", "success")
+			rec.SetRunnerScheduleNextRun("default", "test-renovator", "test-runner", 1714000000)
+
+			rec.DeleteRunner("default", "test-renovator", "test-runner")
+
+			Expect(testutil.CollectAndCount(recImpl.runnerJobs)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerJobDuration)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerQueueDepth)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerRunning)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerScheduleRuns)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerScheduleNextRun)).To(Equal(0))
+		})
+
+		It("should delete discovery metrics", func() {
+			rec.SetDiscoveryRepositories("default", "test-renovator", "test-discovery", 25)
+
+			rec.DeleteDiscovery("default", "test-renovator", "test-discovery")
+
+			Expect(testutil.CollectAndCount(recImpl.discoveryRepoCount)).To(Equal(0))
+		})
+
+		It("should only delete metrics for the specified runner", func() {
+			rec.SetRunnerQueueDepth("default", "test-renovator", "runner-1", 10)
+			rec.SetRunnerQueueDepth("default", "test-renovator", "runner-2", 20)
+
+			rec.DeleteRunner("default", "test-renovator", "runner-1")
+
+			Expect(testutil.CollectAndCount(recImpl.runnerQueueDepth)).To(Equal(1))
+
+			val := testutil.ToFloat64(
+				recImpl.runnerQueueDepth.WithLabelValues("default", "test-renovator", "runner-2"),
+			)
+			Expect(val).To(Equal(20.0))
 		})
 
 		It("should handle multiple namespaces and repos independently", func() {

@@ -74,7 +74,7 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 			result = "error"
 		}
 
-		r.Metrics.RecordRunnerReconcileDuration(time.Since(start), result)
+		r.Metrics.RecordReconcileDuration(metrics.KindRunner, result, time.Since(start).Seconds())
 	}
 
 	return controller.HandleReconcileResult(outcome.Result, outcome.Err)

@@ -1,15 +1,17 @@
 package metrics
 
 import (
-	"time"
-
 	"github.com/prometheus/client_golang/prometheus"
 )
 
 const (
-	StatusSucceeded = "succeeded"
-	StatusFailed    = "failed"
-	StatusUnknown   = "unknown"
+	StatusSucceeded  = "succeeded"
+	StatusFailed     = "failed"
+	StatusUnknown    = "unknown"
+	StatusDispatched = "dispatched"
+
+	KindRunner    = "runner"
+	KindDiscovery = "discovery"
 
 	histogramBucketStart  = 0.01
 	histogramBucketFactor = 2
@@ -18,9 +20,11 @@ const (
 
 //nolint:interfacebloat
 type Recorder interface {
+	// --- GitRepo-scoped (namespace, renovator, runner, gitrepo) ---
 	RecordGitRepoRun(namespace, renovator, runner, gitrepo, status string)
 	SetRunFailed(namespace, renovator, runner, gitrepo string, failed bool)
 	SetLastRunTimestamp(namespace, renovator, runner, gitrepo string, timestamp float64)
+	SetLastRunDuration(namespace, renovator, runner, gitrepo string, seconds float64)
 	SetDependencyIssues(namespace, renovator, runner, gitrepo string, hasIssues bool)
 	SetApprovalsNeeded(namespace, renovator, runner, gitrepo string, count int)
 	SetDependenciesTotal(namespace, renovator, runner, gitrepo string, count int)
@@ -31,14 +35,42 @@ type Recorder interface {
 	SetLogWarnCount(namespace, renovator, runner, gitrepo string, count int)
 	SetLogErrorCount(namespace, renovator, runner, gitrepo string, count int)
 	DeleteGitRepo(namespace, renovator, runner, gitrepo string)
-	RecordRunnerReconcileDuration(duration time.Duration, result string)
+
+	// --- Runner-scoped (namespace, renovator, runner) ---
+	RecordRunnerJob(namespace, renovator, runner, status string)
+	RecordRunnerJobDuration(namespace, renovator, runner, status string, seconds float64)
+	SetRunnerQueueDepth(namespace, renovator, runner string, count int)
+	SetRunnerRunning(namespace, renovator, runner string, count int)
+	RecordRunnerScheduleRun(namespace, renovator, runner, result string)
+	SetRunnerScheduleNextRun(namespace, renovator, runner string, timestamp float64)
+	DeleteRunner(namespace, renovator, runner string)
+
+	// --- Discovery-scoped (namespace, renovator, discovery) ---
+	SetDiscoveryRepositories(namespace, renovator, discovery string, count int)
+	DeleteDiscovery(namespace, renovator, discovery string)
+
+	// --- Webhook (provider, result) ---
+	RecordWebhookRequest(provider, result string)
+	RecordWebhookSignatureFailure(provider string)
+	RecordWebhookAuthFailure(provider, errorType string)
+	RecordWebhookPayloadDecodeFailure(provider string)
+
+	// --- Secret resolution ---
+	RecordSecretResolutionError(errorType string)
+
+	// --- Reconciler instrumentation ---
+	RecordReconcileDuration(kind, result string, seconds float64)
+
+	// --- Accessor ---
 	Gatherer() prometheus.Gatherer
 }
 
 type recorder struct {
+	// GitRepo-scoped (4 labels)
 	gitrepoRuns                 *prometheus.CounterVec
 	gitrepoRunFailed            *prometheus.GaugeVec
 	gitrepoLastRun              *prometheus.GaugeVec
+	gitrepoLastRunDur           *prometheus.GaugeVec
 	gitrepoDependencyIssues     *prometheus.GaugeVec
 	gitrepoApprovalsNeeded      *prometheus.GaugeVec
 	gitrepoDependenciesTotal    *prometheus.GaugeVec
@@ -48,10 +80,34 @@ type recorder struct {
 	gitrepoBranchResults        *prometheus.GaugeVec
 	gitrepoLogWarnings          *prometheus.GaugeVec
 	gitrepoLogErrors            *prometheus.GaugeVec
-	runnerReconcileDur          *prometheus.HistogramVec
-	seriesDropped               *prometheus.CounterVec
-	guard                       *CardinalityGuard
-	gatherer                    prometheus.Gatherer
+
+	// Runner-scoped (3 labels)
+	runnerJobs            *prometheus.CounterVec
+	runnerJobDuration     *prometheus.HistogramVec
+	runnerQueueDepth      *prometheus.GaugeVec
+	runnerRunning         *prometheus.GaugeVec
+	runnerScheduleRuns    *prometheus.CounterVec
+	runnerScheduleNextRun *prometheus.GaugeVec
+
+	// Discovery-scoped (3 labels)
+	discoveryRepoCount *prometheus.GaugeVec
+
+	// Webhook (provider, result)
+	webhookRequests              *prometheus.CounterVec
+	webhookSignatureFailures     *prometheus.CounterVec
+	webhookAuthFailures          *prometheus.CounterVec
+	webhookPayloadDecodeFailures *prometheus.CounterVec
+
+	// Secret resolution
+	secretResolutionErrors *prometheus.CounterVec
+
+	// Reconciler instrumentation
+	reconcileDur *prometheus.HistogramVec
+
+	// Internal
+	seriesDropped *prometheus.CounterVec
+	guard         *CardinalityGuard
+	gatherer      prometheus.Gatherer
 }
 
 var _ Recorder = (*recorder)(nil)
@@ -84,13 +140,12 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		[]string{"namespace", "renovator", "runner", "gitrepo"},
 	)
 
-	runnerReconcileDur := prometheus.NewHistogramVec(
-		prometheus.HistogramOpts{
-			Name:    "renovate_operator_runner_reconcile_duration_seconds",
-			Help:    "Duration of runner reconcile operations.",
-			Buckets: prometheus.ExponentialBuckets(histogramBucketStart, histogramBucketFactor, histogramBucketCount),
+	gitrepoLastRunDur := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_gitrepo_last_run_duration_seconds",
+			Help: "Wall-clock duration of the most recent GitRepo run in seconds.",
 		},
-		[]string{"result"},
+		[]string{"namespace", "renovator", "runner", "gitrepo"},
 	)
 
 	gitrepoDependencyIssues := prometheus.NewGaugeVec(
@@ -165,6 +220,112 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		[]string{"namespace", "renovator", "runner", "gitrepo"},
 	)
 
+	runnerJobs := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_runner_jobs_total",
+			Help: "Total number of GitRepo jobs by status (dispatched, succeeded, failed).",
+		},
+		[]string{"namespace", "renovator", "runner", "status"},
+	)
+
+	runnerJobDuration := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "renovate_operator_runner_job_duration_seconds",
+			Help:    "Wall-clock duration of runner Kubernetes Jobs.",
+			Buckets: prometheus.ExponentialBuckets(histogramBucketStart, histogramBucketFactor, histogramBucketCount),
+		},
+		[]string{"namespace", "renovator", "runner", "status"},
+	)
+
+	runnerQueueDepth := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_runner_queue_depth",
+			Help: "Number of GitRepo resources waiting to be processed (queue depth).",
+		},
+		[]string{"namespace", "renovator", "runner"},
+	)
+
+	runnerRunning := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_runner_running",
+			Help: "Number of GitRepo resources currently being processed (in-flight count).",
+		},
+		[]string{"namespace", "renovator", "runner"},
+	)
+
+	runnerScheduleRuns := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_runner_schedule_runs_total",
+			Help: "Total number of cron schedule firings executed by result.",
+		},
+		[]string{"namespace", "renovator", "runner", "result"},
+	)
+
+	runnerScheduleNextRun := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_runner_schedule_next_run_timestamp_seconds",
+			Help: "Unix timestamp of the next planned scheduled run.",
+		},
+		[]string{"namespace", "renovator", "runner"},
+	)
+
+	discoveryRepoCount := prometheus.NewGaugeVec(
+		prometheus.GaugeOpts{
+			Name: "renovate_operator_discovery_repositories",
+			Help: "Number of repositories seen by the last discovery run.",
+		},
+		[]string{"namespace", "renovator", "discovery"},
+	)
+
+	webhookRequests := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_webhook_requests_total",
+			Help: "Total number of webhook requests by provider and result.",
+		},
+		[]string{"provider", "result"},
+	)
+
+	webhookSignatureFailures := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_webhook_signature_verification_failures_total",
+			Help: "Total number of webhook HMAC signature verification failures.",
+		},
+		[]string{"provider"},
+	)
+
+	webhookAuthFailures := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_webhook_auth_failures_total",
+			Help: "Total number of webhook authentication failures by error type.",
+		},
+		[]string{"provider", "error_type"},
+	)
+
+	webhookPayloadDecodeFailures := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_webhook_payload_decode_failures_total",
+			Help: "Total number of webhook payloads that failed to decode.",
+		},
+		[]string{"provider"},
+	)
+
+	secretResolutionErrors := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_secret_resolution_errors_total",
+			Help: "Total number of Kubernetes Secret resolution errors by error type.",
+		},
+		[]string{"error_type"},
+	)
+
+	reconcileDur := prometheus.NewHistogramVec(
+		prometheus.HistogramOpts{
+			Name:    "renovate_operator_reconcile_duration_seconds",
+			Help:    "Duration of a single reconcile loop tick.",
+			Buckets: prometheus.ExponentialBuckets(histogramBucketStart, histogramBucketFactor, histogramBucketCount),
+		},
+		[]string{"kind", "result"},
+	)
+
 	seriesDropped := prometheus.NewCounterVec(
 		prometheus.CounterOpts{
 			Name: "renovate_operator_metrics_series_dropped_total",
@@ -174,31 +335,51 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 	)
 
 	reg.MustRegister(
-		gitrepoRuns, gitrepoRunFailed, gitrepoLastRun,
+		gitrepoRuns, gitrepoRunFailed, gitrepoLastRun, gitrepoLastRunDur,
 		gitrepoDependencyIssues, gitrepoApprovalsNeeded,
 		gitrepoDependenciesTotal, gitrepoDependenciesOutdated,
 		gitrepoDependencyUpdates, gitrepoVulnerabilityFixes,
 		gitrepoBranchResults, gitrepoLogWarnings, gitrepoLogErrors,
-		runnerReconcileDur, seriesDropped,
+		runnerJobs, runnerJobDuration,
+		runnerQueueDepth, runnerRunning,
+		runnerScheduleRuns, runnerScheduleNextRun,
+		discoveryRepoCount,
+		webhookRequests, webhookSignatureFailures,
+		webhookAuthFailures, webhookPayloadDecodeFailures,
+		secretResolutionErrors,
+		reconcileDur, seriesDropped,
 	)
 
 	r := &recorder{
-		gitrepoRuns:                 gitrepoRuns,
-		gitrepoRunFailed:            gitrepoRunFailed,
-		gitrepoLastRun:              gitrepoLastRun,
-		gitrepoDependencyIssues:     gitrepoDependencyIssues,
-		gitrepoApprovalsNeeded:      gitrepoApprovalsNeeded,
-		gitrepoDependenciesTotal:    gitrepoDependenciesTotal,
-		gitrepoDependenciesOutdated: gitrepoDependenciesOutdated,
-		gitrepoDependencyUpdates:    gitrepoDependencyUpdates,
-		gitrepoVulnerabilityFixes:   gitrepoVulnerabilityFixes,
-		gitrepoBranchResults:        gitrepoBranchResults,
-		gitrepoLogWarnings:          gitrepoLogWarnings,
-		gitrepoLogErrors:            gitrepoLogErrors,
-		runnerReconcileDur:          runnerReconcileDur,
-		seriesDropped:               seriesDropped,
-		guard:                       guard,
-		gatherer:                    gatherer,
+		gitrepoRuns:                  gitrepoRuns,
+		gitrepoRunFailed:             gitrepoRunFailed,
+		gitrepoLastRun:               gitrepoLastRun,
+		gitrepoLastRunDur:            gitrepoLastRunDur,
+		gitrepoDependencyIssues:      gitrepoDependencyIssues,
+		gitrepoApprovalsNeeded:       gitrepoApprovalsNeeded,
+		gitrepoDependenciesTotal:     gitrepoDependenciesTotal,
+		gitrepoDependenciesOutdated:  gitrepoDependenciesOutdated,
+		gitrepoDependencyUpdates:     gitrepoDependencyUpdates,
+		gitrepoVulnerabilityFixes:    gitrepoVulnerabilityFixes,
+		gitrepoBranchResults:         gitrepoBranchResults,
+		gitrepoLogWarnings:           gitrepoLogWarnings,
+		gitrepoLogErrors:             gitrepoLogErrors,
+		runnerJobs:                   runnerJobs,
+		runnerJobDuration:            runnerJobDuration,
+		runnerQueueDepth:             runnerQueueDepth,
+		runnerRunning:                runnerRunning,
+		runnerScheduleRuns:           runnerScheduleRuns,
+		runnerScheduleNextRun:        runnerScheduleNextRun,
+		discoveryRepoCount:           discoveryRepoCount,
+		webhookRequests:              webhookRequests,
+		webhookSignatureFailures:     webhookSignatureFailures,
+		webhookAuthFailures:          webhookAuthFailures,
+		webhookPayloadDecodeFailures: webhookPayloadDecodeFailures,
+		secretResolutionErrors:       secretResolutionErrors,
+		reconcileDur:                 reconcileDur,
+		seriesDropped:                seriesDropped,
+		guard:                        guard,
+		gatherer:                     gatherer,
 	}
 
 	return r

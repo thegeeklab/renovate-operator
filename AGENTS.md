@@ -65,6 +65,7 @@ If a needed operation has no make target, **add one first** instead of running t
 ### Consistency
 
 - **Follow existing patterns**: When implementing new features, always check how similar functionality is implemented elsewhere in the codebase and follow the same patterns.
+- **Do not rename pre-existing variables**: Avoid gratuitous renames of local variables (e.g., shortening `log` to `l`, `config` to `cfg`). Renaming adds diff noise, obscures the actual change, and can break reviewers' ability to trace data flow. Only rename when the new name meaningfully improves clarity or resolves a genuine naming conflict introduced by the change.
 - **Inline over abstraction**: Prefer inline code that matches existing patterns over creating helper methods, unless the abstraction is already established in the codebase.
 
 ### Imports

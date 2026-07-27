@@ -6,6 +6,7 @@ structname: "{{ .InterfaceName }}"
 filename: "mock_{{ .StructName }}.go"
 packages:
   github.com/thegeeklab/renovate-operator/internal/provider:
+  github.com/thegeeklab/renovate-operator/internal/receiver:
   github.com/thegeeklab/renovate-operator/internal/frontend/auth:
     interfaces:
       AuthProvider:

@@ -1,4 +1,4 @@
-package gitrepo
+package runner
 
 import (
 	"context"
@@ -10,9 +10,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
-// reconcileMetrics manages the FinalizerMetricsCleanup finalizer and releases
-// the per-repo Prometheus metric series when the GitRepo is deleted. It
-// mirrors the pattern used by reconcileGitRepo for FinalizerGitRepoWebhook.
+// reconcileMetrics manages the shared metrics-cleanup finalizer and releases
+// the per-runner Prometheus metric series when the Runner is deleted.
 func (r *Reconciler) reconcileMetrics(ctx context.Context) (*ctrl.Result, error) {
 	if !r.instance.DeletionTimestamp.IsZero() {
 		return r.handleMetricsDeletion(ctx)
@@ -30,14 +29,14 @@ func (r *Reconciler) reconcileMetrics(ctx context.Context) (*ctrl.Result, error)
 	return &ctrl.Result{}, nil
 }
 
-// handleMetricsDeletion releases metrics and removes the finalizer when the GitRepo is being deleted.
+// handleMetricsDeletion releases metrics and removes the finalizer when the Runner is being deleted.
 func (r *Reconciler) handleMetricsDeletion(ctx context.Context) (*ctrl.Result, error) {
 	if !controllerutil.ContainsFinalizer(r.instance, renovatev1beta1.FinalizerMetricsCleanup) {
 		return &ctrl.Result{}, nil
 	}
 
 	if r.metrics != nil {
-		r.releaseMetricsForGitRepo(ctx)
+		r.releaseMetricsForRunner()
 	}
 
 	patch := client.MergeFrom(r.instance.DeepCopy())
@@ -50,20 +49,9 @@ func (r *Reconciler) handleMetricsDeletion(ctx context.Context) (*ctrl.Result, e
 	return &ctrl.Result{}, nil
 }
 
-// releaseMetricsForGitRepo enumerates Runner resources in the GitRepo's
-// namespace and releases the per-runner metric series for the given GitRepo.
-// A single GitRepo can be observed by multiple Runner instances (one per
-// operator deployment), so all matching runner label combinations must be
-// cleaned up to free the cardinality cap.
-func (r *Reconciler) releaseMetricsForGitRepo(ctx context.Context) {
+// releaseMetricsForRunner releases the per-runner metric series.
+func (r *Reconciler) releaseMetricsForRunner() {
 	renovatorLabel := r.instance.Labels[renovatev1beta1.LabelRenovator]
 
-	runnerList := &renovatev1beta1.RunnerList{}
-	if err := r.List(ctx, runnerList, client.InNamespace(r.instance.Namespace)); err != nil {
-		return
-	}
-
-	for i := range runnerList.Items {
-		r.metrics.DeleteGitRepo(r.instance.Namespace, renovatorLabel, runnerList.Items[i].Name, r.instance.Name)
-	}
+	r.metrics.DeleteRunner(r.instance.Namespace, renovatorLabel, r.instance.Name)
 }

@@ -27,6 +27,8 @@ import (
 func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	log := logf.FromContext(ctx)
 
+	renovatorName := r.instance.Labels[renovatev1beta1.LabelRenovator]
+
 	runnerLabels, err := RunnerLabels(r.req)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to build runner labels: %w", err)
@@ -42,9 +44,23 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	}
 
 	// Process all GitRepo resources
-	triggeredAny, err := r.processGitRepos(ctx, decision.ShouldRun, runnerLabels)
+	triggeredAny, runningCount, pendingCount, err := r.processGitRepos(ctx, decision.ShouldRun, runnerLabels)
 	if err != nil {
+		if r.metrics != nil && decision.Trigger == scheduler.TriggerSchedule {
+			r.metrics.RecordRunnerScheduleRun(r.instance.Namespace, renovatorName, r.instance.Name, "error")
+		}
+
 		return &ctrl.Result{}, fmt.Errorf("failed to process GitRepos: %w", err)
+	}
+
+	if r.metrics != nil {
+		if decision.ShouldRun {
+			r.metrics.SetRunnerQueueDepth(r.instance.Namespace, renovatorName, r.instance.Name, pendingCount-runningCount)
+			r.metrics.SetRunnerRunning(r.instance.Namespace, renovatorName, r.instance.Name, runningCount)
+		} else {
+			r.metrics.SetRunnerQueueDepth(r.instance.Namespace, renovatorName, r.instance.Name, 0)
+			r.metrics.SetRunnerRunning(r.instance.Namespace, renovatorName, r.instance.Name, 0)
+		}
 	}
 
 	if decision.Trigger == scheduler.TriggerSuspended && !triggeredAny {
@@ -55,13 +71,27 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 		log.Info("Runner run active", "trigger", decision.Trigger)
 
 		if err := r.scheduler.CompleteRun(ctx, r.instance, renovator.RemoveRenovatorOperation); err != nil {
+			if r.metrics != nil && decision.Trigger == scheduler.TriggerSchedule {
+				r.metrics.RecordRunnerScheduleRun(r.instance.Namespace, renovatorName, r.instance.Name, "error")
+			}
+
 			return &ctrl.Result{}, fmt.Errorf("failed to complete run: %w", err)
 		}
+	}
+
+	if r.metrics != nil && decision.Trigger == scheduler.TriggerSchedule {
+		r.metrics.RecordRunnerScheduleRun(r.instance.Namespace, renovatorName, r.instance.Name, "success")
 	}
 
 	nextDecision, err := r.scheduler.Evaluate(r.instance, renovator.HasRenovatorOperationRenovate)
 	if err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to re-evaluate schedule: %w", err)
+	}
+
+	if r.metrics != nil {
+		r.metrics.SetRunnerScheduleNextRun(
+			r.instance.Namespace, renovatorName, r.instance.Name, float64(nextDecision.NextRun.Unix()),
+		)
 	}
 
 	now := time.Now()
@@ -78,9 +108,11 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 // processGitRepos processes each GitRepo and creates jobs if needed.
 func (r *Reconciler) processGitRepos(
 	ctx context.Context, isGlobalTrigger bool, labels map[string]string,
-) (bool, error) {
+) (bool, int, int, error) {
 	log := logf.FromContext(ctx)
 	triggeredAny := false
+	runningCount := 0
+	pendingCount := 0
 
 	gitRepos := &renovatev1beta1.GitRepoList{}
 
@@ -94,7 +126,7 @@ func (r *Reconciler) processGitRepos(
 	}
 
 	if err := r.List(ctx, gitRepos, listOpts...); err != nil {
-		return false, fmt.Errorf("failed to list GitRepos: %w", err)
+		return false, 0, 0, fmt.Errorf("failed to list GitRepos: %w", err)
 	}
 
 	maxParallel := r.instance.GetMaxParallel()
@@ -104,7 +136,7 @@ func (r *Reconciler) processGitRepos(
 	if maxParallel > 0 {
 		count, err := r.scheduler.CountActiveJobs(ctx, r.instance.Namespace, labels)
 		if err != nil {
-			return false, fmt.Errorf("failed to count active jobs: %w", err)
+			return false, 0, 0, fmt.Errorf("failed to count active jobs: %w", err)
 		}
 
 		activeCount = count
@@ -136,6 +168,13 @@ func (r *Reconciler) processGitRepos(
 		hasRepoAnnotation := renovator.HasRenovatorOperationRenovate(repo.Annotations)
 		if !isGlobalTrigger && !hasRepoAnnotation {
 			continue
+		}
+
+		pendingCount++
+
+		if repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning) != nil &&
+			repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateRunning).Status == metav1.ConditionTrue {
+			runningCount++
 		}
 
 		if maxParallel > 0 && activeCount >= maxParallel {
@@ -173,7 +212,7 @@ func (r *Reconciler) processGitRepos(
 		}
 	}
 
-	return triggeredAny, nil
+	return triggeredAny, runningCount, pendingCount, nil
 }
 
 // ensureRepoJob creates a renovate job for the given repository when none is
@@ -199,6 +238,12 @@ func (r *Reconciler) ensureRepoJob(
 
 	if !created {
 		return false, nil
+	}
+
+	if r.metrics != nil {
+		renovatorLabel := r.instance.Labels[renovatev1beta1.LabelRenovator]
+
+		r.metrics.RecordRunnerJob(r.instance.Namespace, renovatorLabel, r.instance.Name, "dispatched")
 	}
 
 	log.Info("Renovate job created", "job", job.Name, "repo", repo.Spec.Name)
@@ -337,6 +382,14 @@ func (r *Reconciler) updateJobStatus(
 			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel,
 			float64(latestFinishedJob.CreationTimestamp.Unix()),
 		)
+
+		if latestFinishedJob.Status.CompletionTime != nil {
+			duration := latestFinishedJob.Status.CompletionTime.Sub(latestFinishedJob.CreationTimestamp.Time).Seconds()
+
+			r.metrics.RecordRunnerJob(repo.Namespace, renovatorLabel, r.instance.Name, runStatus)
+			r.metrics.RecordRunnerJobDuration(repo.Namespace, renovatorLabel, r.instance.Name, runStatus, duration)
+			r.metrics.SetLastRunDuration(repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, duration)
+		}
 
 		r.updateLogMetrics(ctx, latestFinishedJob, renovatorLabel, gitrepoLabel)
 	}

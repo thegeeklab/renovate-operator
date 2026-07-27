@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -164,6 +165,13 @@ var _ = Describe("Runner Controller", func() {
 				},
 			}
 			_ = k8sClient.Delete(ctx, runner)
+
+			if err := k8sClient.Get(ctx, client.ObjectKey{Name: runnerName, Namespace: "default"}, runner); err == nil {
+				if controllerutil.ContainsFinalizer(runner, renovatev1beta1.FinalizerMetricsCleanup) {
+					controllerutil.RemoveFinalizer(runner, renovatev1beta1.FinalizerMetricsCleanup)
+					_ = k8sClient.Update(ctx, runner)
+				}
+			}
 
 			config := &renovatev1beta1.RenovateConfig{
 				ObjectMeta: metav1.ObjectMeta{

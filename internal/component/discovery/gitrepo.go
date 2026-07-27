@@ -66,6 +66,11 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 		return &ctrl.Result{}, err
 	}
 
+	if r.metrics != nil {
+		renovatorLabel := r.instance.Labels[renovatev1beta1.LabelRenovator]
+		r.metrics.SetDiscoveryRepositories(r.instance.Namespace, renovatorLabel, r.instance.Name, len(filteredRepos))
+	}
+
 	repoMatcher := make(map[string]bool, len(filteredRepos))
 
 	for _, repoName := range filteredRepos {

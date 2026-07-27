@@ -2,11 +2,13 @@ package discovery
 
 import (
 	"context"
+	"time"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/discovery"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/controller"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
@@ -28,6 +30,7 @@ type Reconciler struct {
 	client.Client
 	Scheme        *runtime.Scheme
 	EventRecorder events.EventRecorder
+	Metrics       metrics.Recorder
 }
 
 //nolint:lll
@@ -48,6 +51,8 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	log := logf.FromContext(ctx)
 	log.V(1).Info("Reconciling object", "object", req.NamespacedName)
 
+	start := time.Now()
+
 	rd := &renovatev1beta1.Discovery{}
 	if err := r.Get(ctx, req.NamespacedName, rd); err != nil {
 		if api_errors.IsNotFound(err) {
@@ -62,6 +67,15 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 	outcome := r.reconcile(ctx, rd)
 	controller.FinalizeStatus(ctx, r.Client, r.EventRecorder, original, rd, outcome,
 		controller.FinalizeStatusOptions{SuccessMessage: "Discovery reconciled successfully"})
+
+	if r.Metrics != nil {
+		result := "success"
+		if outcome.Err != nil {
+			result = "error"
+		}
+
+		r.Metrics.RecordReconcileDuration(metrics.KindDiscovery, result, time.Since(start).Seconds())
+	}
 
 	return controller.HandleReconcileResult(outcome.Result, outcome.Err)
 }
@@ -89,7 +103,7 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: err}
 	}
 
-	componentReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc)
+	componentReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc, r.Metrics)
 	if err != nil {
 		return controller.Outcome{Err: err}
 	}
