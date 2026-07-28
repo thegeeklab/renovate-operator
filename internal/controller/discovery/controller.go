@@ -125,22 +125,44 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		return err
 	}
 
-	return ctrl.NewControllerManagedBy(mgr).
-		For(&renovatev1beta1.Discovery{}, builder.WithPredicates(predicate.Or(
-			predicate.GenerationChangedPredicate{},
-			predicate.Funcs{
-				UpdateFunc: func(e event.UpdateEvent) bool {
-					oldAnn := e.ObjectOld.GetAnnotations()
-					newAnn := e.ObjectNew.GetAnnotations()
+	renovateOperationPredicate := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldAnn := e.ObjectOld.GetAnnotations()
+			newAnn := e.ObjectNew.GetAnnotations()
 
-					return renovator.HasRenovatorOperationDiscover(newAnn) &&
-						!renovator.HasRenovatorOperationDiscover(oldAnn)
-				},
-				CreateFunc:  func(_ event.CreateEvent) bool { return true },
-				DeleteFunc:  func(_ event.DeleteEvent) bool { return false },
-				GenericFunc: func(_ event.GenericEvent) bool { return false },
-			},
-		))).
+			return renovator.HasRenovatorOperationDiscover(newAnn) &&
+				!renovator.HasRenovatorOperationDiscover(oldAnn)
+		},
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+	}
+
+	jobStatusPredicate := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			oldJob, ok1 := e.ObjectOld.(*batchv1.Job)
+
+			newJob, ok2 := e.ObjectNew.(*batchv1.Job)
+			if !ok1 || !ok2 {
+				return false
+			}
+
+			return oldJob.Status.Succeeded != newJob.Status.Succeeded ||
+				oldJob.Status.Failed != newJob.Status.Failed ||
+				oldJob.Status.Active != newJob.Status.Active
+		},
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+	}
+
+	return ctrl.NewControllerManagedBy(mgr).
+		For(&renovatev1beta1.Discovery{}).
+		WithEventFilter(predicate.Or(
+			predicate.GenerationChangedPredicate{},
+			renovateOperationPredicate,
+			jobStatusPredicate,
+		)).
 		Watches(
 			&renovatev1beta1.RenovateConfig{},
 			handler.EnqueueRequestsFromMapFunc(r.mapConfigToDiscovery),

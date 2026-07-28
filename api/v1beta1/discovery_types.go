@@ -5,6 +5,15 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
+const (
+	// DiscoveryConditionDiscoveryRunning indicates whether a discovery job is currently running.
+	DiscoveryConditionDiscoveryRunning = "DiscoveryRunning"
+	// DiscoveryConditionDiscoveryCompleted indicates whether the last discovery job completed successfully.
+	DiscoveryConditionDiscoveryCompleted = "DiscoveryCompleted"
+	// DiscoveryConditionDiscoveryFailed indicates whether the last discovery job failed.
+	DiscoveryConditionDiscoveryFailed = "DiscoveryFailed"
+)
+
 // DiscoverySpec defines the desired state of Discovery.
 type DiscoverySpec struct {
 	ImageSpec `json:",inline"`

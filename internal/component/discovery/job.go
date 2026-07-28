@@ -18,6 +18,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
+	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -32,6 +33,10 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 
 	if val, ok := r.instance.Labels[renovatev1beta1.LabelRenovator]; ok {
 		discoveryLabels[renovatev1beta1.LabelRenovator] = val
+	}
+
+	if err := r.updateJobStatus(ctx, discoveryLabels); err != nil {
+		log.Error(err, "Failed to update job status")
 	}
 
 	if err := r.scheduler.PruneJobs(
@@ -176,4 +181,78 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 	}
 
 	job.Spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
+}
+
+// updateJobStatus lists jobs for this discovery and updates the Discovery
+// status conditions (JobRunning, JobCompleted, JobFailed) based on the
+// current job state.
+func (r *Reconciler) updateJobStatus(ctx context.Context, labels map[string]string) error {
+	var jobList batchv1.JobList
+
+	if err := r.List(ctx, &jobList, client.InNamespace(r.instance.Namespace), client.MatchingLabels(labels)); err != nil {
+		return fmt.Errorf("failed to list jobs: %w", err)
+	}
+
+	var (
+		latestFinishedJob *batchv1.Job
+		hasActiveJob      bool
+	)
+
+	for i := range jobList.Items {
+		job := &jobList.Items[i]
+
+		if !scheduler.IsJobFinished(job) {
+			hasActiveJob = true
+
+			continue
+		}
+
+		if latestFinishedJob == nil || job.CreationTimestamp.After(latestFinishedJob.CreationTimestamp.Time) {
+			latestFinishedJob = job
+		}
+	}
+
+	patch := client.MergeFrom(r.instance.DeepCopy())
+
+	if hasActiveJob {
+		r.instance.SetCondition(
+			renovatev1beta1.DiscoveryConditionDiscoveryRunning,
+			metav1.ConditionTrue,
+			"JobActive", "Discovery job is running",
+		)
+	} else {
+		r.instance.SetCondition(
+			renovatev1beta1.DiscoveryConditionDiscoveryRunning,
+			metav1.ConditionFalse,
+			"NoJobActive", "No discovery job is running",
+		)
+	}
+
+	if latestFinishedJob != nil {
+		switch {
+		case latestFinishedJob.Status.Succeeded > 0:
+			r.instance.SetCondition(
+				renovatev1beta1.DiscoveryConditionDiscoveryCompleted,
+				metav1.ConditionTrue,
+				"JobSucceeded", "Discovery job completed successfully",
+			)
+			r.instance.RemoveCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)
+		case latestFinishedJob.Status.Failed > 0:
+			r.instance.SetCondition(
+				renovatev1beta1.DiscoveryConditionDiscoveryFailed,
+				metav1.ConditionTrue,
+				"JobFailed", "Discovery job failed",
+			)
+			r.instance.RemoveCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)
+		default:
+			r.instance.RemoveCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)
+			r.instance.RemoveCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)
+		}
+	}
+
+	if err := r.Status().Patch(ctx, r.instance, patch); err != nil {
+		return fmt.Errorf("failed to patch job status: %w", err)
+	}
+
+	return nil
 }

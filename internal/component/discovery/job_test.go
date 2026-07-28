@@ -395,4 +395,200 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(job.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "extra-vol")))
 		})
 	})
+
+	Describe("updateJobStatus", func() {
+		labels := func() map[string]string {
+			l, err := DiscoveryLabels(reconciler.req)
+			Expect(err).NotTo(HaveOccurred())
+
+			if val, ok := instance.Labels[renovatev1beta1.LabelRenovator]; ok {
+				l[renovatev1beta1.LabelRenovator] = val
+			}
+
+			return l
+		}
+
+		It("should set JobRunning=True when an active job exists", func() {
+			activeJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "active-discovery-job",
+					Namespace: "default",
+					Labels:    labels(),
+				},
+				Status: batchv1.JobStatus{
+					Active: 1,
+				},
+			}
+			Expect(fakeClient.Create(ctx, activeJob)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, labels())
+			Expect(err).NotTo(HaveOccurred())
+
+			cond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryRunning)
+			Expect(cond).NotTo(BeNil())
+			Expect(cond.Status).To(Equal(metav1.ConditionTrue))
+			Expect(cond.Reason).To(Equal("JobActive"))
+		})
+
+		It("should set JobRunning=False when no active job exists", func() {
+			err := reconciler.updateJobStatus(ctx, labels())
+			Expect(err).NotTo(HaveOccurred())
+
+			cond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryRunning)
+			Expect(cond).NotTo(BeNil())
+			Expect(cond.Status).To(Equal(metav1.ConditionFalse))
+			Expect(cond.Reason).To(Equal("NoJobActive"))
+		})
+
+		It("should set JobCompleted=True when latest finished job succeeded", func() {
+			completedJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "completed-discovery-job",
+					Namespace:         "default",
+					CreationTimestamp: metav1.Now(),
+					Labels:            labels(),
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:   batchv1.JobComplete,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, completedJob)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, labels())
+			Expect(err).NotTo(HaveOccurred())
+
+			completedCond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)
+			Expect(completedCond).NotTo(BeNil())
+			Expect(completedCond.Status).To(Equal(metav1.ConditionTrue))
+			Expect(completedCond.Reason).To(Equal("JobSucceeded"))
+
+			failedCond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)
+			Expect(failedCond).To(BeNil())
+		})
+
+		It("should set JobFailed=True when latest finished job failed", func() {
+			failedJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "failed-discovery-job",
+					Namespace:         "default",
+					CreationTimestamp: metav1.Now(),
+					Labels:            labels(),
+				},
+				Status: batchv1.JobStatus{
+					Failed: 1,
+					Conditions: []batchv1.JobCondition{
+						{
+							Type:   batchv1.JobFailed,
+							Status: corev1.ConditionTrue,
+						},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, failedJob)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, labels())
+			Expect(err).NotTo(HaveOccurred())
+
+			failedCond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)
+			Expect(failedCond).NotTo(BeNil())
+			Expect(failedCond.Status).To(Equal(metav1.ConditionTrue))
+			Expect(failedCond.Reason).To(Equal("JobFailed"))
+
+			completedCond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)
+			Expect(completedCond).To(BeNil())
+		})
+
+		It("should transition from completed to failed when a newer job fails", func() {
+			firstJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "first-success-job",
+					Namespace:         "default",
+					CreationTimestamp: metav1.Now(),
+					Labels:            labels(),
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, firstJob)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, labels())
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)).NotTo(BeNil())
+			Expect(instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)).To(BeNil())
+
+			secondJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "second-fail-job",
+					Namespace:         "default",
+					CreationTimestamp: metav1.NewTime(firstJob.CreationTimestamp.Add(time.Minute)),
+					Labels:            labels(),
+				},
+				Status: batchv1.JobStatus{
+					Failed: 1,
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, secondJob)).To(Succeed())
+
+			err = reconciler.updateJobStatus(ctx, labels())
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)).NotTo(BeNil())
+			Expect(instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)).To(BeNil())
+		})
+
+		It("should report Running=True and Completed=True when both active and finished jobs exist", func() {
+			activeJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "active-job",
+					Namespace: "default",
+					Labels:    labels(),
+				},
+				Status: batchv1.JobStatus{
+					Active: 1,
+				},
+			}
+			Expect(fakeClient.Create(ctx, activeJob)).To(Succeed())
+
+			finishedJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:              "previous-done-job",
+					Namespace:         "default",
+					CreationTimestamp: metav1.Now(),
+					Labels:            labels(),
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, finishedJob)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, labels())
+			Expect(err).NotTo(HaveOccurred())
+
+			runningCond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryRunning)
+			Expect(runningCond).NotTo(BeNil())
+			Expect(runningCond.Status).To(Equal(metav1.ConditionTrue))
+
+			completedCond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)
+			Expect(completedCond).NotTo(BeNil())
+			Expect(completedCond.Status).To(Equal(metav1.ConditionTrue))
+		})
+	})
 })
