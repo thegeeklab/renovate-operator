@@ -49,9 +49,9 @@ type DiscoverySpec struct {
 //
 //nolint:lll
 type DiscoveryStatus struct {
-	Conditions           []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
-	LastScheduleTime     *metav1.Time       `json:"lastScheduleTime,omitempty"`
-	LastDiscoveryTime    *metav1.Time       `json:"lastDiscoveryTime,omitempty"`
+	Conditions        []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	LastScheduleTime  *metav1.Time       `json:"lastScheduleTime,omitempty"`
+	LastDiscoveryTime *metav1.Time       `json:"lastDiscoveryTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true
