@@ -38,6 +38,7 @@ type Recorder interface {
 
 	// --- Runner-scoped (namespace, renovator, runner) ---
 	RecordRunnerJob(namespace, renovator, runner, status string)
+	RecordRunnerJobFailure(namespace, renovator, runner, reason string)
 	RecordRunnerJobDuration(namespace, renovator, runner, status string, seconds float64)
 	SetRunnerQueueDepth(namespace, renovator, runner string, count int)
 	SetRunnerRunning(namespace, renovator, runner string, count int)
@@ -46,6 +47,8 @@ type Recorder interface {
 	DeleteRunner(namespace, renovator, runner string)
 
 	// --- Discovery-scoped (namespace, renovator, discovery) ---
+	RecordDiscoveryJob(namespace, renovator, discovery, status string)
+	RecordDiscoveryJobFailure(namespace, renovator, discovery, reason string)
 	SetDiscoveryRepositories(namespace, renovator, discovery string, count int)
 	DeleteDiscovery(namespace, renovator, discovery string)
 
@@ -83,6 +86,7 @@ type recorder struct {
 
 	// Runner-scoped (3 labels)
 	runnerJobs            *prometheus.CounterVec
+	runnerJobFailures     *prometheus.CounterVec
 	runnerJobDuration     *prometheus.HistogramVec
 	runnerQueueDepth      *prometheus.GaugeVec
 	runnerRunning         *prometheus.GaugeVec
@@ -90,7 +94,9 @@ type recorder struct {
 	runnerScheduleNextRun *prometheus.GaugeVec
 
 	// Discovery-scoped (3 labels)
-	discoveryRepoCount *prometheus.GaugeVec
+	discoveryJobs        *prometheus.CounterVec
+	discoveryJobFailures *prometheus.CounterVec
+	discoveryRepoCount   *prometheus.GaugeVec
 
 	// Webhook (provider, result)
 	webhookRequests              *prometheus.CounterVec
@@ -112,7 +118,7 @@ type recorder struct {
 
 var _ Recorder = (*recorder)(nil)
 
-//nolint:ireturn
+//nolint:ireturn,maintidx
 func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap int) Recorder {
 	guard := NewCardinalityGuard(cardinalityCap)
 
@@ -237,6 +243,14 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		[]string{"namespace", "renovator", "runner", "status"},
 	)
 
+	runnerJobFailures := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_runner_job_failures_total",
+			Help: "Total number of failed runner Kubernetes Jobs by failure reason.",
+		},
+		[]string{"namespace", "renovator", "runner", "reason"},
+	)
+
 	runnerQueueDepth := prometheus.NewGaugeVec(
 		prometheus.GaugeOpts{
 			Name: "renovate_operator_runner_queue_depth",
@@ -275,6 +289,22 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 			Help: "Number of repositories seen by the last discovery run.",
 		},
 		[]string{"namespace", "renovator", "discovery"},
+	)
+
+	discoveryJobs := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_discovery_jobs_total",
+			Help: "Total number of discovery Kubernetes Jobs by status.",
+		},
+		[]string{"namespace", "renovator", "discovery", "status"},
+	)
+
+	discoveryJobFailures := prometheus.NewCounterVec(
+		prometheus.CounterOpts{
+			Name: "renovate_operator_discovery_job_failures_total",
+			Help: "Total number of failed discovery Kubernetes Jobs by failure reason.",
+		},
+		[]string{"namespace", "renovator", "discovery", "reason"},
 	)
 
 	webhookRequests := prometheus.NewCounterVec(
@@ -340,10 +370,10 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		gitrepoDependenciesTotal, gitrepoDependenciesOutdated,
 		gitrepoDependencyUpdates, gitrepoVulnerabilityFixes,
 		gitrepoBranchResults, gitrepoLogWarnings, gitrepoLogErrors,
-		runnerJobs, runnerJobDuration,
+		runnerJobs, runnerJobFailures, runnerJobDuration,
 		runnerQueueDepth, runnerRunning,
 		runnerScheduleRuns, runnerScheduleNextRun,
-		discoveryRepoCount,
+		discoveryJobs, discoveryJobFailures, discoveryRepoCount,
 		webhookRequests, webhookSignatureFailures,
 		webhookAuthFailures, webhookPayloadDecodeFailures,
 		secretResolutionErrors,
@@ -365,11 +395,14 @@ func New(reg prometheus.Registerer, gatherer prometheus.Gatherer, cardinalityCap
 		gitrepoLogWarnings:           gitrepoLogWarnings,
 		gitrepoLogErrors:             gitrepoLogErrors,
 		runnerJobs:                   runnerJobs,
+		runnerJobFailures:            runnerJobFailures,
 		runnerJobDuration:            runnerJobDuration,
 		runnerQueueDepth:             runnerQueueDepth,
 		runnerRunning:                runnerRunning,
 		runnerScheduleRuns:           runnerScheduleRuns,
 		runnerScheduleNextRun:        runnerScheduleNextRun,
+		discoveryJobs:                discoveryJobs,
+		discoveryJobFailures:         discoveryJobFailures,
 		discoveryRepoCount:           discoveryRepoCount,
 		webhookRequests:              webhookRequests,
 		webhookSignatureFailures:     webhookSignatureFailures,

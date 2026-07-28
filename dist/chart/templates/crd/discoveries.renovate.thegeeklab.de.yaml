@@ -3762,6 +3762,9 @@ spec:
                       - type
                     type: object
                   type: array
+                lastDiscoveryTime:
+                  format: date-time
+                  type: string
                 lastScheduleTime:
                   format: date-time
                   type: string

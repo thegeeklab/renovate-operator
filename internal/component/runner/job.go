@@ -12,6 +12,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/parser"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
+	"github.com/thegeeklab/renovate-operator/internal/resource/job"
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
@@ -389,6 +390,12 @@ func (r *Reconciler) updateJobStatus(
 			r.metrics.RecordRunnerJob(repo.Namespace, renovatorLabel, r.instance.Name, runStatus)
 			r.metrics.RecordRunnerJobDuration(repo.Namespace, renovatorLabel, r.instance.Name, runStatus, duration)
 			r.metrics.SetLastRunDuration(repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, duration)
+		}
+
+		if runStatus == metrics.StatusFailed {
+			r.metrics.RecordRunnerJobFailure(
+				repo.Namespace, renovatorLabel, r.instance.Name, job.FailureReason(latestFinishedJob),
+			)
 		}
 
 		r.updateLogMetrics(ctx, latestFinishedJob, renovatorLabel, gitrepoLabel)

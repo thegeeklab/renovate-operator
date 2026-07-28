@@ -10,7 +10,9 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	containers "github.com/thegeeklab/renovate-operator/internal/resource/container"
+	"github.com/thegeeklab/renovate-operator/internal/resource/job"
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/discovery"
@@ -71,6 +73,11 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 
 		if !created {
 			return &ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+		}
+
+		if r.metrics != nil {
+			renovatorLabel := r.instance.Labels[renovatev1beta1.LabelRenovator]
+			r.metrics.RecordDiscoveryJob(r.instance.Namespace, renovatorLabel, r.instance.Name, metrics.StatusDispatched)
 		}
 
 		log.Info("Discovery run active", "trigger", decision.Trigger)
@@ -228,7 +235,14 @@ func (r *Reconciler) updateJobStatus(ctx context.Context, labels map[string]stri
 		)
 	}
 
+	var (
+		runStatus    string
+		previousLast *metav1.Time
+	)
+
 	if latestFinishedJob != nil {
+		previousLast = r.instance.GetLastDiscoveryTime()
+
 		switch {
 		case latestFinishedJob.Status.Succeeded > 0:
 			r.instance.SetCondition(
@@ -237,6 +251,8 @@ func (r *Reconciler) updateJobStatus(ctx context.Context, labels map[string]stri
 				"JobSucceeded", "Discovery job completed successfully",
 			)
 			r.instance.RemoveCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)
+
+			runStatus = metrics.StatusSucceeded
 		case latestFinishedJob.Status.Failed > 0:
 			r.instance.SetCondition(
 				renovatev1beta1.DiscoveryConditionDiscoveryFailed,
@@ -244,14 +260,30 @@ func (r *Reconciler) updateJobStatus(ctx context.Context, labels map[string]stri
 				"JobFailed", "Discovery job failed",
 			)
 			r.instance.RemoveCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)
+
+			runStatus = metrics.StatusFailed
 		default:
 			r.instance.RemoveCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)
 			r.instance.RemoveCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)
 		}
+
+		r.instance.SetLastDiscoveryTime(&latestFinishedJob.CreationTimestamp)
 	}
 
 	if err := r.Status().Patch(ctx, r.instance, patch); err != nil {
 		return fmt.Errorf("failed to patch job status: %w", err)
+	}
+
+	if r.metrics != nil && latestFinishedJob != nil && runStatus != "" &&
+		(previousLast == nil || latestFinishedJob.CreationTimestamp.After(previousLast.Time)) {
+		renovatorLabel := r.instance.Labels[renovatev1beta1.LabelRenovator]
+		r.metrics.RecordDiscoveryJob(r.instance.Namespace, renovatorLabel, r.instance.Name, runStatus)
+
+		if runStatus == metrics.StatusFailed {
+			r.metrics.RecordDiscoveryJobFailure(
+				r.instance.Namespace, renovatorLabel, r.instance.Name, job.FailureReason(latestFinishedJob),
+			)
+		}
 	}
 
 	return nil
