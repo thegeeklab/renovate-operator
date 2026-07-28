@@ -194,6 +194,10 @@ func (r *recorder) RecordRunnerJob(namespace, renovator, runner, status string) 
 	r.runnerJobs.WithLabelValues(namespace, renovator, runner, status).Inc()
 }
 
+func (r *recorder) RecordRunnerJobFailure(namespace, renovator, runner, reason string) {
+	r.runnerJobFailures.WithLabelValues(namespace, renovator, runner, reason).Inc()
+}
+
 func (r *recorder) RecordRunnerJobDuration(namespace, renovator, runner, status string, seconds float64) {
 	r.runnerJobDuration.WithLabelValues(namespace, renovator, runner, status).Observe(seconds)
 }
@@ -212,6 +216,14 @@ func (r *recorder) RecordRunnerScheduleRun(namespace, renovator, runner, result 
 
 func (r *recorder) SetRunnerScheduleNextRun(namespace, renovator, runner string, timestamp float64) {
 	r.runnerScheduleNextRun.WithLabelValues(namespace, renovator, runner).Set(timestamp)
+}
+
+func (r *recorder) RecordDiscoveryJob(namespace, renovator, discovery, status string) {
+	r.discoveryJobs.WithLabelValues(namespace, renovator, discovery, status).Inc()
+}
+
+func (r *recorder) RecordDiscoveryJobFailure(namespace, renovator, discovery, reason string) {
+	r.discoveryJobFailures.WithLabelValues(namespace, renovator, discovery, reason).Inc()
 }
 
 func (r *recorder) SetDiscoveryRepositories(namespace, renovator, discovery string, count int) {
@@ -242,6 +254,9 @@ func (r *recorder) DeleteRunner(namespace, renovator, runner string) {
 	r.runnerJobs.DeletePartialMatch(prometheus.Labels{
 		"namespace": namespace, "renovator": renovator, "runner": runner,
 	})
+	r.runnerJobFailures.DeletePartialMatch(prometheus.Labels{
+		"namespace": namespace, "renovator": renovator, "runner": runner,
+	})
 	r.runnerJobDuration.DeletePartialMatch(prometheus.Labels{
 		"namespace": namespace, "renovator": renovator, "runner": runner,
 	})
@@ -254,6 +269,12 @@ func (r *recorder) DeleteRunner(namespace, renovator, runner string) {
 }
 
 func (r *recorder) DeleteDiscovery(namespace, renovator, discovery string) {
+	r.discoveryJobs.DeletePartialMatch(prometheus.Labels{
+		"namespace": namespace, "renovator": renovator, "discovery": discovery,
+	})
+	r.discoveryJobFailures.DeletePartialMatch(prometheus.Labels{
+		"namespace": namespace, "renovator": renovator, "discovery": discovery,
+	})
 	r.discoveryRepoCount.DeleteLabelValues(namespace, renovator, discovery)
 }
 

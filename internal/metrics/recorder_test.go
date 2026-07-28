@@ -336,6 +336,23 @@ var _ = Describe("Recorder", func() {
 			Expect(count).To(Equal(1))
 		})
 
+		It("should record runner job failure counter", func() {
+			rec.RecordRunnerJobFailure("default", "test-renovator", "test-runner", "BackoffLimitExceeded")
+			rec.RecordRunnerJobFailure("default", "test-renovator", "test-runner", "DeadlineExceeded")
+			rec.RecordRunnerJobFailure("default", "test-renovator", "test-runner", "BackoffLimitExceeded")
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_runner_job_failures_total Total number of failed runner Kubernetes Jobs by failure reason.
+				# TYPE renovate_operator_runner_job_failures_total counter
+				renovate_operator_runner_job_failures_total{namespace="default",reason="BackoffLimitExceeded",renovator="test-renovator",runner="test-runner"} 2
+				renovate_operator_runner_job_failures_total{namespace="default",reason="DeadlineExceeded",renovator="test-renovator",runner="test-runner"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.runnerJobFailures, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
 		It("should set runner queue depth and running gauges", func() {
 			rec.SetRunnerQueueDepth("default", "test-renovator", "test-runner", 12)
 			rec.SetRunnerRunning("default", "test-renovator", "test-runner", 3)
@@ -380,6 +397,40 @@ var _ = Describe("Recorder", func() {
 				recImpl.discoveryRepoCount.WithLabelValues("default", "test-renovator", "test-discovery"),
 			)
 			Expect(repos).To(Equal(25.0))
+		})
+
+		It("should record discovery job counter", func() {
+			rec.RecordDiscoveryJob("default", "test-renovator", "test-discovery", StatusDispatched)
+			rec.RecordDiscoveryJob("default", "test-renovator", "test-discovery", StatusSucceeded)
+			rec.RecordDiscoveryJob("default", "test-renovator", "test-discovery", StatusFailed)
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_discovery_jobs_total Total number of discovery Kubernetes Jobs by status.
+				# TYPE renovate_operator_discovery_jobs_total counter
+				renovate_operator_discovery_jobs_total{discovery="test-discovery",namespace="default",renovator="test-renovator",status="dispatched"} 1
+				renovate_operator_discovery_jobs_total{discovery="test-discovery",namespace="default",renovator="test-renovator",status="failed"} 1
+				renovate_operator_discovery_jobs_total{discovery="test-discovery",namespace="default",renovator="test-renovator",status="succeeded"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.discoveryJobs, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
+		})
+
+		It("should record discovery job failure counter", func() {
+			rec.RecordDiscoveryJobFailure("default", "test-renovator", "test-discovery", "BackoffLimitExceeded")
+			rec.RecordDiscoveryJobFailure("default", "test-renovator", "test-discovery", "DeadlineExceeded")
+
+			//nolint:lll
+			expected := `
+				# HELP renovate_operator_discovery_job_failures_total Total number of failed discovery Kubernetes Jobs by failure reason.
+				# TYPE renovate_operator_discovery_job_failures_total counter
+				renovate_operator_discovery_job_failures_total{discovery="test-discovery",namespace="default",reason="BackoffLimitExceeded",renovator="test-renovator"} 1
+				renovate_operator_discovery_job_failures_total{discovery="test-discovery",namespace="default",reason="DeadlineExceeded",renovator="test-renovator"} 1
+			`
+
+			err := testutil.CollectAndCompare(recImpl.discoveryJobFailures, strings.NewReader(expected))
+			Expect(err).NotTo(HaveOccurred())
 		})
 
 		It("should record webhook metrics", func() {
@@ -453,6 +504,7 @@ var _ = Describe("Recorder", func() {
 
 		It("should delete runner metrics", func() {
 			rec.RecordRunnerJob("default", "test-renovator", "test-runner", StatusSucceeded)
+			rec.RecordRunnerJobFailure("default", "test-renovator", "test-runner", "BackoffLimitExceeded")
 			rec.RecordRunnerJobDuration("default", "test-renovator", "test-runner", StatusSucceeded, 45.0)
 			rec.SetRunnerQueueDepth("default", "test-renovator", "test-runner", 12)
 			rec.SetRunnerRunning("default", "test-renovator", "test-runner", 3)
@@ -462,6 +514,7 @@ var _ = Describe("Recorder", func() {
 			rec.DeleteRunner("default", "test-renovator", "test-runner")
 
 			Expect(testutil.CollectAndCount(recImpl.runnerJobs)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.runnerJobFailures)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.runnerJobDuration)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.runnerQueueDepth)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.runnerRunning)).To(Equal(0))
@@ -470,10 +523,14 @@ var _ = Describe("Recorder", func() {
 		})
 
 		It("should delete discovery metrics", func() {
+			rec.RecordDiscoveryJob("default", "test-renovator", "test-discovery", StatusSucceeded)
+			rec.RecordDiscoveryJobFailure("default", "test-renovator", "test-discovery", "BackoffLimitExceeded")
 			rec.SetDiscoveryRepositories("default", "test-renovator", "test-discovery", 25)
 
 			rec.DeleteDiscovery("default", "test-renovator", "test-discovery")
 
+			Expect(testutil.CollectAndCount(recImpl.discoveryJobs)).To(Equal(0))
+			Expect(testutil.CollectAndCount(recImpl.discoveryJobFailures)).To(Equal(0))
 			Expect(testutil.CollectAndCount(recImpl.discoveryRepoCount)).To(Equal(0))
 		})
 

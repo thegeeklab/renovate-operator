@@ -49,8 +49,9 @@ type DiscoverySpec struct {
 //
 //nolint:lll
 type DiscoveryStatus struct {
-	Conditions       []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
-	LastScheduleTime *metav1.Time       `json:"lastScheduleTime,omitempty"`
+	Conditions           []metav1.Condition `json:"conditions,omitempty" patchStrategy:"merge" patchMergeKey:"type" protobuf:"bytes,1,rep,name=conditions"`
+	LastScheduleTime     *metav1.Time       `json:"lastScheduleTime,omitempty"`
+	LastDiscoveryTime    *metav1.Time       `json:"lastDiscoveryTime,omitempty"`
 }
 
 // +kubebuilder:object:root=true
@@ -102,6 +103,18 @@ func (d *Discovery) GetLastScheduleTime() *metav1.Time {
 // SetLastScheduleTime updates the time of the last execution.
 func (d *Discovery) SetLastScheduleTime(t *metav1.Time) {
 	d.Status.LastScheduleTime = t
+}
+
+// GetLastDiscoveryTime returns the creation timestamp of the most recently
+// completed discovery job for which metrics have been emitted.
+func (d *Discovery) GetLastDiscoveryTime() *metav1.Time {
+	return d.Status.LastDiscoveryTime
+}
+
+// SetLastDiscoveryTime updates the creation timestamp of the most recently
+// completed discovery job for which metrics have been emitted.
+func (d *Discovery) SetLastDiscoveryTime(t *metav1.Time) {
+	d.Status.LastDiscoveryTime = t
 }
 
 // GetSuccessLimit returns the history limit for successful jobs.
