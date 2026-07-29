@@ -176,6 +176,27 @@ var _ = Describe("GitLab Provider", func() {
 			Expect(err).To(MatchError(ContainSubstring("failed to list projects")))
 		})
 
+		It("excludes projects marked for deletion when skipPendingDeletion is enabled", func() {
+			handler = func(w http.ResponseWriter, r *http.Request) {
+				Expect(r.URL.Path).To(Equal("/api/v4/projects"))
+
+				_, _ = w.Write([]byte(`[
+					{"path_with_namespace":"group/active","topics":[]},
+					{"path_with_namespace":"group/pending-delete","topics":[],"marked_for_deletion_on":"2025-06-01T00:00:00.000Z"},
+					{"path_with_namespace":"group/another-active","topics":[]}
+				]`))
+			}
+
+			repos, err := p.ListRepos(ctx, provider.ListReposOptions{
+				SkipPendingDeletion: true,
+			})
+			Expect(err).NotTo(HaveOccurred())
+			Expect(repos).To(Equal([]provider.Repo{
+				{Name: "group/active", IsFork: false},
+				{Name: "group/another-active", IsFork: false},
+			}))
+		})
+
 		It("rejects hook management without Maintainer access", func() {
 			handler = func(w http.ResponseWriter, r *http.Request) {
 				_, _ = w.Write([]byte(`{"permissions":{"project_access":{"access_level":30}}}`))

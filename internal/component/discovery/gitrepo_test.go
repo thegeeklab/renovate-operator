@@ -355,6 +355,44 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			Expect(err).ToNot(HaveOccurred())
 			Expect(result).To(Equal([]string{"matching-repo"}))
 		})
+
+		It("should exclude repos marked for deletion when skipPendingDeletion is enabled", func() {
+			skipPending := true
+			reconciler.instance.Spec.GitLab = &renovatev1beta1.GitLabOptions{
+				SkipPendingDeletion: &skipPending,
+			}
+
+			reconciler.renovate = &renovatev1beta1.RenovateConfig{
+				ObjectMeta: metav1.ObjectMeta{Name: "test-config", Namespace: "default"},
+				Spec: renovatev1beta1.RenovateConfigSpec{
+					Platform: renovatev1beta1.PlatformSpec{
+						Type: "stub",
+						Token: corev1.EnvVarSource{
+							SecretKeyRef: &corev1.SecretKeySelector{
+								Key:                  "token",
+								LocalObjectReference: corev1.LocalObjectReference{Name: "platform-secret"},
+							},
+						},
+					},
+				},
+			}
+
+			tokenSecret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "platform-secret", Namespace: "default"},
+				Data:       map[string][]byte{"token": []byte("test-token")},
+			}
+			Expect(fakeClient.Create(ctx, tokenSecret)).To(Succeed())
+
+			mockMgr.On("ListRepos", mock.Anything, provider.ListReposOptions{
+				SkipPendingDeletion: true,
+			}).Return([]provider.Repo{
+				{Name: "active-repo"},
+			}, nil).Once()
+
+			result, err := reconciler.filterRepos(ctx, []string{"active-repo", "pending-delete-repo"})
+			Expect(err).ToNot(HaveOccurred())
+			Expect(result).To(Equal([]string{"active-repo"}))
+		})
 	})
 
 	Describe("updateGitRepo", func() {

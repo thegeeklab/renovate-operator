@@ -8,6 +8,8 @@ type ListReposOptions struct {
 	SkipForks bool
 	// Topics, when non-empty, restricts results to repositories that contain all listed topics.
 	Topics []string
+	// SkipPendingDeletion, when true, excludes repositories marked for deletion (GitLab soft-delete).
+	SkipPendingDeletion bool
 }
 
 // Repo is the platform-agnostic representation of a repository returned by ListRepos.

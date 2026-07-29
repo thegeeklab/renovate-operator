@@ -45,6 +45,23 @@ var _ = Describe("Discovery Webhook", func() {
 			Expect(obj.Spec.ImagePullPolicy).To(Equal(corev1.PullIfNotPresent))
 			Expect(obj.Spec.Webhooks.Enabled).NotTo(BeNil())
 			Expect(*obj.Spec.Webhooks.Enabled).To(BeTrue())
+			Expect(obj.Spec.GitLab).NotTo(BeNil())
+			Expect(obj.Spec.GitLab.SkipPendingDeletion).NotTo(BeNil())
+			Expect(*obj.Spec.GitLab.SkipPendingDeletion).To(BeFalse())
+		})
+
+		It("Should default gitlab.skipPendingDeletion to false and preserve explicit true", func() {
+			err := defaulter.Default(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj.Spec.GitLab.SkipPendingDeletion).NotTo(BeNil())
+			Expect(*obj.Spec.GitLab.SkipPendingDeletion).To(BeFalse())
+
+			enabled := true
+			obj.Spec.GitLab.SkipPendingDeletion = &enabled
+			err = defaulter.Default(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(obj.Spec.GitLab.SkipPendingDeletion).NotTo(BeNil())
+			Expect(*obj.Spec.GitLab.SkipPendingDeletion).To(BeTrue())
 		})
 
 		It("Should default webhooks.enabled to true and preserve explicit false", func() {
