@@ -9,6 +9,8 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
+	"golang.org/x/oauth2"
+	github_oauth "golang.org/x/oauth2/github"
 )
 
 func newTestProvider(endpoint string, httpClient *http.Client) *GitHubProvider {
@@ -45,6 +47,28 @@ func (t *tokenTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	return base.RoundTrip(req2)
 }
 
+func githubOAuthServer() *httptest.Server {
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/login/oauth/access_token":
+			Expect(r.FormValue("code_verifier")).NotTo(BeEmpty())
+
+			w.Header().Set("Content-Type", "application/x-www-form-urlencoded")
+			_, _ = fmt.Fprint(w, "access_token=test-access-token&token_type=Bearer&scope=repo&refresh_token=test-refresh-token")
+		case "/api/v3/user":
+			Expect(r.Header.Get("Authorization")).To(Equal("Bearer test-access-token"))
+
+			w.Header().Set("Content-Type", "application/json")
+			_, _ = fmt.Fprint(w, `{
+				"id":123,"login":"testuser","name":"Test User",
+				"email":"test@example.com","avatar_url":"https://example.com/avatar.png"
+			}`)
+		default:
+			http.NotFound(w, r)
+		}
+	}))
+}
+
 var _ = Describe("GitHubProvider", func() {
 	var (
 		server *httptest.Server
@@ -59,6 +83,59 @@ var _ = Describe("GitHubProvider", func() {
 		if server != nil {
 			server.Close()
 		}
+	})
+
+	Describe("LoginURL", func() {
+		It("includes PKCE challenge and state in the authorization URL", func() {
+			provider := &GitHubProvider{
+				name:     "test",
+				endpoint: "https://github.com",
+				oauth2Config: &oauth2.Config{
+					ClientID:     "test-client",
+					ClientSecret: "test-secret",
+					RedirectURL:  "http://localhost/callback",
+					Endpoint:     github_oauth.Endpoint,
+					Scopes:       []string{"read:user", "repo"},
+				},
+			}
+
+			loginURL := provider.LoginURL("test-state", oauth2.GenerateVerifier())
+			Expect(loginURL).To(ContainSubstring("state=test-state"))
+			Expect(loginURL).To(ContainSubstring("code_challenge="))
+			Expect(loginURL).To(ContainSubstring("code_challenge_method=S256"))
+		})
+	})
+
+	Describe("HandleCallback", func() {
+		It("exchanges code with PKCE verifier and maps GitHub user fields", func() {
+			server := githubOAuthServer()
+
+			provider := &GitHubProvider{
+				name:     "test",
+				endpoint: server.URL,
+				oauth2Config: &oauth2.Config{
+					ClientID:     "test-client",
+					ClientSecret: "test-secret",
+					RedirectURL:  "http://localhost/callback",
+					Endpoint: oauth2.Endpoint{
+						AuthURL:  server.URL + "/login/oauth/authorize",
+						TokenURL: server.URL + "/login/oauth/access_token",
+					},
+					Scopes: []string{"read:user", "repo"},
+				},
+				httpClient: server.Client(),
+			}
+
+			user, err := provider.HandleCallback(ctx, "test-code", oauth2.GenerateVerifier())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(user).NotTo(BeNil())
+			Expect(user.Subject).To(Equal("123"))
+			Expect(user.Name).To(Equal("Test User"))
+			Expect(user.Email).To(Equal("test@example.com"))
+			Expect(user.AccessToken).To(Equal("test-access-token"))
+			Expect(user.RefreshToken).To(Equal("test-refresh-token"))
+			Expect(user.Provider).To(Equal("test"))
+		})
 	})
 
 	Describe("GetUserRepos", func() {

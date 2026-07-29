@@ -31,11 +31,11 @@ func (p *testAuthProvider) IconURL() string {
 	return ""
 }
 
-func (p *testAuthProvider) LoginURL(state string) string {
+func (p *testAuthProvider) LoginURL(state, verifier string) string {
 	return p.loginURL + "?state=" + state
 }
 
-func (p *testAuthProvider) HandleCallback(ctx context.Context, code string) (*AuthenticatedUser, error) {
+func (p *testAuthProvider) HandleCallback(ctx context.Context, code, verifier string) (*AuthenticatedUser, error) {
 	return &AuthenticatedUser{
 		Email:        "test@example.com",
 		Name:         "Test User",

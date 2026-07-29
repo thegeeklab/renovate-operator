@@ -59,8 +59,8 @@ type AuthProvider interface {
 	Name() string
 	DisplayName() string
 	IconURL() string
-	LoginURL(state string) string
-	HandleCallback(ctx context.Context, code string) (*AuthenticatedUser, error)
+	LoginURL(state, verifier string) string
+	HandleCallback(ctx context.Context, code, verifier string) (*AuthenticatedUser, error)
 	RefreshToken(ctx context.Context, refreshToken string) (*AuthenticatedUser, error)
 	ValidateToken(ctx context.Context, token string) (*AuthenticatedUser, error)
 	GetUserRepos(ctx context.Context, client *http.Client) (map[string]bool, error)

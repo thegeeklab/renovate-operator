@@ -135,14 +135,14 @@ func (p *GitHubProvider) IconURL() string {
 	return p.iconURL
 }
 
-func (p *GitHubProvider) LoginURL(state string) string {
-	return p.oauth2Config.AuthCodeURL(state)
+func (p *GitHubProvider) LoginURL(state, verifier string) string {
+	return p.oauth2Config.AuthCodeURL(state, oauth2.S256ChallengeOption(verifier))
 }
 
-func (p *GitHubProvider) HandleCallback(ctx context.Context, code string) (*auth.AuthenticatedUser, error) {
+func (p *GitHubProvider) HandleCallback(ctx context.Context, code, verifier string) (*auth.AuthenticatedUser, error) {
 	ctx = context.WithValue(ctx, oauth2.HTTPClient, p.httpClient)
 
-	token, err := p.oauth2Config.Exchange(ctx, code)
+	token, err := p.oauth2Config.Exchange(ctx, code, oauth2.VerifierOption(verifier))
 	if err != nil {
 		return nil, fmt.Errorf("failed to exchange token: %w", err)
 	}

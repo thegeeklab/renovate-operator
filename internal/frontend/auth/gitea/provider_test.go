@@ -324,6 +324,29 @@ var _ = Describe("GiteaProvider", func() {
 		})
 	})
 
+	Describe("LoginURL", func() {
+		It("includes PKCE challenge and state in the authorization URL", func() {
+			provider := &GiteaProvider{
+				name:        "test",
+				clientID:    "test-client",
+				redirectURL: "http://localhost/callback",
+				oauth2Config: &oauth2.Config{
+					ClientID:    "test-client",
+					RedirectURL: "http://localhost/callback",
+					Endpoint: oauth2.Endpoint{
+						AuthURL:  "https://gitea.example.com/login/oauth/authorize",
+						TokenURL: "https://gitea.example.com/login/oauth/access_token",
+					},
+				},
+			}
+
+			loginURL := provider.LoginURL("test-state", oauth2.GenerateVerifier())
+			Expect(loginURL).To(ContainSubstring("state=test-state"))
+			Expect(loginURL).To(ContainSubstring("code_challenge="))
+			Expect(loginURL).To(ContainSubstring("code_challenge_method=S256"))
+		})
+	})
+
 	Describe("HandleCallback", func() {
 		var (
 			privKey *rsa.PrivateKey
@@ -412,7 +435,7 @@ var _ = Describe("GiteaProvider", func() {
 
 			provider.verifier = oidcProvider.Verifier(&oidc.Config{ClientID: "test-client"})
 
-			user, err := provider.HandleCallback(ctx, "test-code")
+			user, err := provider.HandleCallback(ctx, "test-code", oauth2.GenerateVerifier())
 			Expect(err).NotTo(HaveOccurred())
 			Expect(user).NotTo(BeNil())
 			Expect(user.Email).To(Equal("test@example.com"))

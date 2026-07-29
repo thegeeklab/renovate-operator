@@ -283,11 +283,11 @@ func (m *mockAuthProvider) IconURL() string {
 	return ""
 }
 
-func (m *mockAuthProvider) LoginURL(_ string) string {
+func (m *mockAuthProvider) LoginURL(_, _ string) string {
 	return ""
 }
 
-func (m *mockAuthProvider) HandleCallback(_ context.Context, _ string) (*auth.AuthenticatedUser, error) {
+func (m *mockAuthProvider) HandleCallback(_ context.Context, _, _ string) (*auth.AuthenticatedUser, error) {
 	return nil, errors.New("not implemented")
 }
 
