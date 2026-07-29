@@ -244,6 +244,10 @@ func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions
 				continue
 			}
 
+			if opts.SkipPendingDeletion && project.MarkedForDeletionOn != nil {
+				continue
+			}
+
 			repos = append(repos, provider.Repo{
 				Name:   project.PathWithNamespace,
 				IsFork: isFork,

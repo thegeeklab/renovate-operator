@@ -39,10 +39,22 @@ type DiscoverySpec struct {
 	// +kubebuilder:validation:Optional
 	Topics []string `json:"topics,omitempty"`
 
+	// GitLab configures GitLab-specific discovery options.
+	// +kubebuilder:validation:Optional
+	GitLab *GitLabOptions `json:"gitlab,omitempty"`
+
 	// Webhooks configures webhook management for the repositories discovered
 	// by this Discovery. Propagated to the child GitRepo resources.
 	// +kubebuilder:validation:Optional
 	Webhooks WebhooksSpec `json:"webhooks,omitempty"`
+}
+
+// GitLabOptions defines GitLab-specific options for Discovery.
+type GitLabOptions struct {
+	// SkipPendingDeletion ensures repositories marked for deletion on the
+	// platform (GitLab soft-delete) are excluded from discovery results.
+	// +kubebuilder:validation:Optional
+	SkipPendingDeletion *bool `json:"skipPendingDeletion,omitempty"`
 }
 
 // DiscoveryStatus defines the observed state of Discovery.
@@ -139,6 +151,15 @@ func (d *Discovery) GetSkipForks() bool {
 // GetTopics returns the list of topics to filter repositories by.
 func (d *Discovery) GetTopics() []string {
 	return d.Spec.Topics
+}
+
+// GetSkipPendingDeletion returns true if repositories marked for deletion should be excluded.
+func (d *Discovery) GetSkipPendingDeletion() bool {
+	if d.Spec.GitLab == nil || d.Spec.GitLab.SkipPendingDeletion == nil {
+		return false
+	}
+
+	return *d.Spec.GitLab.SkipPendingDeletion
 }
 
 func (d *Discovery) SetCondition(

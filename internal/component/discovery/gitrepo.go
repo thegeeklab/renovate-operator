@@ -122,8 +122,9 @@ func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string,
 
 	skipForks := r.instance.GetSkipForks()
 	topics := r.instance.GetTopics()
+	skipPending := r.instance.GetSkipPendingDeletion()
 
-	if !skipForks && len(topics) == 0 {
+	if !skipForks && len(topics) == 0 && !skipPending {
 		return repos, nil
 	}
 
@@ -151,8 +152,9 @@ func (r *Reconciler) filterRepos(ctx context.Context, repos []string) ([]string,
 	}
 
 	platformRepos, err := providerManager.ListRepos(ctx, provider.ListReposOptions{
-		SkipForks: skipForks,
-		Topics:    topics,
+		SkipForks:           skipForks,
+		Topics:              topics,
+		SkipPendingDeletion: skipPending,
 	})
 	if err != nil {
 		return nil, fmt.Errorf("failed to list repositories: %w", err)

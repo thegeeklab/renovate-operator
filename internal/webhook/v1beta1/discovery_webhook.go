@@ -83,6 +83,14 @@ func (d *DiscoveryCustomDefaulter) Default(ctx context.Context, discovery *renov
 		discovery.Spec.SkipForks = new(false)
 	}
 
+	if discovery.Spec.GitLab == nil {
+		discovery.Spec.GitLab = &renovatev1beta1.GitLabOptions{}
+	}
+
+	if discovery.Spec.GitLab.SkipPendingDeletion == nil {
+		discovery.Spec.GitLab.SkipPendingDeletion = new(false)
+	}
+
 	if discovery.Spec.Webhooks.Enabled == nil {
 		discovery.Spec.Webhooks.Enabled = new(true)
 	}
