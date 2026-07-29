@@ -152,8 +152,8 @@ func (_c *AuthProvider_GetUserRepos_Call) RunAndReturn(run func(ctx context.Cont
 }
 
 // HandleCallback provides a mock function for the type AuthProvider
-func (_mock *AuthProvider) HandleCallback(ctx context.Context, code string) (*auth.AuthenticatedUser, error) {
-	ret := _mock.Called(ctx, code)
+func (_mock *AuthProvider) HandleCallback(ctx context.Context, code string, verifier string) (*auth.AuthenticatedUser, error) {
+	ret := _mock.Called(ctx, code, verifier)
 
 	if len(ret) == 0 {
 		panic("no return value specified for HandleCallback")
@@ -161,18 +161,18 @@ func (_mock *AuthProvider) HandleCallback(ctx context.Context, code string) (*au
 
 	var r0 *auth.AuthenticatedUser
 	var r1 error
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) (*auth.AuthenticatedUser, error)); ok {
-		return returnFunc(ctx, code)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) (*auth.AuthenticatedUser, error)); ok {
+		return returnFunc(ctx, code, verifier)
 	}
-	if returnFunc, ok := ret.Get(0).(func(context.Context, string) *auth.AuthenticatedUser); ok {
-		r0 = returnFunc(ctx, code)
+	if returnFunc, ok := ret.Get(0).(func(context.Context, string, string) *auth.AuthenticatedUser); ok {
+		r0 = returnFunc(ctx, code, verifier)
 	} else {
 		if ret.Get(0) != nil {
 			r0 = ret.Get(0).(*auth.AuthenticatedUser)
 		}
 	}
-	if returnFunc, ok := ret.Get(1).(func(context.Context, string) error); ok {
-		r1 = returnFunc(ctx, code)
+	if returnFunc, ok := ret.Get(1).(func(context.Context, string, string) error); ok {
+		r1 = returnFunc(ctx, code, verifier)
 	} else {
 		r1 = ret.Error(1)
 	}
@@ -187,11 +187,12 @@ type AuthProvider_HandleCallback_Call struct {
 // HandleCallback is a helper method to define mock.On call
 //   - ctx context.Context
 //   - code string
-func (_e *AuthProvider_Expecter) HandleCallback(ctx any, code any) *AuthProvider_HandleCallback_Call {
-	return &AuthProvider_HandleCallback_Call{Call: _e.mock.On("HandleCallback", ctx, code)}
+//   - verifier string
+func (_e *AuthProvider_Expecter) HandleCallback(ctx any, code any, verifier any) *AuthProvider_HandleCallback_Call {
+	return &AuthProvider_HandleCallback_Call{Call: _e.mock.On("HandleCallback", ctx, code, verifier)}
 }
 
-func (_c *AuthProvider_HandleCallback_Call) Run(run func(ctx context.Context, code string)) *AuthProvider_HandleCallback_Call {
+func (_c *AuthProvider_HandleCallback_Call) Run(run func(ctx context.Context, code string, verifier string)) *AuthProvider_HandleCallback_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 context.Context
 		if args[0] != nil {
@@ -201,9 +202,14 @@ func (_c *AuthProvider_HandleCallback_Call) Run(run func(ctx context.Context, co
 		if args[1] != nil {
 			arg1 = args[1].(string)
 		}
+		var arg2 string
+		if args[2] != nil {
+			arg2 = args[2].(string)
+		}
 		run(
 			arg0,
 			arg1,
+			arg2,
 		)
 	})
 	return _c
@@ -214,7 +220,7 @@ func (_c *AuthProvider_HandleCallback_Call) Return(authenticatedUser *auth.Authe
 	return _c
 }
 
-func (_c *AuthProvider_HandleCallback_Call) RunAndReturn(run func(ctx context.Context, code string) (*auth.AuthenticatedUser, error)) *AuthProvider_HandleCallback_Call {
+func (_c *AuthProvider_HandleCallback_Call) RunAndReturn(run func(ctx context.Context, code string, verifier string) (*auth.AuthenticatedUser, error)) *AuthProvider_HandleCallback_Call {
 	_c.Call.Return(run)
 	return _c
 }
@@ -336,16 +342,16 @@ func (_c *AuthProvider_IsUserRepo_Call) RunAndReturn(run func(ctx context.Contex
 }
 
 // LoginURL provides a mock function for the type AuthProvider
-func (_mock *AuthProvider) LoginURL(state string) string {
-	ret := _mock.Called(state)
+func (_mock *AuthProvider) LoginURL(state string, verifier string) string {
+	ret := _mock.Called(state, verifier)
 
 	if len(ret) == 0 {
 		panic("no return value specified for LoginURL")
 	}
 
 	var r0 string
-	if returnFunc, ok := ret.Get(0).(func(string) string); ok {
-		r0 = returnFunc(state)
+	if returnFunc, ok := ret.Get(0).(func(string, string) string); ok {
+		r0 = returnFunc(state, verifier)
 	} else {
 		r0 = ret.Get(0).(string)
 	}
@@ -359,18 +365,24 @@ type AuthProvider_LoginURL_Call struct {
 
 // LoginURL is a helper method to define mock.On call
 //   - state string
-func (_e *AuthProvider_Expecter) LoginURL(state any) *AuthProvider_LoginURL_Call {
-	return &AuthProvider_LoginURL_Call{Call: _e.mock.On("LoginURL", state)}
+//   - verifier string
+func (_e *AuthProvider_Expecter) LoginURL(state any, verifier any) *AuthProvider_LoginURL_Call {
+	return &AuthProvider_LoginURL_Call{Call: _e.mock.On("LoginURL", state, verifier)}
 }
 
-func (_c *AuthProvider_LoginURL_Call) Run(run func(state string)) *AuthProvider_LoginURL_Call {
+func (_c *AuthProvider_LoginURL_Call) Run(run func(state string, verifier string)) *AuthProvider_LoginURL_Call {
 	_c.Call.Run(func(args mock.Arguments) {
 		var arg0 string
 		if args[0] != nil {
 			arg0 = args[0].(string)
 		}
+		var arg1 string
+		if args[1] != nil {
+			arg1 = args[1].(string)
+		}
 		run(
 			arg0,
+			arg1,
 		)
 	})
 	return _c
@@ -381,7 +393,7 @@ func (_c *AuthProvider_LoginURL_Call) Return(s string) *AuthProvider_LoginURL_Ca
 	return _c
 }
 
-func (_c *AuthProvider_LoginURL_Call) RunAndReturn(run func(state string) string) *AuthProvider_LoginURL_Call {
+func (_c *AuthProvider_LoginURL_Call) RunAndReturn(run func(state string, verifier string) string) *AuthProvider_LoginURL_Call {
 	_c.Call.Return(run)
 	return _c
 }

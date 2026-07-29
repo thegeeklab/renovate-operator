@@ -563,7 +563,7 @@ func (m *mockAuthProvider) setupDefaults() {
 	_ = m.AuthProvider.On("Name").Return(m.name)
 	_ = m.AuthProvider.On("DisplayName").Return(m.name)
 	_ = m.AuthProvider.On("IconURL").Return("")
-	_ = m.AuthProvider.On("LoginURL", mock.Anything).Return("")
+	_ = m.AuthProvider.On("LoginURL", mock.Anything, mock.Anything).Return("")
 
 	// Access-control methods read from the wrapper's fields, so we set up
 	// the expectations once and they dynamically reflect field changes.

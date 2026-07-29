@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"strings"
 
+	"golang.org/x/oauth2"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -22,17 +23,31 @@ const (
 
 var authLog = logf.Log.WithName("auth")
 
-// encodeState produces a state value of the form "<random-hex>:<base64url-provider-name>".
-// The random component serves as the CSRF token (compared against the cookie),
-// while the provider segment binds the provider identity to the state so the
-// callback handler does not need to trust an attacker-controlled URL parameter.
-func encodeState(provider string) (string, error) {
+// encodeState produces a state value (CSRF token + provider name) and a PKCE
+// code verifier. The state is sent to the authorization server in the URL; the
+// verifier is stored in the state cookie and sent only in the token exchange.
+func encodeState(provider string) (string, string, error) {
 	b := make([]byte, 32) //nolint:mnd
 	if _, err := rand.Read(b); err != nil {
-		return "", err
+		return "", "", err
 	}
 
-	return hex.EncodeToString(b) + ":" + base64.RawURLEncoding.EncodeToString([]byte(provider)), nil
+	state := hex.EncodeToString(b) + ":" + base64.RawURLEncoding.EncodeToString([]byte(provider))
+	verifier := oauth2.GenerateVerifier()
+
+	return state, verifier, nil
+}
+
+// decodeStateCookie splits a cookie value into the CSRF state token and the
+// PKCE code verifier. The cookie value is encoded as "<state>|<verifier>".
+// Returns false if the value is malformed.
+func decodeStateCookie(cookieValue string) (string, string, bool) {
+	idx := strings.LastIndex(cookieValue, "|")
+	if idx < 0 {
+		return "", "", false
+	}
+
+	return cookieValue[:idx], cookieValue[idx+1:], true
 }
 
 // decodeState extracts the provider name from a state value previously produced by encodeState.
@@ -93,7 +108,7 @@ func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
 			return
 		}
 
-		state, err := encodeState(providerName)
+		state, verifier, err := encodeState(providerName)
 		if err != nil {
 			http.Error(w, "failed to generate state", http.StatusInternalServerError)
 
@@ -102,7 +117,7 @@ func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
 
 		http.SetCookie(w, &http.Cookie{ //nolint:gosec
 			Name:     stateCookieName,
-			Value:    state,
+			Value:    state + "|" + verifier,
 			Path:     "/auth/callback",
 			MaxAge:   stateCookieMaxAge,
 			HttpOnly: true,
@@ -110,7 +125,7 @@ func HandleLogin(manager *Manager, secureCookies bool) http.HandlerFunc {
 			SameSite: http.SameSiteLaxMode,
 		})
 
-		http.Redirect(w, r, provider.LoginURL(state), http.StatusFound)
+		http.Redirect(w, r, provider.LoginURL(state, verifier), http.StatusFound)
 	}
 }
 
@@ -129,14 +144,21 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 			return
 		}
 
-		state := r.URL.Query().Get("state")
-		if state != stateCookie.Value {
+		state, verifier, ok := decodeStateCookie(stateCookie.Value)
+		if !ok {
+			http.Error(w, "invalid state cookie", http.StatusBadRequest)
+
+			return
+		}
+
+		urlState := r.URL.Query().Get("state")
+		if urlState != state {
 			http.Error(w, "state mismatch", http.StatusBadRequest)
 
 			return
 		}
 
-		providerName, ok := decodeState(state)
+		providerName, ok := decodeState(urlState)
 		if !ok {
 			http.Error(w, "invalid state", http.StatusBadRequest)
 
@@ -157,7 +179,7 @@ func HandleCallback(manager *Manager, secureCookies bool) http.HandlerFunc {
 			return
 		}
 
-		user, err := provider.HandleCallback(r.Context(), code)
+		user, err := provider.HandleCallback(r.Context(), code, verifier)
 		if err != nil {
 			authLog.Error(err, "OIDC callback failed")
 			http.Error(w, "authentication failed", http.StatusInternalServerError)

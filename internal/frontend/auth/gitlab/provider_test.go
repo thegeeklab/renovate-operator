@@ -13,6 +13,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
+	"golang.org/x/oauth2"
 )
 
 var _ = Describe("GitLabProvider", func() {
@@ -96,8 +97,10 @@ var _ = Describe("GitLabProvider", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 
-		loginURL := provider.LoginURL("state-token")
+		loginURL := provider.LoginURL("state-token", oauth2.GenerateVerifier())
 		Expect(loginURL).To(ContainSubstring("state=state-token"))
+		Expect(loginURL).To(ContainSubstring("code_challenge="))
+		Expect(loginURL).To(ContainSubstring("code_challenge_method=S256"))
 		Expect(loginURL).To(ContainSubstring("scope=openid+profile+email+read_api"))
 	})
 
@@ -116,7 +119,7 @@ var _ = Describe("GitLabProvider", func() {
 
 		provider.httpClient = server.Client()
 
-		user, err := provider.HandleCallback(ctx, "code")
+		user, err := provider.HandleCallback(ctx, "code", oauth2.GenerateVerifier())
 		Expect(err).NotTo(HaveOccurred())
 		Expect(user.Subject).To(Equal("123"))
 		Expect(user.Name).To(Equal("Test User"))

@@ -49,6 +49,32 @@ var _ = Describe("Handlers", func() {
 			Expect(cookies).NotTo(BeEmpty())
 		})
 
+		It("should store PKCE verifier in state cookie", func() {
+			req := httptest.NewRequest(http.MethodGet, "/auth/login?provider=gitea-prod", nil)
+			handler := manager.SessionManager().LoadAndSave(HandleLogin(manager, false))
+			handler.ServeHTTP(rec, req)
+
+			Expect(rec.Code).To(Equal(http.StatusFound))
+
+			var stateCookie *http.Cookie
+
+			for _, c := range rec.Result().Cookies() {
+				if c.Name == stateCookieName {
+					stateCookie = c
+
+					break
+				}
+			}
+
+			Expect(stateCookie).NotTo(BeNil())
+
+			state, verifier, ok := decodeStateCookie(stateCookie.Value)
+			Expect(ok).To(BeTrue())
+			Expect(state).NotTo(BeEmpty())
+			Expect(verifier).NotTo(BeEmpty())
+			Expect(stateCookie.Value).To(Equal(state + "|" + verifier))
+		})
+
 		It("should return 400 when provider is missing", func() {
 			req := httptest.NewRequest(http.MethodGet, "/auth/login", nil)
 			handler := manager.SessionManager().LoadAndSave(HandleLogin(manager, false))
@@ -212,8 +238,9 @@ var _ = Describe("Handlers", func() {
 
 	Describe("HandleCallback", func() {
 		It("should return 400 when state cookie is missing", func() {
-			state, err := encodeState("gitea-prod")
+			state, verifier, err := encodeState("gitea-prod")
 			Expect(err).NotTo(HaveOccurred())
+			Expect(verifier).NotTo(BeEmpty())
 
 			req := httptest.NewRequest(http.MethodGet, "/auth/callback?state="+state+"&code=xyz", nil)
 			HandleCallback(manager, false).ServeHTTP(rec, req)
@@ -222,13 +249,13 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should return 400 when state does not match", func() {
-			state, err := encodeState("gitea-prod")
+			state, verifier, err := encodeState("gitea-prod")
 			Expect(err).NotTo(HaveOccurred())
 
 			req := httptest.NewRequest(http.MethodGet, "/auth/callback?state="+state+"&code=xyz", nil)
 			req.AddCookie(&http.Cookie{
 				Name:  stateCookieName,
-				Value: "different-state",
+				Value: "different-state|" + verifier,
 			})
 			HandleCallback(manager, false).ServeHTTP(rec, req)
 
@@ -239,7 +266,7 @@ var _ = Describe("Handlers", func() {
 			req := httptest.NewRequest(http.MethodGet, "/auth/callback?state=not-encoded&code=xyz", nil)
 			req.AddCookie(&http.Cookie{
 				Name:  stateCookieName,
-				Value: "not-encoded",
+				Value: "not-encoded|malformed",
 			})
 			HandleCallback(manager, false).ServeHTTP(rec, req)
 
@@ -247,13 +274,13 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should return 400 when code is missing", func() {
-			state, err := encodeState("gitea-prod")
+			state, verifier, err := encodeState("gitea-prod")
 			Expect(err).NotTo(HaveOccurred())
 
 			req := httptest.NewRequest(http.MethodGet, "/auth/callback?state="+state, nil)
 			req.AddCookie(&http.Cookie{
 				Name:  stateCookieName,
-				Value: state,
+				Value: state + "|" + verifier,
 			})
 			HandleCallback(manager, false).ServeHTTP(rec, req)
 
@@ -261,13 +288,13 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should return 404 when state encodes an unknown provider", func() {
-			state, err := encodeState("unknown-provider")
+			state, verifier, err := encodeState("unknown-provider")
 			Expect(err).NotTo(HaveOccurred())
 
 			req := httptest.NewRequest(http.MethodGet, "/auth/callback?state="+state+"&code=xyz", nil)
 			req.AddCookie(&http.Cookie{
 				Name:  stateCookieName,
-				Value: state,
+				Value: state + "|" + verifier,
 			})
 			HandleCallback(manager, false).ServeHTTP(rec, req)
 
@@ -279,13 +306,13 @@ var _ = Describe("Handlers", func() {
 			failingManager := NewManager(false)
 			failingManager.Register(failingProvider)
 
-			state, err := encodeState("gitea-fail")
+			state, verifier, err := encodeState("gitea-fail")
 			Expect(err).NotTo(HaveOccurred())
 
 			req := httptest.NewRequest(http.MethodGet, "/auth/callback?state="+state+"&code=bad-code", nil)
 			req.AddCookie(&http.Cookie{
 				Name:  stateCookieName,
-				Value: state,
+				Value: state + "|" + verifier,
 			})
 			HandleCallback(failingManager, false).ServeHTTP(rec, req)
 
@@ -301,7 +328,7 @@ var _ = Describe("Handlers", func() {
 				loginURL: "https://staging.example.com/login",
 			})
 
-			state, err := encodeState("gitea-prod")
+			state, verifier, err := encodeState("gitea-prod")
 			Expect(err).NotTo(HaveOccurred())
 
 			req := httptest.NewRequest(
@@ -311,7 +338,7 @@ var _ = Describe("Handlers", func() {
 			)
 			req.AddCookie(&http.Cookie{
 				Name:  stateCookieName,
-				Value: state,
+				Value: state + "|" + verifier,
 			})
 			HandleCallback(spoofManager, false).ServeHTTP(rec, req)
 
@@ -319,13 +346,13 @@ var _ = Describe("Handlers", func() {
 		})
 
 		It("should store refresh token and token expiry in session", func() {
-			state, err := encodeState("gitea-prod")
+			state, verifier, err := encodeState("gitea-prod")
 			Expect(err).NotTo(HaveOccurred())
 
 			req := httptest.NewRequest(http.MethodGet, "/auth/callback?state="+state+"&code=valid-code", nil)
 			req.AddCookie(&http.Cookie{
 				Name:  stateCookieName,
-				Value: state,
+				Value: state + "|" + verifier,
 			})
 
 			var storedSession SessionData
@@ -343,6 +370,56 @@ var _ = Describe("Handlers", func() {
 			Expect(ok).To(BeTrue())
 			Expect(storedSession.RefreshToken).To(Equal("test-refresh-token"))
 			Expect(storedSession.AccessToken).To(Equal("test-token"))
+		})
+	})
+
+	Describe("encodeState", func() {
+		It("returns a state and a non-empty PKCE verifier", func() {
+			state, verifier, err := encodeState("test-provider")
+			Expect(err).NotTo(HaveOccurred())
+			Expect(state).To(ContainSubstring(":"))
+			Expect(verifier).NotTo(BeEmpty())
+		})
+
+		It("returns unique verifiers on each call", func() {
+			_, v1, err1 := encodeState("provider-a")
+			Expect(err1).NotTo(HaveOccurred())
+
+			_, v2, err2 := encodeState("provider-a")
+			Expect(err2).NotTo(HaveOccurred())
+
+			Expect(v1).NotTo(Equal(v2))
+		})
+
+		It("embeds provider name in state", func() {
+			state, _, err := encodeState("my-provider")
+			Expect(err).NotTo(HaveOccurred())
+
+			name, ok := decodeState(state)
+			Expect(ok).To(BeTrue())
+			Expect(name).To(Equal("my-provider"))
+		})
+	})
+
+	Describe("decodeStateCookie", func() {
+		It("returns state and verifier from a well-formed cookie", func() {
+			state, verifier, ok := decodeStateCookie("csrf-state|pkce-verifier")
+			Expect(ok).To(BeTrue())
+			Expect(state).To(Equal("csrf-state"))
+			Expect(verifier).To(Equal("pkce-verifier"))
+		})
+
+		It("returns false for a cookie without separator", func() {
+			_, _, ok := decodeStateCookie("just-state")
+			Expect(ok).To(BeFalse())
+		})
+
+		It("returns the verifier even when it contains special chars", func() {
+			verifier := "aBcD1234-_"
+			state, gotVerifier, ok := decodeStateCookie("some-state|" + verifier)
+			Expect(ok).To(BeTrue())
+			Expect(state).To(Equal("some-state"))
+			Expect(gotVerifier).To(Equal(verifier))
 		})
 	})
 })
@@ -367,11 +444,11 @@ func (p *failingAuthProvider) IconURL() string {
 	return ""
 }
 
-func (p *failingAuthProvider) LoginURL(state string) string {
+func (p *failingAuthProvider) LoginURL(state, verifier string) string {
 	return "https://fail.example.com/login?state=" + url.QueryEscape(state)
 }
 
-func (p *failingAuthProvider) HandleCallback(ctx context.Context, code string) (*AuthenticatedUser, error) {
+func (p *failingAuthProvider) HandleCallback(ctx context.Context, code, verifier string) (*AuthenticatedUser, error) {
 	return nil, ErrCallbackFailed
 }
 
