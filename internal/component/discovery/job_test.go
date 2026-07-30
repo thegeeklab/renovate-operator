@@ -203,6 +203,46 @@ var _ = Describe("ReconcileJob", func() {
 				Expect(updatedInstance.Status.LastScheduleTime).NotTo(BeNil())
 			})
 		})
+
+		Context("when PodLabelTemplates are set", func() {
+			BeforeEach(func() {
+				instance.Spec.PodLabelTemplates = map[string]string{
+					"cost-center": "ns-{{ .namespace }}-disco-{{ .discovery }}",
+				}
+				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+			})
+
+			It("should create a job with rendered labels", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+				Expect(jobList.Items).To(HaveLen(1))
+
+				job := jobList.Items[0]
+				Expect(job.Spec.Template.Labels["cost-center"]).To(Equal("ns-default-disco-test-discovery"))
+			})
+		})
+
+		Context("when PodLabelTemplates contains an invalid template", func() {
+			BeforeEach(func() {
+				instance.Spec.PodLabelTemplates = map[string]string{
+					"label": "{{ .undefined }}",
+				}
+				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+			})
+
+			It("should fail and not create a job", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).To(HaveOccurred())
+				Expect(err.Error()).To(ContainSubstring("failed to render pod label templates"))
+
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+				Expect(jobList.Items).To(BeEmpty())
+			})
+		})
 	})
 
 	Describe("updateJob", func() {

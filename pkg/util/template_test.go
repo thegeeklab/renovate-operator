@@ -181,6 +181,66 @@ var _ = Describe("RenderPodLabels", func() {
 			"label": "prod",
 		}))
 	})
+
+	It("treats trunc with negative length as no-op", func() {
+		tmpl := map[string]string{
+			"label": `{{ .namespace | trunc -1 }}`,
+		}
+		vars := map[string]string{
+			"namespace": "production",
+		}
+
+		result, err := RenderPodLabels(tmpl, vars)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(map[string]string{
+			"label": "production",
+		}))
+	})
+
+	It("supports the upper function", func() {
+		tmpl := map[string]string{
+			"label": `{{ .namespace | upper }}`,
+		}
+		vars := map[string]string{
+			"namespace": "prod",
+		}
+
+		result, err := RenderPodLabels(tmpl, vars)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(map[string]string{
+			"label": "PROD",
+		}))
+	})
+
+	It("supports the trim function", func() {
+		tmpl := map[string]string{
+			"label": `{{ .namespace | trim }}`,
+		}
+		vars := map[string]string{
+			"namespace": "  padded  ",
+		}
+
+		result, err := RenderPodLabels(tmpl, vars)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(map[string]string{
+			"label": "padded",
+		}))
+	})
+
+	It("supports the replace function", func() {
+		tmpl := map[string]string{
+			"label": `{{ .namespace | replace "_" "-" }}`,
+		}
+		vars := map[string]string{
+			"namespace": "my_namespace",
+		}
+
+		result, err := RenderPodLabels(tmpl, vars)
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(map[string]string{
+			"label": "my-namespace",
+		}))
+	})
 })
 
 var _ = Describe("MergeRenderedPodLabels", func() {

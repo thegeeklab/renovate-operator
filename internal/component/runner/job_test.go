@@ -304,6 +304,46 @@ var _ = Describe("ReconcileJob", func() {
 			})
 		})
 
+		Context("when PodLabelTemplates are set", func() {
+			BeforeEach(func() {
+				instance.Spec.PodLabelTemplates = map[string]string{
+					"cost-center": "ns-{{ .namespace }}-run-{{ .runner }}-repo-{{ .gitrepo }}",
+				}
+				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+			})
+
+			It("should create jobs with rendered labels", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+				Expect(jobList.Items).To(HaveLen(2))
+
+				for _, job := range jobList.Items {
+					Expect(job.Spec.Template.Labels["cost-center"]).To(ContainSubstring("ns-default-run-test-runner-repo-"))
+				}
+			})
+		})
+
+		Context("when PodLabelTemplates contains an invalid template", func() {
+			BeforeEach(func() {
+				instance.Spec.PodLabelTemplates = map[string]string{
+					"label": "{{ .undefined }}",
+				}
+				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+			})
+
+			It("should not create any jobs", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+				Expect(jobList.Items).To(BeEmpty())
+			})
+		})
+
 		Context("when jobs were created in a previous reconciliation", func() {
 			It("should update GitRepo status to show running jobs", func() {
 				_, err := reconciler.reconcileJob(ctx)
