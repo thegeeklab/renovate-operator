@@ -2,6 +2,7 @@ package discovery
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"path/filepath"
 	"strings"
@@ -16,6 +17,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/discovery"
+	"github.com/thegeeklab/renovate-operator/pkg/util"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -23,6 +25,8 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
+
+var errJobNotCreated = errors.New("job was not created")
 
 // reconcileJob checks if discovery should run, processes the job, and schedules the next run.
 func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
@@ -57,33 +61,12 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	}
 
 	if decision.ShouldRun {
-		job := &batchv1.Job{
-			ObjectMeta: metav1.ObjectMeta{
-				GenerateName: DiscoveryName(r.req) + "-",
-				Namespace:    r.instance.Namespace,
-				Labels:       discoveryLabels,
-			},
-		}
-		r.updateJob(job, discoveryLabels)
+		if err := r.runDiscoveryJob(ctx, discoveryLabels, decision.Trigger); err != nil {
+			if errors.Is(err, errJobNotCreated) {
+				return &ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
+			}
 
-		created, err := r.scheduler.EnsureJob(ctx, r.instance, job, discoveryLabels)
-		if err != nil {
-			return &ctrl.Result{}, fmt.Errorf("failed to ensure job: %w", err)
-		}
-
-		if !created {
-			return &ctrl.Result{RequeueAfter: 1 * time.Minute}, nil
-		}
-
-		if r.metrics != nil {
-			renovatorLabel := r.instance.Labels[renovatev1beta1.LabelRenovator]
-			r.metrics.RecordDiscoveryJob(r.instance.Namespace, renovatorLabel, r.instance.Name, metrics.StatusDispatched)
-		}
-
-		log.Info("Discovery run active", "trigger", decision.Trigger)
-
-		if err := r.scheduler.CompleteRun(ctx, r.instance, renovator.RemoveRenovatorOperation); err != nil {
-			return &ctrl.Result{}, fmt.Errorf("failed to complete run: %w", err)
+			return &ctrl.Result{}, fmt.Errorf("failed to run discovery job: %w", err)
 		}
 	}
 
@@ -103,11 +86,62 @@ func (r *Reconciler) reconcileJob(ctx context.Context) (*ctrl.Result, error) {
 	return &ctrl.Result{}, nil
 }
 
+// runDiscoveryJob creates and dispatches a discovery job.
+func (r *Reconciler) runDiscoveryJob(ctx context.Context, discoveryLabels map[string]string, trigger string) error {
+	log := logf.FromContext(ctx)
+
+	job := &batchv1.Job{
+		ObjectMeta: metav1.ObjectMeta{
+			GenerateName: DiscoveryName(r.req) + "-",
+			Namespace:    r.instance.Namespace,
+			Labels:       discoveryLabels,
+		},
+	}
+
+	if err := r.updateJob(job, discoveryLabels); err != nil {
+		return fmt.Errorf("failed to update job: %w", err)
+	}
+
+	created, err := r.scheduler.EnsureJob(ctx, r.instance, job, discoveryLabels)
+	if err != nil {
+		return fmt.Errorf("failed to ensure job: %w", err)
+	}
+
+	if !created {
+		return errJobNotCreated
+	}
+
+	if r.metrics != nil {
+		renovatorLabel := r.instance.Labels[renovatev1beta1.LabelRenovator]
+		r.metrics.RecordDiscoveryJob(r.instance.Namespace, renovatorLabel, r.instance.Name, metrics.StatusDispatched)
+	}
+
+	log.Info("Discovery run active", "trigger", trigger)
+
+	if err := r.scheduler.CompleteRun(ctx, r.instance, renovator.RemoveRenovatorOperation); err != nil {
+		return fmt.Errorf("failed to complete run: %w", err)
+	}
+
+	return nil
+}
+
 // updateJob configures the job spec for discovery.
-func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
+func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) error {
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 	scratchPath := renovate.GetScratchVolumePath(r.instance.Spec.ScratchVolume)
 	reposFile := filepath.Join(scratchPath, renovate.FilenameRepositories)
+
+	if len(r.instance.Spec.PodLabelTemplates) > 0 {
+		vars := map[string]string{
+			"namespace": r.instance.Namespace,
+			"renovator": r.instance.Labels[renovatev1beta1.LabelRenovator],
+			"discovery": r.instance.Name,
+		}
+
+		if err := util.MergeRenderedPodLabels(podLabels, r.instance.Spec.PodLabelTemplates, vars); err != nil {
+			return fmt.Errorf("failed to render pod label templates: %w", err)
+		}
+	}
 
 	// Build scratch mounts for discovery containers (volume is created by DefaultJobSpec)
 	_, scratchMounts := renovate.BuildScratchVolumeAndMounts(r.instance.Spec.ScratchVolume)
@@ -188,6 +222,8 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) {
 	}
 
 	job.Spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
+
+	return nil
 }
 
 // updateJobStatus lists jobs for this discovery and updates the Discovery

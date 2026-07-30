@@ -304,6 +304,46 @@ var _ = Describe("ReconcileJob", func() {
 			})
 		})
 
+		Context("when PodLabelTemplates are set", func() {
+			BeforeEach(func() {
+				instance.Spec.PodLabelTemplates = map[string]string{
+					"cost-center": "ns-{{ .namespace }}-run-{{ .runner }}-repo-{{ .gitrepo }}",
+				}
+				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+			})
+
+			It("should create jobs with rendered labels", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+				Expect(jobList.Items).To(HaveLen(2))
+
+				for _, job := range jobList.Items {
+					Expect(job.Spec.Template.Labels["cost-center"]).To(ContainSubstring("ns-default-run-test-runner-repo-"))
+				}
+			})
+		})
+
+		Context("when PodLabelTemplates contains an invalid template", func() {
+			BeforeEach(func() {
+				instance.Spec.PodLabelTemplates = map[string]string{
+					"label": "{{ .undefined }}",
+				}
+				Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+			})
+
+			It("should not create any jobs", func() {
+				_, err := reconciler.reconcileJob(ctx)
+				Expect(err).NotTo(HaveOccurred())
+
+				jobList := &batchv1.JobList{}
+				Expect(fakeClient.List(ctx, jobList, client.InNamespace("default"))).To(Succeed())
+				Expect(jobList.Items).To(BeEmpty())
+			})
+		})
+
 		Context("when jobs were created in a previous reconciliation", func() {
 			It("should update GitRepo status to show running jobs", func() {
 				_, err := reconciler.reconcileJob(ctx)
@@ -409,7 +449,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Containers).To(HaveLen(1))
 			mainContainer := job.Spec.Template.Spec.Containers[0]
@@ -431,7 +471,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.ImagePullSecrets).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.ImagePullSecrets[0].Name).To(Equal("runner-registry-secret"))
@@ -446,7 +486,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "ssd"))
 		})
@@ -470,7 +510,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Affinity).NotTo(BeNil())
 			Expect(job.Spec.Template.Spec.Affinity.NodeAffinity).NotTo(BeNil())
@@ -487,7 +527,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Tolerations).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.Tolerations[0].Key).To(Equal("key1"))
@@ -504,7 +544,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.TopologySpreadConstraints).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.TopologySpreadConstraints[0].TopologyKey).To(Equal("zone"))
@@ -526,7 +566,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			mainContainer := job.Spec.Template.Spec.Containers[0]
 			Expect(mainContainer.Resources.Requests).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("100m")))
@@ -544,7 +584,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			mainContainer := job.Spec.Template.Spec.Containers[0]
 			Expect(mainContainer.SecurityContext).NotTo(BeNil())
@@ -562,7 +602,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			env := job.Spec.Template.Spec.Containers[0].Env
 			Expect(env).To(ContainElement(HaveField("Name", "CUSTOM_VAR")))
@@ -585,7 +625,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "extra-vol")))
 		})
@@ -599,7 +639,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.RuntimeClassName).NotTo(BeNil())
 			Expect(*job.Spec.Template.Spec.RuntimeClassName).To(Equal("gvisor"))
@@ -614,9 +654,72 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Annotations).To(HaveKeyWithValue("prometheus.io/scrape", "true"))
+		})
+
+		It("should merge rendered PodLabelTemplates into pod labels", func() {
+			instance.Spec.PodLabelTemplates = map[string]string{
+				"cost-center": "ns-{{ .namespace }}-run-{{ .runner }}-repo-{{ .gitrepo }}",
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			podLabels := map[string]string{
+				"existing": "label",
+			}
+			Expect(reconciler.updateJob(job, repo1, podLabels)).To(Succeed())
+
+			Expect(job.Spec.Template.Labels["cost-center"]).To(Equal("ns-default-run-test-runner-repo-repo-1"))
+		})
+
+		It("should render {{ .discovery }} variable from owner reference", func() {
+			instance.Spec.PodLabelTemplates = map[string]string{
+				"discovery-name": "{{ .discovery }}",
+			}
+
+			controller := true
+			repo1.OwnerReferences = []metav1.OwnerReference{
+				{
+					APIVersion: "renovate.thegeeklab.de/v1beta1",
+					Kind:       "Discovery",
+					Name:       "my-discovery",
+					Controller: &controller,
+				},
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			podLabels := map[string]string{}
+			Expect(reconciler.updateJob(job, repo1, podLabels)).To(Succeed())
+
+			Expect(job.Spec.Template.Labels["discovery-name"]).To(Equal("my-discovery"))
+		})
+
+		It("should leave {{ .discovery }} empty when GitRepo has no Discovery owner", func() {
+			instance.Spec.PodLabelTemplates = map[string]string{
+				"discovery-name": "{{ .discovery }}",
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			podLabels := map[string]string{}
+			Expect(reconciler.updateJob(job, repo1, podLabels)).To(Succeed())
+
+			Expect(job.Spec.Template.Labels["discovery-name"]).To(Equal(""))
 		})
 
 		It("should propagate ScratchVolume to the job pod spec", func() {
@@ -633,7 +736,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, repo1, nil)
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
 			var scratchVol *corev1.Volume
 

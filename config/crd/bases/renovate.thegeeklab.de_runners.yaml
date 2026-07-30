@@ -2949,6 +2949,13 @@ spec:
                     type: string
                   description: PodAnnotations specifies additional annotations for the renovate pod.
                   type: object
+                podLabelTemplates:
+                  additionalProperties:
+                    type: string
+                  description: |-
+                    PodLabelTemplates are merged into Job pod labels. Values support
+                    Go template variables: {{ .namespace }}, {{ .renovator }}, {{ .runner }}, {{ .discovery }}, {{ .gitrepo }}.
+                  type: object
                 resources:
                   description: Resources specifies the resource requirements for the renovate container.
                   properties:

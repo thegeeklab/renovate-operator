@@ -47,6 +47,11 @@ type DiscoverySpec struct {
 	// by this Discovery. Propagated to the child GitRepo resources.
 	// +kubebuilder:validation:Optional
 	Webhooks WebhooksSpec `json:"webhooks,omitempty"`
+
+	// PodLabelTemplates are merged into Job pod labels. Values support
+	// Go template variables: {{ .namespace }}, {{ .renovator }}, {{ .discovery }}.
+	// +kubebuilder:validation:Optional
+	PodLabelTemplates map[string]string `json:"podLabelTemplates,omitempty"`
 }
 
 // GitLabOptions defines GitLab-specific options for Discovery.
