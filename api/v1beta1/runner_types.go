@@ -27,6 +27,11 @@ type RunnerSpec struct {
 	// A value of 0 means no limit.
 	// +kubebuilder:validation:Optional
 	MaxParallel *int32 `json:"maxParallel,omitempty"`
+
+	// PodLabelTemplates are merged into Job pod labels. Values support
+	// Go template variables: {{ .namespace }}, {{ .renovator }}, {{ .runner }}, {{ .discovery }}, {{ .gitrepo }}.
+	// +kubebuilder:validation:Optional
+	PodLabelTemplates map[string]string `json:"podLabelTemplates,omitempty"`
 }
 
 // RunnerStatus defines the observed state of Runner.

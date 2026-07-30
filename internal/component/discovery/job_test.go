@@ -213,7 +213,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, nil)
+			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.InitContainers[0].Name).To(Equal("renovate-init"))
@@ -236,7 +236,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, nil)
+			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.ImagePullSecrets).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.ImagePullSecrets[0].Name).To(Equal("discovery-registry-secret"))
@@ -251,7 +251,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, nil)
+			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "ssd"))
 		})
@@ -275,7 +275,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, nil)
+			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Affinity).NotTo(BeNil())
 			Expect(job.Spec.Template.Spec.Affinity.NodeAffinity).NotTo(BeNil())
@@ -292,7 +292,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, nil)
+			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Tolerations).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.Tolerations[0].Key).To(Equal("key1"))
@@ -309,7 +309,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, nil)
+			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.TopologySpreadConstraints).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.TopologySpreadConstraints[0].TopologyKey).To(Equal("zone"))
@@ -331,7 +331,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, nil)
+			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
 			mainContainer := job.Spec.Template.Spec.Containers[0]
 			Expect(mainContainer.Resources.Requests).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("100m")))
@@ -349,7 +349,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, nil)
+			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
 			mainContainer := job.Spec.Template.Spec.Containers[0]
 			Expect(mainContainer.SecurityContext).NotTo(BeNil())
@@ -367,7 +367,7 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, nil)
+			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
 			env := job.Spec.Template.Spec.Containers[0].Env
 			Expect(env).To(ContainElement(HaveField("Name", "CUSTOM_VAR")))
@@ -390,9 +390,28 @@ var _ = Describe("ReconcileJob", func() {
 					Namespace: "default",
 				},
 			}
-			reconciler.updateJob(job, nil)
+			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "extra-vol")))
+		})
+
+		It("should merge rendered PodLabelTemplates into pod labels", func() {
+			instance.Spec.PodLabelTemplates = map[string]string{
+				"cost-center": "ns-{{ .namespace }}-disco-{{ .discovery }}",
+			}
+
+			job := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-job",
+					Namespace: "default",
+				},
+			}
+			podLabels := map[string]string{
+				"existing": "label",
+			}
+			Expect(reconciler.updateJob(job, podLabels)).To(Succeed())
+
+			Expect(job.Spec.Template.Labels["cost-center"]).To(Equal("ns-default-disco-test-discovery"))
 		})
 	})
 

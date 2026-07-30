@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"maps"
+	"strings"
 	"time"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
@@ -15,6 +16,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/resource/job"
 	"github.com/thegeeklab/renovate-operator/internal/resource/renovate"
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
+	"github.com/thegeeklab/renovate-operator/pkg/util"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	batchv1 "k8s.io/api/batch/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -223,6 +225,19 @@ func (r *Reconciler) ensureRepoJob(
 ) (bool, error) {
 	log := logf.FromContext(ctx)
 
+	if len(r.instance.Spec.PodLabelTemplates) > 0 {
+		ownerRef := metav1.GetControllerOf(repo)
+		if ownerRef == nil || ownerRef.Kind != "Discovery" {
+			for _, tmpl := range r.instance.Spec.PodLabelTemplates {
+				if strings.Contains(tmpl, ".discovery") {
+					log.V(1).Info("PodLabelTemplate references .discovery but GitRepo has no Discovery owner", "gitrepo", repo.Name)
+
+					break
+				}
+			}
+		}
+	}
+
 	job := &batchv1.Job{
 		ObjectMeta: metav1.ObjectMeta{
 			GenerateName: repo.Name + "-",
@@ -230,7 +245,9 @@ func (r *Reconciler) ensureRepoJob(
 			Labels:       repoLabels,
 		},
 	}
-	r.updateJob(job, repo, repoLabels)
+	if err := r.updateJob(job, repo, repoLabels); err != nil {
+		return false, fmt.Errorf("failed to update job: %w", err)
+	}
 
 	created, err := r.scheduler.EnsureJob(ctx, r.instance, job, repoLabels)
 	if err != nil {
@@ -253,8 +270,27 @@ func (r *Reconciler) ensureRepoJob(
 }
 
 // updateJob configures the job spec for a GitRepo.
-func (r *Reconciler) updateJob(job *batchv1.Job, repo *renovatev1beta1.GitRepo, podLabels map[string]string) {
+func (r *Reconciler) updateJob(
+	job *batchv1.Job, repo *renovatev1beta1.GitRepo, podLabels map[string]string,
+) error {
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
+
+	if len(r.instance.Spec.PodLabelTemplates) > 0 {
+		vars := map[string]string{
+			"namespace": r.instance.Namespace,
+			"renovator": r.instance.Labels[renovatev1beta1.LabelRenovator],
+			"runner":    r.instance.Name,
+			"gitrepo":   repo.Name,
+			"discovery": "",
+		}
+		if ownerRef := metav1.GetControllerOf(repo); ownerRef != nil && ownerRef.Kind == "Discovery" {
+			vars["discovery"] = ownerRef.Name
+		}
+
+		if err := util.MergeRenderedPodLabels(podLabels, r.instance.Spec.PodLabelTemplates, vars); err != nil {
+			return fmt.Errorf("failed to render pod label templates: %w", err)
+		}
+	}
 
 	// Set default job spec for the repository
 	renovate.DefaultJobSpec(
@@ -272,6 +308,8 @@ func (r *Reconciler) updateJob(job *batchv1.Job, repo *renovatev1beta1.GitRepo, 
 
 	// Configure job execution details
 	job.Spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
+
+	return nil
 }
 
 // updateJobStatus checks for jobs and updates the GitRepo's status conditions

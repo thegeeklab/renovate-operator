@@ -92,7 +92,8 @@
     "logr",
     "logreader",
     "kubelet",
-    "PKCE"
+    "PKCE",
+    "missingkey"
   ],
   "ignorePaths": [
     ".woodpecker",
