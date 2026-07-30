@@ -2,7 +2,6 @@ package gitlab
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -82,10 +81,8 @@ func NewGitLabProvider(ctx context.Context, cfg auth.ProviderConfig) (*GitLabPro
 	}
 
 	httpClient := &http.Client{
-		Timeout: defaultHTTPTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Insecure}, //nolint:gosec
-		},
+		Timeout:   defaultHTTPTimeout,
+		Transport: &http.Transport{TLSClientConfig: auth.NewTLSConfig(cfg.Insecure, cfg.CACert)},
 	}
 
 	return &GitLabProvider{

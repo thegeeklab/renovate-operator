@@ -2,7 +2,6 @@ package github
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -76,10 +75,8 @@ var _ auth.AuthProvider = (*GitHubProvider)(nil)
 
 func NewGitHubProvider(ctx context.Context, cfg auth.ProviderConfig) (*GitHubProvider, error) {
 	httpClient := &http.Client{
-		Timeout: defaultHTTPTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Insecure}, //nolint:gosec
-		},
+		Timeout:   defaultHTTPTimeout,
+		Transport: &http.Transport{TLSClientConfig: auth.NewTLSConfig(cfg.Insecure, cfg.CACert)},
 	}
 
 	displayName := cfg.DisplayName

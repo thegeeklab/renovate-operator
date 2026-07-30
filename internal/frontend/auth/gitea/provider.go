@@ -2,7 +2,6 @@ package gitea
 
 import (
 	"context"
-	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -72,10 +71,8 @@ var _ auth.AuthProvider = (*GiteaProvider)(nil)
 
 func NewGiteaProvider(ctx context.Context, cfg auth.ProviderConfig) (*GiteaProvider, error) {
 	httpClient := &http.Client{
-		Timeout: defaultHTTPTimeout,
-		Transport: &http.Transport{
-			TLSClientConfig: &tls.Config{InsecureSkipVerify: cfg.Insecure}, //nolint:gosec
-		},
+		Timeout:   defaultHTTPTimeout,
+		Transport: &http.Transport{TLSClientConfig: auth.NewTLSConfig(cfg.Insecure, cfg.CACert)},
 	}
 
 	ctx = oidc.ClientContext(ctx, httpClient)

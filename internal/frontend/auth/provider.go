@@ -2,6 +2,8 @@ package auth
 
 import (
 	"context"
+	"crypto/tls"
+	"crypto/x509"
 	"errors"
 	"net/http"
 	"sync"
@@ -41,6 +43,7 @@ type ProviderConfig struct {
 	AuthURL      string
 	IconURL      string
 	Insecure     bool
+	CACert       []byte
 }
 
 type AuthenticatedUser struct {
@@ -184,4 +187,23 @@ func (m *Manager) RefreshSessionToken(ctx context.Context, session *SessionData)
 		TokenExpiry:  user.TokenExpiry,
 		Provider:     session.Provider,
 	}, nil
+}
+
+func NewTLSConfig(insecure bool, caCert []byte) *tls.Config {
+	if len(caCert) > 0 {
+		pool, err := x509.SystemCertPool()
+		if err != nil {
+			pool = x509.NewCertPool()
+		}
+
+		if pool.AppendCertsFromPEM(caCert) {
+			return &tls.Config{RootCAs: pool}
+		}
+	}
+
+	if insecure {
+		return &tls.Config{InsecureSkipVerify: true} //nolint:gosec
+	}
+
+	return nil
 }
