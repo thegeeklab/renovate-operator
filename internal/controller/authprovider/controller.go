@@ -31,8 +31,7 @@ import (
 const (
 	ControllerName = "authprovider"
 
-	//nolint:gosec // G101: These are field paths for indexing, not credentials
-	secretRefIndexKey   = ".spec.clientSecret.name"
+	secretRefIndexKey   = ".spec.clientSecret.name"   //nolint:gosec // G101: not a credential
 	caSecretRefIndexKey = ".spec.caBundleSecret.name" //nolint:gosec // G101: not a credential
 )
 
