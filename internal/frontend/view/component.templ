@@ -232,3 +232,13 @@ func getWarningsBadgeTooltip(warnCount, errorCount int) string {
 
 	return parts[0] + ", " + parts[1]
 }
+
+templ WarningCountDisplay(warnCount, errorCount int) {
+	if errorCount > 0 {
+		{ errorCount }
+		<span class="opacity-60">/</span>
+		{ warnCount + errorCount }
+	} else {
+		{ warnCount }
+	}
+}

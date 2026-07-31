@@ -319,6 +319,8 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 	repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
 	if opts.Renovator != "" {
+		opts.Repos = repos
+
 		perRepo, err := h.dataFactory.GetPerRepoActivity(ctx, opts)
 		if err != nil {
 			frontendLog.Error(err, "Failed to load per-repo activity", "namespace", opts.Namespace)

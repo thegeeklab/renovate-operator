@@ -44,6 +44,7 @@ type ListOptions struct {
 	SortBy    string
 	Order     string
 	Search    string
+	Repos     []viewmodel.GitRepoInfo
 }
 
 const (
@@ -631,12 +632,17 @@ func (df *DataFactory) computePerRepoActivity(
 ) (map[string]PerRepoActivity, error) {
 	result := make(map[string]PerRepoActivity)
 
-	repos, err := df.GetGitRepos(ctx, opt)
-	if err != nil {
-		return result, fmt.Errorf("failed to list repos for PR activity: %w", err)
-	}
+	repos := opt.Repos
+	if repos == nil {
+		var err error
 
-	repos = df.ApplyAccessFilter(ctx, repos)
+		repos, err = df.GetGitRepos(ctx, opt)
+		if err != nil {
+			return result, fmt.Errorf("failed to list repos for PR activity: %w", err)
+		}
+
+		repos = df.ApplyAccessFilter(ctx, repos)
+	}
 
 	if len(repos) == 0 {
 		return result, nil

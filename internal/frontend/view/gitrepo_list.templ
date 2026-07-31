@@ -28,13 +28,7 @@ templ GitRepoWarningsBadge(warnCount, errorCount int) {
 		@Tooltip(getWarningsBadgeTooltip(warnCount, errorCount)) {
 			<span class={ "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset " + getWarningBadgeColorClasses(errorCount) }>
 				@IconTriangleAlert("h-3.5 w-3.5")
-				if errorCount > 0 {
-					{ errorCount }
-					<span class="opacity-60">/</span>
-					{ warnCount + errorCount }
-				} else {
-					{ warnCount }
-				}
+				@WarningCountDisplay(warnCount, errorCount)
 			</span>
 		}
 	}
