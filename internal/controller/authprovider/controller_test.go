@@ -2,8 +2,16 @@ package authprovider
 
 import (
 	"context"
+	"crypto/ecdsa"
+	"crypto/elliptic"
+	"crypto/rand"
+	"crypto/x509"
+	"crypto/x509/pkix"
+	"encoding/pem"
 	"errors"
+	"math/big"
 	"net/http"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -233,7 +241,7 @@ var _ = Describe("AuthProvider Controller", func() {
 				RedirectURL: "https://operator.example.com/auth/callback",
 				Insecure:    true,
 			},
-		}, "client-secret")
+		}, "client-secret", nil)
 		Expect(err).NotTo(HaveOccurred())
 		Expect(provider.Type()).To(Equal(auth.ProviderTypeGitLab))
 		Expect(provider.Name()).To(Equal("gitlab-auth"))
@@ -244,7 +252,7 @@ var _ = Describe("AuthProvider Controller", func() {
 	It("should reject an unknown auth provider type", func() {
 		provider, err := reconciler.createAuthProvider(ctx, &renovatev1beta1.AuthProvider{
 			Spec: renovatev1beta1.AuthProviderSpec{Type: renovatev1beta1.PlatformType("unknown")},
-		}, "client-secret")
+		}, "client-secret", nil)
 		Expect(err).To(MatchError(ContainSubstring("unsupported platform type")))
 		Expect(provider).To(BeNil())
 	})
@@ -260,6 +268,363 @@ var _ = Describe("AuthProvider Controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))
+	})
+
+	Context("When a CA bundle secret is referenced but missing", func() {
+		const resourceName = "test-authprovider-missing-ca-secret"
+
+		BeforeEach(func() {
+			typeNamespacedName = types.NamespacedName{
+				Name:      resourceName,
+				Namespace: "default",
+			}
+
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret-ca",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"client-secret": []byte("test-client-secret"),
+				},
+			}
+			Expect(k8sClient.Create(ctx, secret)).To(Succeed())
+
+			resource := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: "default",
+				},
+				Spec: renovatev1beta1.AuthProviderSpec{
+					Type:     "gitea",
+					Endpoint: "https://gitea.example.com",
+					ClientSecret: corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "test-secret-ca",
+						},
+						Key: "client-secret",
+					},
+					ClientID:    "test-client-id",
+					RedirectURL: "https://operator.example.com/auth/callback",
+					CABundleSecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{
+							Name: "non-existent-ca-secret",
+						},
+						Key: "ca-bundle",
+					},
+				},
+			}
+			Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			resource := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      resourceName,
+					Namespace: "default",
+				},
+			}
+			_ = k8sClient.Delete(ctx, resource)
+
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "test-secret-ca",
+					Namespace: "default",
+				},
+			}
+			_ = k8sClient.Delete(ctx, secret)
+		})
+
+		It("should fail reconciliation with CA bundle secret not found", func() {
+			_, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).NotTo(HaveOccurred())
+
+			_, err = reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: typeNamespacedName})
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to get CA bundle secret"))
+		})
+	})
+
+	Context("getCABundleSecret", func() {
+		var (
+			secret       *corev1.Secret
+			resourceName string
+		)
+
+		BeforeEach(func() {
+			resourceName = "test-ca-getter"
+
+			secret = &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "ca-secret",
+					Namespace: "default",
+				},
+				Data: map[string][]byte{
+					"ca.crt": []byte("ca-data"),
+				},
+			}
+			Expect(k8sClient.Create(ctx, secret)).To(Succeed())
+		})
+
+		AfterEach(func() {
+			_ = k8sClient.Delete(ctx, &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "ca-secret",
+					Namespace: "default",
+				},
+			})
+		})
+
+		It("should return the secret when CABundleSecret is set", func() {
+			ap := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: "default"},
+				Spec: renovatev1beta1.AuthProviderSpec{
+					CABundleSecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "ca-secret"},
+						Key:                  "ca.crt",
+					},
+				},
+			}
+
+			result, err := reconciler.getCABundleSecret(ctx, ap)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).NotTo(BeNil())
+			Expect(result.Name).To(Equal("ca-secret"))
+		})
+
+		It("should return an error when secret does not exist", func() {
+			ap := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: "default"},
+				Spec: renovatev1beta1.AuthProviderSpec{
+					CABundleSecret: &corev1.SecretKeySelector{
+						LocalObjectReference: corev1.LocalObjectReference{Name: "non-existent"},
+						Key:                  "ca.crt",
+					},
+				},
+			}
+
+			_, err := reconciler.getCABundleSecret(ctx, ap)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("failed to get CA bundle secret"))
+		})
+	})
+
+	Context("extractCABundle", func() {
+		var validPEM []byte
+
+		BeforeEach(func() {
+			caKey, err := ecdsa.GenerateKey(elliptic.P256(), rand.Reader)
+			Expect(err).NotTo(HaveOccurred())
+
+			caTmpl := &x509.Certificate{
+				SerialNumber:          big.NewInt(1),
+				Subject:               pkix.Name{CommonName: "test-ca"},
+				NotBefore:             time.Now().Add(-time.Hour),
+				NotAfter:              time.Now().Add(time.Hour),
+				IsCA:                  true,
+				BasicConstraintsValid: true,
+				KeyUsage:              x509.KeyUsageCertSign,
+			}
+
+			caDER, err := x509.CreateCertificate(rand.Reader, caTmpl, caTmpl, &caKey.PublicKey, caKey)
+			Expect(err).NotTo(HaveOccurred())
+
+			validPEM = pem.EncodeToMemory(&pem.Block{
+				Type:  "CERTIFICATE",
+				Bytes: caDER,
+			})
+		})
+
+		It("should extract valid PEM certificate data", func() {
+			secret := &corev1.Secret{
+				Data: map[string][]byte{
+					"ca.crt": validPEM,
+				},
+			}
+
+			ap := &renovatev1beta1.AuthProvider{
+				Spec: renovatev1beta1.AuthProviderSpec{
+					CABundleSecret: &corev1.SecretKeySelector{
+						Key: "ca.crt",
+					},
+				},
+			}
+
+			result, err := reconciler.extractCABundle(ap, secret)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(validPEM))
+		})
+
+		It("should reject invalid PEM data", func() {
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "ca-secret"},
+				Data: map[string][]byte{
+					"ca.crt": []byte("not-valid-pem"),
+				},
+			}
+
+			ap := &renovatev1beta1.AuthProvider{
+				Spec: renovatev1beta1.AuthProviderSpec{
+					CABundleSecret: &corev1.SecretKeySelector{
+						Key: "ca.crt",
+					},
+				},
+			}
+
+			_, err := reconciler.extractCABundle(ap, secret)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("no valid CA certificates found"))
+		})
+
+		It("should default key to ca.crt when key is empty", func() {
+			secret := &corev1.Secret{
+				Data: map[string][]byte{
+					"ca.crt": validPEM,
+				},
+			}
+
+			ap := &renovatev1beta1.AuthProvider{
+				Spec: renovatev1beta1.AuthProviderSpec{
+					CABundleSecret: &corev1.SecretKeySelector{
+						Key: "",
+					},
+				},
+			}
+
+			result, err := reconciler.extractCABundle(ap, secret)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(result).To(Equal(validPEM))
+		})
+
+		It("should return an error when the key is missing from the secret", func() {
+			secret := &corev1.Secret{
+				ObjectMeta: metav1.ObjectMeta{Name: "ca-secret"},
+				Data:       map[string][]byte{},
+			}
+
+			ap := &renovatev1beta1.AuthProvider{
+				Spec: renovatev1beta1.AuthProviderSpec{
+					CABundleSecret: &corev1.SecretKeySelector{
+						Key: "ca.crt",
+					},
+				},
+			}
+
+			_, err := reconciler.extractCABundle(ap, secret)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("secret key not found"))
+		})
+	})
+
+	Context("isProviderUpToDate", func() {
+		It("should return false when CABundleSecretResourceVersion does not match", func() {
+			ap := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Generation: 1,
+				},
+				Status: renovatev1beta1.AuthProviderStatus{
+					Registered:                    true,
+					SecretResourceVersion:         "v1",
+					CABundleSecretResourceVersion: "v1",
+				},
+			}
+			ap.SetCondition(renovatev1beta1.ConditionReady, metav1.ConditionTrue, "Ready", "")
+
+			authManager.Register(&mockAuthProvider{name: ap.Name})
+
+			secret := &corev1.Secret{}
+			secret.ResourceVersion = "v1"
+
+			caSecret := &corev1.Secret{}
+			caSecret.ResourceVersion = "v2"
+
+			Expect(reconciler.isProviderUpToDate(ap, secret, caSecret)).To(BeFalse())
+		})
+
+		It("should return true when both secret versions match", func() {
+			ap := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test-provider-uptodate",
+					Generation: 1,
+				},
+				Status: renovatev1beta1.AuthProviderStatus{
+					Registered:                    true,
+					SecretResourceVersion:         "v1",
+					CABundleSecretResourceVersion: "v1",
+				},
+			}
+			ap.SetCondition(renovatev1beta1.ConditionReady, metav1.ConditionTrue, "Ready", "")
+
+			authManager.Register(&mockAuthProvider{name: ap.Name})
+
+			secret := &corev1.Secret{}
+			secret.ResourceVersion = "v1"
+
+			caSecret := &corev1.Secret{}
+			caSecret.ResourceVersion = "v1"
+
+			Expect(reconciler.isProviderUpToDate(ap, secret, caSecret)).To(BeTrue())
+		})
+
+		It("should return true when caSecret is nil and no CA bundle is configured", func() {
+			ap := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test-provider-no-ca",
+					Generation: 1,
+				},
+				Status: renovatev1beta1.AuthProviderStatus{
+					Registered:            true,
+					SecretResourceVersion: "v1",
+				},
+			}
+			ap.SetCondition(renovatev1beta1.ConditionReady, metav1.ConditionTrue, "Ready", "")
+
+			authManager.Register(&mockAuthProvider{name: ap.Name})
+
+			secret := &corev1.Secret{}
+			secret.ResourceVersion = "v1"
+
+			Expect(reconciler.isProviderUpToDate(ap, secret, nil)).To(BeTrue())
+		})
+
+		It("should return false when client SecretResourceVersion does not match", func() {
+			ap := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test-provider-ver-mismatch",
+					Generation: 1,
+				},
+				Status: renovatev1beta1.AuthProviderStatus{
+					Registered:            true,
+					SecretResourceVersion: "v1",
+				},
+			}
+			ap.SetCondition(renovatev1beta1.ConditionReady, metav1.ConditionTrue, "Ready", "")
+
+			authManager.Register(&mockAuthProvider{name: ap.Name})
+
+			secret := &corev1.Secret{}
+			secret.ResourceVersion = "v2"
+
+			Expect(reconciler.isProviderUpToDate(ap, secret, nil)).To(BeFalse())
+		})
+
+		It("should return false when condition Ready is not true", func() {
+			ap := &renovatev1beta1.AuthProvider{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:       "test-provider-not-ready",
+					Generation: 1,
+				},
+				Status: renovatev1beta1.AuthProviderStatus{
+					Registered:            true,
+					SecretResourceVersion: "v1",
+				},
+			}
+
+			secret := &corev1.Secret{}
+			secret.ResourceVersion = "v1"
+
+			Expect(reconciler.isProviderUpToDate(ap, secret, nil)).To(BeFalse())
+		})
 	})
 })
 

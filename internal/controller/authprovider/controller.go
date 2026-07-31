@@ -2,6 +2,7 @@ package authprovider
 
 import (
 	"context"
+	"crypto/x509"
 	"errors"
 	"fmt"
 
@@ -30,13 +31,14 @@ import (
 const (
 	ControllerName = "authprovider"
 
-	//nolint:gosec // G101: This is a field path for indexing, not a credential
-	secretRefIndexKey = ".spec.clientSecret.name"
+	secretRefIndexKey   = ".spec.clientSecret.name"   //nolint:gosec // G101: not a credential
+	caSecretRefIndexKey = ".spec.caBundleSecret.name" //nolint:gosec // G101: not a credential
 )
 
 var (
 	errSecretKeyNotFound = errors.New("secret key not found")
 	errUnsupportedType   = errors.New("unsupported platform type")
+	errInvalidCACert     = errors.New("no valid CA certificates found")
 )
 
 // Reconciler reconciles an AuthProvider object.
@@ -118,7 +120,19 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: fmt.Errorf("failed to get secret: %w", err)}
 	}
 
-	if r.isProviderUpToDate(ap, secret) {
+	var caSecret *corev1.Secret
+
+	if ap.Spec.CABundleSecret != nil && ap.Spec.CABundleSecret.Name != "" {
+		caSecret, err = r.getCABundleSecret(ctx, ap)
+		if err != nil {
+			r.AuthManager.Unregister(ap.Name)
+			ap.Status.Registered = false
+
+			return controller.Outcome{Err: fmt.Errorf("failed to get CA bundle secret: %w", err)}
+		}
+	}
+
+	if r.isProviderUpToDate(ap, secret, caSecret) {
 		return controller.Outcome{Result: &ctrl.Result{}}
 	}
 
@@ -130,7 +144,19 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: fmt.Errorf("failed to extract client secret: %w", err)}
 	}
 
-	provider, err := r.createAuthProvider(ctx, ap, clientSecret)
+	var caCert []byte
+
+	if caSecret != nil {
+		caCert, err = r.extractCABundle(ap, caSecret)
+		if err != nil {
+			r.AuthManager.Unregister(ap.Name)
+			ap.Status.Registered = false
+
+			return controller.Outcome{Err: fmt.Errorf("failed to extract CA bundle: %w", err)}
+		}
+	}
+
+	provider, err := r.createAuthProvider(ctx, ap, clientSecret, caCert)
 	if err != nil {
 		r.AuthManager.Unregister(ap.Name)
 		ap.Status.Registered = false
@@ -141,12 +167,18 @@ func (r *Reconciler) reconcile(
 	r.AuthManager.Register(provider)
 
 	ap.Status.Registered = true
+
 	ap.Status.SecretResourceVersion = secret.ResourceVersion
+	if caSecret != nil {
+		ap.Status.CABundleSecretResourceVersion = caSecret.ResourceVersion
+	} else {
+		ap.Status.CABundleSecretResourceVersion = ""
+	}
 
 	return controller.Outcome{Result: &ctrl.Result{}}
 }
 
-func (r *Reconciler) isProviderUpToDate(ap *renovatev1beta1.AuthProvider, secret *corev1.Secret) bool {
+func (r *Reconciler) isProviderUpToDate(ap *renovatev1beta1.AuthProvider, secret, caSecret *corev1.Secret) bool {
 	if !ap.Status.Registered {
 		return false
 	}
@@ -161,7 +193,15 @@ func (r *Reconciler) isProviderUpToDate(ap *renovatev1beta1.AuthProvider, secret
 		return false
 	}
 
-	return ap.Status.SecretResourceVersion == secret.ResourceVersion
+	if ap.Status.SecretResourceVersion != secret.ResourceVersion {
+		return false
+	}
+
+	if caSecret != nil && ap.Status.CABundleSecretResourceVersion != caSecret.ResourceVersion {
+		return false
+	}
+
+	return true
 }
 
 func (r *Reconciler) refreshIntended(ctx context.Context) {
@@ -187,6 +227,39 @@ func (r *Reconciler) getSecret(ctx context.Context, ap *renovatev1beta1.AuthProv
 	return &secret, nil
 }
 
+func (r *Reconciler) getCABundleSecret(ctx context.Context, ap *renovatev1beta1.AuthProvider) (*corev1.Secret, error) {
+	secretName := ap.Spec.CABundleSecret.Name
+
+	var secret corev1.Secret
+	if err := r.Get(ctx, types.NamespacedName{
+		Name:      secretName,
+		Namespace: ap.Namespace,
+	}, &secret); err != nil {
+		return nil, fmt.Errorf("failed to get CA bundle secret %s: %w", secretName, err)
+	}
+
+	return &secret, nil
+}
+
+func (r *Reconciler) extractCABundle(ap *renovatev1beta1.AuthProvider, secret *corev1.Secret) ([]byte, error) {
+	secretKey := ap.Spec.CABundleSecret.Key
+	if secretKey == "" {
+		secretKey = "ca.crt"
+	}
+
+	secretValue, ok := secret.Data[secretKey]
+	if !ok {
+		return nil, fmt.Errorf("%w: %s in CA bundle secret %s", errSecretKeyNotFound, secretKey, secret.Name)
+	}
+
+	pool := x509.NewCertPool()
+	if !pool.AppendCertsFromPEM(secretValue) {
+		return nil, fmt.Errorf("%w in key %q of secret %s", errInvalidCACert, secretKey, secret.Name)
+	}
+
+	return secretValue, nil
+}
+
 func (r *Reconciler) extractClientSecret(ap *renovatev1beta1.AuthProvider, secret *corev1.Secret) (string, error) {
 	secretKey := ap.Spec.ClientSecret.Key
 
@@ -200,7 +273,7 @@ func (r *Reconciler) extractClientSecret(ap *renovatev1beta1.AuthProvider, secre
 
 //nolint:ireturn
 func (r *Reconciler) createAuthProvider(
-	ctx context.Context, ap *renovatev1beta1.AuthProvider, clientSecret string,
+	ctx context.Context, ap *renovatev1beta1.AuthProvider, clientSecret string, caCert []byte,
 ) (auth.AuthProvider, error) {
 	forgeURL := ap.Spec.ForgeURL
 	if forgeURL == "" {
@@ -219,6 +292,7 @@ func (r *Reconciler) createAuthProvider(
 		AuthURL:      ap.Spec.AuthURL,
 		IconURL:      ap.Spec.IconURL,
 		Insecure:     ap.Spec.Insecure,
+		CACert:       caCert,
 	}
 
 	switch ap.Spec.Type {
@@ -239,6 +313,12 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 
 	if err := mgr.GetFieldIndexer().IndexField(
 		context.Background(), &renovatev1beta1.AuthProvider{}, secretRefIndexKey, authProviderSecretRefIndexFn,
+	); err != nil {
+		return err
+	}
+
+	if err := mgr.GetFieldIndexer().IndexField(
+		context.Background(), &renovatev1beta1.AuthProvider{}, caSecretRefIndexKey, authProviderCASecretRefIndexFn,
 	); err != nil {
 		return err
 	}
@@ -283,6 +363,19 @@ func authProviderSecretRefIndexFn(rawObj client.Object) []string {
 	return []string{authProvider.Spec.ClientSecret.Name}
 }
 
+func authProviderCASecretRefIndexFn(rawObj client.Object) []string {
+	authProvider, ok := rawObj.(*renovatev1beta1.AuthProvider)
+	if !ok {
+		return nil
+	}
+
+	if authProvider.Spec.CABundleSecret == nil || authProvider.Spec.CABundleSecret.Name == "" {
+		return nil
+	}
+
+	return []string{authProvider.Spec.CABundleSecret.Name}
+}
+
 // listAuthProvidersForSecret returns AuthProviders that reference the given secret.
 func (r *Reconciler) listAuthProvidersForSecret(
 	ctx context.Context, secret client.Object,
@@ -299,6 +392,21 @@ func (r *Reconciler) listAuthProvidersForSecret(
 	return authProviderList, nil
 }
 
+func (r *Reconciler) listAuthProvidersForCASecret(
+	ctx context.Context, secret client.Object,
+) (*renovatev1beta1.AuthProviderList, error) {
+	authProviderList := &renovatev1beta1.AuthProviderList{}
+	if err := r.List(
+		ctx, authProviderList,
+		client.InNamespace(secret.GetNamespace()),
+		client.MatchingFields{caSecretRefIndexKey: secret.GetName()},
+	); err != nil {
+		return nil, err
+	}
+
+	return authProviderList, nil
+}
+
 // isSecretReferenced checks if a secret is referenced by any AuthProvider.
 func (r *Reconciler) isSecretReferenced(secret client.Object) bool {
 	list, err := r.listAuthProvidersForSecret(context.Background(), secret)
@@ -306,7 +414,12 @@ func (r *Reconciler) isSecretReferenced(secret client.Object) bool {
 		return false
 	}
 
-	return len(list.Items) > 0
+	caList, err := r.listAuthProvidersForCASecret(context.Background(), secret)
+	if err != nil {
+		return false
+	}
+
+	return len(list.Items) > 0 || len(caList.Items) > 0
 }
 
 // mapSecretWithAuthProvider maps a Secret event to a Request for the AuthProvider(s) that reference it.
@@ -316,13 +429,28 @@ func (r *Reconciler) mapSecretWithAuthProvider(ctx context.Context, obj client.O
 		return nil
 	}
 
-	reqs := make([]ctrl.Request, len(list.Items))
+	caList, err := r.listAuthProvidersForCASecret(ctx, obj)
+	if err != nil {
+		return nil
+	}
+
+	seen := make(map[types.NamespacedName]struct{})
+
+	var reqs []ctrl.Request
+
 	for i := range list.Items {
-		reqs[i] = ctrl.Request{
-			NamespacedName: client.ObjectKey{
-				Name:      list.Items[i].Name,
-				Namespace: list.Items[i].Namespace,
-			},
+		key := types.NamespacedName{Name: list.Items[i].Name, Namespace: list.Items[i].Namespace}
+		if _, exists := seen[key]; !exists {
+			seen[key] = struct{}{}
+			reqs = append(reqs, ctrl.Request{NamespacedName: key})
+		}
+	}
+
+	for i := range caList.Items {
+		key := types.NamespacedName{Name: caList.Items[i].Name, Namespace: caList.Items[i].Namespace}
+		if _, exists := seen[key]; !exists {
+			seen[key] = struct{}{}
+			reqs = append(reqs, ctrl.Request{NamespacedName: key})
 		}
 	}
 

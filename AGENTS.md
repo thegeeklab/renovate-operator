@@ -212,7 +212,17 @@ Project config: domain `thegeeklab.de`, group `renovate`, version `v1beta1`, lay
 
 ## Testing
 
-**Always write tests alongside implementation.**
+**Always write tests alongside implementation. TDD is mandatory.**
+
+### TDD Process (Red-Green-Refactor)
+
+All new features and bug fixes **must** follow strict TDD:
+
+1. **Red** — Write a failing test that describes the desired behavior. Run it and confirm it fails (`make test FOCUS="TestName"`).
+2. **Green** — Write the minimum production code required to make the test pass. Run it and confirm it passes.
+3. **Refactor** — Clean up code while keeping tests green. Run `make lint`.
+
+Do not write production code before its test. Do not write multiple tests before making them pass one at a time. If a test cannot be written first, the design needs rethinking.
 
 ### Process
 

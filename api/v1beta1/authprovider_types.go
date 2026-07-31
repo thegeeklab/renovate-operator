@@ -35,6 +35,11 @@ type AuthProviderSpec struct {
 	// +kubebuilder:validation:Optional
 	Insecure bool `json:"insecure,omitempty"`
 
+	// CABundleSecret is a reference to a Secret key containing a PEM-encoded
+	// CA certificate bundle to trust when validating the platform TLS endpoint.
+	// +kubebuilder:validation:Optional
+	CABundleSecret *corev1.SecretKeySelector `json:"caBundleSecret,omitempty"`
+
 	// DisplayName is a human-readable name shown in the login UI.
 	// Derived from the Endpoint hostname when empty.
 	// +kubebuilder:validation:Optional
@@ -60,6 +65,11 @@ type AuthProviderStatus struct {
 	// This allows the controller to detect when the secret has been rotated.
 	// +kubebuilder:validation:Optional
 	SecretResourceVersion string `json:"secretResourceVersion,omitempty"`
+
+	// CABundleSecretResourceVersion tracks the resource version of the referenced CA bundle secret.
+	// This allows the controller to detect when the CA bundle has been rotated.
+	// +kubebuilder:validation:Optional
+	CABundleSecretResourceVersion string `json:"caBundleSecretResourceVersion,omitempty"`
 }
 
 // +kubebuilder:object:root=true
