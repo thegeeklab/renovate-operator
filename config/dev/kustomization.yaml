@@ -110,7 +110,7 @@ helmCharts:
                 echo "Successfully created gitea-oidc-credentials secret"
               fi
 
-              REPOS=( "12260" "27806" )
+              REPOS=( "12260" "27806" "force-repo-config" )
               for repo in "${REPOS[@]}"; do
                 echo "Checking for repository testorg/$repo..."
                 http_code=$(curl -s -o /dev/null -w "%{http_code}" "http://localhost:3000/api/v1/repos/testorg/$repo" -H "Authorization: token ${GITEA_TOKEN}")

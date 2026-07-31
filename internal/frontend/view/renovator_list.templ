@@ -1,8 +1,6 @@
 package view
 
 import (
-	"fmt"
-
 	"github.com/thegeeklab/renovate-operator/internal/frontend/sanitize"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 )
@@ -20,65 +18,57 @@ templ RenovatorCountBadge(namespace, renovatorUID string, count int) {
 }
 
 // RenovatorPRBadge renders the open-PR count for a Renovator as a small
-// pill that auto-refreshes via SSE.
+// pill that auto-refreshes via SSE. Colors match the log viewer: yellow
+// when PRs need approval, gray when all PRs are unchanged, blue otherwise.
 templ RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, unchanged int, hasRecentData bool) {
-	if !hasRecentData || (open == 0 && needsApproval == 0) {
-		@Tooltip(getPRBadgeTooltip(hasRecentData, open, needsApproval, unchanged)) {
+	@Tooltip(getPRBadgeTooltip(hasRecentData, open, needsApproval, unchanged)) {
+		<span
+			hx-get={ sanitize.RenovatorPRsURL(namespace, renovatorUID) }
+			hx-trigger="sse:job-updated throttle:15s"
+			hx-swap="outerHTML"
+			hx-target="this"
+			class={ "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset " + getPRBadgeColorClasses(open, needsApproval, unchanged) }
+		>
+			@IconGitPullRequest("h-3.5 w-3.5")
+			if !hasRecentData {
+				—
+			} else {
+				{ open }
+			}
+		</span>
+	}
+}
+
+// RenovatorWarningsBadge renders a warning/error count badge for a Renovator
+// that auto-refreshes via SSE. Always renders a target element (hidden when
+// no warnings) so HTMX has a DOM anchor for SSE-triggered refreshes.
+templ RenovatorWarningsBadge(namespace, renovatorUID string, warnCount, errorCount int) {
+	if warnCount == 0 && errorCount == 0 {
+		<span
+			hx-get={ sanitize.RenovatorWarningsURL(namespace, renovatorUID) }
+			hx-trigger="sse:job-updated throttle:15s"
+			hx-swap="outerHTML"
+			hx-target="this"
+			class="hidden"
+			aria-hidden="true"
+		></span>
+	} else {
+		@Tooltip(getWarningsBadgeTooltip(warnCount, errorCount)) {
 			<span
-				hx-get={ sanitize.RenovatorPRsURL(namespace, renovatorUID) }
+				hx-get={ sanitize.RenovatorWarningsURL(namespace, renovatorUID) }
 				hx-trigger="sse:job-updated throttle:15s"
 				hx-swap="outerHTML"
 				hx-target="this"
-				class="inline-flex items-center gap-1 rounded-md bg-gray-50 dark:bg-gray-800 px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 ring-1 ring-inset ring-gray-500/20 dark:ring-gray-500/30"
-			>
-				@IconGitPullRequest("h-3.5 w-3.5")
-				if hasRecentData {
-					0
-				} else {
-					—
-				}
-			</span>
-		}
-	} else if needsApproval > 0 {
-		@Tooltip(getPRBadgeTooltip(hasRecentData, open, needsApproval, unchanged)) {
-			<span
-				hx-get={ sanitize.RenovatorPRsURL(namespace, renovatorUID) }
-				hx-trigger="sse:job-updated throttle:15s"
-				hx-swap="outerHTML"
-				hx-target="this"
-				class="inline-flex items-center gap-1.5 rounded-md bg-red-50 dark:bg-red-950 px-2 py-1 text-xs font-medium text-red-700 dark:text-red-400 ring-1 ring-inset ring-red-600/20 dark:ring-red-500/20"
+				class={ "inline-flex items-center gap-1 rounded-md px-2 py-1 text-xs font-medium ring-1 ring-inset " + getWarningBadgeColorClasses(errorCount) }
 			>
 				@IconTriangleAlert("h-3.5 w-3.5")
-				{ needsApproval }
-				if open > 0 {
-					<span class="inline-flex items-center rounded bg-red-100 dark:bg-red-900 px-1 text-red-700 dark:text-red-400">+{ open }</span>
+				if errorCount > 0 {
+					{ errorCount }
+					<span class="opacity-60">/</span>
+					{ warnCount + errorCount }
+				} else {
+					{ warnCount }
 				}
-			</span>
-		}
-	} else if unchanged > 0 && open == unchanged {
-		@Tooltip(getPRBadgeTooltip(hasRecentData, open, needsApproval, unchanged)) {
-			<span
-				hx-get={ sanitize.RenovatorPRsURL(namespace, renovatorUID) }
-				hx-trigger="sse:job-updated throttle:15s"
-				hx-swap="outerHTML"
-				hx-target="this"
-				class="inline-flex items-center gap-1 rounded-md bg-gray-50 dark:bg-gray-800 px-2 py-1 text-xs font-medium text-gray-500 dark:text-gray-400 ring-1 ring-inset ring-gray-500/20 dark:ring-gray-500/30"
-			>
-				@IconInfo("h-3.5 w-3.5")
-				{ open }
-			</span>
-		}
-	} else {
-		@Tooltip(getPRBadgeTooltip(hasRecentData, open, needsApproval, unchanged)) {
-			<span
-				hx-get={ sanitize.RenovatorPRsURL(namespace, renovatorUID) }
-				hx-trigger="sse:job-updated throttle:15s"
-				hx-swap="outerHTML"
-				hx-target="this"
-				class="inline-flex items-center gap-1 rounded-md bg-blue-50 dark:bg-blue-950 px-2 py-1 text-xs font-medium text-blue-700 dark:text-blue-400 ring-1 ring-inset ring-blue-600/20 dark:ring-blue-500/20"
-			>
-				@IconGitPullRequest("h-3.5 w-3.5")
-				{ open }
 			</span>
 		}
 	}
@@ -173,6 +163,10 @@ templ RenovatorCard(v viewmodel.WebView) {
 						<span class="text-xs text-gray-500 dark:text-gray-400">PRs</span>
 						@RenovatorPRBadge(v.Namespace, v.Renovator, v.OpenPRs, v.NeedsApproval, v.UnchangedPRs, v.HasRecentPR)
 					</div>
+					<div class="flex flex-col items-end sm:items-center justify-center gap-1">
+						<span class="text-xs text-gray-500 dark:text-gray-400">Warnings</span>
+						@RenovatorWarningsBadge(v.Namespace, v.Renovator, v.WarnCount, v.ErrorCount)
+					</div>
 					<div class="hidden sm:flex flex-col items-end justify-center gap-1">
 						<span class="text-xs text-gray-500 dark:text-gray-400">Runner</span>
 						<span class="text-sm font-medium text-gray-900 dark:text-gray-100">{ v.RunnerName }</span>
@@ -257,37 +251,4 @@ templ RepoSortControls(renovatorName string) {
 			</button>
 		}
 	</div>
-}
-
-// getPRBadgeTooltip returns the human-readable explanation for a
-// RenovatorPRBadge pill, derived from the same inputs the templ uses to
-// pick its tint and content.
-func getPRBadgeTooltip(hasRecentData bool, open, needsApproval, unchanged int) string {
-	if !hasRecentData {
-		return "No recent Renovate data (no completed jobs or pod logs GC'd)"
-	}
-
-	active := open - unchanged
-
-	if needsApproval > 0 {
-		if active > 0 {
-			return fmt.Sprintf("%d PRs need approval, %d additional active", needsApproval, active)
-		}
-
-		return fmt.Sprintf("%d PRs need approval", needsApproval)
-	}
-
-	if active == 0 && unchanged > 0 {
-		return fmt.Sprintf("%d Unchanged PRs (no updates needed)", unchanged)
-	}
-
-	if open == 0 {
-		return "No open PRs"
-	}
-
-	if open == 1 {
-		return "1 open PR"
-	}
-
-	return fmt.Sprintf("%d open PRs", open)
 }

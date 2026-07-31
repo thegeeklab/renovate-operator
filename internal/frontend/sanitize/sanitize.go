@@ -38,6 +38,12 @@ func RenovatorPRsURL(namespace, renovatorUID string) string {
 		"&renovator=" + QueryEscape(renovatorUID)
 }
 
+// RenovatorWarningsURL builds a /renovators/warnings URL with safely escaped query parameters.
+func RenovatorWarningsURL(namespace, renovatorUID string) string {
+	return "/renovators/warnings?namespace=" + QueryEscape(namespace) +
+		"&renovator=" + QueryEscape(renovatorUID)
+}
+
 // GitrepoURL builds a /gitrepo URL with safely escaped query parameters.
 func GitrepoURL(namespace, name string) string {
 	return "/gitrepo?namespace=" + QueryEscape(namespace) +

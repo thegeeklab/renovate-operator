@@ -7,7 +7,12 @@ package view
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "strings"
+import (
+	"fmt"
+	"strings"
+
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+)
 
 func btnBase() string {
 	return "cursor-pointer focus:outline-none"
@@ -50,6 +55,31 @@ func skeletonBase() string {
 
 func skeletonDark() string {
 	return "animate-pulse rounded bg-gray-700"
+}
+
+// getPRBadgeColorClasses returns the color classes for a PR badge matching
+// the log viewer color scheme: yellow when PRs need approval, gray when all
+// PRs are unchanged, blue otherwise.
+func getPRBadgeColorClasses(open, needsApproval, unchanged int) string {
+	if needsApproval > 0 {
+		return "bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-400 ring-yellow-600/20 dark:ring-yellow-500/20"
+	}
+
+	if unchanged > 0 && open == unchanged {
+		return "bg-gray-50 dark:bg-gray-800 text-gray-600 dark:text-gray-400 ring-gray-500/20 dark:ring-gray-500/30"
+	}
+
+	return "bg-blue-50 dark:bg-blue-950 text-blue-700 dark:text-blue-400 ring-blue-600/20 dark:ring-blue-500/20"
+}
+
+// getWarningBadgeColorClasses returns the color classes for a warning badge
+// based on whether there are errors (red) or only warnings (yellow).
+func getWarningBadgeColorClasses(errorCount int) string {
+	if errorCount > 0 {
+		return "bg-red-50 dark:bg-red-950 text-red-700 dark:text-red-400 ring-red-600/20 dark:ring-red-500/20"
+	}
+
+	return "bg-yellow-50 dark:bg-yellow-950 text-yellow-700 dark:text-yellow-400 ring-yellow-600/20 dark:ring-yellow-500/20"
 }
 
 func skeletonLogBarClass(width string) string {
@@ -431,7 +461,7 @@ func Kbd(text string) templ.Component {
 		var templ_7745c5c3_Var22 string
 		templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 121, Col: 12}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 151, Col: 12}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 		if templ_7745c5c3_Err != nil {
@@ -478,7 +508,7 @@ func Tooltip(text string, opts ...string) templ.Component {
 			var templ_7745c5c3_Var24 string
 			templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.ResolveAttributeValue(opts[0])
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 129, Col: 22}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 159, Col: 22}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var24)
 			if templ_7745c5c3_Err != nil {
@@ -509,7 +539,7 @@ func Tooltip(text string, opts ...string) templ.Component {
 			var templ_7745c5c3_Var25 string
 			templ_7745c5c3_Var25, templ_7745c5c3_Err = templ.JoinStringErrs(strings.Split(text, " [")[0])
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 135, Col: 40}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 165, Col: 40}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var25))
 			if templ_7745c5c3_Err != nil {
@@ -533,7 +563,7 @@ func Tooltip(text string, opts ...string) templ.Component {
 			var templ_7745c5c3_Var26 string
 			templ_7745c5c3_Var26, templ_7745c5c3_Err = templ.JoinStringErrs(text)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 140, Col: 16}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 170, Col: 16}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var26))
 			if templ_7745c5c3_Err != nil {
@@ -550,6 +580,66 @@ func Tooltip(text string, opts ...string) templ.Component {
 		}
 		return nil
 	})
+}
+
+func pluralize(count int, singular, plural string) string {
+	if count == 1 {
+		return fmt.Sprintf("1 %s", singular)
+	}
+
+	return fmt.Sprintf("%d %s", count, plural)
+}
+
+// getPRBadgeTooltip returns the human-readable explanation for a PR badge
+// pill, derived from the same inputs used to pick its color.
+func getPRBadgeTooltip(hasRecentData bool, open, needsApproval, unchanged int) string {
+	if !hasRecentData {
+		return "No recent Renovate data (no completed jobs or pod logs GC'd)"
+	}
+
+	active := open - unchanged
+
+	if needsApproval > 0 {
+		s := pluralize(needsApproval, "PR needs approval", "PRs need approval")
+		if active > 0 {
+			s += ", " + pluralize(active, "PR", "PRs") + " additional active"
+		}
+
+		return s
+	}
+
+	if active == 0 && unchanged > 0 {
+		return pluralize(unchanged, "PR (no updates needed)", "PRs (no updates needed)")
+	}
+
+	if open == 0 {
+		return "No open PRs"
+	}
+
+	return pluralize(open, "PR", "PRs") + " open"
+}
+
+// getWarningsBadgeTooltip returns the human-readable explanation for a
+// warning badge pill.
+func getWarningsBadgeTooltip(warnCount, errorCount int) string {
+	parts := []string{}
+	if errorCount > 0 {
+		parts = append(parts, viewmodel.FormatCount(errorCount, "error"))
+	}
+
+	if warnCount > 0 {
+		parts = append(parts, viewmodel.FormatCount(warnCount, "warning"))
+	}
+
+	if len(parts) == 0 {
+		return ""
+	}
+
+	if len(parts) == 1 {
+		return parts[0]
+	}
+
+	return parts[0] + ", " + parts[1]
 }
 
 var _ = templruntime.GeneratedTemplate

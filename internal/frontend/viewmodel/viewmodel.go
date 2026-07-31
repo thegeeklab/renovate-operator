@@ -117,6 +117,8 @@ type WebView struct {
 	NeedsApproval int
 	UnchangedPRs  int
 	HasRecentPR   bool
+	WarnCount     int
+	ErrorCount    int
 }
 
 // GitRepoInfo is the view-layer representation of a GitRepo.
@@ -131,6 +133,11 @@ type GitRepoInfo struct {
 	LastRenovateStatus Status    `json:"lastRenovateStatus"`
 	CreatedAt          time.Time `json:"createdAt"`
 	RenovatorUID       string    `json:"renovatorUid"`
+	OpenPRs            int       `json:"openPRs"`
+	NeedsApproval      int       `json:"needsApproval"`
+	UnchangedPRs       int       `json:"unchangedPRs"`
+	WarnCount          int       `json:"warnCount"`
+	ErrorCount         int       `json:"errorCount"`
 }
 
 // JobInfo is the view-layer representation of a Kubernetes Job.
