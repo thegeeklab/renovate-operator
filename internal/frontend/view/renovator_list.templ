@@ -185,7 +185,7 @@ templ RenovatorCard(v viewmodel.WebView) {
 					<div
 						data-ref="repoList"
 						hx-get={ sanitize.GitreposURL(v.Namespace, v.Renovator) }
-						hx-trigger="revealed once, sse:job-updated, sort-changed"
+						hx-trigger="revealed once, sse:job-updated, list-changed"
 						hx-swap="innerHTML"
 						class="focus:outline-none"
 					>

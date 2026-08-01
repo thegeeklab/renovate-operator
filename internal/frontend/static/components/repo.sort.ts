@@ -5,6 +5,29 @@ import { registerComponent } from "../lib/component.registry"
 
 const ALL_FILTERS = ["filterOpenPRs", "filterWarnings", "filterErrors"]
 
+function getPersistedFilters(key: string): Set<string> {
+  return new Set(getPersisted<string[]>(key, []))
+}
+
+function setListHxVals(
+  repoList: HTMLElement,
+  sort: string,
+  order: string,
+  filters: Set<string>
+): void {
+  const vals: Record<string, string | boolean> = { sort, order }
+
+  for (const filter of ALL_FILTERS) {
+    vals[filter] = filters.has(filter)
+  }
+
+  repoList.setAttribute("hx-vals", JSON.stringify(vals))
+}
+
+function dispatchListChanged(repoList: HTMLElement): void {
+  repoList.dispatchEvent(new Event("list-changed"))
+}
+
 export class RepoSortComponent extends Dropdown {
   private sortKey: string
   private orderKey: string
@@ -72,23 +95,12 @@ export class RepoSortComponent extends Dropdown {
     const repoList = this.el.querySelector<HTMLElement>('[data-ref="repoList"]')
     if (repoList) {
       this.updateHxVals(repoList)
-      repoList.dispatchEvent(new Event("sort-changed"))
+      dispatchListChanged(repoList)
     }
-  }
-
-  private getActiveFilters(): Set<string> {
-    return new Set(getPersisted<string[]>(this.filterKey, []))
   }
 
   private updateHxVals(repoList: HTMLElement): void {
-    const filters = this.getActiveFilters()
-    const vals: Record<string, string | boolean> = { sort: this.sort, order: this.order }
-
-    for (const filter of ALL_FILTERS) {
-      vals[filter] = filters.has(filter)
-    }
-
-    repoList.setAttribute("hx-vals", JSON.stringify(vals))
+    setListHxVals(repoList, this.sort, this.order, getPersistedFilters(this.filterKey))
   }
 
   private updateUI(): void {
@@ -162,7 +174,7 @@ export class RepoFilterComponent extends Dropdown {
     const sortEl = el.closest<HTMLElement>('[data-component="repo-sort"]')
 
     this.filterKey = sortEl ? getData(sortEl, "filter-key") : ""
-    this.filters = new Set(getPersisted<string[]>(this.filterKey, []))
+    this.filters = getPersistedFilters(this.filterKey)
 
     this.syncCheckboxes()
     this.bindCheckboxes()
@@ -207,7 +219,7 @@ export class RepoFilterComponent extends Dropdown {
     if (!repoList) return
 
     this.updateHxVals(repoList, sortEl)
-    repoList.dispatchEvent(new Event("sort-changed"))
+    dispatchListChanged(repoList)
   }
 
   private updateHxVals(repoList: HTMLElement, sortEl: HTMLElement): void {
@@ -216,13 +228,7 @@ export class RepoFilterComponent extends Dropdown {
     const sort = getPersisted<string>(sortKey, "name")
     const order = getPersisted<string>(orderKey, "asc")
 
-    const vals: Record<string, string | boolean> = { sort, order }
-
-    for (const filter of ALL_FILTERS) {
-      vals[filter] = this.filters.has(filter)
-    }
-
-    repoList.setAttribute("hx-vals", JSON.stringify(vals))
+    setListHxVals(repoList, sort, order, this.filters)
   }
 
   destroy(): void {
