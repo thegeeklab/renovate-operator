@@ -160,6 +160,21 @@ var _ = Describe("WebHandler", func() {
 			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
 		})
 
+		It("should include per-repo activity data when renovator is specified", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepos?namespace=test-namespace&renovator=test-uid-123",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleGitReposPartial(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+			Expect(w.Body.String()).To(ContainSubstring("test-repo"))
+		})
+
 		It("should return bad request for missing namespace parameter", func() {
 			req := httptest.NewRequest(http.MethodGet, "/gitrepos", nil)
 			w := httptest.NewRecorder()
@@ -251,6 +266,7 @@ var _ = Describe("WebHandler", func() {
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+			Expect(w.Body.String()).To(ContainSubstring("hidden"))
 		})
 
 		It("should return bad request for missing namespace parameter", func() {

@@ -570,6 +570,11 @@ func (df *DataFactory) GetPerRepoActivity(
 		return map[string]PerRepoActivity{}, nil
 	}
 
+	// Skip cache when repos are pre-supplied (caller already has them)
+	if opt.Repos != nil {
+		return df.computePerRepoActivity(ctx, opt)
+	}
+
 	cacheKey := df.prActivityCacheKey(ctx, opt.Namespace, opt.Renovator)
 
 	loaderCtx := context.WithoutCancel(ctx)
