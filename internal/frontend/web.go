@@ -70,6 +70,7 @@ func (h *WebHandler) RegisterRoutes(router chi.Router) {
 	router.Get("/gitrepos", h.HandleGitReposPartial)
 	router.Get("/renovators/count", h.HandleRenovatorCount)
 	router.Get("/renovators/prs", h.HandleRenovatorPRs)
+	router.Get("/renovators/warnings", h.HandleRenovatorWarnings)
 	router.Get("/joblogs", h.HandleJobLogs)
 	router.Get("/joblogs/download", h.HandleJobLogsDownload)
 }
@@ -249,6 +250,8 @@ func (h *WebHandler) buildRenovatorSummaries(
 				NeedsApproval: prActivity.NeedsApproval,
 				UnchangedPRs:  prActivity.Unchanged,
 				HasRecentPR:   prActivity.HasRecentData,
+				WarnCount:     prActivity.WarnCount,
+				ErrorCount:    prActivity.ErrorCount,
 			}
 			if len(runners) > 0 {
 				summary.RunnerName = runners[0].Name
@@ -315,6 +318,30 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 
 	repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
+	if opts.Renovator != "" {
+		opts.Repos = repos
+
+		perRepo, err := h.dataFactory.GetPerRepoActivity(ctx, opts)
+		if err != nil {
+			frontendLog.Error(err, "Failed to load per-repo activity", "namespace", opts.Namespace)
+		}
+
+		for i := range repos {
+			repoLabel, err := k8s.SanitizeLabel(repos[i].Name)
+			if err != nil {
+				continue
+			}
+
+			if a, ok := perRepo[repoLabel]; ok {
+				repos[i].OpenPRs = a.OpenPRs
+				repos[i].NeedsApproval = a.NeedsApproval
+				repos[i].UnchangedPRs = a.Unchanged
+				repos[i].WarnCount = a.WarnCount
+				repos[i].ErrorCount = a.ErrorCount
+			}
+		}
+	}
+
 	w.Header().Set("Content-Type", "text/html")
 	_ = view.GitRepoList(repos).Render(r.Context(), w)
 }
@@ -369,6 +396,35 @@ func (h *WebHandler) HandleRenovatorPRs(w http.ResponseWriter, r *http.Request) 
 	_ = view.RenovatorPRBadge(
 		opts.Namespace, opts.Renovator,
 		activity.Open, activity.NeedsApproval, activity.Unchanged, activity.HasRecentData,
+	).Render(r.Context(), w)
+}
+
+// HandleRenovatorWarnings returns a self-reloading warning-count badge partial
+// for a Renovator. Mirrors HandleRenovatorPRs; the aggregation is cached briefly
+// so SSE-triggered refreshes within the cache window coalesce.
+func (h *WebHandler) HandleRenovatorWarnings(w http.ResponseWriter, r *http.Request) {
+	ctx := r.Context()
+	opts := getOptionsFromRequest(r)
+
+	if opts.Namespace == "" || opts.Renovator == "" {
+		http.Error(w, "Namespace and renovator parameters are required", http.StatusBadRequest)
+
+		return
+	}
+
+	activity, err := h.dataFactory.GetPRActivityForRenovator(ctx, opts)
+	if err != nil {
+		frontendLog.Error(err, "Failed to load warnings", "namespace", opts.Namespace, "renovator", opts.Renovator)
+		http.Error(w, "Failed to load warnings", http.StatusInternalServerError)
+
+		return
+	}
+
+	w.Header().Set("Content-Type", "text/html")
+	w.Header().Set("Cache-Control", "private, max-age=10")
+	_ = view.RenovatorWarningsBadge(
+		opts.Namespace, opts.Renovator,
+		activity.WarnCount, activity.ErrorCount,
 	).Render(r.Context(), w)
 }
 

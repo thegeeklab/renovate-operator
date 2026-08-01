@@ -111,6 +111,19 @@ var _ = Describe("sanitize helpers", func() {
 			Expect(got).NotTo(ContainSubstring("ns with space"))
 		})
 	})
+
+	Describe("RenovatorWarningsURL", func() {
+		It("builds a base URL", func() {
+			Expect(RenovatorWarningsURL("ns", "uid")).
+				To(Equal("/renovators/warnings?namespace=ns&renovator=uid"))
+		})
+
+		It("escapes user-controlled segments", func() {
+			got := RenovatorWarningsURL("ns with space", "uid&with=special")
+			Expect(got).NotTo(ContainSubstring(" "))
+			Expect(got).NotTo(ContainSubstring("ns with space"))
+		})
+	})
 })
 
 var _ = Describe("sanitize regression cases", func() {

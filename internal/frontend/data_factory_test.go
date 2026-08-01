@@ -356,6 +356,8 @@ var _ = Describe("DataFactory", func() {
 			Expect(err).NotTo(HaveOccurred())
 			Expect(summary.Open).To(BeZero())
 			Expect(summary.HasRecentData).To(BeFalse())
+			Expect(summary.WarnCount).To(BeZero())
+			Expect(summary.ErrorCount).To(BeZero())
 		})
 
 		It("returns zero counts with no recent data when no jobs have logs", func() {
@@ -367,6 +369,66 @@ var _ = Describe("DataFactory", func() {
 			Expect(summary.Open).To(BeZero())
 			Expect(summary.NeedsApproval).To(BeZero())
 			Expect(summary.HasRecentData).To(BeFalse())
+			Expect(summary.WarnCount).To(BeZero())
+			Expect(summary.ErrorCount).To(BeZero())
+		})
+	})
+
+	Describe("GetPerRepoActivity", func() {
+		It("returns an empty map without required params", func() {
+			perRepo, err := dataFactory.GetPerRepoActivity(context.Background())
+			Expect(err).NotTo(HaveOccurred())
+			Expect(perRepo).To(BeEmpty())
+		})
+
+		It("returns an empty map when no jobs have logs", func() {
+			perRepo, err := dataFactory.GetPerRepoActivity(
+				context.Background(),
+				ListOptions{Namespace: "test-namespace", Renovator: "test-renovator"},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(perRepo).To(BeEmpty())
+		})
+
+		It("returns zero activity for pre-supplied repos when no jobs have logs", func() {
+			perRepo, err := dataFactory.GetPerRepoActivity(
+				context.Background(),
+				ListOptions{
+					Namespace: "test-namespace",
+					Renovator: "test-renovator",
+					Repos:     []viewmodel.GitRepoInfo{{Name: "test-repo-a"}, {Name: "test-repo-b"}},
+				},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(perRepo).To(BeEmpty())
+		})
+
+		It("aggregates PRActivityForRenovator from per-repo activity", func() {
+			perRepo, err := dataFactory.GetPerRepoActivity(
+				context.Background(),
+				ListOptions{Namespace: "test-namespace", Renovator: "test-renovator"},
+			)
+			Expect(err).NotTo(HaveOccurred())
+
+			summary, err := dataFactory.GetPRActivityForRenovator(
+				context.Background(),
+				ListOptions{Namespace: "test-namespace", Renovator: "test-renovator"},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(summary.WarnCount).To(BeZero())
+			Expect(summary.ErrorCount).To(BeZero())
+
+			for _, entry := range perRepo {
+				summary.Open -= entry.OpenPRs
+				summary.NeedsApproval -= entry.NeedsApproval
+				summary.Unchanged -= entry.Unchanged
+				summary.WarnCount -= entry.WarnCount
+				summary.ErrorCount -= entry.ErrorCount
+			}
+
+			Expect(summary.Open).To(BeZero())
+			Expect(summary.WarnCount).To(BeZero())
+			Expect(summary.ErrorCount).To(BeZero())
 		})
 	})
 
@@ -525,6 +587,76 @@ var _ = Describe("DataFactory", func() {
 			})).To(Succeed())
 
 			second, err := dataFactory.GetPRActivityForRenovator(ctx, opts)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(second).To(Equal(first))
+		})
+
+		It("pre-supplied repos bypass cache and do not pollute it", func() {
+			now := metav1.NewTime(time.Now().Add(-1 * time.Minute))
+			Expect(fakeClient.Create(context.Background(), &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cache-isolation-job",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelGitRepo:   "test-repo-a",
+					},
+				},
+				Status: batchv1.JobStatus{CompletionTime: &now},
+			})).To(Succeed())
+
+			ctx := context.Background()
+			baseOpts := ListOptions{Namespace: "test-namespace", Renovator: "test-renovator"}
+
+			first, err := dataFactory.GetPerRepoActivity(ctx, baseOpts)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(fakeClient.Delete(context.Background(), &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "cache-isolation-job",
+					Namespace: "test-namespace",
+				},
+			})).To(Succeed())
+
+			repos := []viewmodel.GitRepoInfo{{Name: "test-repo-a"}}
+			withRepos, err := dataFactory.GetPerRepoActivity(
+				ctx,
+				ListOptions{Namespace: "test-namespace", Renovator: "test-renovator", Repos: repos},
+			)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(withRepos).To(BeEmpty())
+
+			second, err := dataFactory.GetPerRepoActivity(ctx, baseOpts)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(second).To(Equal(first))
+		})
+
+		It("different namespace and renovator combinations have isolated caches", func() {
+			now := metav1.NewTime(time.Now().Add(-1 * time.Minute))
+			Expect(fakeClient.Create(context.Background(), &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{
+					Name:      "isolated-job",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelGitRepo:   "test-repo-a",
+					},
+				},
+				Status: batchv1.JobStatus{CompletionTime: &now},
+			})).To(Succeed())
+
+			ctx := context.Background()
+			opts1 := ListOptions{Namespace: "test-namespace", Renovator: "test-renovator"}
+
+			first, err := dataFactory.GetPerRepoActivity(ctx, opts1)
+			Expect(err).NotTo(HaveOccurred())
+
+			opts2 := ListOptions{Namespace: "other-namespace", Renovator: "other-renovator"}
+			other, err := dataFactory.GetPerRepoActivity(ctx, opts2)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(other).To(BeEmpty())
+
+			second, err := dataFactory.GetPerRepoActivity(ctx, opts1)
 			Expect(err).NotTo(HaveOccurred())
 			Expect(second).To(Equal(first))
 		})

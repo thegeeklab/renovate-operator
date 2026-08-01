@@ -12,6 +12,28 @@ func getRepoClass(status viewmodel.Status) string {
 	return statusCardBase() + " px-4 py-3 " + status.LeftBorderClass()
 }
 
+templ GitRepoPRBadge(openPRs, needsApproval, unchangedPRs int) {
+	if openPRs > 0 {
+		@Tooltip(getPRBadgeTooltip(true, openPRs, needsApproval, unchangedPRs)) {
+			<span class={ "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset " + getPRBadgeColorClasses(openPRs, needsApproval, unchangedPRs) }>
+				@IconGitPullRequest("h-3.5 w-3.5")
+				{ openPRs }
+			</span>
+		}
+	}
+}
+
+templ GitRepoWarningsBadge(warnCount, errorCount int) {
+	if warnCount > 0 || errorCount > 0 {
+		@Tooltip(getWarningsBadgeTooltip(warnCount, errorCount)) {
+			<span class={ "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset " + getWarningBadgeColorClasses(errorCount) }>
+				@IconTriangleAlert("h-3.5 w-3.5")
+				@WarningCountDisplay(warnCount, errorCount)
+			</span>
+		}
+	}
+}
+
 templ GitRepoList(repos []viewmodel.GitRepoInfo) {
 	if len(repos) > 0 {
 		<ul data-kb-nav-scope="repo-list" class="grid grid-cols-1 gap-4" role="list">
@@ -45,7 +67,11 @@ templ GitRepoList(repos []viewmodel.GitRepoInfo) {
 								}
 							</p>
 						</div>
-						<div class="flex-shrink-0">
+						<div class="flex-shrink-0 flex items-center gap-4">
+							<div class="flex items-center gap-2">
+								@GitRepoPRBadge(r.OpenPRs, r.NeedsApproval, r.UnchangedPRs)
+								@GitRepoWarningsBadge(r.WarnCount, r.ErrorCount)
+							</div>
 							@statusBadge(r.LastRenovateStatus)
 						</div>
 					</a>

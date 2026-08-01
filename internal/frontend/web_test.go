@@ -160,6 +160,21 @@ var _ = Describe("WebHandler", func() {
 			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
 		})
 
+		It("should include per-repo activity data when renovator is specified", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepos?namespace=test-namespace&renovator=test-uid-123",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleGitReposPartial(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+			Expect(w.Body.String()).To(ContainSubstring("test-repo"))
+		})
+
 		It("should return bad request for missing namespace parameter", func() {
 			req := httptest.NewRequest(http.MethodGet, "/gitrepos", nil)
 			w := httptest.NewRecorder()
@@ -233,6 +248,41 @@ var _ = Describe("WebHandler", func() {
 			w := httptest.NewRecorder()
 
 			handler.HandleRenovatorPRs(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+	})
+
+	Describe("HandleRenovatorWarnings", func() {
+		It("should handle renovator warnings requests with empty activity", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/renovators/warnings?namespace=test-namespace&renovator=test-uid-123",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleRenovatorWarnings(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("Content-Type")).To(Equal("text/html"))
+			Expect(w.Body.String()).To(ContainSubstring("hidden"))
+		})
+
+		It("should return bad request for missing namespace parameter", func() {
+			req := httptest.NewRequest(http.MethodGet, "/renovators/warnings?renovator=test-uid", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleRenovatorWarnings(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusBadRequest))
+		})
+
+		It("should return bad request for missing renovator parameter", func() {
+			req := httptest.NewRequest(http.MethodGet, "/renovators/warnings?namespace=test-namespace", nil)
+			w := httptest.NewRecorder()
+
+			handler.HandleRenovatorWarnings(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})

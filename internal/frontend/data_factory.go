@@ -44,6 +44,7 @@ type ListOptions struct {
 	SortBy    string
 	Order     string
 	Search    string
+	Repos     []viewmodel.GitRepoInfo
 }
 
 const (
@@ -82,7 +83,7 @@ type DataFactory struct {
 	authorizedRenovatorsCache *otter.Cache[string, []string]
 	authorizedRenovatorsGroup singleflight.Group
 	httpClientCache           *otter.Cache[string, *http.Client]
-	prActivityCache           *otter.Cache[string, PRActivitySummary]
+	prActivityCache           *otter.Cache[string, map[string]PerRepoActivity]
 	prActivityGroup           singleflight.Group
 }
 
@@ -108,8 +109,8 @@ func NewDataFactory(
 		MaximumSize:      defaultHTTPClientCacheMax,
 	})
 
-	prActivityCache := otter.Must(&otter.Options[string, PRActivitySummary]{
-		ExpiryCalculator: otter.ExpiryWriting[string, PRActivitySummary](defaultPRActivityCacheTTL),
+	prActivityCache := otter.Must(&otter.Options[string, map[string]PerRepoActivity]{
+		ExpiryCalculator: otter.ExpiryWriting[string, map[string]PerRepoActivity](defaultPRActivityCacheTTL),
 		MaximumSize:      defaultPRActivityCacheMax,
 	})
 
@@ -542,6 +543,61 @@ type PRActivitySummary struct {
 	NeedsApproval int
 	Unchanged     int
 	HasRecentData bool
+	WarnCount     int
+	ErrorCount    int
+}
+
+// PerRepoActivity holds per-repo PR activity and warning counts consumed by
+// the GitRepo list view.
+type PerRepoActivity struct {
+	OpenPRs       int
+	NeedsApproval int
+	Unchanged     int
+	WarnCount     int
+	ErrorCount    int
+}
+
+// GetPerRepoActivity returns per-repo PR activity and warning counts for each
+// GitRepo of a Renovator. Results are cached briefly and de-duplicated via
+// singleflight.
+func (df *DataFactory) GetPerRepoActivity(
+	ctx context.Context,
+	opts ...ListOptions,
+) (map[string]PerRepoActivity, error) {
+	opt := getListOptions(opts)
+
+	if opt.Namespace == "" || opt.Renovator == "" {
+		return map[string]PerRepoActivity{}, nil
+	}
+
+	// Skip cache when repos are pre-supplied (caller already has them)
+	if opt.Repos != nil {
+		return df.computePerRepoActivity(ctx, opt)
+	}
+
+	cacheKey := df.prActivityCacheKey(ctx, opt.Namespace, opt.Renovator)
+
+	loaderCtx := context.WithoutCancel(ctx)
+
+	result, err, _ := df.prActivityGroup.Do(cacheKey, func() (any, error) {
+		loader := otter.LoaderFunc[string, map[string]PerRepoActivity](
+			func(_ context.Context, _ string) (map[string]PerRepoActivity, error) {
+				return df.computePerRepoActivity(loaderCtx, opt)
+			},
+		)
+
+		return df.prActivityCache.Get(loaderCtx, cacheKey, loader)
+	})
+	if err != nil {
+		return nil, err
+	}
+
+	perRepo, ok := result.(map[string]PerRepoActivity)
+	if !ok {
+		return nil, errUnexpectedCacheResult
+	}
+
+	return perRepo, nil
 }
 
 // GetPRActivityForRenovator aggregates open PR counts across every GitRepo
@@ -553,65 +609,57 @@ func (df *DataFactory) GetPRActivityForRenovator(
 	ctx context.Context,
 	opts ...ListOptions,
 ) (PRActivitySummary, error) {
-	opt := getListOptions(opts)
-
-	if opt.Namespace == "" || opt.Renovator == "" {
-		return PRActivitySummary{}, nil
-	}
-
-	cacheKey := df.prActivityCacheKey(ctx, opt.Namespace, opt.Renovator)
-
-	loaderCtx := context.WithoutCancel(ctx)
-
-	result, err, _ := df.prActivityGroup.Do(cacheKey, func() (any, error) {
-		loader := otter.LoaderFunc[string, PRActivitySummary](
-			func(_ context.Context, _ string) (PRActivitySummary, error) {
-				return df.computePRActivityForRenovator(loaderCtx, opt)
-			},
-		)
-
-		return df.prActivityCache.Get(loaderCtx, cacheKey, loader)
-	})
+	perRepo, err := df.GetPerRepoActivity(ctx, opts...)
 	if err != nil {
 		return PRActivitySummary{}, err
 	}
 
-	summary, ok := result.(PRActivitySummary)
-	if !ok {
-		return PRActivitySummary{}, errUnexpectedCacheResult
+	summary := PRActivitySummary{}
+
+	for _, entry := range perRepo {
+		summary.Open += entry.OpenPRs
+		summary.NeedsApproval += entry.NeedsApproval
+		summary.Unchanged += entry.Unchanged
+		summary.WarnCount += entry.WarnCount
+		summary.ErrorCount += entry.ErrorCount
+		summary.HasRecentData = true
 	}
 
 	return summary, nil
 }
 
-// computePRActivityForRenovator lists jobs for the Renovator once,
-// partitions by GitRepo in memory, then parses the most recent completed
-// job per repo with bounded concurrency. Repos the current user cannot
-// access are filtered out before aggregation.
-func (df *DataFactory) computePRActivityForRenovator(
+// computePerRepoActivity lists jobs for the Renovator once, partitions by
+// GitRepo in memory, then parses the most recent completed job per repo with
+// bounded concurrency. Repos the current user cannot access are filtered out.
+func (df *DataFactory) computePerRepoActivity(
 	ctx context.Context,
 	opt ListOptions,
-) (PRActivitySummary, error) {
-	summary := PRActivitySummary{}
+) (map[string]PerRepoActivity, error) {
+	result := make(map[string]PerRepoActivity)
 
-	repos, err := df.GetGitRepos(ctx, opt)
-	if err != nil {
-		return summary, fmt.Errorf("failed to list repos for PR activity: %w", err)
+	repos := opt.Repos
+	if repos == nil {
+		var err error
+
+		repos, err = df.GetGitRepos(ctx, opt)
+		if err != nil {
+			return result, fmt.Errorf("failed to list repos for PR activity: %w", err)
+		}
+
+		repos = df.ApplyAccessFilter(ctx, repos)
 	}
 
-	repos = df.ApplyAccessFilter(ctx, repos)
-
 	if len(repos) == 0 {
-		return summary, nil
+		return result, nil
 	}
 
 	latestByRepo, err := df.findLatestTerminalJobsByRepo(ctx, opt.Namespace, opt.Renovator)
 	if err != nil {
-		return summary, fmt.Errorf("failed to list jobs for PR activity: %w", err)
+		return result, fmt.Errorf("failed to list jobs for PR activity: %w", err)
 	}
 
 	if len(latestByRepo) == 0 {
-		return summary, nil
+		return result, nil
 	}
 
 	results := make(chan prJobSample, len(latestByRepo))
@@ -631,14 +679,17 @@ func (df *DataFactory) computePRActivityForRenovator(
 		}
 
 		g.Go(func() error {
-			results <- df.parseJobPRActivity(ctx, repo.Namespace, job)
+			sample := df.parseJobPRActivity(ctx, repo.Namespace, job)
+
+			sample.repoLabel = repoLabel
+			results <- sample
 
 			return nil
 		})
 	}
 
 	if err := g.Wait(); err != nil {
-		return summary, err
+		return result, err
 	}
 
 	close(results)
@@ -648,22 +699,28 @@ func (df *DataFactory) computePRActivityForRenovator(
 			continue
 		}
 
-		summary.Open += sample.Open
-		summary.NeedsApproval += sample.NeedsApproval
-		summary.Unchanged += sample.Unchanged
-		summary.HasRecentData = true
+		result[sample.repoLabel] = PerRepoActivity{
+			OpenPRs:       sample.Open,
+			NeedsApproval: sample.NeedsApproval,
+			Unchanged:     sample.Unchanged,
+			WarnCount:     sample.WarnCount,
+			ErrorCount:    sample.ErrorCount,
+		}
 	}
 
-	return summary, nil
+	return result, nil
 }
 
 // prJobSample is the per-repo result of inspecting the most recent
 // completed Job's log output.
 type prJobSample struct {
+	repoLabel     string
 	Open          int
 	NeedsApproval int
 	Unchanged     int
 	OK            bool
+	WarnCount     int
+	ErrorCount    int
 }
 
 // readJobLogStream reads the log stream and reports whether the kubelet
@@ -790,6 +847,8 @@ func (df *DataFactory) parseJobPRActivity(
 		NeedsApproval: activity.NeedsApproval,
 		Unchanged:     activity.Unchanged,
 		OK:            true,
+		WarnCount:     res.WarnCount,
+		ErrorCount:    res.ErrorCount,
 	}
 }
 
