@@ -80,11 +80,14 @@ func getOptionsFromRequest(r *http.Request) ListOptions {
 	q := r.URL.Query()
 
 	return ListOptions{
-		Namespace: q.Get("namespace"),
-		Renovator: q.Get("renovator"),
-		SortBy:    q.Get("sort"),
-		Order:     q.Get("order"),
-		Search:    q.Get("search"),
+		Namespace:      q.Get("namespace"),
+		Renovator:      q.Get("renovator"),
+		SortBy:         q.Get("sort"),
+		Order:          q.Get("order"),
+		Search:         q.Get("search"),
+		FilterOpenPRs:  q.Get("filterOpenPRs") == "true",
+		FilterWarnings: q.Get("filterWarnings") == "true",
+		FilterErrors:   q.Get("filterErrors") == "true",
 	}
 }
 

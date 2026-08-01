@@ -117,7 +117,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 										type="checkbox"
 										data-level="all"
 										checked
-										class="log-level-checkbox"
+										class="custom-checkbox-dark"
 									/>
 									<span class="font-mono font-medium text-gray-300">All</span>
 								</label>
@@ -129,7 +129,7 @@ templ JobLogs(data viewmodel.JobLogData) {
 											type="checkbox"
 											data-level={ strconv.Itoa(level.Value) }
 											checked
-											class="log-level-checkbox"
+											class="custom-checkbox-dark"
 										/>
 										<span class={ "font-mono font-medium " + level.Class }>{ level.Label }</span>
 									</label>

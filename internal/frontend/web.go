@@ -342,6 +342,8 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 		}
 	}
 
+	repos = applyGitRepoFilters(repos, opts)
+
 	w.Header().Set("Content-Type", "text/html")
 	_ = view.GitRepoList(repos).Render(r.Context(), w)
 }
@@ -611,4 +613,30 @@ func (h *WebHandler) HandleJobLogsDownload(w http.ResponseWriter, r *http.Reques
 	if _, err := io.Copy(w, stream); err != nil {
 		frontendLog.Error(err, "Failed to stream job logs download", "job", job)
 	}
+}
+
+func applyGitRepoFilters(repos []viewmodel.GitRepoInfo, opts ListOptions) []viewmodel.GitRepoInfo {
+	if !opts.FilterOpenPRs && !opts.FilterWarnings && !opts.FilterErrors {
+		return repos
+	}
+
+	filtered := make([]viewmodel.GitRepoInfo, 0, len(repos))
+
+	for _, repo := range repos {
+		if opts.FilterOpenPRs && repo.OpenPRs == 0 {
+			continue
+		}
+
+		if opts.FilterWarnings && repo.WarnCount == 0 {
+			continue
+		}
+
+		if opts.FilterErrors && repo.ErrorCount == 0 {
+			continue
+		}
+
+		filtered = append(filtered, repo)
+	}
+
+	return filtered
 }

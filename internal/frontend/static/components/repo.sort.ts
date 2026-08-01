@@ -3,9 +3,12 @@ import { getData } from "../lib/dom"
 import { Dropdown } from "../lib/dropdown"
 import { registerComponent } from "../lib/component.registry"
 
+const ALL_FILTERS = ["filterOpenPRs", "filterWarnings", "filterErrors"]
+
 export class RepoSortComponent extends Dropdown {
   private sortKey: string
   private orderKey: string
+  private filterKey: string
   private sort: string
   private order: string
   private boundOptionClicks: Map<HTMLButtonElement, () => void> = new Map()
@@ -22,6 +25,7 @@ export class RepoSortComponent extends Dropdown {
 
     this.sortKey = getData(el, "sort-key")
     this.orderKey = getData(el, "order-key")
+    this.filterKey = getData(el, "filter-key")
     this.sort = getPersisted<string>(this.sortKey, "name")
     this.order = getPersisted<string>(this.orderKey, "asc")
 
@@ -72,8 +76,19 @@ export class RepoSortComponent extends Dropdown {
     }
   }
 
+  private getActiveFilters(): Set<string> {
+    return new Set(getPersisted<string[]>(this.filterKey, []))
+  }
+
   private updateHxVals(repoList: HTMLElement): void {
-    repoList.setAttribute("hx-vals", JSON.stringify({ sort: this.sort, order: this.order }))
+    const filters = this.getActiveFilters()
+    const vals: Record<string, string | boolean> = { sort: this.sort, order: this.order }
+
+    for (const filter of ALL_FILTERS) {
+      vals[filter] = filters.has(filter)
+    }
+
+    repoList.setAttribute("hx-vals", JSON.stringify(vals))
   }
 
   private updateUI(): void {
@@ -129,9 +144,107 @@ export class RepoSortComponent extends Dropdown {
   }
 }
 
+export class RepoFilterComponent extends Dropdown {
+  private filterKey: string
+  private filters: Set<string>
+  private boundCheckboxChanges: Map<HTMLInputElement, () => void> = new Map()
+
+  constructor(el: HTMLElement) {
+    super(el, {
+      buttonSelector: '[data-action="toggle-filter"]',
+      menuSelector: '[data-role="filter-menu"]',
+      placement: "bottom-start",
+      strategy: "fixed",
+      offset: 4,
+      focusOnClose: true
+    })
+
+    const sortEl = el.closest<HTMLElement>('[data-component="repo-sort"]')
+
+    this.filterKey = sortEl ? getData(sortEl, "filter-key") : ""
+    this.filters = new Set(getPersisted<string[]>(this.filterKey, []))
+
+    this.syncCheckboxes()
+    this.bindCheckboxes()
+  }
+
+  private bindCheckboxes(): void {
+    this.menu.querySelectorAll<HTMLInputElement>("input[data-filter]").forEach((cb) => {
+      const handler = () => this.handleCheckboxChange(cb)
+      this.boundCheckboxChanges.set(cb, handler)
+      cb.addEventListener("change", handler)
+    })
+  }
+
+  private handleCheckboxChange(cb: HTMLInputElement): void {
+    const { filter } = cb.dataset
+    if (!filter) return
+
+    if (cb.checked) {
+      this.filters.add(filter)
+    } else {
+      this.filters.delete(filter)
+    }
+
+    setPersisted(this.filterKey, Array.from(this.filters))
+    this.dispatchFilterChanged()
+  }
+
+  private syncCheckboxes(): void {
+    this.menu.querySelectorAll<HTMLInputElement>("input[data-filter]").forEach((cb) => {
+      const { filter } = cb.dataset
+      if (!filter) return
+
+      cb.checked = this.filters.has(filter)
+    })
+  }
+
+  private dispatchFilterChanged(): void {
+    const sortEl = this.el.closest<HTMLElement>('[data-component="repo-sort"]')
+    if (!sortEl) return
+
+    const repoList = sortEl.querySelector<HTMLElement>('[data-ref="repoList"]')
+    if (!repoList) return
+
+    this.updateHxVals(repoList, sortEl)
+    repoList.dispatchEvent(new Event("sort-changed"))
+  }
+
+  private updateHxVals(repoList: HTMLElement, sortEl: HTMLElement): void {
+    const sortKey = getData(sortEl, "sort-key")
+    const orderKey = getData(sortEl, "order-key")
+    const sort = getPersisted<string>(sortKey, "name")
+    const order = getPersisted<string>(orderKey, "asc")
+
+    const vals: Record<string, string | boolean> = { sort, order }
+
+    for (const filter of ALL_FILTERS) {
+      vals[filter] = this.filters.has(filter)
+    }
+
+    repoList.setAttribute("hx-vals", JSON.stringify(vals))
+  }
+
+  destroy(): void {
+    super.destroy()
+
+    this.boundCheckboxChanges.forEach((handler, cb) => {
+      cb.removeEventListener("change", handler)
+    })
+    this.boundCheckboxChanges.clear()
+  }
+}
+
 export function initRepoSorts(root: ParentNode = document): void {
   root.querySelectorAll<HTMLElement>('[data-component="repo-sort"]').forEach((el) => {
     const component = new RepoSortComponent(el)
+    registerComponent(el, component)
+  })
+}
+
+export function initRepoFilters(root: ParentNode = document): void {
+  root.querySelectorAll<HTMLElement>('[data-component="repo-filter"]').forEach((el) => {
+    const component = new RepoFilterComponent(el)
     registerComponent(el, component)
   })
 }

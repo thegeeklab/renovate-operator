@@ -16,10 +16,12 @@ export interface DropdownConfig {
   focusOnClose?: boolean
 }
 
+const openInstances = new Set<Dropdown>()
+
 export class Dropdown {
   protected el: HTMLElement
   protected button: HTMLButtonElement
-  protected menu: HTMLDivElement
+  protected menu: HTMLElement
   protected isOpen = false
 
   private cfg: Required<DropdownConfig>
@@ -40,7 +42,7 @@ export class Dropdown {
       focusOnClose: config.focusOnClose ?? false
     }
     this.button = el.querySelector<HTMLButtonElement>(this.cfg.buttonSelector)!
-    this.menu = el.querySelector<HTMLDivElement>(this.cfg.menuSelector)!
+    this.menu = el.querySelector<HTMLElement>(this.cfg.menuSelector)!
 
     this.boundButtonClick = this.handleButtonClick.bind(this)
     this.boundDocumentClick = this.handleDocumentClick.bind(this)
@@ -97,6 +99,12 @@ export class Dropdown {
   }
 
   protected async open(): Promise<void> {
+    for (const other of openInstances) {
+      if (other !== this) {
+        other.close()
+      }
+    }
+    openInstances.add(this)
     this.isOpen = true
     this.menu.classList.remove("hidden")
     this.button.setAttribute("aria-expanded", "true")
@@ -116,11 +124,13 @@ export class Dropdown {
 
   protected close(): void {
     this.isOpen = false
+    openInstances.delete(this)
     this.menu.classList.add("hidden")
     this.button.setAttribute("aria-expanded", "false")
   }
 
   destroy(): void {
+    openInstances.delete(this)
     this.button.removeEventListener("click", this.boundButtonClick)
     document.removeEventListener("click", this.boundDocumentClick)
     this.menu.removeEventListener("pointerdown", this.boundMenuPointerDown)

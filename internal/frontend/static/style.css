@@ -84,17 +84,51 @@
   pointer-events: none;
 }
 
-.log-level-checkbox {
+.custom-checkbox,
+.custom-checkbox-dark {
   appearance: none;
-  width: 1.25rem;
-  height: 1.25rem;
-  background-color: rgb(55 65 81);
-  border: 1px solid rgb(75 85 99);
+  width: 1rem;
+  height: 1rem;
+  border: 1px solid rgb(209 213 219);
   border-radius: 0.25rem;
+  background-color: white;
   cursor: pointer;
   position: relative;
   flex-shrink: 0;
   transition: background 150ms ease-in-out;
+}
+
+.dark .custom-checkbox,
+.custom-checkbox-dark {
+  background-color: rgb(55 65 81);
+  border-color: rgb(75 85 99);
+}
+
+.custom-checkbox:checked,
+.custom-checkbox-dark:checked {
+  background-color: rgb(59 130 246);
+  border-color: rgb(37 99 235);
+}
+
+.custom-checkbox::before,
+.custom-checkbox-dark::before {
+  position: absolute;
+  content: "";
+  display: block;
+  top: 50%;
+  left: 50%;
+  width: 0.375rem;
+  height: 0.625rem;
+  border-style: solid;
+  border-color: white;
+  border-width: 0 2px 2px 0;
+  transform: translate(-50%, -60%) rotate(45deg);
+  opacity: 0;
+}
+
+.custom-checkbox:checked::before,
+.custom-checkbox-dark:checked::before {
+  opacity: 1;
 }
 
 .log-search-hidden {
@@ -106,30 +140,6 @@ mark.log-search-mark {
   color: rgb(17 24 39) !important;
   border-radius: 0.125rem;
   padding: 0 0.0625rem;
-}
-
-.log-level-checkbox:checked {
-  background-color: rgb(59 130 246);
-  border-color: rgb(37 99 235);
-}
-
-.log-level-checkbox::before {
-  position: absolute;
-  content: "";
-  display: block;
-  top: 50%;
-  left: 50%;
-  width: 0.5rem;
-  height: 0.75rem;
-  border-style: solid;
-  border-color: white;
-  border-width: 0 2px 2px 0;
-  transform: translate(-50%, -60%) rotate(45deg);
-  opacity: 0;
-}
-
-.log-level-checkbox:checked::before {
-  opacity: 1;
 }
 
 kbd {

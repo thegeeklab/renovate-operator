@@ -104,6 +104,18 @@ const (
 	GitRepoFieldLastRun GitRepoFieldLabel = "Last run"
 )
 
+// GitRepoFilterLabel defines the display label and query param for a repo filter.
+type GitRepoFilterLabel string
+
+const (
+	// GitRepoFilterOpenPRs filters repos with open PRs.
+	GitRepoFilterOpenPRs GitRepoFilterLabel = "filterOpenPRs"
+	// GitRepoFilterWarnings filters repos with warnings.
+	GitRepoFilterWarnings GitRepoFilterLabel = "filterWarnings"
+	// GitRepoFilterErrors filters repos with errors.
+	GitRepoFilterErrors GitRepoFilterLabel = "filterErrors"
+)
+
 // WebView is the summary card for a single Renovator in the dashboard
 // accordion list.
 type WebView struct {

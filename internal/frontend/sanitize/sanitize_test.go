@@ -99,6 +99,12 @@ var _ = Describe("sanitize helpers", func() {
 		})
 	})
 
+	Describe("FilterPersistKey", func() {
+		It("builds a key from the renovator name", func() {
+			Expect(FilterPersistKey("my-renovator")).To(Equal("filter-my-renovator"))
+		})
+	})
+
 	Describe("RenovatorPRsURL", func() {
 		It("builds a base URL", func() {
 			Expect(RenovatorPRsURL("ns", "uid")).

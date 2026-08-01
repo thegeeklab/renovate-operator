@@ -67,7 +67,7 @@ templ GitRepoList(repos []viewmodel.GitRepoInfo) {
 								}
 							</p>
 						</div>
-						<div class="flex-shrink-0 flex items-center gap-4">
+						<div class="flex-shrink-0 flex items-center gap-6">
 							<div class="flex items-center gap-2">
 								@GitRepoPRBadge(r.OpenPRs, r.NeedsApproval, r.UnchangedPRs)
 								@GitRepoWarningsBadge(r.WarnCount, r.ErrorCount)
