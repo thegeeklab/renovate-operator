@@ -11,7 +11,7 @@ require (
 	github.com/dustin/go-humanize v1.0.1
 	github.com/go-chi/chi/v5 v5.3.1
 	github.com/go-logr/logr v1.4.4
-	github.com/google/go-github/v89 v89.0.0
+	github.com/google/go-github/v90 v90.0.0
 	github.com/maypok86/otter/v2 v2.3.0
 	github.com/netresearch/go-cron v0.15.1
 	github.com/onsi/ginkgo/v2 v2.32.0
