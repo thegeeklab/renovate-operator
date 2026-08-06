@@ -39,12 +39,15 @@ var (
 
 // ListOptions holds optional parameters for filtering and sorting data.
 type ListOptions struct {
-	Namespace string
-	Renovator string
-	SortBy    string
-	Order     string
-	Search    string
-	Repos     []viewmodel.GitRepoInfo
+	Namespace      string
+	Renovator      string
+	SortBy         string
+	Order          string
+	Search         string
+	FilterOpenPRs  bool
+	FilterWarnings bool
+	FilterErrors   bool
+	Repos          []viewmodel.GitRepoInfo
 }
 
 const (

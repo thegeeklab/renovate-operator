@@ -98,3 +98,9 @@ func SortFieldPersistKey(name string) string {
 func SortOrderPersistKey(name string) string {
 	return "sort-order-" + name
 }
+
+// FilterPersistKey returns a storage key for the active filters of a
+// Renovator's repository list.
+func FilterPersistKey(name string) string {
+	return "filter-" + name
+}

@@ -10,6 +10,7 @@ import (
 	. "github.com/onsi/gomega"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"github.com/thegeeklab/renovate-operator/internal/logreader"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -175,6 +176,78 @@ var _ = Describe("WebHandler", func() {
 			Expect(w.Body.String()).To(ContainSubstring("test-repo"))
 		})
 
+		It("should return empty list when filterOpenPRs is true and no PR activity exists", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepos?namespace=test-namespace&renovator=test-uid-123&filterOpenPRs=true",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleGitReposPartial(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).NotTo(ContainSubstring("test-repo"))
+			Expect(w.Body.String()).To(ContainSubstring("No GitRepos Found"))
+		})
+
+		It("should return repos when filterOpenPRs is explicitly false", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepos?namespace=test-namespace&renovator=test-uid-123&filterOpenPRs=false",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleGitReposPartial(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).To(ContainSubstring("test-repo"))
+		})
+
+		It("should return empty list when filterWarnings is true and no warnings exist", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepos?namespace=test-namespace&renovator=test-uid-123&filterWarnings=true",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleGitReposPartial(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).To(ContainSubstring("No GitRepos Found"))
+		})
+
+		It("should return empty list when filterErrors is true and no errors exist", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepos?namespace=test-namespace&renovator=test-uid-123&filterErrors=true",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleGitReposPartial(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).To(ContainSubstring("No GitRepos Found"))
+		})
+
+		It("should apply multiple filters with AND logic", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/gitrepos?namespace=test-namespace&renovator=test-uid-123"+
+					"&filterOpenPRs=true&filterWarnings=true&filterErrors=true",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleGitReposPartial(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Body.String()).To(ContainSubstring("No GitRepos Found"))
+		})
+
 		It("should return bad request for missing namespace parameter", func() {
 			req := httptest.NewRequest(http.MethodGet, "/gitrepos", nil)
 			w := httptest.NewRecorder()
@@ -183,6 +256,34 @@ var _ = Describe("WebHandler", func() {
 
 			Expect(w.Code).To(Equal(http.StatusBadRequest))
 		})
+	})
+
+	Describe("getOptionsFromRequest", func() {
+		DescribeTable("filter query parameters",
+			func(query string, expected ListOptions) {
+				req := httptest.NewRequest(http.MethodGet, query, nil)
+				opts := getOptionsFromRequest(req)
+				Expect(opts.FilterOpenPRs).To(Equal(expected.FilterOpenPRs))
+				Expect(opts.FilterWarnings).To(Equal(expected.FilterWarnings))
+				Expect(opts.FilterErrors).To(Equal(expected.FilterErrors))
+			},
+			Entry("all filters false by default", "/gitrepos?namespace=ns&renovator=r",
+				ListOptions{Namespace: "ns", Renovator: "r"}),
+			Entry("filterOpenPRs=true parses correctly", "/gitrepos?namespace=ns&renovator=r&filterOpenPRs=true",
+				ListOptions{Namespace: "ns", Renovator: "r", FilterOpenPRs: true}),
+			Entry("filterOpenPRs=anything else is false", "/gitrepos?namespace=ns&renovator=r&filterOpenPRs=false",
+				ListOptions{Namespace: "ns", Renovator: "r"}),
+			Entry("filterWarnings=true parses correctly", "/gitrepos?namespace=ns&renovator=r&filterWarnings=true",
+				ListOptions{Namespace: "ns", Renovator: "r", FilterWarnings: true}),
+			Entry("filterErrors=true parses correctly", "/gitrepos?namespace=ns&renovator=r&filterErrors=true",
+				ListOptions{Namespace: "ns", Renovator: "r", FilterErrors: true}),
+			Entry("all three filters active",
+				"/gitrepos?namespace=ns&renovator=r"+
+					"&filterOpenPRs=true&filterWarnings=true&filterErrors=true",
+				ListOptions{Namespace: "ns", Renovator: "r", FilterOpenPRs: true, FilterWarnings: true, FilterErrors: true}),
+			Entry("sort and order with filters", "/gitrepos?namespace=ns&sort=date&order=desc&filterWarnings=true",
+				ListOptions{Namespace: "ns", SortBy: "date", Order: "desc", FilterWarnings: true}),
+		)
 	})
 
 	Describe("HandleRenovatorCount", func() {
@@ -447,6 +548,74 @@ var _ = Describe("WebHandler", func() {
 
 			running := handler.dataFactory.IsJobRunning(context.Background(), "test-namespace", "failed-job")
 			Expect(running).To(BeFalse())
+		})
+	})
+
+	Describe("applyGitRepoFilters", func() {
+		var repos []viewmodel.GitRepoInfo
+
+		BeforeEach(func() {
+			repos = []viewmodel.GitRepoInfo{
+				{Name: "repo-a", OpenPRs: 3, WarnCount: 2, ErrorCount: 0},
+				{Name: "repo-b", OpenPRs: 0, WarnCount: 5, ErrorCount: 0},
+				{Name: "repo-c", OpenPRs: 5, WarnCount: 0, ErrorCount: 3},
+				{Name: "repo-d", OpenPRs: 0, WarnCount: 0, ErrorCount: 1},
+				{Name: "repo-e", OpenPRs: 0, WarnCount: 0, ErrorCount: 0},
+			}
+		})
+
+		It("should return all repos when no filters are active", func() {
+			result := applyGitRepoFilters(repos, ListOptions{})
+			Expect(result).To(HaveLen(5))
+		})
+
+		It("should filter repos by open PRs", func() {
+			result := applyGitRepoFilters(repos, ListOptions{FilterOpenPRs: true})
+			Expect(result).To(HaveLen(2))
+			Expect(result[0].Name).To(Equal("repo-a"))
+			Expect(result[1].Name).To(Equal("repo-c"))
+		})
+
+		It("should filter repos by warnings", func() {
+			result := applyGitRepoFilters(repos, ListOptions{FilterWarnings: true})
+			Expect(result).To(HaveLen(2))
+
+			names := make([]string, len(result))
+			for i, r := range result {
+				names[i] = r.Name
+			}
+
+			Expect(names).To(ContainElements("repo-a", "repo-b"))
+		})
+
+		It("should filter repos by errors", func() {
+			result := applyGitRepoFilters(repos, ListOptions{FilterErrors: true})
+			Expect(result).To(HaveLen(2))
+
+			names := make([]string, len(result))
+			for i, r := range result {
+				names[i] = r.Name
+			}
+
+			Expect(names).To(ContainElements("repo-c", "repo-d"))
+		})
+
+		It("should apply multiple filters with AND logic", func() {
+			result := applyGitRepoFilters(repos, ListOptions{
+				FilterOpenPRs:  true,
+				FilterWarnings: true,
+			})
+			Expect(result).To(HaveLen(1))
+			Expect(result[0].Name).To(Equal("repo-a"))
+		})
+
+		It("should return empty when no repos match all filters", func() {
+			result := applyGitRepoFilters(repos, ListOptions{
+				FilterOpenPRs:  true,
+				FilterWarnings: true,
+				FilterErrors:   true,
+			})
+			Expect(result).To(BeEmpty())
 		})
 	})
 })
