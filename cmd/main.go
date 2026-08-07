@@ -149,16 +149,16 @@ func run() error {
 		setupLog.Error(err, "Failed to setup OpenTelemetry bridge, continuing without OTLP export")
 	}
 
-	if otelShutdown != nil {
-		defer func() {
-			shutdownCtx, cancel := context.WithTimeout(context.Background(), otelShutdownTimeout)
-			defer cancel()
+	defer func() {
+		shutdownCtx, cancel := context.WithTimeout(context.Background(), otelShutdownTimeout)
+		defer cancel()
 
-			if err := otelShutdown(shutdownCtx); err != nil {
-				setupLog.Error(err, "Failed to shutdown OpenTelemetry provider")
-			}
-		}()
+		if err := otelShutdown(shutdownCtx); err != nil {
+			setupLog.Error(err, "Failed to shutdown OpenTelemetry provider")
+		}
+	}()
 
+	if err == nil && os.Getenv("OTEL_EXPORTER_OTLP_ENDPOINT") != "" {
 		setupLog.Info("OpenTelemetry Prometheus bridge enabled")
 	}
 
