@@ -23,11 +23,12 @@ var _ = Describe("Telemetry", func() {
 
 	Describe("SetupPrometheusBridge", func() {
 		Context("when OTEL_EXPORTER_OTLP_ENDPOINT is not set", func() {
-			It("should return a nil closer and no error", func() {
+			It("should return a no-op closer and no error", func() {
 				gatherer := prometheus.NewRegistry()
 				shutdown, err := SetupPrometheusBridge(context.Background(), gatherer, "dev")
 				Expect(err).NotTo(HaveOccurred())
-				Expect(shutdown).To(BeNil())
+				Expect(shutdown).NotTo(BeNil())
+				Expect(shutdown(context.Background())).To(Succeed())
 			})
 		})
 
