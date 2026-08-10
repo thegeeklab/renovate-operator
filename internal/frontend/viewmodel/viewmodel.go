@@ -6,10 +6,12 @@
 package viewmodel
 
 import (
+	"context"
 	"strconv"
 	"strings"
 	"time"
 
+	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
 	"github.com/thegeeklab/renovate-operator/internal/parser"
 )
 
@@ -30,6 +32,22 @@ func (s Status) Label() string {
 		return string(s)
 	default:
 		return string(StatusUnknown)
+	}
+}
+
+// TranslatedLabel returns the translated label for the status.
+func (s Status) TranslatedLabel(ctx context.Context) string {
+	tr := i18n.FromContext(ctx)
+
+	switch s {
+	case StatusSucceeded:
+		return tr.T("status.succeeded")
+	case StatusRunning:
+		return tr.T("status.running")
+	case StatusFailed:
+		return tr.T("status.failed")
+	default:
+		return tr.T("status.unknown")
 	}
 }
 
@@ -103,6 +121,22 @@ const (
 	// GitRepoFieldLastRun is the display label for the last run date field.
 	GitRepoFieldLastRun GitRepoFieldLabel = "Last run"
 )
+
+// TranslatedLabel returns the translated display label for a field.
+func (f GitRepoFieldLabel) TranslatedLabel(ctx context.Context) string {
+	tr := i18n.FromContext(ctx)
+
+	switch f {
+	case GitRepoFieldName:
+		return tr.T("sort.name")
+	case GitRepoFieldCreated:
+		return tr.T("sort.created")
+	case GitRepoFieldLastRun:
+		return tr.T("sort.last_run")
+	default:
+		return string(f)
+	}
+}
 
 // GitRepoFilterLabel defines the display label and query param for a repo filter.
 type GitRepoFilterLabel string
@@ -207,6 +241,14 @@ func FormatCount(count int, label string) string {
 	return strconv.Itoa(count) + " " + label + "s"
 }
 
+// TranslatedFormatCount returns "N translatedLabel" with proper pluralization
+// using i18n keys (e.g. "1 error", "3 errors").
+func TranslatedFormatCount(ctx context.Context, count int, singularKey, pluralKey string) string {
+	tr := i18n.FromContext(ctx)
+
+	return tr.FormatCountMsg(count, singularKey, pluralKey)
+}
+
 // HasPRActivity reports whether the activity struct carries any non-zero
 // counters, so callers can decide whether to render a summary.
 func HasPRActivity(activity *parser.PRActivity) bool {
@@ -233,6 +275,24 @@ func IssueSummaryText(issues *parser.LogIssues) string {
 
 	if issues.WarnCount > 0 {
 		parts = append(parts, FormatCount(issues.WarnCount, "warning"))
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// TranslatedIssueSummaryText renders a translated summary.
+func TranslatedIssueSummaryText(ctx context.Context, issues *parser.LogIssues) string {
+	if issues == nil {
+		return ""
+	}
+
+	parts := []string{}
+	if issues.ErrorCount > 0 {
+		parts = append(parts, TranslatedFormatCount(ctx, issues.ErrorCount, "badge.error_singular", "badge.error_plural"))
+	}
+
+	if issues.WarnCount > 0 {
+		parts = append(parts, TranslatedFormatCount(ctx, issues.WarnCount, "badge.warning_singular", "badge.warning_plural"))
 	}
 
 	return strings.Join(parts, ", ")
@@ -265,6 +325,47 @@ func PRActivitySummary(activity *parser.PRActivity) string {
 
 	if activity.Unchanged > 0 {
 		parts = append(parts, FormatCount(activity.Unchanged, "unchanged"))
+	}
+
+	return strings.Join(parts, ", ")
+}
+
+// TranslatedPRActivitySummary renders a translated summary of PR activity.
+func TranslatedPRActivitySummary(ctx context.Context, activity *parser.PRActivity) string {
+	if activity == nil {
+		return ""
+	}
+
+	parts := []string{}
+	if activity.Automerged > 0 {
+		parts = append(parts, TranslatedFormatCount(
+			ctx, activity.Automerged, "badge.automerged_singular", "badge.automerged_plural",
+		))
+	}
+
+	if activity.Created > 0 {
+		parts = append(parts, TranslatedFormatCount(
+			ctx, activity.Created, "badge.created_singular", "badge.created_plural",
+		))
+	}
+
+	if activity.Updated > 0 {
+		parts = append(parts, TranslatedFormatCount(
+			ctx, activity.Updated, "badge.updated_singular", "badge.updated_plural",
+		))
+	}
+
+	if activity.NeedsApproval > 0 {
+		parts = append(parts, TranslatedFormatCount(
+			ctx, activity.NeedsApproval,
+			"badge.needs_approval_singular", "badge.needs_approval_plural",
+		))
+	}
+
+	if activity.Unchanged > 0 {
+		parts = append(parts, TranslatedFormatCount(
+			ctx, activity.Unchanged, "badge.unchanged_singular", "badge.unchanged_plural",
+		))
 	}
 
 	return strings.Join(parts, ", ")

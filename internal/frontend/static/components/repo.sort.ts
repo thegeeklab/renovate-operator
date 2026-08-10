@@ -2,6 +2,7 @@ import { getPersisted, setPersisted } from "../lib/storage"
 import { getData } from "../lib/dom"
 import { Dropdown } from "../lib/dropdown"
 import { registerComponent } from "../lib/component.registry"
+import { t } from "../lib/i18n"
 
 const ALL_FILTERS = ["filterOpenPRs", "filterWarnings", "filterErrors"]
 
@@ -133,12 +134,13 @@ export class RepoSortComponent extends Dropdown {
     if (orderBtn) {
       orderBtn.setAttribute(
         "aria-label",
-        this.order === "asc" ? "Switch to descending order" : "Switch to ascending order"
+        this.order === "asc" ? t("sort.switch_descending") : t("sort.switch_ascending")
       )
       orderBtn.setAttribute("aria-pressed", this.order === "asc" ? "true" : "false")
     }
     if (tooltipText) {
-      tooltipText.textContent = this.order === "asc" ? "Sort ascending" : "Sort descending"
+      tooltipText.textContent =
+        this.order === "asc" ? t("sort.sort_ascending") : t("sort.sort_descending")
     }
 
     const repoList = this.el.querySelector<HTMLElement>('[data-ref="repoList"]')

@@ -188,7 +188,7 @@ var _ = Describe("WebHandler", func() {
 
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Body.String()).NotTo(ContainSubstring("test-repo"))
-			Expect(w.Body.String()).To(ContainSubstring("No GitRepos Found"))
+			Expect(w.Body.String()).To(ContainSubstring("gitrepo.no_repos_title"))
 		})
 
 		It("should return repos when filterOpenPRs is explicitly false", func() {
@@ -216,7 +216,7 @@ var _ = Describe("WebHandler", func() {
 			handler.HandleGitReposPartial(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(w.Body.String()).To(ContainSubstring("No GitRepos Found"))
+			Expect(w.Body.String()).To(ContainSubstring("gitrepo.no_repos_title"))
 		})
 
 		It("should return empty list when filterErrors is true and no errors exist", func() {
@@ -230,7 +230,7 @@ var _ = Describe("WebHandler", func() {
 			handler.HandleGitReposPartial(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(w.Body.String()).To(ContainSubstring("No GitRepos Found"))
+			Expect(w.Body.String()).To(ContainSubstring("gitrepo.no_repos_title"))
 		})
 
 		It("should apply multiple filters with AND logic", func() {
@@ -245,7 +245,7 @@ var _ = Describe("WebHandler", func() {
 			handler.HandleGitReposPartial(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(w.Body.String()).To(ContainSubstring("No GitRepos Found"))
+			Expect(w.Body.String()).To(ContainSubstring("gitrepo.no_repos_title"))
 		})
 
 		It("should return bad request for missing namespace parameter", func() {
@@ -458,7 +458,7 @@ var _ = Describe("WebHandler", func() {
 			handler.HandleJobLogs(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(w.Body.String()).To(ContainSubstring("Failed to fetch logs"))
+			Expect(w.Body.String()).To(ContainSubstring("log.failed_to_fetch_logs"))
 		})
 	})
 
@@ -481,7 +481,7 @@ var _ = Describe("WebHandler", func() {
 			handler.HandleDashboard(w, req)
 
 			Expect(w.Code).To(Equal(http.StatusOK))
-			Expect(w.Body.String()).To(ContainSubstring("No Results Found"))
+			Expect(w.Body.String()).To(ContainSubstring("dashboard.no_results_title"))
 		})
 	})
 

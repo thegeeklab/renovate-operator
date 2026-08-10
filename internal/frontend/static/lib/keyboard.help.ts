@@ -1,3 +1,5 @@
+import { t } from "../lib/i18n"
+
 interface Shortcut {
   steps: string[][]
   description: string
@@ -9,49 +11,51 @@ interface ShortcutSection {
   wide?: boolean
 }
 
-const sections: ShortcutSection[] = [
-  {
-    title: "General",
-    wide: true,
-    columns: [
-      [
-        { steps: [["?"]], description: "Show keyboard shortcuts" },
-        { steps: [["Esc"]], description: "Close modal or blur input" }
-      ],
-      [
-        { steps: [["r"]], description: "Refresh current view" },
-        { steps: [["t"]], description: "Cycle theme" }
+function buildSections(): ShortcutSection[] {
+  return [
+    {
+      title: t("keyboard.general"),
+      wide: true,
+      columns: [
+        [
+          { steps: [["?"]], description: t("keyboard.show_shortcuts") },
+          { steps: [["Esc"]], description: t("keyboard.close_modal") }
+        ],
+        [
+          { steps: [["r"]], description: t("keyboard.refresh") },
+          { steps: [["t"]], description: t("keyboard.cycle_theme") }
+        ]
       ]
-    ]
-  },
-  {
-    title: "Navigation",
-    wide: true,
-    columns: [
-      [
-        { steps: [["j", "↓"]], description: "Next item" },
-        { steps: [["k", "↑"]], description: "Previous item" },
-        { steps: [["g"], ["g"]], description: "First item" },
-        { steps: [["G"]], description: "Last item" }
-      ],
-      [
-        { steps: [["/"]], description: "Focus search" },
-        { steps: [["g"], ["h"]], description: "Go to home" },
-        { steps: [["Enter", "o"]], description: "Open focused item" }
+    },
+    {
+      title: t("keyboard.navigation"),
+      wide: true,
+      columns: [
+        [
+          { steps: [["j", "↓"]], description: t("keyboard.next_item") },
+          { steps: [["k", "↑"]], description: t("keyboard.previous_item") },
+          { steps: [["g"], ["g"]], description: t("keyboard.first_item") },
+          { steps: [["G"]], description: t("keyboard.last_item") }
+        ],
+        [
+          { steps: [["/"]], description: t("keyboard.focus_search") },
+          { steps: [["g"], ["h"]], description: t("keyboard.go_home") },
+          { steps: [["Enter", "o"]], description: t("keyboard.open_focused") }
+        ]
       ]
-    ]
-  },
-  {
-    title: "Log viewer",
-    columns: [
-      [
-        { steps: [["c"]], description: "Close log viewer" },
-        { steps: [["d"]], description: "Download log" },
-        { steps: [["i"]], description: "Toggle details" }
+    },
+    {
+      title: t("keyboard.log_viewer"),
+      columns: [
+        [
+          { steps: [["c"]], description: t("keyboard.close_log_viewer") },
+          { steps: [["d"]], description: t("keyboard.download_log") },
+          { steps: [["i"]], description: t("keyboard.toggle_details") }
+        ]
       ]
-    ]
-  }
-]
+    }
+  ]
+}
 
 class KeyboardHelpModal {
   private previouslyFocused: HTMLElement | null = null
@@ -91,6 +95,7 @@ const instances = new Map<HTMLElement, KeyboardHelpModal>()
 function ensureInstance(): void {
   let el = document.getElementById("keyboard-help-modal")
   if (!el) {
+    const sections = buildSections()
     el = document.createElement("div")
     el.id = "keyboard-help-modal"
     el.className = "hidden"
@@ -104,15 +109,15 @@ function ensureInstance(): void {
           <span class="hidden sm:inline-block sm:align-middle sm:h-screen" aria-hidden="true">&#8203;</span>
           <div class="relative inline-block align-middle bg-white dark:bg-gray-800 rounded-lg text-left overflow-hidden shadow-2xl transform transition-all sm:my-8 sm:max-w-2xl sm:w-full z-10">
             <div class="flex items-center justify-between px-6 py-4 border-b border-gray-200 dark:border-gray-700">
-              <h3 id="keyboard-help-title" class="text-base font-semibold text-gray-900 dark:text-gray-100">Keyboard shortcuts</h3>
-              <button type="button" data-close data-autofocus class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none cursor-pointer rounded-md p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" aria-label="Close">
+              <h3 id="keyboard-help-title" class="text-base font-semibold text-gray-900 dark:text-gray-100">${t("keyboard.title")}</h3>
+              <button type="button" data-close data-autofocus class="text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 focus:outline-none cursor-pointer rounded-md p-1.5 hover:bg-gray-100 dark:hover:bg-gray-700 transition-colors" aria-label="${t("common.close")}">
                 <svg class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke-width="1.5" stroke="currentColor">
                   <path stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12" />
                 </svg>
               </button>
             </div>
             <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 p-4">
-              ${renderSections()}
+              ${renderSections(sections)}
             </div>
           </div>
         </div>
@@ -136,7 +141,7 @@ function renderShortcutRow(shortcut: Shortcut): string {
   `
 }
 
-function renderSections(): string {
+function renderSections(sections: ShortcutSection[]): string {
   return sections
     .map(
       (section) => `

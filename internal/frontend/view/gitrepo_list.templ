@@ -1,9 +1,11 @@
 package view
 
 import (
+	"context"
 	"fmt"
+	"time"
 
-	"github.com/dustin/go-humanize"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/sanitize"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 )
@@ -12,9 +14,9 @@ func getRepoClass(status viewmodel.Status) string {
 	return statusCardBase() + " px-4 py-3 " + status.LeftBorderClass()
 }
 
-templ GitRepoPRBadge(openPRs, needsApproval, unchangedPRs int) {
+templ GitRepoPRBadge(ctx context.Context, openPRs, needsApproval, unchangedPRs int) {
 	if openPRs > 0 {
-		@Tooltip(getPRBadgeTooltip(true, openPRs, needsApproval, unchangedPRs)) {
+		@Tooltip(getPRBadgeTooltip(ctx, true, openPRs, needsApproval, unchangedPRs)) {
 			<span class={ "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset " + getPRBadgeColorClasses(openPRs, needsApproval, unchangedPRs) }>
 				@IconGitPullRequest("h-3.5 w-3.5")
 				{ openPRs }
@@ -23,9 +25,9 @@ templ GitRepoPRBadge(openPRs, needsApproval, unchangedPRs int) {
 	}
 }
 
-templ GitRepoWarningsBadge(warnCount, errorCount int) {
+templ GitRepoWarningsBadge(ctx context.Context, warnCount, errorCount int) {
 	if warnCount > 0 || errorCount > 0 {
-		@Tooltip(getWarningsBadgeTooltip(warnCount, errorCount)) {
+		@Tooltip(getWarningsBadgeTooltip(ctx, warnCount, errorCount)) {
 			<span class={ "inline-flex items-center gap-1 rounded-full px-2 py-1 text-xs font-medium ring-1 ring-inset " + getWarningBadgeColorClasses(errorCount) }>
 				@IconTriangleAlert("h-3.5 w-3.5")
 				@WarningCountDisplay(warnCount, errorCount)
@@ -34,7 +36,7 @@ templ GitRepoWarningsBadge(warnCount, errorCount int) {
 	}
 }
 
-templ GitRepoList(repos []viewmodel.GitRepoInfo) {
+templ GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) {
 	if len(repos) > 0 {
 		<ul data-kb-nav-scope="repo-list" class="grid grid-cols-1 gap-4" role="list">
 			for _, r := range repos {
@@ -55,13 +57,13 @@ templ GitRepoList(repos []viewmodel.GitRepoInfo) {
 							<p class="mt-1 flex items-center gap-3 text-xs text-gray-500 dark:text-gray-400">
 								@Tooltip(r.CreatedAt.Format("Jan 02, 2006 15:04")) {
 									<span>
-										{ string(viewmodel.GitRepoFieldCreated) + ": " }{ humanize.Time(r.CreatedAt) }
+										{ viewmodel.GitRepoFieldCreated.TranslatedLabel(ctx) + ": " }<span data-timestamp={ r.CreatedAt.UTC().Format(time.RFC3339) } data-format="relative">{ r.CreatedAt.UTC().Format("2006-01-02T15:04:05Z") }</span>
 									</span>
 								}
 								if !r.LastRenovateAt.IsZero() {
 									@Tooltip(r.LastRenovateAt.Format("Jan 02, 2006 15:04")) {
 										<span>
-											{ string(viewmodel.GitRepoFieldLastRun) + ": " }{ humanize.Time(r.LastRenovateAt) }
+											{ viewmodel.GitRepoFieldLastRun.TranslatedLabel(ctx) + ": " }<span data-timestamp={ r.LastRenovateAt.UTC().Format(time.RFC3339) } data-format="relative">{ r.LastRenovateAt.UTC().Format("2006-01-02T15:04:05Z") }</span>
 										</span>
 									}
 								}
@@ -69,16 +71,16 @@ templ GitRepoList(repos []viewmodel.GitRepoInfo) {
 						</div>
 						<div class="flex-shrink-0 flex items-center gap-6">
 							<div class="flex items-center gap-2">
-								@GitRepoPRBadge(r.OpenPRs, r.NeedsApproval, r.UnchangedPRs)
-								@GitRepoWarningsBadge(r.WarnCount, r.ErrorCount)
+								@GitRepoPRBadge(ctx, r.OpenPRs, r.NeedsApproval, r.UnchangedPRs)
+								@GitRepoWarningsBadge(ctx, r.WarnCount, r.ErrorCount)
 							</div>
-							@statusBadge(r.LastRenovateStatus)
+							@statusBadge(ctx, r.LastRenovateStatus)
 						</div>
 					</a>
 				</li>
 			}
 		</ul>
 	} else {
-		@EmptyState("No GitRepos Found", "There are no repositories associated with this namespace.", "py-6")
+		@EmptyState(i18n.FromContext(ctx).T("gitrepo.no_repos_title"), i18n.FromContext(ctx).T("gitrepo.no_repos_message"), "py-6")
 	}
 }

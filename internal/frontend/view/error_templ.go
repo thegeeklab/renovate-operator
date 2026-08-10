@@ -7,9 +7,13 @@ package view
 import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
-import "github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+import (
+	"context"
 
-func ErrorPage(statusCode int, title, message, pageTitle string, styles []string, scripts []string, auth viewmodel.AuthInfo) templ.Component {
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+)
+
+func ErrorPage(ctx context.Context, statusCode int, title, message, pageTitle string, styles []string, scripts []string, auth viewmodel.AuthInfo) templ.Component {
 	return templruntime.GeneratedTemplate(func(templ_7745c5c3_Input templruntime.GeneratedComponentInput) (templ_7745c5c3_Err error) {
 		templ_7745c5c3_W, ctx := templ_7745c5c3_Input.Writer, templ_7745c5c3_Input.Context
 		if templ_7745c5c3_CtxErr := ctx.Err(); templ_7745c5c3_CtxErr != nil {
@@ -30,7 +34,7 @@ func ErrorPage(statusCode int, title, message, pageTitle string, styles []string
 			templ_7745c5c3_Var1 = templ.NopComponent
 		}
 		ctx = templ.ClearChildren(ctx)
-		templ_7745c5c3_Err = Layout(pageTitle, styles, scripts, auth, errorContent(statusCode, title, message)).Render(ctx, templ_7745c5c3_Buffer)
+		templ_7745c5c3_Err = Layout(ctx, pageTitle, styles, scripts, auth, errorContent(statusCode, title, message)).Render(ctx, templ_7745c5c3_Buffer)
 		if templ_7745c5c3_Err != nil {
 			return templ_7745c5c3_Err
 		}
@@ -74,7 +78,7 @@ func errorContent(statusCode int, title, message string) templ.Component {
 		var templ_7745c5c3_Var3 string
 		templ_7745c5c3_Var3, templ_7745c5c3_Err = templ.JoinStringErrs(statusCode)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `error.templ`, Line: 15, Col: 17}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `error.templ`, Line: 19, Col: 17}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var3))
 		if templ_7745c5c3_Err != nil {
@@ -87,7 +91,7 @@ func errorContent(statusCode int, title, message string) templ.Component {
 		var templ_7745c5c3_Var4 string
 		templ_7745c5c3_Var4, templ_7745c5c3_Err = templ.JoinStringErrs(title)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `error.templ`, Line: 18, Col: 12}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `error.templ`, Line: 22, Col: 12}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var4))
 		if templ_7745c5c3_Err != nil {
@@ -100,7 +104,7 @@ func errorContent(statusCode int, title, message string) templ.Component {
 		var templ_7745c5c3_Var5 string
 		templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(message)
 		if templ_7745c5c3_Err != nil {
-			return templ.Error{Err: templ_7745c5c3_Err, FileName: `error.templ`, Line: 21, Col: 14}
+			return templ.Error{Err: templ_7745c5c3_Err, FileName: `error.templ`, Line: 25, Col: 14}
 		}
 		_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 		if templ_7745c5c3_Err != nil {

@@ -1,0 +1,556 @@
+[
+  {
+    "id": "meta.language_name",
+    "translation": "English"
+  },
+  {
+    "id": "common.sign_out",
+    "translation": "Sign out"
+  },
+  {
+    "id": "common.back",
+    "translation": "Back"
+  },
+  {
+    "id": "common.back_to_dashboard",
+    "translation": "Back to Dashboard"
+  },
+  {
+    "id": "common.search",
+    "translation": "Search"
+  },
+  {
+    "id": "common.clear_search",
+    "translation": "Clear search"
+  },
+  {
+    "id": "common.filter",
+    "translation": "Filter"
+  },
+  {
+    "id": "common.namespace",
+    "translation": "Namespace:"
+  },
+  {
+    "id": "common.repos",
+    "translation": "Repos"
+  },
+  {
+    "id": "common.prs",
+    "translation": "PRs"
+  },
+  {
+    "id": "common.warnings",
+    "translation": "Warnings"
+  },
+  {
+    "id": "common.runner",
+    "translation": "Runner"
+  },
+  {
+    "id": "common.discovery",
+    "translation": "Discovery"
+  },
+  {
+    "id": "common.close",
+    "translation": "Close"
+  },
+  {
+    "id": "common.dismiss",
+    "translation": "Dismiss"
+  },
+  {
+    "id": "common.language",
+    "translation": "Language"
+  },
+  {
+    "id": "layout.go_home",
+    "translation": "Go home"
+  },
+  {
+    "id": "layout.logo_alt",
+    "translation": "Logo"
+  },
+  {
+    "id": "layout.light_mode",
+    "translation": "Light mode"
+  },
+  {
+    "id": "layout.dark_mode",
+    "translation": "Dark mode"
+  },
+  {
+    "id": "layout.auto_mode",
+    "translation": "Auto (system)"
+  },
+  {
+    "id": "login.title",
+    "translation": "Sign in to your account"
+  },
+  {
+    "id": "login.subtitle",
+    "translation": "Choose a provider to continue"
+  },
+  {
+    "id": "login.sign_in_with",
+    "translation": "Sign in with {{.Name}}"
+  },
+  {
+    "id": "dashboard.title",
+    "translation": "Dashboard"
+  },
+  {
+    "id": "dashboard.search_placeholder",
+    "translation": "Search all repositories..."
+  },
+  {
+    "id": "dashboard.search_aria_label",
+    "translation": "Search all repositories"
+  },
+  {
+    "id": "dashboard.no_results_title",
+    "translation": "No Results Found"
+  },
+  {
+    "id": "dashboard.no_results_message",
+    "translation": "No repositories match your search query."
+  },
+  {
+    "id": "dashboard.no_renovators_title",
+    "translation": "No Renovators Found"
+  },
+  {
+    "id": "dashboard.no_renovators_message",
+    "translation": "Get started by creating a Renovator custom resource."
+  },
+  {
+    "id": "dashboard.toggle_all",
+    "translation": "Toggle All"
+  },
+  {
+    "id": "gitrepo.view_repo_aria",
+    "translation": "View repository {{.Name}} in namespace {{.Namespace}}"
+  },
+  {
+    "id": "gitrepo.no_repos_title",
+    "translation": "No GitRepos Found"
+  },
+  {
+    "id": "gitrepo.no_repos_message",
+    "translation": "There are no repositories associated with this namespace."
+  },
+  {
+    "id": "gitrepo.recent_jobs",
+    "translation": "Recent Jobs"
+  },
+  {
+    "id": "gitrepo.no_jobs_title",
+    "translation": "No Jobs Found"
+  },
+  {
+    "id": "gitrepo.no_jobs_message",
+    "translation": "Renovate hasn't triggered any runs for this repository yet."
+  },
+  {
+    "id": "gitrepo.select_job",
+    "translation": "Select a job from the list to view its logs"
+  },
+  {
+    "id": "gitrepo.view_logs_aria",
+    "translation": "View logs for job {{.Name}} in namespace {{.Namespace}}"
+  },
+  {
+    "id": "log.live_streaming",
+    "translation": "Live Log Streaming"
+  },
+  {
+    "id": "log.search_placeholder",
+    "translation": "Search logs..."
+  },
+  {
+    "id": "log.levels",
+    "translation": "Levels"
+  },
+  {
+    "id": "log.all",
+    "translation": "All"
+  },
+  {
+    "id": "log.autoscroll_disabled",
+    "translation": "Auto-scroll disabled"
+  },
+  {
+    "id": "log.autoscroll_enabled",
+    "translation": "Auto-scroll enabled"
+  },
+  {
+    "id": "log.toggle_autoscroll",
+    "translation": "Toggle auto-scroll"
+  },
+  {
+    "id": "log.download_full_log",
+    "translation": "Download full log"
+  },
+  {
+    "id": "log.close_logs",
+    "translation": "Close logs"
+  },
+  {
+    "id": "log.truncated_line",
+    "translation": "Log truncated to the last {{.Lines}} lines."
+  },
+  {
+    "id": "log.still_running",
+    "translation": "The job is still running."
+  },
+  {
+    "id": "log.load_full_log",
+    "translation": "Load full log"
+  },
+  {
+    "id": "log.no_issues",
+    "translation": "No issues"
+  },
+  {
+    "id": "log.details",
+    "translation": "Details"
+  },
+  {
+    "id": "log.toggle_details",
+    "translation": "Toggle details"
+  },
+  {
+    "id": "log.issues",
+    "translation": "Issues"
+  },
+  {
+    "id": "log.pull_requests",
+    "translation": "Pull Requests"
+  },
+  {
+    "id": "log.and_more_truncated",
+    "translation": "... and more (truncated)"
+  },
+  {
+    "id": "log.no_entries_match",
+    "translation": "No log entries match your search."
+  },
+  {
+    "id": "log.failed_fetch_log",
+    "translation": "Failed to fetch log"
+  },
+  {
+    "id": "log.failed_download_log",
+    "translation": "Failed to download log file"
+  },
+  {
+    "id": "log.waiting_for_pods",
+    "translation": "Waiting for pods to initialize..."
+  },
+  {
+    "id": "log.failed_to_fetch_logs",
+    "translation": "Failed to fetch logs for this job."
+  },
+  {
+    "id": "log.failed_to_read_stream",
+    "translation": "Failed to read log stream from pod."
+  },
+  {
+    "id": "pr_action.automerged",
+    "translation": "Automerged"
+  },
+  {
+    "id": "pr_action.created",
+    "translation": "Created (new PR)"
+  },
+  {
+    "id": "pr_action.updated",
+    "translation": "Updated"
+  },
+  {
+    "id": "pr_action.needs_approval",
+    "translation": "Needs approval"
+  },
+  {
+    "id": "pr_action.unchanged",
+    "translation": "Unchanged (no updates needed)"
+  },
+  {
+    "id": "badge.no_open_prs",
+    "translation": "No open PRs"
+  },
+  {
+    "id": "badge.no_recent_data",
+    "translation": "No recent Renovate data (no completed jobs or pod logs GC'd)"
+  },
+  {
+    "id": "badge.pr_open",
+    "translation": "{{.Count}} PRs open"
+  },
+  {
+    "id": "badge.pr_additional_active",
+    "translation": "{{.Count}} additional active"
+  },
+  {
+    "id": "badge.warnings_tooltip",
+    "translation": "{{.ErrorCount}} errors, {{.WarnCount}} warnings"
+  },
+  {
+    "id": "badge.pr_needs_approval",
+    "translation": {
+      "one": "{{.Count}} PR needs approval",
+      "other": "{{.Count}} PRs need approval"
+    }
+  },
+  {
+    "id": "badge.pr_no_updates",
+    "translation": {
+      "one": "{{.Count}} PR (no updates needed)",
+      "other": "{{.Count}} PRs (no updates needed)"
+    }
+  },
+  {
+    "id": "badge.pr_singular",
+    "translation": "PR"
+  },
+  {
+    "id": "badge.pr_plural",
+    "translation": "PRs"
+  },
+  {
+    "id": "badge.error_singular",
+    "translation": "error"
+  },
+  {
+    "id": "badge.error_plural",
+    "translation": "errors"
+  },
+  {
+    "id": "badge.warning_singular",
+    "translation": "warning"
+  },
+  {
+    "id": "badge.warning_plural",
+    "translation": "warnings"
+  },
+  {
+    "id": "badge.automerged_singular",
+    "translation": "automerged"
+  },
+  {
+    "id": "badge.automerged_plural",
+    "translation": "automerged"
+  },
+  {
+    "id": "badge.created_singular",
+    "translation": "created"
+  },
+  {
+    "id": "badge.created_plural",
+    "translation": "created"
+  },
+  {
+    "id": "badge.updated_singular",
+    "translation": "updated"
+  },
+  {
+    "id": "badge.updated_plural",
+    "translation": "updated"
+  },
+  {
+    "id": "badge.needs_approval_singular",
+    "translation": "needs approval"
+  },
+  {
+    "id": "badge.needs_approval_plural",
+    "translation": "needs approval"
+  },
+  {
+    "id": "badge.unchanged_singular",
+    "translation": "unchanged"
+  },
+  {
+    "id": "badge.unchanged_plural",
+    "translation": "unchanged"
+  },
+  {
+    "id": "status.succeeded",
+    "translation": "Succeeded"
+  },
+  {
+    "id": "status.running",
+    "translation": "Running"
+  },
+  {
+    "id": "status.failed",
+    "translation": "Failed"
+  },
+  {
+    "id": "status.unknown",
+    "translation": "Unknown"
+  },
+  {
+    "id": "sort.name",
+    "translation": "Name"
+  },
+  {
+    "id": "sort.created",
+    "translation": "Created"
+  },
+  {
+    "id": "sort.last_run",
+    "translation": "Last run"
+  },
+  {
+    "id": "sort.sort_repositories",
+    "translation": "Sort repositories"
+  },
+  {
+    "id": "sort.sort_ascending",
+    "translation": "Sort ascending"
+  },
+  {
+    "id": "sort.sort_descending",
+    "translation": "Sort descending"
+  },
+  {
+    "id": "sort.switch_descending",
+    "translation": "Switch to descending order"
+  },
+  {
+    "id": "sort.switch_ascending",
+    "translation": "Switch to ascending order"
+  },
+  {
+    "id": "filter.open_prs",
+    "translation": "Open PRs"
+  },
+  {
+    "id": "filter.warnings",
+    "translation": "Warnings"
+  },
+  {
+    "id": "filter.errors",
+    "translation": "Errors"
+  },
+  {
+    "id": "error.service_unavailable",
+    "translation": "Service Unavailable"
+  },
+  {
+    "id": "error.service_unavailable_message",
+    "translation": "The service is temporarily unavailable. Please try again later."
+  },
+  {
+    "id": "error.unauthorized",
+    "translation": "Unauthorized"
+  },
+  {
+    "id": "error.unauthorized_message",
+    "translation": "You need to log in to access this resource."
+  },
+  {
+    "id": "error.forbidden",
+    "translation": "Forbidden"
+  },
+  {
+    "id": "error.forbidden_message",
+    "translation": "You don't have permission to access this resource."
+  },
+  {
+    "id": "error.not_found",
+    "translation": "Not Found"
+  },
+  {
+    "id": "error.not_found_message",
+    "translation": "The requested resource could not be found."
+  },
+  {
+    "id": "error.unexpected",
+    "translation": "An unexpected error occurred."
+  },
+  {
+    "id": "toast.network_error",
+    "translation": "Network error. Please check your connection."
+  },
+  {
+    "id": "toast.request_failed",
+    "translation": "Request failed: {{.Status}}"
+  },
+  {
+    "id": "toast.live_updates_disconnected",
+    "translation": "Live updates disconnected"
+  },
+  {
+    "id": "keyboard.title",
+    "translation": "Keyboard shortcuts"
+  },
+  {
+    "id": "keyboard.general",
+    "translation": "General"
+  },
+  {
+    "id": "keyboard.show_shortcuts",
+    "translation": "Show keyboard shortcuts"
+  },
+  {
+    "id": "keyboard.close_modal",
+    "translation": "Close modal or blur input"
+  },
+  {
+    "id": "keyboard.refresh",
+    "translation": "Refresh current view"
+  },
+  {
+    "id": "keyboard.cycle_theme",
+    "translation": "Cycle theme"
+  },
+  {
+    "id": "keyboard.navigation",
+    "translation": "Navigation"
+  },
+  {
+    "id": "keyboard.next_item",
+    "translation": "Next item"
+  },
+  {
+    "id": "keyboard.previous_item",
+    "translation": "Previous item"
+  },
+  {
+    "id": "keyboard.first_item",
+    "translation": "First item"
+  },
+  {
+    "id": "keyboard.last_item",
+    "translation": "Last item"
+  },
+  {
+    "id": "keyboard.focus_search",
+    "translation": "Focus search"
+  },
+  {
+    "id": "keyboard.go_home",
+    "translation": "Go to home"
+  },
+  {
+    "id": "keyboard.open_focused",
+    "translation": "Open focused item"
+  },
+  {
+    "id": "keyboard.log_viewer",
+    "translation": "Log viewer"
+  },
+  {
+    "id": "keyboard.close_log_viewer",
+    "translation": "Close log viewer"
+  },
+  {
+    "id": "keyboard.download_log",
+    "translation": "Download log"
+  },
+  {
+    "id": "keyboard.toggle_details",
+    "translation": "Toggle details"
+  }
+]

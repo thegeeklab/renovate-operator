@@ -8,10 +8,10 @@ import "github.com/a-h/templ"
 import templruntime "github.com/a-h/templ/runtime"
 
 import (
-	"fmt"
+	"context"
 	"strings"
 
-	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
 )
 
 func btnBase() string {
@@ -582,53 +582,55 @@ func Tooltip(text string, opts ...string) templ.Component {
 	})
 }
 
-func pluralize(count int, singular, plural string) string {
-	if count == 1 {
-		return fmt.Sprintf("1 %s", singular)
-	}
+func pluralize(ctx context.Context, count int, singularKey, pluralKey string) string {
+	tr := i18n.FromContext(ctx)
 
-	return fmt.Sprintf("%d %s", count, plural)
+	return tr.FormatCountMsg(count, singularKey, pluralKey)
 }
 
 // getPRBadgeTooltip returns the human-readable explanation for a PR badge
 // pill, derived from the same inputs used to pick its color.
-func getPRBadgeTooltip(hasRecentData bool, open, needsApproval, unchanged int) string {
+func getPRBadgeTooltip(ctx context.Context, hasRecentData bool, open, needsApproval, unchanged int) string {
+	tr := i18n.FromContext(ctx)
+
 	if !hasRecentData {
-		return "No recent Renovate data (no completed jobs or pod logs GC'd)"
+		return tr.T("badge.no_recent_data")
 	}
 
 	active := open - unchanged
 
 	if needsApproval > 0 {
-		s := pluralize(needsApproval, "PR needs approval", "PRs need approval")
+		s := tr.TP("badge.pr_needs_approval", needsApproval)
 		if active > 0 {
-			s += ", " + pluralize(active, "PR", "PRs") + " additional active"
+			s += ", " + tr.T("badge.pr_additional_active", map[string]any{"Count": active})
 		}
 
 		return s
 	}
 
 	if active == 0 && unchanged > 0 {
-		return pluralize(unchanged, "PR (no updates needed)", "PRs (no updates needed)")
+		return tr.TP("badge.pr_no_updates", unchanged)
 	}
 
 	if open == 0 {
-		return "No open PRs"
+		return tr.T("badge.no_open_prs")
 	}
 
-	return pluralize(open, "PR", "PRs") + " open"
+	return tr.T("badge.pr_open", map[string]any{"Count": open})
 }
 
 // getWarningsBadgeTooltip returns the human-readable explanation for a
 // warning badge pill.
-func getWarningsBadgeTooltip(warnCount, errorCount int) string {
+func getWarningsBadgeTooltip(ctx context.Context, warnCount, errorCount int) string {
+	tr := i18n.FromContext(ctx)
+
 	parts := []string{}
 	if errorCount > 0 {
-		parts = append(parts, viewmodel.FormatCount(errorCount, "error"))
+		parts = append(parts, tr.FormatCountMsg(errorCount, "badge.error_singular", "badge.error_plural"))
 	}
 
 	if warnCount > 0 {
-		parts = append(parts, viewmodel.FormatCount(warnCount, "warning"))
+		parts = append(parts, tr.FormatCountMsg(warnCount, "badge.warning_singular", "badge.warning_plural"))
 	}
 
 	if len(parts) == 0 {
@@ -667,7 +669,7 @@ func WarningCountDisplay(warnCount, errorCount int) templ.Component {
 			var templ_7745c5c3_Var28 string
 			templ_7745c5c3_Var28, templ_7745c5c3_Err = templ.JoinStringErrs(errorCount)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 238, Col: 14}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 240, Col: 14}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var28))
 			if templ_7745c5c3_Err != nil {
@@ -680,7 +682,7 @@ func WarningCountDisplay(warnCount, errorCount int) templ.Component {
 			var templ_7745c5c3_Var29 string
 			templ_7745c5c3_Var29, templ_7745c5c3_Err = templ.JoinStringErrs(warnCount + errorCount)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 240, Col: 26}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 242, Col: 26}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var29))
 			if templ_7745c5c3_Err != nil {
@@ -690,7 +692,7 @@ func WarningCountDisplay(warnCount, errorCount int) templ.Component {
 			var templ_7745c5c3_Var30 string
 			templ_7745c5c3_Var30, templ_7745c5c3_Err = templ.JoinStringErrs(warnCount)
 			if templ_7745c5c3_Err != nil {
-				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 242, Col: 13}
+				return templ.Error{Err: templ_7745c5c3_Err, FileName: `component.templ`, Line: 244, Col: 13}
 			}
 			_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var30))
 			if templ_7745c5c3_Err != nil {

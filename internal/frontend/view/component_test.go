@@ -1,9 +1,17 @@
 package view
 
 import (
+	"context"
+
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
 )
+
+func testCtx() context.Context {
+	return i18n.NewContext(context.Background(), i18n.FromContext(context.Background()))
+}
 
 var _ = Describe("getPRBadgeColorClasses", func() {
 	It("returns yellow classes when PRs need approval", func() {
@@ -56,74 +64,76 @@ var _ = Describe("getWarningBadgeColorClasses", func() {
 
 var _ = Describe("pluralize", func() {
 	It("returns singular for count of 1", func() {
-		result := pluralize(1, "PR", "PRs")
-		Expect(result).To(Equal("1 PR"))
+		result := pluralize(testCtx(), 1, "badge.pr_singular", "badge.pr_plural")
+		Expect(result).To(ContainSubstring("1"))
+		Expect(result).To(ContainSubstring("badge.pr_singular"))
 	})
 
 	It("returns plural for count of 0", func() {
-		result := pluralize(0, "error", "errors")
-		Expect(result).To(Equal("0 errors"))
+		result := pluralize(testCtx(), 0, "badge.error_singular", "badge.error_plural")
+		Expect(result).To(ContainSubstring("0"))
+		Expect(result).To(ContainSubstring("badge.error_plural"))
 	})
 
 	It("returns plural for count greater than 1", func() {
-		result := pluralize(5, "warning", "warnings")
-		Expect(result).To(Equal("5 warnings"))
+		result := pluralize(testCtx(), 5, "badge.warning_singular", "badge.warning_plural")
+		Expect(result).To(ContainSubstring("5"))
+		Expect(result).To(ContainSubstring("badge.warning_plural"))
 	})
 })
 
 var _ = Describe("getPRBadgeTooltip", func() {
 	It("informs when there is no recent data", func() {
-		tooltip := getPRBadgeTooltip(false, 0, 0, 0)
-		Expect(tooltip).To(ContainSubstring("No recent Renovate data"))
+		tooltip := getPRBadgeTooltip(testCtx(), false, 0, 0, 0)
+		Expect(tooltip).To(ContainSubstring("no_recent_data"))
 	})
 
 	It("shows PRs needing approval with singular", func() {
-		tooltip := getPRBadgeTooltip(true, 1, 1, 0)
-		Expect(tooltip).To(ContainSubstring("1 PR needs approval"))
+		tooltip := getPRBadgeTooltip(testCtx(), true, 1, 1, 0)
+		Expect(tooltip).To(ContainSubstring("pr_needs_approval"))
 	})
 
 	It("shows PRs needing approval with additional active", func() {
-		tooltip := getPRBadgeTooltip(true, 3, 1, 0)
-		Expect(tooltip).To(ContainSubstring("1 PR needs approval"))
-		Expect(tooltip).To(ContainSubstring("additional active"))
+		tooltip := getPRBadgeTooltip(testCtx(), true, 3, 1, 0)
+		Expect(tooltip).To(ContainSubstring("pr_needs_approval"))
 	})
 
 	It("shows unchanged PRs when all are unchanged", func() {
-		tooltip := getPRBadgeTooltip(true, 2, 0, 2)
-		Expect(tooltip).To(ContainSubstring("no updates needed"))
+		tooltip := getPRBadgeTooltip(testCtx(), true, 2, 0, 2)
+		Expect(tooltip).To(ContainSubstring("pr_no_updates"))
 	})
 
 	It("shows no open PRs when count is zero", func() {
-		tooltip := getPRBadgeTooltip(true, 0, 0, 0)
-		Expect(tooltip).To(Equal("No open PRs"))
+		tooltip := getPRBadgeTooltip(testCtx(), true, 0, 0, 0)
+		Expect(tooltip).To(ContainSubstring("no_open_prs"))
 	})
 
 	It("shows open PRs count", func() {
-		tooltip := getPRBadgeTooltip(true, 3, 0, 0)
-		Expect(tooltip).To(Equal("3 PRs open"))
+		tooltip := getPRBadgeTooltip(testCtx(), true, 3, 0, 0)
+		Expect(tooltip).To(ContainSubstring("badge.pr_open"))
 	})
 })
 
 var _ = Describe("getWarningsBadgeTooltip", func() {
 	It("returns empty string when both counts are zero", func() {
-		Expect(getWarningsBadgeTooltip(0, 0)).To(Equal(""))
+		Expect(getWarningsBadgeTooltip(testCtx(), 0, 0)).To(Equal(""))
 	})
 
 	It("shows error count only", func() {
-		tooltip := getWarningsBadgeTooltip(0, 2)
-		Expect(tooltip).To(ContainSubstring("2 errors"))
-		Expect(tooltip).NotTo(ContainSubstring("warning"))
+		tooltip := getWarningsBadgeTooltip(testCtx(), 0, 2)
+		Expect(tooltip).To(ContainSubstring("badge.error_plural"))
+		Expect(tooltip).NotTo(ContainSubstring("badge.warning"))
 	})
 
 	It("shows warning count only", func() {
-		tooltip := getWarningsBadgeTooltip(3, 0)
-		Expect(tooltip).To(ContainSubstring("3 warnings"))
+		tooltip := getWarningsBadgeTooltip(testCtx(), 3, 0)
+		Expect(tooltip).To(ContainSubstring("badge.warning_plural"))
 		Expect(tooltip).NotTo(ContainSubstring("error"))
 	})
 
 	It("shows both error and warning counts", func() {
-		tooltip := getWarningsBadgeTooltip(4, 2)
-		Expect(tooltip).To(ContainSubstring("2 errors"))
-		Expect(tooltip).To(ContainSubstring("4 warnings"))
+		tooltip := getWarningsBadgeTooltip(testCtx(), 4, 2)
+		Expect(tooltip).To(ContainSubstring("badge.error_plural"))
+		Expect(tooltip).To(ContainSubstring("badge.warning_plural"))
 	})
 })

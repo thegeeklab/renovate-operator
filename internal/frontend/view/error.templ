@@ -1,9 +1,13 @@
 package view
 
-import "github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+import (
+	"context"
 
-templ ErrorPage(statusCode int, title, message, pageTitle string, styles []string, scripts []string, auth viewmodel.AuthInfo) {
-	@Layout(pageTitle, styles, scripts, auth, errorContent(statusCode, title, message))
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+)
+
+templ ErrorPage(ctx context.Context, statusCode int, title, message, pageTitle string, styles []string, scripts []string, auth viewmodel.AuthInfo) {
+	@Layout(ctx, pageTitle, styles, scripts, auth, errorContent(statusCode, title, message))
 }
 
 templ errorContent(statusCode int, title, message string) {

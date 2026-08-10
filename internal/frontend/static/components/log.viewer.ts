@@ -3,6 +3,7 @@ import { getRefs, getData, getBoolData, nextFrame } from "../lib/dom"
 import { registerComponent, destroyComponents } from "../lib/component.registry"
 import { toggleRawLine } from "../lib/log.raw"
 import { toast } from "../lib/toast"
+import { t } from "../lib/i18n"
 
 export class LogViewerComponent {
   private el: HTMLElement
@@ -110,7 +111,9 @@ export class LogViewerComponent {
     if (iconOn) iconOn.classList.toggle("hidden", !this.autoscroll)
     if (iconOff) iconOff.classList.toggle("hidden", this.autoscroll)
     if (tooltipText)
-      tooltipText.textContent = this.autoscroll ? "Auto-scroll enabled" : "Auto-scroll disabled"
+      tooltipText.textContent = this.autoscroll
+        ? t("log.autoscroll_enabled")
+        : t("log.autoscroll_disabled")
     if (toggleBtn) toggleBtn.setAttribute("aria-pressed", String(this.autoscroll))
   }
 
@@ -127,7 +130,7 @@ export class LogViewerComponent {
     try {
       const response = await fetch(url)
       if (!response.ok) {
-        throw new Error("Failed to fetch log")
+        throw new Error(t("log.failed_fetch_log"))
       }
       const blob = await response.blob()
 
@@ -154,7 +157,7 @@ export class LogViewerComponent {
       }
     } catch (err) {
       if (err instanceof Error && err.name !== "AbortError") {
-        toast.error("Failed to download log file")
+        toast.error(t("log.failed_download_log"))
       }
     }
   }

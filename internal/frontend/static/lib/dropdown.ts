@@ -69,9 +69,12 @@ export class Dropdown {
   }
 
   private handleMenuPointerDown(e: Event): void {
-    if (this.menu.contains(e.target as Node)) {
-      e.preventDefault()
-    }
+    if (!this.menu.contains(e.target as Node)) return
+
+    const target = e.target as HTMLElement
+    if (target.closest("select, input, textarea, button")) return
+
+    e.preventDefault()
   }
 
   private handleKeydown(e: KeyboardEvent): void {

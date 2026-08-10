@@ -14,7 +14,9 @@ import (
 	"time"
 
 	"github.com/go-chi/chi/v5"
+	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"github.com/thegeeklab/renovate-operator/internal/logreader"
@@ -72,6 +74,7 @@ type Server struct {
 	apiHandler  *APIHandler
 	webHandler  *WebHandler
 	authManager *auth.Manager
+	i18nBundle  *goi18n.Bundle
 }
 
 // NewServer creates a new HTTP server instance.
@@ -87,6 +90,7 @@ func NewServer(
 		config:      config,
 		router:      chi.NewRouter(),
 		authManager: authManager,
+		i18nBundle:  i18n.NewBundle(),
 	}
 
 	if err := s.loadFrontendAssets(); err != nil {
@@ -98,6 +102,7 @@ func NewServer(
 	s.apiHandler = NewAPIHandler(client, clientset, authManager, logReader)
 	s.webHandler = NewWebHandler(client, clientset, broker, s.assets, authManager, logReader)
 
+	s.router.Use(i18n.Middleware(s.i18nBundle, i18n.MiddlewareConfig{SecureCookies: s.config.SecureCookies}))
 	s.router.Use(errorPageMiddleware(s.assets.Styles, s.assets.Scripts, authManager))
 
 	if authManager != nil {
@@ -135,33 +140,6 @@ func (s *Server) registerAuthRoutes() {
 	s.router.Get("/auth/callback", auth.HandleCallback(s.authManager, s.config.SecureCookies))
 	s.router.Post("/auth/logout", auth.HandleLogout(s.authManager))
 	s.router.Get("/api/v1/auth/status", auth.HandleAuthStatus(s.authManager))
-}
-
-// ErrorPageInfo contains the content for a styled error page.
-type ErrorPageInfo struct {
-	Title   string
-	Message string
-}
-
-// defaultErrorPages provides fallback content for common HTTP error codes.
-// Handlers can override these by setting X-Error-Title and X-Error-Message headers.
-var defaultErrorPages = map[int]ErrorPageInfo{
-	http.StatusServiceUnavailable: {
-		Title:   "Service Unavailable",
-		Message: "The service is temporarily unavailable. Please try again later.",
-	},
-	http.StatusUnauthorized: {
-		Title:   "Unauthorized",
-		Message: "You need to log in to access this resource.",
-	},
-	http.StatusForbidden: {
-		Title:   "Forbidden",
-		Message: "You don't have permission to access this resource.",
-	},
-	http.StatusNotFound: {
-		Title:   "Not Found",
-		Message: "The requested resource could not be found.",
-	},
 }
 
 // errorPageMiddleware intercepts error responses and renders styled error pages for browser requests
@@ -202,7 +180,7 @@ func errorPageMiddleware(
 				return
 			}
 
-			title, message := resolveErrorInfo(rec, rec.statusCode)
+			title, message := resolveErrorInfo(r.Context(), rec, rec.statusCode)
 
 			w.Header().Set("Content-Type", "text/html; charset=utf-8")
 			w.Header().Set("X-Page-Title", url.PathEscape(title))
@@ -211,6 +189,7 @@ func errorPageMiddleware(
 			authInfo := buildErrorAuthInfo(r, authManager)
 
 			if err := view.ErrorPage(
+				r.Context(),
 				rec.statusCode, title, message, title, styles, scripts, authInfo,
 			).Render(r.Context(), w); err != nil {
 				frontendLog.Error(err, "Failed to render error page")
@@ -258,9 +237,13 @@ func buildErrorAuthInfo(r *http.Request, authManager *auth.Manager) viewmodel.Au
 	return info
 }
 
-func resolveErrorInfo(rec *errorStatusRecorder, code int) (string, string) {
+// resolveErrorInfo determines the error title and message to display.
+// Headers X-Error-Title and X-Error-Message from upstream handlers take precedence.
+// Otherwise default translated messages are used based on the HTTP status code.
+func resolveErrorInfo(ctx context.Context, rec *errorStatusRecorder, code int) (string, string) {
 	title := rec.Header().Get("X-Error-Title")
 	message := rec.Header().Get("X-Error-Message")
+	tr := i18n.FromContext(ctx)
 
 	if title != "" || message != "" {
 		if title == "" {
@@ -270,11 +253,18 @@ func resolveErrorInfo(rec *errorStatusRecorder, code int) (string, string) {
 		return title, message
 	}
 
-	if info, ok := defaultErrorPages[code]; ok {
-		return info.Title, info.Message
+	switch code {
+	case http.StatusServiceUnavailable:
+		return tr.T("error.service_unavailable"), tr.T("error.service_unavailable_message")
+	case http.StatusUnauthorized:
+		return tr.T("error.unauthorized"), tr.T("error.unauthorized_message")
+	case http.StatusForbidden:
+		return tr.T("error.forbidden"), tr.T("error.forbidden_message")
+	case http.StatusNotFound:
+		return tr.T("error.not_found"), tr.T("error.not_found_message")
 	}
 
-	return http.StatusText(code), "An unexpected error occurred."
+	return http.StatusText(code), tr.T("error.unexpected")
 }
 
 // errorStatusRecorder wraps http.ResponseWriter to capture the status code and buffer the response body.
