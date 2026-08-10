@@ -8,7 +8,7 @@ tests:
       - hasDocuments:
           count: 0
 
-  - it: should render a basic ingress
+  - it: should render a basic ingress with a single host and path
     values:
       - ./fixtures/receiver/ingress-basic.yaml
     asserts:
@@ -32,16 +32,55 @@ tests:
           path: spec.rules[0].http.paths[0].pathType
           value: Prefix
       - equal:
+          path: spec.rules[0].http.paths[0].backend.service.name
+          value: RELEASE-NAME-renovate-operator-receiver
+      - equal:
           path: spec.rules[0].http.paths[0].backend.service.port.number
           value: 80
 
-  - it: should render ingress annotations
+  - it: should render multiple hosts and paths
+    values:
+      - ./fixtures/receiver/ingress-multihost.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].host
+          value: a.example.com
+      - equal:
+          path: spec.rules[1].host
+          value: b.example.com
+      - equal:
+          path: spec.rules[0].http.paths[0].path
+          value: /a
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: Prefix
+      - equal:
+          path: spec.rules[1].http.paths[0].path
+          value: /b
+      - equal:
+          path: spec.rules[1].http.paths[0].pathType
+          value: ImplementationSpecific
+
+  - it: should default pathType to Prefix when omitted
+    values:
+      - ./fixtures/receiver/ingress-defaultpath.yaml
+    asserts:
+      - equal:
+          path: spec.rules[0].http.paths[0].pathType
+          value: Prefix
+
+  - it: should render a default-backend rule when no hosts are provided
     values:
       - ./fixtures/receiver/ingress-annotations.yaml
     asserts:
+      - notExists:
+          path: spec.rules[0].host
       - equal:
-          path: metadata.annotations["nginx.ingress.kubernetes.io/rewrite-target"]
+          path: spec.rules[0].http.paths[0].path
           value: /
+      - equal:
+          path: spec.rules[0].http.paths[0].backend.service.port.number
+          value: 80
 
   - it: should render TLS configuration
     values:
@@ -53,6 +92,17 @@ tests:
       - equal:
           path: spec.tls[0].hosts[0]
           value: secure.example.com
+
+  - it: should render ingress annotations
+    values:
+      - ./fixtures/receiver/ingress-annotations.yaml
+    asserts:
+      - equal:
+          path: metadata.annotations["nginx.ingress.kubernetes.io/rewrite-target"]
+          value: /
+      - equal:
+          path: metadata.annotations["cert-manager.io/cluster-issuer"]
+          value: letsencrypt-prod
 
   - it: should not render ingress when receiver is disabled
     set:

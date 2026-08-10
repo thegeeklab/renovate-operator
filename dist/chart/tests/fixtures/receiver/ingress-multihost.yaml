@@ -1,0 +1,13 @@
+receiver:
+  enabled: true
+  ingress:
+    enabled: true
+    hosts:
+      - host: a.example.com
+        paths:
+          - path: /a
+            pathType: Prefix
+      - host: b.example.com
+        paths:
+          - path: /b
+            pathType: ImplementationSpecific

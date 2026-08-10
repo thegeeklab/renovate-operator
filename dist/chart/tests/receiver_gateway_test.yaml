@@ -43,8 +43,64 @@ tests:
           path: spec.listeners[1].protocol
           value: HTTPS
       - equal:
+          path: spec.listeners[1].hostname
+          value: receiver.example.com
+      - equal:
           path: spec.listeners[1].tls.mode
           value: Terminate
+      - equal:
+          path: spec.listeners[1].tls.certificateRefs[0].name
+          value: receiver-tls
+
+  - it: should render gateway with HTTPS TLS listener
+    values:
+      - ./fixtures/receiver/gateway-tls.yaml
+    asserts:
+      - equal:
+          path: spec.listeners[0].name
+          value: https
+      - equal:
+          path: spec.listeners[0].port
+          value: 443
+      - equal:
+          path: spec.listeners[0].protocol
+          value: HTTPS
+      - equal:
+          path: spec.listeners[0].tls.mode
+          value: Terminate
+      - equal:
+          path: spec.listeners[0].tls.certificateRefs[0].name
+          value: receiver-tls
+
+  - it: should propagate annotations to Gateway
+    values:
+      - ./fixtures/receiver/gateway-annotations.yaml
+    asserts:
+      - equal:
+          path: metadata.annotations["external-dns.alpha.kubernetes.io/hostname"]
+          value: renovate-receiver.example.com
+
+  - it: should propagate labels to Gateway
+    values:
+      - ./fixtures/receiver/gateway-labels.yaml
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: renovate-platform
+      - equal:
+          path: metadata.labels["custom.io/team"]
+          value: platform
+
+  - it: should add addresses to Gateway spec
+    values:
+      - ./fixtures/receiver/gateway-addresses.yaml
+    asserts:
+      - equal:
+          path: spec.addresses[0].type
+          value: IPAddress
+      - equal:
+          path: spec.addresses[0].value
+          value: 192.168.1.100
 
   - it: should skip Gateway creation when using existing gateway
     values:
