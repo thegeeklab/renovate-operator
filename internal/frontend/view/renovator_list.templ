@@ -1,6 +1,9 @@
 package view
 
 import (
+	"context"
+
+	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/sanitize"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 )
@@ -20,8 +23,8 @@ templ RenovatorCountBadge(namespace, renovatorUID string, count int) {
 // RenovatorPRBadge renders the open-PR count for a Renovator as a small
 // pill that auto-refreshes via SSE. Colors match the log viewer: yellow
 // when PRs need approval, gray when all PRs are unchanged, blue otherwise.
-templ RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, unchanged int, hasRecentData bool) {
-	@Tooltip(getPRBadgeTooltip(hasRecentData, open, needsApproval, unchanged)) {
+templ RenovatorPRBadge(ctx context.Context, namespace, renovatorUID string, open, needsApproval, unchanged int, hasRecentData bool) {
+	@Tooltip(getPRBadgeTooltip(ctx, hasRecentData, open, needsApproval, unchanged)) {
 		<span
 			hx-get={ sanitize.RenovatorPRsURL(namespace, renovatorUID) }
 			hx-trigger="sse:job-updated throttle:15s"
@@ -42,7 +45,7 @@ templ RenovatorPRBadge(namespace, renovatorUID string, open, needsApproval, unch
 // RenovatorWarningsBadge renders a warning/error count badge for a Renovator
 // that auto-refreshes via SSE. Always renders a target element (hidden when
 // no warnings) so HTMX has a DOM anchor for SSE-triggered refreshes.
-templ RenovatorWarningsBadge(namespace, renovatorUID string, warnCount, errorCount int) {
+templ RenovatorWarningsBadge(ctx context.Context, namespace, renovatorUID string, warnCount, errorCount int) {
 	if warnCount == 0 && errorCount == 0 {
 		<span
 			hx-get={ sanitize.RenovatorWarningsURL(namespace, renovatorUID) }
@@ -53,7 +56,7 @@ templ RenovatorWarningsBadge(namespace, renovatorUID string, warnCount, errorCou
 			aria-hidden="true"
 		></span>
 	} else {
-		@Tooltip(getWarningsBadgeTooltip(warnCount, errorCount)) {
+		@Tooltip(getWarningsBadgeTooltip(ctx, warnCount, errorCount)) {
 			<span
 				hx-get={ sanitize.RenovatorWarningsURL(namespace, renovatorUID) }
 				hx-trigger="sse:job-updated throttle:15s"
@@ -68,15 +71,19 @@ templ RenovatorWarningsBadge(namespace, renovatorUID string, warnCount, errorCou
 	}
 }
 
-templ searchBar(data viewmodel.DashboardData) {
+templ searchBar(ctx context.Context, data viewmodel.DashboardData) {
+	@SearchBarContent(ctx, data)
+}
+
+templ SearchBarContent(ctx context.Context, data viewmodel.DashboardData) {
 	<div class="relative flex-1 min-w-0">
 		<input
 			type="search"
 			name="search"
 			value={ data.SearchQuery }
 			autocomplete="off"
-			placeholder="Search all repositories..."
-			aria-label="Search all repositories"
+			placeholder={ i18n.FromContext(ctx).T("dashboard.search_placeholder") }
+			aria-label={ i18n.FromContext(ctx).T("dashboard.search_aria_label") }
 			hx-get="/"
 			hx-push-url="true"
 			hx-target="#dashboard-content"
@@ -96,7 +103,7 @@ templ searchBar(data viewmodel.DashboardData) {
 				hx-push-url="true"
 				hx-target="#dashboard-content"
 				hx-swap="innerHTML"
-				aria-label="Clear search"
+				aria-label={ i18n.FromContext(ctx).T("common.clear_search") }
 				class="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
 			>
 				@IconX("h-4 w-4")
@@ -105,52 +112,54 @@ templ searchBar(data viewmodel.DashboardData) {
 	</div>
 }
 
-templ RenovatorList(data viewmodel.DashboardData) {
+templ RenovatorList(ctx context.Context, data viewmodel.DashboardData) {
 	<div class="bg-white dark:bg-gray-800 shadow-sm shrink-0">
 		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center">
-			<h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100" data-focus-target>Dashboard</h2>
+			<h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100" data-focus-target>{ i18n.FromContext(ctx).T("dashboard.title") }</h2>
 		</div>
 	</div>
 	<div data-kb-nav-scope="dashboard" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
 		if data.SearchQuery != "" {
 			<div class="flex items-center gap-6 mb-6">
-				@searchBar(data)
+				@searchBar(ctx, data)
 			</div>
 			if len(data.SearchResults) > 0 {
-				@GitRepoList(data.SearchResults)
+				@GitRepoList(ctx, data.SearchResults)
 			} else {
-				@EmptyState("No Results Found", "No repositories match your search query.")
+				@EmptyState(i18n.FromContext(ctx).T("dashboard.no_results_title"), i18n.FromContext(ctx).T("dashboard.no_results_message"))
 			}
 		} else if len(data.Renovators) == 0 {
 			<div class="flex items-center gap-6 mb-6">
-				@searchBar(data)
+				@searchBar(ctx, data)
 			</div>
-			@EmptyState("No Renovators Found", "Get started by creating a Renovator custom resource.")
+			@EmptyState(i18n.FromContext(ctx).T("dashboard.no_renovators_title"), i18n.FromContext(ctx).T("dashboard.no_renovators_message"))
 		} else {
 			<div class="flex items-center gap-6 mb-6">
-				@searchBar(data)
+				@searchBar(ctx, data)
 				<button
 					type="button"
 					data-component="collapse-toggle"
 					class="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer shrink-0"
 				>
-					<span data-collapse-icon>@IconFoldVertical("h-4 w-4")
-</span>
-					<span data-expand-icon class="hidden">@IconUnfoldVertical("h-4 w-4")
-</span>
-					<span class="hidden sm:inline">Toggle All</span>
+					<span data-collapse-icon>
+						@IconFoldVertical("h-4 w-4")
+					</span>
+					<span data-expand-icon class="hidden">
+						@IconUnfoldVertical("h-4 w-4")
+					</span>
+					<span class="hidden sm:inline">{ i18n.FromContext(ctx).T("dashboard.toggle_all") }</span>
 				</button>
 			</div>
 			<div class="space-y-4">
 				for _, v := range data.Renovators {
-					@RenovatorCard(v)
+					@RenovatorCard(ctx, v)
 				}
 			</div>
 		}
 	</div>
 }
 
-templ RenovatorCard(v viewmodel.WebView) {
+templ RenovatorCard(ctx context.Context, v viewmodel.WebView) {
 	<details
 		data-cloak
 		data-component="renovator-details"
@@ -166,30 +175,30 @@ templ RenovatorCard(v viewmodel.WebView) {
 							{ v.Name }
 						</h3>
 						<p class="mt-1 max-w-2xl text-sm text-gray-500 dark:text-gray-400">
-							Namespace:
+							{ i18n.FromContext(ctx).T("common.namespace") }
 							<span class="font-medium text-gray-900 dark:text-gray-100">{ v.Namespace }</span>
 						</p>
 					</div>
 				</div>
 				<div class="flex items-center gap-2 sm:gap-6">
 					<div class="flex flex-col items-end sm:items-center justify-center gap-1">
-						<span class="text-xs text-gray-500 dark:text-gray-400">Repos</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">{ i18n.FromContext(ctx).T("common.repos") }</span>
 						@RenovatorCountBadge(v.Namespace, v.Renovator, v.GitRepoCount)
 					</div>
 					<div class="flex flex-col items-end sm:items-center justify-center gap-1">
-						<span class="text-xs text-gray-500 dark:text-gray-400">PRs</span>
-						@RenovatorPRBadge(v.Namespace, v.Renovator, v.OpenPRs, v.NeedsApproval, v.UnchangedPRs, v.HasRecentPR)
+						<span class="text-xs text-gray-500 dark:text-gray-400">{ i18n.FromContext(ctx).T("common.prs") }</span>
+						@RenovatorPRBadge(ctx, v.Namespace, v.Renovator, v.OpenPRs, v.NeedsApproval, v.UnchangedPRs, v.HasRecentPR)
 					</div>
 					<div class="flex flex-col items-end sm:items-center justify-center gap-1">
-						<span class="text-xs text-gray-500 dark:text-gray-400">Warnings</span>
-						@RenovatorWarningsBadge(v.Namespace, v.Renovator, v.WarnCount, v.ErrorCount)
+						<span class="text-xs text-gray-500 dark:text-gray-400">{ i18n.FromContext(ctx).T("common.warnings") }</span>
+						@RenovatorWarningsBadge(ctx, v.Namespace, v.Renovator, v.WarnCount, v.ErrorCount)
 					</div>
 					<div class="hidden sm:flex flex-col items-end justify-center gap-1">
-						<span class="text-xs text-gray-500 dark:text-gray-400">Runner</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">{ i18n.FromContext(ctx).T("common.runner") }</span>
 						<span class="text-sm font-medium text-gray-900 dark:text-gray-100">{ v.RunnerName }</span>
 					</div>
 					<div class="hidden sm:flex flex-col items-end justify-center gap-1">
-						<span class="text-xs text-gray-500 dark:text-gray-400">Discovery</span>
+						<span class="text-xs text-gray-500 dark:text-gray-400">{ i18n.FromContext(ctx).T("common.discovery") }</span>
 						<span class="text-sm font-medium text-gray-900 dark:text-gray-100">{ v.DiscoveryName }</span>
 					</div>
 				</div>
@@ -204,7 +213,7 @@ templ RenovatorCard(v viewmodel.WebView) {
 					data-order-key={ sanitize.SortOrderPersistKey(v.Name) }
 					data-filter-key={ sanitize.FilterPersistKey(v.Name) }
 				>
-					@RepoSortControls(v.Name)
+					@RepoSortControls(ctx, v.Name)
 					<div
 						data-ref="repoList"
 						hx-get={ sanitize.GitreposURL(v.Namespace, v.Renovator) }
@@ -220,7 +229,7 @@ templ RenovatorCard(v viewmodel.WebView) {
 	</details>
 }
 
-templ RepoSortControls(renovatorName string) {
+templ RepoSortControls(ctx context.Context, renovatorName string) {
 	<div class="flex items-center justify-end mb-4 gap-6">
 		<div data-component="repo-filter" class="relative">
 			<button
@@ -232,7 +241,7 @@ templ RepoSortControls(renovatorName string) {
 				class="inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-700 dark:text-gray-300 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
 			>
 				@IconFunnel("h-4 w-4")
-				<span class="hidden sm:inline">Filter</span>
+				<span class="hidden sm:inline">{ i18n.FromContext(ctx).T("common.filter") }</span>
 			</button>
 			<div
 				data-role="filter-menu"
@@ -243,21 +252,21 @@ templ RepoSortControls(renovatorName string) {
 				<div class="px-1">
 					<label class={ dropdownMenuItem() + " text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md" }>
 						<input type="checkbox" data-filter={ string(viewmodel.GitRepoFilterOpenPRs) } class="custom-checkbox"/>
-						<span>Open PRs</span>
+						<span>{ i18n.FromContext(ctx).T("filter.open_prs") }</span>
 					</label>
 					<label class={ dropdownMenuItem() + " text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md" }>
 						<input type="checkbox" data-filter={ string(viewmodel.GitRepoFilterWarnings) } class="custom-checkbox"/>
-						<span>Warnings</span>
+						<span>{ i18n.FromContext(ctx).T("filter.warnings") }</span>
 					</label>
 					<label class={ dropdownMenuItem() + " text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md" }>
 						<input type="checkbox" data-filter={ string(viewmodel.GitRepoFilterErrors) } class="custom-checkbox"/>
-						<span>Errors</span>
+						<span>{ i18n.FromContext(ctx).T("filter.errors") }</span>
 					</label>
 				</div>
 			</div>
 		</div>
 		<div class="flex items-center gap-2">
-			<label for={ "sort-" + renovatorName } class="sr-only">Sort repositories</label>
+			<label for={ "sort-" + renovatorName } class="sr-only">{ i18n.FromContext(ctx).T("sort.sort_repositories") }</label>
 			<div class="relative">
 				<button
 					type="button"
@@ -266,7 +275,7 @@ templ RepoSortControls(renovatorName string) {
 					aria-haspopup="listbox"
 					class="inline-flex items-center gap-1 rounded-md p-2 text-xs font-medium text-gray-700 dark:text-gray-300 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 cursor-pointer transition-colors"
 				>
-					<span data-role="sort-label">{ string(viewmodel.GitRepoFieldName) }</span>
+					<span data-role="sort-label">{ viewmodel.GitRepoFieldName.TranslatedLabel(ctx) }</span>
 					@IconChevronsUpDown("h-4 w-4 text-gray-500 dark:text-gray-400")
 				</button>
 				<div
@@ -276,18 +285,18 @@ templ RepoSortControls(renovatorName string) {
 				>
 					<div class="px-1">
 						<button type="button" data-value="name" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md" }>
-							{ string(viewmodel.GitRepoFieldName) }
+							{ viewmodel.GitRepoFieldName.TranslatedLabel(ctx) }
 						</button>
 						<button type="button" data-value="date" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md" }>
-							{ string(viewmodel.GitRepoFieldCreated) }
+							{ viewmodel.GitRepoFieldCreated.TranslatedLabel(ctx) }
 						</button>
 						<button type="button" data-value="last_update" data-role="sort-option" role="option" class={ dropdownMenuItem() + " text-gray-700 dark:text-gray-300 hover:bg-gray-100 dark:hover:bg-gray-700 rounded-md" }>
-							{ string(viewmodel.GitRepoFieldLastRun) }
+							{ viewmodel.GitRepoFieldLastRun.TranslatedLabel(ctx) }
 						</button>
 					</div>
 				</div>
 			</div>
-			@Tooltip("Sort ascending", "sort-order") {
+			@Tooltip(i18n.FromContext(ctx).T("sort.sort_ascending"), "sort-order") {
 				<button
 					type="button"
 					data-cloak

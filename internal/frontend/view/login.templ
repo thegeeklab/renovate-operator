@@ -1,16 +1,21 @@
 package view
 
-import "github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+import (
+	"context"
 
-templ Login(auth viewmodel.AuthInfo) {
+	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+)
+
+templ Login(ctx context.Context, auth viewmodel.AuthInfo) {
 	<div class="flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
 		<div class="max-w-md w-full space-y-8">
 			<div class="text-center">
 				<h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100">
-					Sign in to your account
+					{ i18n.FromContext(ctx).T("login.title") }
 				</h2>
 				<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
-					Choose a provider to continue
+					{ i18n.FromContext(ctx).T("login.subtitle") }
 				</p>
 			</div>
 			<div class="bg-white dark:bg-gray-800 shadow-sm sm:rounded-lg">
@@ -32,7 +37,7 @@ templ Login(auth viewmodel.AuthInfo) {
 										</div>
 									}
 								</div>
-								<span class="truncate">Sign in with { p.DisplayName }</span>
+								<span class="truncate">{ i18n.FromContext(ctx).T("login.sign_in_with", map[string]string{"Name": p.DisplayName}) }</span>
 							</a>
 						}
 					</div>

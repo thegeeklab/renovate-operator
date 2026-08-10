@@ -12,6 +12,8 @@ import { initProgressiveImages } from "./components/progressive.image"
 import { componentRegistry, destroyComponents } from "./lib/component.registry"
 import { getPersisted } from "./lib/storage"
 import { toast } from "./lib/toast"
+import { t } from "./lib/i18n"
+import { initTimeFormat } from "./lib/timeformat"
 
 const scrollStates = new Map<string, number>()
 let savedSearchSelection: { start: number; end: number } | null = null
@@ -32,6 +34,7 @@ function initComponents(root: ParentNode): void {
   initAvatarDropdown(root)
   initProgressiveImages(root)
   initTooltips(root)
+  initTimeFormat(root)
   removeCloak(root)
 }
 
@@ -53,7 +56,7 @@ export function initHtmxHooks(): void {
   })
 
   document.addEventListener("htmx:sendError", () => {
-    toast.error("Network error. Please check your connection.")
+    toast.error(t("toast.network_error"))
   })
 
   document.addEventListener("htmx:responseError", (e: Event) => {
@@ -62,7 +65,7 @@ export function initHtmxHooks(): void {
     if (xhr.status === 0) return // Already handled by sendError
 
     const statusText = xhr.statusText || `HTTP ${xhr.status}`
-    toast.error(`Request failed: ${statusText}`)
+    toast.error(t("toast.request_failed", { Status: statusText }))
   })
 
   document.addEventListener("htmx:beforeSwap", (e: Event) => {
@@ -262,7 +265,7 @@ export function initHtmxHooks(): void {
         // source when its element is removed, so filtering by 3s avoids most
         // spurious toasts on rapid teardown after a successful connect.
         if (connectedAt && Date.now() - connectedAt > 3000) {
-          toast.error("Live updates disconnected")
+          toast.error(t("toast.live_updates_disconnected"))
           connectedAt = null
         }
       })

@@ -1,7 +1,11 @@
 package view
 
-import "github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+import (
+	"context"
 
-templ statusBadge(status viewmodel.Status) {
-	<span class={ status.BadgeClass() }>{ status.Label() }</span>
+	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
+)
+
+templ statusBadge(ctx context.Context, status viewmodel.Status) {
+	<span class={ status.BadgeClass() }>{ status.TranslatedLabel(ctx) }</span>
 }

@@ -3,6 +3,7 @@ import xCircleSvg from "lucide-static/icons/circle-x.svg?raw"
 import exclamationTriangleSvg from "lucide-static/icons/triangle-alert.svg?raw"
 import informationCircleSvg from "lucide-static/icons/info.svg?raw"
 import xMarkSvg from "lucide-static/icons/x.svg?raw"
+import { t } from "./i18n"
 
 const TOAST_DURATION = 5000
 const TOAST_LIMIT = 5
@@ -189,7 +190,7 @@ function createToast(message: string, type: "success" | "error" | "info" | "warn
     <div class="w-0 flex-1 flex flex-col">
       <p class="text-sm font-medium text-gray-900 dark:text-gray-100 break-words leading-snug">${escapeHtml(message)}</p>
     </div>
-    <button class="shrink-0 p-0 cursor-pointer text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" aria-label="Dismiss">
+    <button class="shrink-0 p-0 cursor-pointer text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 transition-colors" aria-label="${t("common.dismiss")}">
       <span class="block w-4 h-4">${xMarkSvg}</span>
     </button>
     <div class="absolute inset-x-0 bottom-0 h-1 overflow-hidden">

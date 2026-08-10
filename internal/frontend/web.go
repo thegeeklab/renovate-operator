@@ -15,6 +15,7 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/client"
 
 	"github.com/thegeeklab/renovate-operator/internal/frontend/auth"
+	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/view"
 	"github.com/thegeeklab/renovate-operator/internal/frontend/viewmodel"
 	"github.com/thegeeklab/renovate-operator/internal/logreader"
@@ -88,7 +89,9 @@ func (h *WebHandler) render(w http.ResponseWriter, r *http.Request, title string
 	if isHxRequest && !isHxBoosted {
 		renderErr = component.Render(r.Context(), w)
 	} else {
-		renderErr = view.Layout(title, h.assets.Styles, h.assets.Scripts, authInfo, component).Render(r.Context(), w)
+		renderErr = view.Layout(
+			r.Context(), title, h.assets.Styles, h.assets.Scripts, authInfo, component,
+		).Render(r.Context(), w)
 	}
 
 	if renderErr != nil {
@@ -147,7 +150,7 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 		repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
-		h.render(w, r, "Search", view.RenovatorList(viewmodel.DashboardData{
+		h.render(w, r, "Search", view.RenovatorList(r.Context(), viewmodel.DashboardData{
 			SearchQuery:   searchQuery,
 			SearchResults: repos,
 		}))
@@ -165,7 +168,7 @@ func (h *WebHandler) HandleDashboard(w http.ResponseWriter, r *http.Request) {
 
 	summaries := h.buildRenovatorSummaries(ctx, renovators, opts)
 
-	h.render(w, r, "Dashboard", view.RenovatorList(viewmodel.DashboardData{
+	h.render(w, r, "Dashboard", view.RenovatorList(r.Context(), viewmodel.DashboardData{
 		SearchQuery: searchQuery,
 		Renovators:  summaries,
 	}))
@@ -295,7 +298,7 @@ func (h *WebHandler) HandleLogin(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	h.render(w, r, "Sign in", view.Login(h.buildAuthInfo(r)))
+	h.render(w, r, "Sign in", view.Login(r.Context(), h.buildAuthInfo(r)))
 }
 
 func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Request) {
@@ -345,7 +348,7 @@ func (h *WebHandler) HandleGitReposPartial(w http.ResponseWriter, r *http.Reques
 	repos = applyGitRepoFilters(repos, opts)
 
 	w.Header().Set("Content-Type", "text/html")
-	_ = view.GitRepoList(repos).Render(r.Context(), w)
+	_ = view.GitRepoList(r.Context(), repos).Render(r.Context(), w)
 }
 
 func (h *WebHandler) HandleRenovatorCount(w http.ResponseWriter, r *http.Request) {
@@ -369,6 +372,7 @@ func (h *WebHandler) HandleRenovatorCount(w http.ResponseWriter, r *http.Request
 	repos = h.dataFactory.ApplyAccessFilter(ctx, repos)
 
 	w.Header().Set("Content-Type", "text/html")
+	//nolint:contextcheck // RenovatorCountBadge does not use translations, no ctx needed
 	_ = view.RenovatorCountBadge(opts.Namespace, opts.Renovator, len(repos)).Render(r.Context(), w)
 }
 
@@ -396,6 +400,7 @@ func (h *WebHandler) HandleRenovatorPRs(w http.ResponseWriter, r *http.Request) 
 	w.Header().Set("Content-Type", "text/html")
 	w.Header().Set("Cache-Control", "private, max-age=10")
 	_ = view.RenovatorPRBadge(
+		r.Context(),
 		opts.Namespace, opts.Renovator,
 		activity.Open, activity.NeedsApproval, activity.Unchanged, activity.HasRecentData,
 	).Render(r.Context(), w)
@@ -425,6 +430,7 @@ func (h *WebHandler) HandleRenovatorWarnings(w http.ResponseWriter, r *http.Requ
 	w.Header().Set("Content-Type", "text/html")
 	w.Header().Set("Cache-Control", "private, max-age=10")
 	_ = view.RenovatorWarningsBadge(
+		r.Context(),
 		opts.Namespace, opts.Renovator,
 		activity.WarnCount, activity.ErrorCount,
 	).Render(r.Context(), w)
@@ -467,7 +473,7 @@ func (h *WebHandler) HandleGitRepoView(w http.ResponseWriter, r *http.Request) {
 		Jobs: jobs,
 	}
 
-	h.render(w, r, "Repository · "+repoInfo.FullName, view.GitRepoView(data))
+	h.render(w, r, "Repository · "+repoInfo.FullName, view.GitRepoView(r.Context(), data))
 }
 
 // getJobLogStream fetches the log stream for a job. When the job is still
@@ -504,20 +510,19 @@ func (h *WebHandler) buildJobLogData(
 		RepoURL:   repoURL,
 	}
 
+	tr := i18n.FromContext(ctx)
+
 	stream, err := h.getJobLogStream(ctx, namespace, job, isRunning, tailLines)
-
-	const msgInitializing = "Waiting for pods to initialize..."
-
 	if err != nil {
 		if errors.Is(err, errPodInitializing) {
-			data.Message = msgInitializing
+			data.Message = tr.T("log.waiting_for_pods")
 
 			return data
 		}
 
 		frontendLog.Error(err, "Failed to fetch logs", "namespace", namespace, "job", job)
 
-		data.Message = "Failed to fetch logs for this job."
+		data.Message = tr.T("log.failed_to_fetch_logs")
 
 		return data
 	}
@@ -526,7 +531,7 @@ func (h *WebHandler) buildJobLogData(
 
 	content, truncated, ioErr := readJobLogStream(stream, tailLines)
 	if ioErr != nil {
-		data.Message = "Failed to read log stream from pod."
+		data.Message = tr.T("log.failed_to_read_stream")
 
 		return data
 	}
@@ -536,7 +541,7 @@ func (h *WebHandler) buildJobLogData(
 	data.DisplayTailLines = tailLines
 
 	if len(data.Content) == 0 && isRunning {
-		data.Message = msgInitializing
+		data.Message = tr.T("log.waiting_for_pods")
 	}
 
 	parsed := parser.ParseRenovateLogs(data.Content)
@@ -571,7 +576,7 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/html")
-	_ = view.JobLogs(data).Render(r.Context(), w)
+	_ = view.JobLogs(r.Context(), data).Render(r.Context(), w)
 }
 
 func (h *WebHandler) HandleJobLogsDownload(w http.ResponseWriter, r *http.Request) {

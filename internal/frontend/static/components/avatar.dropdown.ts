@@ -1,5 +1,6 @@
 import { Dropdown } from "../lib/dropdown"
 import { registerComponent } from "../lib/component.registry"
+import { setLocale } from "../lib/locale"
 
 export class AvatarDropdown extends Dropdown {
   constructor(element: HTMLElement) {
@@ -9,6 +10,18 @@ export class AvatarDropdown extends Dropdown {
       placement: "bottom-end",
       offset: 8
     })
+
+    this.bindLocale()
+  }
+
+  private bindLocale(): void {
+    this.menu
+      .querySelectorAll<HTMLSelectElement>('[data-action="change-locale"]')
+      .forEach((select) => {
+        select.addEventListener("change", () => {
+          setLocale(select.value)
+        })
+      })
   }
 }
 
