@@ -19,14 +19,14 @@ tests:
 
   - it: should not render ReferenceGrant when no existing gateway is referenced
     values:
-      - ./fixtures/gateway-basic.yaml
+      - ./fixtures/frontend/gateway-basic.yaml
     asserts:
       - hasDocuments:
           count: 0
 
   - it: should create ReferenceGrant when attaching to existing Gateway in different namespace
     values:
-      - ./fixtures/gateway-existing-cross-ns.yaml
+      - ./fixtures/frontend/gateway-existing-cross-ns.yaml
     asserts:
       - hasDocuments:
           count: 1

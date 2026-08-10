@@ -57,7 +57,7 @@ tests:
 
   - it: should propagate service annotations and labels
     values:
-      - ./fixtures/service-annotations.yaml
+      - ./fixtures/frontend/service-annotations.yaml
     asserts:
       - equal:
           path: metadata.annotations["service.beta.openshift.io/serving-cert-secret-name"]

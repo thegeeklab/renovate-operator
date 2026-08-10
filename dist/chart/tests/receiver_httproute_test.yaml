@@ -10,7 +10,7 @@ tests:
 
   - it: should render an HTTPRoute with default paths
     values:
-      - ./fixtures/receiver-gateway-basic.yaml
+      - ./fixtures/receiver/gateway-basic.yaml
     asserts:
       - hasDocuments:
           count: 1
@@ -31,7 +31,7 @@ tests:
 
   - it: should set sectionName from first listener
     values:
-      - ./fixtures/receiver-gateway-listeners.yaml
+      - ./fixtures/receiver/gateway-listeners.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].sectionName
@@ -39,7 +39,7 @@ tests:
 
   - it: should attach HTTPRoute to existing Gateway
     values:
-      - ./fixtures/receiver-gateway-existing.yaml
+      - ./fixtures/receiver/gateway-existing.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].name
@@ -47,7 +47,7 @@ tests:
 
   - it: should attach HTTPRoute to existing Gateway in different namespace
     values:
-      - ./fixtures/receiver-gateway-existing-cross-ns.yaml
+      - ./fixtures/receiver/gateway-existing-cross-ns.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].name

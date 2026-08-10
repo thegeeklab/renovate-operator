@@ -10,7 +10,7 @@ tests:
 
   - it: should render an HTTPRoute with default paths
     values:
-      - ./fixtures/gateway-basic.yaml
+      - ./fixtures/frontend/gateway-basic.yaml
     asserts:
       - hasDocuments:
           count: 1
@@ -34,7 +34,7 @@ tests:
 
   - it: should render an HTTPRoute with custom hostnames and shared paths
     values:
-      - ./fixtures/gateway-hosts.yaml
+      - ./fixtures/frontend/gateway-hosts.yaml
     asserts:
       - equal:
           path: spec.hostnames[0]
@@ -66,7 +66,7 @@ tests:
 
   - it: should set sectionName from first listener
     values:
-      - ./fixtures/gateway-listeners.yaml
+      - ./fixtures/frontend/gateway-listeners.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].sectionName
@@ -74,7 +74,7 @@ tests:
 
   - it: should set sectionName from HTTPS listener
     values:
-      - ./fixtures/gateway-tls.yaml
+      - ./fixtures/frontend/gateway-tls.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].sectionName
@@ -85,7 +85,7 @@ tests:
 
   - it: should attach HTTPRoute to existing Gateway
     values:
-      - ./fixtures/gateway-existing.yaml
+      - ./fixtures/frontend/gateway-existing.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].name
@@ -96,7 +96,7 @@ tests:
 
   - it: should attach HTTPRoute to existing Gateway in different namespace
     values:
-      - ./fixtures/gateway-existing-cross-ns.yaml
+      - ./fixtures/frontend/gateway-existing-cross-ns.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].name
@@ -107,7 +107,7 @@ tests:
 
   - it: should propagate annotations to HTTPRoute
     values:
-      - ./fixtures/gateway-annotations.yaml
+      - ./fixtures/frontend/gateway-annotations.yaml
     asserts:
       - equal:
           path: metadata.annotations["external-dns.alpha.kubernetes.io/hostname"]
@@ -115,7 +115,7 @@ tests:
 
   - it: should propagate labels to HTTPRoute
     values:
-      - ./fixtures/gateway-labels.yaml
+      - ./fixtures/frontend/gateway-labels.yaml
     asserts:
       - equal:
           path: metadata.labels["app.kubernetes.io/part-of"]
@@ -126,7 +126,7 @@ tests:
 
   - it: should add filters to HTTPRoute rules
     values:
-      - ./fixtures/gateway-filters.yaml
+      - ./fixtures/frontend/gateway-filters.yaml
     asserts:
       - equal:
           path: spec.rules[0].filters[0].type
@@ -137,7 +137,7 @@ tests:
 
   - it: should add timeouts to HTTPRoute rules
     values:
-      - ./fixtures/gateway-timeouts.yaml
+      - ./fixtures/frontend/gateway-timeouts.yaml
     asserts:
       - equal:
           path: spec.rules[0].timeouts.request

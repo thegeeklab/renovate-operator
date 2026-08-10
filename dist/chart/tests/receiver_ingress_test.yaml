@@ -10,7 +10,7 @@ tests:
 
   - it: should render a basic ingress
     values:
-      - ./fixtures/receiver-ingress-basic.yaml
+      - ./fixtures/receiver/ingress-basic.yaml
     asserts:
       - isKind:
           of: Ingress
@@ -37,7 +37,7 @@ tests:
 
   - it: should render ingress annotations
     values:
-      - ./fixtures/receiver-ingress-annotations.yaml
+      - ./fixtures/receiver/ingress-annotations.yaml
     asserts:
       - equal:
           path: metadata.annotations["nginx.ingress.kubernetes.io/rewrite-target"]
@@ -45,7 +45,7 @@ tests:
 
   - it: should render TLS configuration
     values:
-      - ./fixtures/receiver-ingress-tls.yaml
+      - ./fixtures/receiver/ingress-tls.yaml
     asserts:
       - equal:
           path: spec.tls[0].secretName

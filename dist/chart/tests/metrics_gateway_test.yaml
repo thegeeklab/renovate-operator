@@ -10,7 +10,7 @@ tests:
 
   - it: should render a Gateway with default listener
     values:
-      - ./fixtures/metrics-gateway-basic.yaml
+      - ./fixtures/metrics/gateway-basic.yaml
     asserts:
       - hasDocuments:
           count: 1
@@ -31,7 +31,7 @@ tests:
 
   - it: should render Gateway with custom listeners including TLS
     values:
-      - ./fixtures/metrics-gateway-listeners.yaml
+      - ./fixtures/metrics/gateway-listeners.yaml
     asserts:
       - equal:
           path: spec.listeners[1].name
@@ -54,7 +54,7 @@ tests:
 
   - it: should render gateway with HTTPS TLS listener
     values:
-      - ./fixtures/metrics-gateway-tls.yaml
+      - ./fixtures/metrics/gateway-tls.yaml
     asserts:
       - equal:
           path: spec.listeners[0].name
@@ -74,7 +74,7 @@ tests:
 
   - it: should propagate annotations to Gateway
     values:
-      - ./fixtures/metrics-gateway-annotations.yaml
+      - ./fixtures/metrics/gateway-annotations.yaml
     asserts:
       - equal:
           path: metadata.annotations["external-dns.alpha.kubernetes.io/hostname"]
@@ -82,7 +82,7 @@ tests:
 
   - it: should propagate labels to Gateway
     values:
-      - ./fixtures/metrics-gateway-labels.yaml
+      - ./fixtures/metrics/gateway-labels.yaml
     asserts:
       - equal:
           path: metadata.labels["app.kubernetes.io/part-of"]
@@ -93,7 +93,7 @@ tests:
 
   - it: should add addresses to Gateway spec
     values:
-      - ./fixtures/metrics-gateway-addresses.yaml
+      - ./fixtures/metrics/gateway-addresses.yaml
     asserts:
       - equal:
           path: spec.addresses[0].type
@@ -104,7 +104,7 @@ tests:
 
   - it: should skip Gateway creation when using existing gateway
     values:
-      - ./fixtures/metrics-gateway-existing-cross-ns.yaml
+      - ./fixtures/metrics/gateway-existing-cross-ns.yaml
     asserts:
       - hasDocuments:
           count: 0

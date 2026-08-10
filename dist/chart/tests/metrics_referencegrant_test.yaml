@@ -20,14 +20,14 @@ tests:
 
   - it: should not render ReferenceGrant when no existing gateway is referenced
     values:
-      - ./fixtures/metrics-gateway-basic.yaml
+      - ./fixtures/metrics/gateway-basic.yaml
     asserts:
       - hasDocuments:
           count: 0
 
   - it: should create ReferenceGrant when attaching to existing Gateway in different namespace
     values:
-      - ./fixtures/metrics-gateway-existing-cross-ns.yaml
+      - ./fixtures/metrics/gateway-existing-cross-ns.yaml
     asserts:
       - hasDocuments:
           count: 1
@@ -73,7 +73,7 @@ tests:
 
   - it: should not render ReferenceGrant when metrics is disabled
     values:
-      - ./fixtures/metrics-gateway-existing-cross-ns.yaml
+      - ./fixtures/metrics/gateway-existing-cross-ns.yaml
     set:
       metrics.enabled: false
       metrics.gateway.enabled: true
