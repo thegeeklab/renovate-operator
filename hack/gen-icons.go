@@ -43,6 +43,8 @@ var icons = []iconDef{
 	{fileName: "sun"},
 	{fileName: "moon"},
 	{fileName: "monitor"},
+	{fileName: "fold-vertical"},
+	{fileName: "unfold-vertical"},
 }
 
 var (
