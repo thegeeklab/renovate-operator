@@ -60,8 +60,8 @@ func SupportedLocales() []string {
 
 // ClientJSON returns the JSON-encoded translations for the given locale,
 // suitable for injection into a <script> tag for client-side use.
-// It transforms the go-i18n message format into nested JSON matched on dot-separated
-// message IDs, producing a structure like {"common": {"sign_out": "Sign out"}}.
+// It transforms the flat dot-separated key format into nested JSON,
+// producing a structure like {"common": {"sign_out": "Sign out"}}.
 // go-i18n's json.Marshal escapes <, >, & to Unicode sequences by default,
 // which prevents </script> breakouts.
 func ClientJSON(bundle *i18n.Bundle, locale string) string {
@@ -70,19 +70,15 @@ func ClientJSON(bundle *i18n.Bundle, locale string) string {
 		data, _ = localeFS.ReadFile("locales/" + defaultLanguage + ".json")
 	}
 
-	var messages []struct {
-		ID          string          `json:"id"`
-		Translation json.RawMessage `json:"translation"`
-	}
-
-	if err := json.Unmarshal(data, &messages); err != nil {
+	var flat map[string]json.RawMessage
+	if err := json.Unmarshal(data, &flat); err != nil {
 		return "{}"
 	}
 
 	nested := make(map[string]any)
 
-	for _, msg := range messages {
-		keys := strings.Split(msg.ID, ".")
+	for key, raw := range flat {
+		keys := strings.Split(key, ".")
 		parent := nested
 
 		for i := 0; i < len(keys)-1; i++ {
@@ -102,8 +98,8 @@ func ClientJSON(bundle *i18n.Bundle, locale string) string {
 		}
 
 		var val any
-		if err := json.Unmarshal(msg.Translation, &val); err != nil {
-			val = string(msg.Translation)
+		if err := json.Unmarshal(raw, &val); err != nil {
+			val = string(raw)
 		}
 
 		parent[keys[len(keys)-1]] = val
