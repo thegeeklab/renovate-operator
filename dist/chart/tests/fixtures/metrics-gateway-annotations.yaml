@@ -1,0 +1,6 @@
+metrics:
+  gateway:
+    enabled: true
+    className: nginx
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: metrics.example.com

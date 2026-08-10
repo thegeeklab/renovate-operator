@@ -1,0 +1,26 @@
+{{- if and .Values.manager.enabled .Values.metrics.enabled .Values.metrics.gateway.enabled }}
+{{- $component := "metrics" }}
+{{- $gw := .Values.metrics.gateway }}
+{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" "metrics-service" "context" $) }}
+{{- $gwName := default (printf "%s-gateway" $fullname) $gw.gatewayName }}
+{{- $gwNamespace := default .Release.Namespace $gw.gatewayNamespace }}
+{{- if not $gw.gatewayName }}
+apiVersion: gateway.networking.k8s.io/v1
+kind: Gateway
+metadata:
+  name: {{ $gwName }}
+  namespace: {{ $gwNamespace }}
+  labels:
+    {{- include "renovate-operator.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+    {{- with $gw.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+  {{- with $gw.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- include "renovate-operator.gatewaySpec" (dict "gw" $gw "component" $component) | nindent 2 }}
+{{- end }}
+{{- end }}

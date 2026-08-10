@@ -1,0 +1,93 @@
+---
+suite: test metrics referencegrant
+templates:
+  - templates/extras/metrics-referencegrant.yaml
+tests:
+  - it: should not render ReferenceGrant by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render ReferenceGrant when gateway is in same namespace
+    set:
+      metrics.enabled: true
+      metrics.gateway.enabled: true
+      metrics.gateway.gatewayName: my-gateway
+      metrics.gateway.gatewayNamespace: NAMESPACE
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render ReferenceGrant when no existing gateway is referenced
+    values:
+      - ./fixtures/metrics-gateway-basic.yaml
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should create ReferenceGrant when attaching to existing Gateway in different namespace
+    values:
+      - ./fixtures/metrics-gateway-existing-cross-ns.yaml
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ReferenceGrant
+      - equal:
+          path: metadata.name
+          value: RELEASE-NAME-renovate-operator-metrics-service-gateway
+      - equal:
+          path: metadata.namespace
+          value: gateway-system
+      - equal:
+          path: spec.from[0].group
+          value: gateway.networking.k8s.io
+      - equal:
+          path: spec.from[0].kind
+          value: HTTPRoute
+      - equal:
+          path: spec.from[0].namespace
+          value: NAMESPACE
+      - equal:
+          path: spec.to[0].group
+          value: gateway.networking.k8s.io
+      - equal:
+          path: spec.to[0].kind
+          value: Gateway
+      - equal:
+          path: spec.to[0].name
+          value: my-shared-gateway
+
+  - it: should propagate labels to ReferenceGrant
+    set:
+      metrics.enabled: true
+      metrics.gateway.enabled: true
+      metrics.gateway.gatewayName: my-gateway
+      metrics.gateway.gatewayNamespace: gateway-system
+      metrics.gateway.labels:
+        app.kubernetes.io/part-of: renovate-platform
+    asserts:
+      - equal:
+          path: metadata.labels["app.kubernetes.io/part-of"]
+          value: renovate-platform
+
+  - it: should not render ReferenceGrant when metrics is disabled
+    values:
+      - ./fixtures/metrics-gateway-existing-cross-ns.yaml
+    set:
+      metrics.enabled: false
+      metrics.gateway.enabled: true
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render ReferenceGrant when manager is disabled
+    set:
+      manager.enabled: false
+      metrics.enabled: true
+      metrics.gateway.enabled: true
+      metrics.gateway.gatewayName: my-gateway
+      metrics.gateway.gatewayNamespace: gateway-system
+    asserts:
+      - hasDocuments:
+          count: 0

@@ -1,0 +1,18 @@
+{{- if and .Values.manager.enabled .Values.metrics.enabled .Values.metrics.ingress.enabled }}
+{{- $component := "metrics" }}
+{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" "metrics-service" "context" $) }}
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: {{ $fullname }}
+  namespace: {{ .Release.Namespace }}
+  labels:
+    {{- include "renovate-operator.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+  {{- with .Values.metrics.ingress.annotations }}
+  annotations:
+    {{- toYaml . | nindent 4 }}
+  {{- end }}
+spec:
+  {{- include "renovate-operator.ingressSpec" (dict "ingress" .Values.metrics.ingress "svcPort" (int .Values.metrics.port) "fullname" $fullname) | nindent 2 }}
+{{- end }}

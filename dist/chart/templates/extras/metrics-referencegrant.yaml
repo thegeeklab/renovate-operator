@@ -1,0 +1,30 @@
+{{- if and .Values.manager.enabled .Values.metrics.enabled .Values.metrics.gateway.enabled }}
+{{- $component := "metrics" }}
+{{- $gw := .Values.metrics.gateway }}
+{{- if and $gw.gatewayName $gw.gatewayNamespace }}
+{{- $gwNamespace := $gw.gatewayNamespace }}
+{{- if ne $gwNamespace .Release.Namespace }}
+{{- $fullname := include "renovate-operator.resourceName" (dict "suffix" "metrics-service" "context" $) }}
+apiVersion: gateway.networking.k8s.io/v1beta1
+kind: ReferenceGrant
+metadata:
+  name: {{ $fullname }}-gateway
+  namespace: {{ $gwNamespace }}
+  labels:
+    {{- include "renovate-operator.labels" $ | nindent 4 }}
+    app.kubernetes.io/component: {{ $component }}
+    {{- with $gw.labels }}
+    {{- toYaml . | nindent 4 }}
+    {{- end }}
+spec:
+  from:
+    - group: gateway.networking.k8s.io
+      kind: HTTPRoute
+      namespace: {{ .Release.Namespace }}
+  to:
+    - group: gateway.networking.k8s.io
+      kind: Gateway
+      name: {{ $gw.gatewayName }}
+{{- end }}
+{{- end }}
+{{- end }}

@@ -1,0 +1,11 @@
+metrics:
+  ingress:
+    enabled: true
+    hosts:
+      - host: secure-metrics.example.com
+        paths:
+          - path: /
+    tls:
+      - secretName: metrics-tls
+        hosts:
+          - secure-metrics.example.com

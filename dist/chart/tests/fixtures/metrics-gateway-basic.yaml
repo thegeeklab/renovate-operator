@@ -1,0 +1,4 @@
+metrics:
+  gateway:
+    enabled: true
+    className: nginx
