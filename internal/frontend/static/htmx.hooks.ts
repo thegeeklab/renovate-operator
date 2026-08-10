@@ -5,6 +5,7 @@ import { initLogSummaries } from "./components/log.summary"
 import { initLogLevelFilters } from "./components/log.level.filter"
 import { initLogSearches } from "./components/log.search"
 import { initRenovatorDetails } from "./components/renovator.details"
+import { initCollapseToggles } from "./components/collapse.toggle"
 import { initRepoSorts, initRepoFilters } from "./components/repo.sort"
 import { initAvatarDropdown } from "./components/avatar.dropdown"
 import { initProgressiveImages } from "./components/progressive.image"
@@ -25,6 +26,7 @@ function initComponents(root: ParentNode): void {
   initLogLevelFilters(root)
   initLogSearches(root)
   initRenovatorDetails(root)
+  initCollapseToggles(root)
   initRepoSorts(root)
   initRepoFilters(root)
   initAvatarDropdown(root)

@@ -68,56 +68,79 @@ templ RenovatorWarningsBadge(namespace, renovatorUID string, warnCount, errorCou
 	}
 }
 
-templ RenovatorList(data viewmodel.DashboardData) {
-	<div class="bg-white dark:bg-gray-800 shadow-sm mb-6 shrink-0">
-		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center justify-between">
-			<h2 class="hidden sm:block text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100" data-focus-target>Dashboard</h2>
-			<div class="relative w-full sm:w-64">
-				<input
-					type="search"
-					name="search"
-					value={ data.SearchQuery }
-					autocomplete="off"
-					placeholder="Search all repositories..."
-					aria-label="Search all repositories"
-					hx-get="/"
-					hx-push-url="true"
-					hx-target="#dashboard-content"
-					hx-swap="innerHTML"
-					hx-trigger="input changed delay:500ms, search"
-					class="block w-full rounded-md border-0 py-2 pl-3 pr-16 text-sm text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
-				/>
-				if data.SearchQuery == "" {
-					<div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2 pointer-events-none">
-						@Kbd("/")
-						@IconSearch("h-4 w-4 text-gray-400 dark:text-gray-500")
-					</div>
-				} else {
-					<button
-						type="button"
-						hx-get="/"
-						hx-push-url="true"
-						hx-target="#dashboard-content"
-						hx-swap="innerHTML"
-						aria-label="Clear search"
-						class="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
-					>
-						@IconX("h-4 w-4")
-					</button>
-				}
+templ searchBar(data viewmodel.DashboardData) {
+	<div class="relative flex-1 min-w-0">
+		<input
+			type="search"
+			name="search"
+			value={ data.SearchQuery }
+			autocomplete="off"
+			placeholder="Search all repositories..."
+			aria-label="Search all repositories"
+			hx-get="/"
+			hx-push-url="true"
+			hx-target="#dashboard-content"
+			hx-swap="innerHTML"
+			hx-trigger="input changed delay:500ms, search"
+			class="block w-full rounded-md border-0 py-2 pl-3 pr-16 text-sm text-gray-900 dark:text-gray-100 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 placeholder:text-gray-400 dark:placeholder:text-gray-500 bg-white dark:bg-gray-900"
+		/>
+		if data.SearchQuery == "" {
+			<div class="absolute inset-y-0 right-0 flex items-center gap-1 pr-2 pointer-events-none">
+				@Kbd("/")
+				@IconSearch("h-4 w-4 text-gray-400 dark:text-gray-500")
 			</div>
+		} else {
+			<button
+				type="button"
+				hx-get="/"
+				hx-push-url="true"
+				hx-target="#dashboard-content"
+				hx-swap="innerHTML"
+				aria-label="Clear search"
+				class="absolute inset-y-0 right-0 flex items-center pr-2 text-gray-400 dark:text-gray-500 hover:text-gray-600 dark:hover:text-gray-300 cursor-pointer"
+			>
+				@IconX("h-4 w-4")
+			</button>
+		}
+	</div>
+}
+
+templ RenovatorList(data viewmodel.DashboardData) {
+	<div class="bg-white dark:bg-gray-800 shadow-sm shrink-0">
+		<div class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 h-20 flex items-center">
+			<h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100" data-focus-target>Dashboard</h2>
 		</div>
 	</div>
-	<div data-kb-nav-scope="dashboard" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 pb-12">
+	<div data-kb-nav-scope="dashboard" class="mx-auto max-w-7xl px-4 sm:px-6 lg:px-8 py-6">
 		if data.SearchQuery != "" {
+			<div class="flex items-center gap-6 mb-6">
+				@searchBar(data)
+			</div>
 			if len(data.SearchResults) > 0 {
 				@GitRepoList(data.SearchResults)
 			} else {
 				@EmptyState("No Results Found", "No repositories match your search query.")
 			}
 		} else if len(data.Renovators) == 0 {
+			<div class="flex items-center gap-6 mb-6">
+				@searchBar(data)
+			</div>
 			@EmptyState("No Renovators Found", "Get started by creating a Renovator custom resource.")
 		} else {
+			<div class="flex items-center gap-6 mb-6">
+				@searchBar(data)
+				<button
+					type="button"
+					data-component="collapse-toggle"
+					class="inline-flex items-center gap-1.5 rounded-md px-3 py-2 text-sm font-medium text-gray-700 dark:text-gray-300 ring-1 ring-inset ring-gray-300 dark:ring-gray-600 bg-white dark:bg-gray-800 hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors cursor-pointer shrink-0"
+				>
+					<span data-collapse-icon>@IconFoldVertical("h-4 w-4")
+</span>
+					<span data-expand-icon class="hidden">@IconUnfoldVertical("h-4 w-4")
+</span>
+					<span class="hidden sm:inline">Toggle All</span>
+				</button>
+			</div>
 			<div class="space-y-4">
 				for _, v := range data.Renovators {
 					@RenovatorCard(v)
