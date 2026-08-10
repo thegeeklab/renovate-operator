@@ -65,7 +65,7 @@ tests:
 
   - it: should propagate service annotations
     values:
-      - ./fixtures/receiver-service-annotations.yaml
+      - ./fixtures/receiver/service-annotations.yaml
     asserts:
       - equal:
           path: metadata.annotations["nginx.ingress.kubernetes.io/backend-protocol"]

@@ -1,0 +1,9 @@
+metrics:
+  ingress:
+    enabled: true
+    className: nginx
+    hosts:
+      - host: renovate-metrics.example.com
+        paths:
+          - path: /
+            pathType: Prefix

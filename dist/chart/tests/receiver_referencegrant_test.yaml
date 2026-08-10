@@ -20,7 +20,7 @@ tests:
 
   - it: should create ReferenceGrant when attaching to existing Gateway in different namespace
     values:
-      - ./fixtures/receiver-gateway-existing-cross-ns.yaml
+      - ./fixtures/receiver/gateway-existing-cross-ns.yaml
     asserts:
       - hasDocuments:
           count: 1
@@ -47,7 +47,7 @@ tests:
 
   - it: should not render ReferenceGrant when receiver is disabled
     values:
-      - ./fixtures/receiver-gateway-existing-cross-ns.yaml
+      - ./fixtures/receiver/gateway-existing-cross-ns.yaml
     set:
       receiver.enabled: false
       receiver.gateway.enabled: true

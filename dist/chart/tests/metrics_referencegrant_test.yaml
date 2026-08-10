@@ -1,7 +1,7 @@
 ---
-suite: test frontend referencegrant
+suite: test metrics referencegrant
 templates:
-  - templates/extras/frontend-referencegrant.yaml
+  - templates/extras/metrics-referencegrant.yaml
 tests:
   - it: should not render ReferenceGrant by default
     asserts:
@@ -10,23 +10,24 @@ tests:
 
   - it: should not render ReferenceGrant when gateway is in same namespace
     set:
-      frontend.gateway.enabled: true
-      frontend.gateway.gatewayName: my-gateway
-      frontend.gateway.gatewayNamespace: NAMESPACE
+      metrics.enabled: true
+      metrics.gateway.enabled: true
+      metrics.gateway.gatewayName: my-gateway
+      metrics.gateway.gatewayNamespace: NAMESPACE
     asserts:
       - hasDocuments:
           count: 0
 
   - it: should not render ReferenceGrant when no existing gateway is referenced
     values:
-      - ./fixtures/frontend/gateway-basic.yaml
+      - ./fixtures/metrics/gateway-basic.yaml
     asserts:
       - hasDocuments:
           count: 0
 
   - it: should create ReferenceGrant when attaching to existing Gateway in different namespace
     values:
-      - ./fixtures/frontend/gateway-existing-cross-ns.yaml
+      - ./fixtures/metrics/gateway-existing-cross-ns.yaml
     asserts:
       - hasDocuments:
           count: 1
@@ -34,7 +35,7 @@ tests:
           of: ReferenceGrant
       - equal:
           path: metadata.name
-          value: RELEASE-NAME-renovate-operator-frontend-gateway
+          value: RELEASE-NAME-renovate-operator-metrics-service-gateway
       - equal:
           path: metadata.namespace
           value: gateway-system
@@ -59,29 +60,34 @@ tests:
 
   - it: should propagate labels to ReferenceGrant
     set:
-      frontend.gateway.enabled: true
-      frontend.gateway.gatewayName: my-gateway
-      frontend.gateway.gatewayNamespace: gateway-system
-      frontend.gateway.labels:
+      metrics.enabled: true
+      metrics.gateway.enabled: true
+      metrics.gateway.gatewayName: my-gateway
+      metrics.gateway.gatewayNamespace: gateway-system
+      metrics.gateway.labels:
         app.kubernetes.io/part-of: renovate-platform
     asserts:
       - equal:
           path: metadata.labels["app.kubernetes.io/part-of"]
           value: renovate-platform
 
-  - it: should not render ReferenceGrant when manager is disabled
+  - it: should not render ReferenceGrant when metrics is disabled
     values:
-      - ./fixtures/manager-disabled.yaml
+      - ./fixtures/metrics/gateway-existing-cross-ns.yaml
+    set:
+      metrics.enabled: false
+      metrics.gateway.enabled: true
     asserts:
       - hasDocuments:
           count: 0
 
-  - it: should not render ReferenceGrant when frontend is disabled
+  - it: should not render ReferenceGrant when manager is disabled
     set:
-      frontend.enabled: false
-      frontend.gateway.enabled: true
-      frontend.gateway.gatewayName: my-gateway
-      frontend.gateway.gatewayNamespace: gateway-system
+      manager.enabled: false
+      metrics.enabled: true
+      metrics.gateway.enabled: true
+      metrics.gateway.gatewayName: my-gateway
+      metrics.gateway.gatewayNamespace: gateway-system
     asserts:
       - hasDocuments:
           count: 0

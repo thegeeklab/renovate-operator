@@ -10,7 +10,7 @@ tests:
 
   - it: should render a basic ingress with a single host and path
     values:
-      - ./fixtures/ingress-basic.yaml
+      - ./fixtures/frontend/ingress-basic.yaml
     asserts:
       - isKind:
           of: Ingress
@@ -40,7 +40,7 @@ tests:
 
   - it: should render multiple hosts and paths
     values:
-      - ./fixtures/ingress-multihost.yaml
+      - ./fixtures/frontend/ingress-multihost.yaml
     asserts:
       - equal:
           path: spec.rules[0].host
@@ -63,7 +63,7 @@ tests:
 
   - it: should default pathType to Prefix when omitted
     values:
-      - ./fixtures/ingress-defaultpath.yaml
+      - ./fixtures/frontend/ingress-defaultpath.yaml
     asserts:
       - equal:
           path: spec.rules[0].http.paths[0].pathType
@@ -71,7 +71,7 @@ tests:
 
   - it: should render a default-backend rule when no hosts are provided
     values:
-      - ./fixtures/ingress-annotations.yaml
+      - ./fixtures/frontend/ingress-annotations.yaml
     asserts:
       - notExists:
           path: spec.rules[0].host
@@ -84,7 +84,7 @@ tests:
 
   - it: should render TLS configuration
     values:
-      - ./fixtures/ingress-tls.yaml
+      - ./fixtures/frontend/ingress-tls.yaml
     asserts:
       - equal:
           path: spec.tls[0].secretName
@@ -95,7 +95,7 @@ tests:
 
   - it: should render ingress annotations
     values:
-      - ./fixtures/ingress-annotations.yaml
+      - ./fixtures/frontend/ingress-annotations.yaml
     asserts:
       - equal:
           path: metadata.annotations["nginx.ingress.kubernetes.io/rewrite-target"]

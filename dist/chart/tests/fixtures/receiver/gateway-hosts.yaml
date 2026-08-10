@@ -1,0 +1,10 @@
+receiver:
+  enabled: true
+  gateway:
+    enabled: true
+    className: nginx
+    hosts:
+      - renovate-receiver.example.com
+    paths:
+      - path: /
+        pathType: PathPrefix

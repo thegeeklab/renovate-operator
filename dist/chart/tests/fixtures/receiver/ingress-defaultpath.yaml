@@ -1,0 +1,8 @@
+receiver:
+  enabled: true
+  ingress:
+    enabled: true
+    hosts:
+      - host: foo.local
+        paths:
+          - path: /

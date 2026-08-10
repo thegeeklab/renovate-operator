@@ -1,0 +1,17 @@
+metrics:
+  gateway:
+    enabled: true
+    className: nginx
+    listeners:
+      - name: http
+        port: 80
+        protocol: HTTP
+      - name: https
+        port: 443
+        protocol: HTTPS
+        hostname: metrics.example.com
+        tls:
+          mode: Terminate
+          certificateRefs:
+            - name: metrics-tls
+              kind: Secret

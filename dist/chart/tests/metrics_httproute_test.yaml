@@ -1,7 +1,7 @@
 ---
-suite: test frontend httproute
+suite: test metrics httproute
 templates:
-  - templates/extras/frontend-httproute.yaml
+  - templates/extras/metrics-httproute.yaml
 tests:
   - it: should not render HTTPRoute by default
     asserts:
@@ -10,7 +10,7 @@ tests:
 
   - it: should render an HTTPRoute with default paths
     values:
-      - ./fixtures/frontend/gateway-basic.yaml
+      - ./fixtures/metrics/gateway-basic.yaml
     asserts:
       - hasDocuments:
           count: 1
@@ -18,7 +18,7 @@ tests:
           of: HTTPRoute
       - equal:
           path: spec.parentRefs[0].name
-          value: RELEASE-NAME-renovate-operator-frontend-gateway
+          value: RELEASE-NAME-renovate-operator-metrics-service-gateway
       - equal:
           path: spec.parentRefs[0].namespace
           value: NAMESPACE
@@ -30,15 +30,15 @@ tests:
           value: /
       - equal:
           path: spec.rules[0].backendRefs[0].port
-          value: 80
+          value: 8443
 
   - it: should render an HTTPRoute with custom hostnames and shared paths
     values:
-      - ./fixtures/frontend/gateway-hosts.yaml
+      - ./fixtures/metrics/gateway-hosts.yaml
     asserts:
       - equal:
           path: spec.hostnames[0]
-          value: renovate-operator.example.com
+          value: metrics.example.com
       - equal:
           path: spec.rules[0].matches[0].path.type
           value: PathPrefix
@@ -48,9 +48,10 @@ tests:
 
   - it: should support multiple hostnames with shared paths
     set:
-      frontend.gateway.enabled: true
-      frontend.gateway.className: nginx
-      frontend.gateway.hosts:
+      metrics.enabled: true
+      metrics.gateway.enabled: true
+      metrics.gateway.className: nginx
+      metrics.gateway.hosts:
         - a.example.com
         - b.example.com
     asserts:
@@ -66,7 +67,7 @@ tests:
 
   - it: should set sectionName from first listener
     values:
-      - ./fixtures/frontend/gateway-listeners.yaml
+      - ./fixtures/metrics/gateway-listeners.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].sectionName
@@ -74,18 +75,18 @@ tests:
 
   - it: should set sectionName from HTTPS listener
     values:
-      - ./fixtures/frontend/gateway-tls.yaml
+      - ./fixtures/metrics/gateway-tls.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].sectionName
           value: https
       - equal:
           path: spec.hostnames[0]
-          value: secure.example.com
+          value: secure-metrics.example.com
 
   - it: should attach HTTPRoute to existing Gateway
     values:
-      - ./fixtures/frontend/gateway-existing.yaml
+      - ./fixtures/metrics/gateway-existing.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].name
@@ -96,7 +97,7 @@ tests:
 
   - it: should attach HTTPRoute to existing Gateway in different namespace
     values:
-      - ./fixtures/frontend/gateway-existing-cross-ns.yaml
+      - ./fixtures/metrics/gateway-existing-cross-ns.yaml
     asserts:
       - equal:
           path: spec.parentRefs[0].name
@@ -107,15 +108,15 @@ tests:
 
   - it: should propagate annotations to HTTPRoute
     values:
-      - ./fixtures/frontend/gateway-annotations.yaml
+      - ./fixtures/metrics/gateway-annotations.yaml
     asserts:
       - equal:
           path: metadata.annotations["external-dns.alpha.kubernetes.io/hostname"]
-          value: renovate-operator.example.com
+          value: metrics.example.com
 
   - it: should propagate labels to HTTPRoute
     values:
-      - ./fixtures/frontend/gateway-labels.yaml
+      - ./fixtures/metrics/gateway-labels.yaml
     asserts:
       - equal:
           path: metadata.labels["app.kubernetes.io/part-of"]
@@ -126,7 +127,7 @@ tests:
 
   - it: should add filters to HTTPRoute rules
     values:
-      - ./fixtures/frontend/gateway-filters.yaml
+      - ./fixtures/metrics/gateway-filters.yaml
     asserts:
       - equal:
           path: spec.rules[0].filters[0].type
@@ -137,7 +138,7 @@ tests:
 
   - it: should add timeouts to HTTPRoute rules
     values:
-      - ./fixtures/frontend/gateway-timeouts.yaml
+      - ./fixtures/metrics/gateway-timeouts.yaml
     asserts:
       - equal:
           path: spec.rules[0].timeouts.request
@@ -146,18 +147,19 @@ tests:
           path: spec.rules[0].timeouts.backendRequest
           value: 60s
 
-  - it: should not render HTTPRoute when manager is disabled
-    values:
-      - ./fixtures/manager-disabled.yaml
+  - it: should not render HTTPRoute when metrics is disabled
+    set:
+      metrics.enabled: false
+      metrics.gateway.enabled: true
     asserts:
       - hasDocuments:
           count: 0
 
-  - it: should not render HTTPRoute when frontend is disabled
+  - it: should not render HTTPRoute when manager is disabled
     set:
-      frontend.enabled: false
-      frontend.gateway.enabled: true
-      frontend.gateway.className: nginx
+      manager.enabled: false
+      metrics.gateway.enabled: true
+      metrics.gateway.className: nginx
     asserts:
       - hasDocuments:
           count: 0

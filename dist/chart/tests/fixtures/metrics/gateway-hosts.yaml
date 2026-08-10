@@ -1,0 +1,9 @@
+metrics:
+  gateway:
+    enabled: true
+    className: nginx
+    hosts:
+      - metrics.example.com
+    paths:
+      - path: /
+        pathType: PathPrefix

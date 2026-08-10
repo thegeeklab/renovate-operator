@@ -1,0 +1,12 @@
+metrics:
+  gateway:
+    enabled: true
+    className: nginx
+    hosts:
+      - metrics.example.com
+    filters:
+      - type: RequestHeaderModifier
+        requestHeaderModifier:
+          set:
+            - name: X-Forwarded-Proto
+              value: https

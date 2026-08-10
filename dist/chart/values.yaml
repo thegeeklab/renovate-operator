@@ -343,6 +343,74 @@ metrics:
   # -- Maximum number of unique label combinations tracked before series are dropped.
   cardinalityCap: 5000
 
+  ingress:
+    # -- Enable Ingress resource
+    enabled: false
+    # -- Ingress class name (e.g. "nginx")
+    className: ""
+    # -- Annotations added to the Ingress
+    annotations: {}
+    # -- Ingress hosts and paths
+    hosts: []
+    #   - host: renovate-metrics.example.com
+    #     paths:
+    #       - path: /
+    #         pathType: Prefix
+    # -- Ingress TLS configuration
+    tls: []
+    #   - secretName: renovate-metrics-tls
+    #     hosts:
+    #       - renovate-metrics.example.com
+
+  gateway:
+    # -- Enable Gateway API HTTPRoute (and optionally a Gateway)
+    enabled: false
+    # -- Gateway class name (e.g. "nginx", "istio-waypoint", "traefik")
+    className: ""
+    # -- Labels added to the Gateway and HTTPRoute
+    labels: {}
+    # -- Annotations added to the HTTPRoute and created Gateway
+    annotations: {}
+    # -- HTTPRoute hostnames
+    hosts: []
+    #   - renovate-metrics.example.com
+    # -- HTTPRoute paths (shared across all hostnames)
+    paths: []
+    #   - path: /
+    #     pathType: PathPrefix
+    # -- Filters applied to all HTTPRoute rules
+    filters: []
+    #   - type: RequestHeaderModifier
+    #     requestHeaderModifier:
+    #       add:
+    #         - name: X-Forwarded-Proto
+    #           value: https
+    # -- Timeouts for the HTTPRoute
+    timeouts: {}
+    #   request: 30s
+    # -- Section name of the Gateway listener to attach the HTTPRoute to.
+    # When empty and a new Gateway is created, the first listener name is used.
+    # sectionName: ""
+    # -- Existing Gateway to attach the HTTPRoute to. When empty and listeners
+    # are not empty, a new Gateway is created in the release namespace.
+    # gatewayName: ""
+    # gatewayNamespace: ""
+    # -- Gateway addresses (only when creating a new Gateway)
+    addresses: []
+    #   - type: IPAddress
+    #     value: 192.168.1.1
+    # -- Gateway listeners to create when gatewayName is empty
+    listeners: []
+    #   - name: https
+    #     port: 443
+    #     protocol: HTTPS
+    #     hostname: renovate-metrics.example.com
+    #     tls:
+    #       mode: Terminate
+    #       certificateRefs:
+    #         - name: renovate-metrics-tls
+    #           kind: Secret
+
 certRotation:
   # -- Enable the operator's built-in certificate rotation (cert-controller).
   # Disable this if you provide certificates via an external tool such as cert-manager.

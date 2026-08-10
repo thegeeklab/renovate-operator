@@ -1,0 +1,7 @@
+receiver:
+  enabled: true
+  gateway:
+    enabled: true
+    className: nginx
+    annotations:
+      external-dns.alpha.kubernetes.io/hostname: renovate-receiver.example.com
