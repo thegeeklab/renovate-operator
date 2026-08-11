@@ -1,6 +1,9 @@
 ---
 when:
   - event: [pull_request, tag]
+    path:
+      exclude:
+        - internal/frontend/i18n/locales/*.json
   - event: [push, manual]
     branch:
       - ${CI_REPO_DEFAULT_BRANCH}
