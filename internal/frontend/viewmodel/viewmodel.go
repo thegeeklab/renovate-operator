@@ -241,14 +241,6 @@ func FormatCount(count int, label string) string {
 	return strconv.Itoa(count) + " " + label + "s"
 }
 
-// TranslatedFormatCount returns "N translatedLabel" with proper pluralization
-// using i18n keys (e.g. "1 error", "3 errors").
-func TranslatedFormatCount(ctx context.Context, count int, singularKey, pluralKey string) string {
-	tr := i18n.FromContext(ctx)
-
-	return tr.FormatCountMsg(count, singularKey, pluralKey)
-}
-
 // HasPRActivity reports whether the activity struct carries any non-zero
 // counters, so callers can decide whether to render a summary.
 func HasPRActivity(activity *parser.PRActivity) bool {
@@ -286,13 +278,15 @@ func TranslatedIssueSummaryText(ctx context.Context, issues *parser.LogIssues) s
 		return ""
 	}
 
+	tr := i18n.FromContext(ctx)
+
 	parts := []string{}
 	if issues.ErrorCount > 0 {
-		parts = append(parts, TranslatedFormatCount(ctx, issues.ErrorCount, "badge.error_singular", "badge.error_plural"))
+		parts = append(parts, tr.TP("badge.error_count", issues.ErrorCount))
 	}
 
 	if issues.WarnCount > 0 {
-		parts = append(parts, TranslatedFormatCount(ctx, issues.WarnCount, "badge.warning_singular", "badge.warning_plural"))
+		parts = append(parts, tr.TP("badge.warning_count", issues.WarnCount))
 	}
 
 	return strings.Join(parts, ", ")
@@ -336,36 +330,27 @@ func TranslatedPRActivitySummary(ctx context.Context, activity *parser.PRActivit
 		return ""
 	}
 
+	tr := i18n.FromContext(ctx)
+
 	parts := []string{}
 	if activity.Automerged > 0 {
-		parts = append(parts, TranslatedFormatCount(
-			ctx, activity.Automerged, "badge.automerged_singular", "badge.automerged_plural",
-		))
+		parts = append(parts, tr.TP("badge.automerged_count", activity.Automerged))
 	}
 
 	if activity.Created > 0 {
-		parts = append(parts, TranslatedFormatCount(
-			ctx, activity.Created, "badge.created_singular", "badge.created_plural",
-		))
+		parts = append(parts, tr.TP("badge.created_count", activity.Created))
 	}
 
 	if activity.Updated > 0 {
-		parts = append(parts, TranslatedFormatCount(
-			ctx, activity.Updated, "badge.updated_singular", "badge.updated_plural",
-		))
+		parts = append(parts, tr.TP("badge.updated_count", activity.Updated))
 	}
 
 	if activity.NeedsApproval > 0 {
-		parts = append(parts, TranslatedFormatCount(
-			ctx, activity.NeedsApproval,
-			"badge.needs_approval_singular", "badge.needs_approval_plural",
-		))
+		parts = append(parts, tr.TP("badge.needs_approval_count", activity.NeedsApproval))
 	}
 
 	if activity.Unchanged > 0 {
-		parts = append(parts, TranslatedFormatCount(
-			ctx, activity.Unchanged, "badge.unchanged_singular", "badge.unchanged_plural",
-		))
+		parts = append(parts, tr.TP("badge.unchanged_count", activity.Unchanged))
 	}
 
 	return strings.Join(parts, ", ")

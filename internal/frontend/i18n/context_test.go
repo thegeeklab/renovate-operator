@@ -13,7 +13,7 @@ var _ = Describe("Context", func() {
 	It("round-trips a translator via NewContext and FromContext", func() {
 		bundle := NewBundle()
 		localizer := goi18n.NewLocalizer(bundle, "de", "en")
-		tr := newTranslator(localizer, bundle, "de")
+		tr := NewTranslator(localizer, bundle, "de")
 
 		ctx := NewContext(context.Background(), tr)
 		got := FromContext(ctx)

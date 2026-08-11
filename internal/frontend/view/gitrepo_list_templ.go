@@ -9,7 +9,6 @@ import templruntime "github.com/a-h/templ/runtime"
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
@@ -84,7 +83,7 @@ func GitRepoPRBadge(ctx context.Context, openPRs, needsApproval, unchangedPRs in
 				var templ_7745c5c3_Var5 string
 				templ_7745c5c3_Var5, templ_7745c5c3_Err = templ.JoinStringErrs(openPRs)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 22, Col: 13}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 21, Col: 13}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var5))
 				if templ_7745c5c3_Err != nil {
@@ -227,7 +226,7 @@ func GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) templ.Compo
 				var templ_7745c5c3_Var12 templ.SafeURL
 				templ_7745c5c3_Var12, templ_7745c5c3_Err = templ.JoinURLErrs(sanitize.GitrepoURL(r.Namespace, r.Name))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 46, Col: 53}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 45, Col: 53}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var12))
 				if templ_7745c5c3_Err != nil {
@@ -240,7 +239,7 @@ func GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) templ.Compo
 				var templ_7745c5c3_Var13 string
 				templ_7745c5c3_Var13, templ_7745c5c3_Err = templ.ResolveAttributeValue(sanitize.GitrepoURL(r.Namespace, r.Name))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 47, Col: 55}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 46, Col: 55}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var13)
 				if templ_7745c5c3_Err != nil {
@@ -251,9 +250,9 @@ func GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) templ.Compo
 					return templ_7745c5c3_Err
 				}
 				var templ_7745c5c3_Var14 string
-				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(fmt.Sprintf("View repository %s in namespace %s", r.Name, r.Namespace))
+				templ_7745c5c3_Var14, templ_7745c5c3_Err = templ.ResolveAttributeValue(i18n.FromContext(ctx).T("gitrepo.view_repo_aria", map[string]any{"Name": r.Name, "Namespace": r.Namespace}))
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 52, Col: 89}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 51, Col: 126}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var14)
 				if templ_7745c5c3_Err != nil {
@@ -279,7 +278,7 @@ func GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) templ.Compo
 				var templ_7745c5c3_Var16 string
 				templ_7745c5c3_Var16, templ_7745c5c3_Err = templ.JoinStringErrs(r.FullName)
 				if templ_7745c5c3_Err != nil {
-					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 56, Col: 92}
+					return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 55, Col: 92}
 				}
 				_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var16))
 				if templ_7745c5c3_Err != nil {
@@ -308,7 +307,7 @@ func GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) templ.Compo
 					var templ_7745c5c3_Var18 string
 					templ_7745c5c3_Var18, templ_7745c5c3_Err = templ.JoinStringErrs(viewmodel.GitRepoFieldCreated.TranslatedLabel(ctx) + ": ")
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 60, Col: 69}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 59, Col: 69}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var18))
 					if templ_7745c5c3_Err != nil {
@@ -321,7 +320,7 @@ func GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) templ.Compo
 					var templ_7745c5c3_Var19 string
 					templ_7745c5c3_Var19, templ_7745c5c3_Err = templ.ResolveAttributeValue(r.CreatedAt.UTC().Format(time.RFC3339))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 60, Col: 132}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 59, Col: 132}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var19)
 					if templ_7745c5c3_Err != nil {
@@ -334,7 +333,7 @@ func GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) templ.Compo
 					var templ_7745c5c3_Var20 string
 					templ_7745c5c3_Var20, templ_7745c5c3_Err = templ.JoinStringErrs(r.CreatedAt.UTC().Format("2006-01-02T15:04:05Z"))
 					if templ_7745c5c3_Err != nil {
-						return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 60, Col: 208}
+						return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 59, Col: 208}
 					}
 					_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var20))
 					if templ_7745c5c3_Err != nil {
@@ -370,7 +369,7 @@ func GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) templ.Compo
 						var templ_7745c5c3_Var22 string
 						templ_7745c5c3_Var22, templ_7745c5c3_Err = templ.JoinStringErrs(viewmodel.GitRepoFieldLastRun.TranslatedLabel(ctx) + ": ")
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 66, Col: 70}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 65, Col: 70}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var22))
 						if templ_7745c5c3_Err != nil {
@@ -383,7 +382,7 @@ func GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) templ.Compo
 						var templ_7745c5c3_Var23 string
 						templ_7745c5c3_Var23, templ_7745c5c3_Err = templ.ResolveAttributeValue(r.LastRenovateAt.UTC().Format(time.RFC3339))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 66, Col: 138}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 65, Col: 138}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ_7745c5c3_Var23)
 						if templ_7745c5c3_Err != nil {
@@ -396,7 +395,7 @@ func GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) templ.Compo
 						var templ_7745c5c3_Var24 string
 						templ_7745c5c3_Var24, templ_7745c5c3_Err = templ.JoinStringErrs(r.LastRenovateAt.UTC().Format("2006-01-02T15:04:05Z"))
 						if templ_7745c5c3_Err != nil {
-							return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 66, Col: 219}
+							return templ.Error{Err: templ_7745c5c3_Err, FileName: `gitrepo_list.templ`, Line: 65, Col: 219}
 						}
 						_, templ_7745c5c3_Err = templ_7745c5c3_Buffer.WriteString(templ.EscapeString(templ_7745c5c3_Var24))
 						if templ_7745c5c3_Err != nil {
