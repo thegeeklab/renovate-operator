@@ -1,0 +1,24 @@
+---
+when:
+  - event: pull_request
+    path:
+      include:
+        - internal/frontend/i18n/locales/*.json
+
+steps:
+  - name: prettier
+    image: docker.io/jauderho/prettier:3.9.6
+    commands:
+      - prettier -w internal/frontend/i18n/locales/*.json
+
+  - name: verify-format
+    image: docker.io/library/golang:1.26.5
+    depends_on: [prettier]
+    commands:
+      - git diff --exit-code
+
+  - name: i18n-tests
+    image: docker.io/library/golang:1.26.5
+    depends_on: [verify-format]
+    commands:
+      - make test FOCUS="Bundle|ClientJSON|SupportedLocales|Translator"

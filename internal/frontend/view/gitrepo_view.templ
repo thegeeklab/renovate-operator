@@ -21,7 +21,7 @@ templ GitRepoView(ctx context.Context, data viewmodel.GitRepoViewData) {
 					<h2 class="text-2xl font-bold tracking-tight text-gray-900 dark:text-gray-100 truncate" data-focus-target>
 						{ data.Repo.FullName }
 					</h2>
-					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400 font-medium truncate">{ i18n.FromContext(ctx).T("common.namespace") } { data.Repo.Namespace }</p>
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400 font-medium truncate">{ i18n.FromContext(ctx).T("common.namespace") }: { data.Repo.Namespace }</p>
 				</div>
 				<div class="shrink-0">
 					<button
