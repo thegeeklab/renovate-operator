@@ -77,10 +77,6 @@
     "one": "{{.Count}} PR (keine Aktualisierung nötig)",
     "other": "{{.Count}} PRs (keine Aktualisierung nötig)"
   },
-  "badge.error_singular": "Fehler",
-  "badge.error_plural": "Fehler",
-  "badge.warning_singular": "Warnung",
-  "badge.warning_plural": "Warnungen",
   "status.succeeded": "Erfolgreich",
   "status.running": "Läuft",
   "status.failed": "Fehlgeschlagen",
@@ -125,5 +121,41 @@
   "keyboard.log_viewer": "Log-Anzeige",
   "keyboard.close_log_viewer": "Log-Anzeige schließen",
   "keyboard.download_log": "Log herunterladen",
-  "keyboard.toggle_details": "Details umschalten"
+  "keyboard.toggle_details": "Details umschalten",
+  "badge.error_count": {
+    "one": "{{.Count}} Fehler",
+    "other": "{{.Count}} Fehler"
+  },
+  "badge.warning_count": {
+    "one": "{{.Count}} Warnung",
+    "other": "{{.Count}} Warnungen"
+  },
+  "badge.automerged_count": {
+    "one": "{{.Count}} automatisch gemerged",
+    "other": "{{.Count}} automatisch gemerged"
+  },
+  "badge.created_count": {
+    "one": "{{.Count}} erstellt",
+    "other": "{{.Count}} erstellt"
+  },
+  "badge.updated_count": {
+    "one": "{{.Count}} aktualisiert",
+    "other": "{{.Count}} aktualisiert"
+  },
+  "badge.needs_approval_count": {
+    "one": "{{.Count}} benötigt Freigabe",
+    "other": "{{.Count}} benötigen Freigabe"
+  },
+  "badge.unchanged_count": {
+    "one": "{{.Count}} unverändert",
+    "other": "{{.Count}} unverändert"
+  },
+  "badge.pr_open": {
+    "one": "{{.Count}} PR offen",
+    "other": "{{.Count}} PRs offen"
+  },
+  "badge.pr_additional_active": {
+    "one": "{{.Count}} zusätzlich aktiv",
+    "other": "{{.Count}} zusätzlich aktiv"
+  }
 }

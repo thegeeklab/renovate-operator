@@ -43,7 +43,7 @@ func Middleware(bundle *i18n.Bundle, cfg MiddlewareConfig) func(http.Handler) ht
 			locale := resolveLocale(r, supported, matcher)
 
 			localizer := i18n.NewLocalizer(bundle, locale, defaultLanguage)
-			translator := newTranslator(localizer, bundle, locale)
+			translator := NewTranslator(localizer, bundle, locale)
 
 			ctx := NewContext(r.Context(), translator)
 			r = r.WithContext(ctx)

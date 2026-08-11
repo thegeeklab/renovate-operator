@@ -2,7 +2,6 @@ package view
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
@@ -49,7 +48,7 @@ templ GitRepoList(ctx context.Context, repos []viewmodel.GitRepoInfo) {
 						hx-target="#dashboard-content"
 						hx-swap="innerHTML"
 						hx-params="not sort,order"
-						aria-label={ fmt.Sprintf("View repository %s in namespace %s", r.Name, r.Namespace) }
+						aria-label={ i18n.FromContext(ctx).T("gitrepo.view_repo_aria", map[string]any{"Name": r.Name, "Namespace": r.Namespace}) }
 						class={ getRepoClass(r.LastRenovateStatus) }
 					>
 						<div class="min-w-0 flex-1">

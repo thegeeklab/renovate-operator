@@ -3,7 +3,6 @@
   "common.sign_out": "Sign out",
   "common.back": "Back",
   "common.back_to_dashboard": "Back to Dashboard",
-  "common.search": "Search",
   "common.clear_search": "Clear search",
   "common.filter": "Filter",
   "common.namespace": "Namespace:",
@@ -70,9 +69,14 @@
   "pr_action.unchanged": "Unchanged (no updates needed)",
   "badge.no_open_prs": "No open PRs",
   "badge.no_recent_data": "No recent Renovate data (no completed jobs or pod logs GC'd)",
-  "badge.pr_open": "{{.Count}} PRs open",
-  "badge.pr_additional_active": "{{.Count}} additional active",
-  "badge.warnings_tooltip": "{{.ErrorCount}} errors, {{.WarnCount}} warnings",
+  "badge.pr_open": {
+    "one": "{{.Count}} PR open",
+    "other": "{{.Count}} PRs open"
+  },
+  "badge.pr_additional_active": {
+    "one": "{{.Count}} additional active",
+    "other": "{{.Count}} additional active"
+  },
   "badge.pr_needs_approval": {
     "one": "{{.Count}} PR needs approval",
     "other": "{{.Count}} PRs need approval"
@@ -81,22 +85,6 @@
     "one": "{{.Count}} PR (no updates needed)",
     "other": "{{.Count}} PRs (no updates needed)"
   },
-  "badge.pr_singular": "PR",
-  "badge.pr_plural": "PRs",
-  "badge.error_singular": "error",
-  "badge.error_plural": "errors",
-  "badge.warning_singular": "warning",
-  "badge.warning_plural": "warnings",
-  "badge.automerged_singular": "automerged",
-  "badge.automerged_plural": "automerged",
-  "badge.created_singular": "created",
-  "badge.created_plural": "created",
-  "badge.updated_singular": "updated",
-  "badge.updated_plural": "updated",
-  "badge.needs_approval_singular": "needs approval",
-  "badge.needs_approval_plural": "needs approval",
-  "badge.unchanged_singular": "unchanged",
-  "badge.unchanged_plural": "unchanged",
   "status.succeeded": "Succeeded",
   "status.running": "Running",
   "status.failed": "Failed",
@@ -141,5 +129,33 @@
   "keyboard.log_viewer": "Log viewer",
   "keyboard.close_log_viewer": "Close log viewer",
   "keyboard.download_log": "Download log",
-  "keyboard.toggle_details": "Toggle details"
+  "keyboard.toggle_details": "Toggle details",
+  "badge.error_count": {
+    "one": "{{.Count}} error",
+    "other": "{{.Count}} errors"
+  },
+  "badge.warning_count": {
+    "one": "{{.Count}} warning",
+    "other": "{{.Count}} warnings"
+  },
+  "badge.automerged_count": {
+    "one": "{{.Count}} automerged",
+    "other": "{{.Count}} automerged"
+  },
+  "badge.created_count": {
+    "one": "{{.Count}} created",
+    "other": "{{.Count}} created"
+  },
+  "badge.updated_count": {
+    "one": "{{.Count}} updated",
+    "other": "{{.Count}} updated"
+  },
+  "badge.needs_approval_count": {
+    "one": "{{.Count}} needs approval",
+    "other": "{{.Count}} needs approval"
+  },
+  "badge.unchanged_count": {
+    "one": "{{.Count}} unchanged",
+    "other": "{{.Count}} unchanged"
+  }
 }

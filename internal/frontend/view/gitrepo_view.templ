@@ -2,7 +2,6 @@ package view
 
 import (
 	"context"
-	"fmt"
 	"time"
 
 	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
@@ -70,7 +69,7 @@ templ GitRepoView(ctx context.Context, data viewmodel.GitRepoViewData) {
 										hx-get={ sanitize.JobLogsURL(job.Namespace, job.Runner, job.Name, data.Repo.Platform, data.Repo.RepoURL, false) }
 										hx-target="#log-viewer"
 										hx-swap="innerHTML show:#log-viewer:top"
-										aria-label={ fmt.Sprintf("View logs for job %s in namespace %s", job.Name, job.Namespace) }
+										aria-label={ i18n.FromContext(ctx).T("gitrepo.view_logs_aria", map[string]any{"Name": job.Name, "Namespace": job.Namespace}) }
 										class={ getBaseJobClass(job.Status) }
 										data-job-name={ job.Name }
 									>

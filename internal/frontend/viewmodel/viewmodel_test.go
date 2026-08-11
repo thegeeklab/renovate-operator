@@ -3,11 +3,22 @@ package viewmodel
 import (
 	"context"
 
+	"github.com/thegeeklab/renovate-operator/internal/frontend/i18n"
 	"github.com/thegeeklab/renovate-operator/internal/parser"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+
+	goi18n "github.com/nicksnyder/go-i18n/v2/i18n"
 )
+
+func testCtxWithTranslator() context.Context {
+	bundle := i18n.NewBundle()
+	localizer := goi18n.NewLocalizer(bundle, "en")
+	tr := i18n.NewTranslator(localizer, bundle, "en")
+
+	return i18n.NewContext(context.Background(), tr)
+}
 
 var _ = Describe("Status", func() {
 	Describe("Label", func() {
@@ -73,22 +84,8 @@ var _ = Describe("GitRepoFieldLabel", func() {
 	})
 })
 
-var _ = Describe("TranslatedFormatCount", func() {
-	It("delegates to the translator for singular", func() {
-		ctx := context.Background()
-		result := TranslatedFormatCount(ctx, 1, "badge.error_singular", "badge.error_plural")
-		Expect(result).To(ContainSubstring("badge.error_singular"))
-	})
-
-	It("delegates to the translator for plural", func() {
-		ctx := context.Background()
-		result := TranslatedFormatCount(ctx, 5, "badge.warning_singular", "badge.warning_plural")
-		Expect(result).To(ContainSubstring("badge.warning_plural"))
-	})
-})
-
 var _ = Describe("TranslatedIssueSummaryText", func() {
-	ctx := context.Background()
+	ctx := testCtxWithTranslator()
 
 	It("returns empty string for nil issues", func() {
 		Expect(TranslatedIssueSummaryText(ctx, nil)).To(Equal(""))
@@ -102,27 +99,24 @@ var _ = Describe("TranslatedIssueSummaryText", func() {
 	It("renders error count only", func() {
 		issues := &parser.LogIssues{ErrorCount: 2}
 		result := TranslatedIssueSummaryText(ctx, issues)
-		Expect(result).To(ContainSubstring("badge.error_plural"))
-		Expect(result).NotTo(ContainSubstring("warn"))
+		Expect(result).To(Equal("2 errors"))
 	})
 
 	It("renders warning count only", func() {
 		issues := &parser.LogIssues{WarnCount: 3}
 		result := TranslatedIssueSummaryText(ctx, issues)
-		Expect(result).To(ContainSubstring("badge.warning_plural"))
-		Expect(result).NotTo(ContainSubstring("error"))
+		Expect(result).To(Equal("3 warnings"))
 	})
 
 	It("renders both error and warning counts", func() {
 		issues := &parser.LogIssues{ErrorCount: 2, WarnCount: 4}
 		result := TranslatedIssueSummaryText(ctx, issues)
-		Expect(result).To(ContainSubstring("badge.error_plural"))
-		Expect(result).To(ContainSubstring("badge.warning_plural"))
+		Expect(result).To(Equal("2 errors, 4 warnings"))
 	})
 })
 
 var _ = Describe("TranslatedPRActivitySummary", func() {
-	ctx := context.Background()
+	ctx := testCtxWithTranslator()
 
 	It("returns empty string for nil activity", func() {
 		Expect(TranslatedPRActivitySummary(ctx, nil)).To(Equal(""))
@@ -131,31 +125,31 @@ var _ = Describe("TranslatedPRActivitySummary", func() {
 	It("renders automerged count", func() {
 		activity := &parser.PRActivity{Automerged: 3}
 		result := TranslatedPRActivitySummary(ctx, activity)
-		Expect(result).To(ContainSubstring("badge.automerged_plural"))
+		Expect(result).To(Equal("3 automerged"))
 	})
 
 	It("renders created count", func() {
 		activity := &parser.PRActivity{Created: 2}
 		result := TranslatedPRActivitySummary(ctx, activity)
-		Expect(result).To(ContainSubstring("badge.created_plural"))
+		Expect(result).To(Equal("2 created"))
 	})
 
 	It("renders updated count", func() {
 		activity := &parser.PRActivity{Updated: 1}
 		result := TranslatedPRActivitySummary(ctx, activity)
-		Expect(result).To(ContainSubstring("badge.updated_singular"))
+		Expect(result).To(Equal("1 updated"))
 	})
 
 	It("renders needs approval count", func() {
 		activity := &parser.PRActivity{NeedsApproval: 4}
 		result := TranslatedPRActivitySummary(ctx, activity)
-		Expect(result).To(ContainSubstring("badge.needs_approval_plural"))
+		Expect(result).To(Equal("4 needs approval"))
 	})
 
 	It("renders unchanged count", func() {
 		activity := &parser.PRActivity{Unchanged: 5}
 		result := TranslatedPRActivitySummary(ctx, activity)
-		Expect(result).To(ContainSubstring("badge.unchanged_plural"))
+		Expect(result).To(Equal("5 unchanged"))
 	})
 
 	It("renders a combination of multiple activity types", func() {
@@ -165,8 +159,6 @@ var _ = Describe("TranslatedPRActivitySummary", func() {
 			NeedsApproval: 1,
 		}
 		result := TranslatedPRActivitySummary(ctx, activity)
-		Expect(result).To(ContainSubstring("badge.automerged_plural"))
-		Expect(result).To(ContainSubstring("badge.created_plural"))
-		Expect(result).To(ContainSubstring("badge.needs_approval_singular"))
+		Expect(result).To(Equal("2 automerged, 3 created, 1 needs approval"))
 	})
 })

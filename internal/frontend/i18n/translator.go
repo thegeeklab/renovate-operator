@@ -1,7 +1,6 @@
 package i18n
 
 import (
-	"fmt"
 	"maps"
 
 	"github.com/nicksnyder/go-i18n/v2/i18n"
@@ -86,7 +85,8 @@ func (t *Translator) Bundle() *i18n.Bundle {
 	return t.bundle
 }
 
-func newTranslator(localizer *i18n.Localizer, bundle *i18n.Bundle, locale string) *Translator {
+// NewTranslator creates a new Translator instance.
+func NewTranslator(localizer *i18n.Localizer, bundle *i18n.Bundle, locale string) *Translator {
 	return &Translator{
 		localizer: localizer,
 		bundle:    bundle,
@@ -95,16 +95,7 @@ func newTranslator(localizer *i18n.Localizer, bundle *i18n.Bundle, locale string
 }
 
 func defaultTranslator() *Translator {
-	return newTranslator(nil, nil, "en")
-}
-
-// FormatCountMsg returns a translated "N label" with proper pluralization.
-func (t *Translator) FormatCountMsg(count int, singularKey, pluralKey string) string {
-	if count == 1 {
-		return fmt.Sprintf("1 %s", t.T(singularKey))
-	}
-
-	return fmt.Sprintf("%d %s", count, t.T(pluralKey))
+	return NewTranslator(nil, nil, "en")
 }
 
 // LanguageName returns the native display name for the given locale by

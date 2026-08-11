@@ -93,7 +93,8 @@
     "logreader",
     "kubelet",
     "PKCE",
-    "missingkey"
+    "missingkey",
+    "Weblate"
   ],
   "ignorePaths": [
     ".woodpecker",
