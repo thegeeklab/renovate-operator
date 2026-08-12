@@ -1,20 +1,43 @@
 ---
 when:
   - event: [pull_request, tag]
-    path:
-      exclude:
-        - internal/frontend/i18n/locales/*.json
   - event: [push, manual]
     branch:
       - ${CI_REPO_DEFAULT_BRANCH}
+
+variables:
+  - &when_locale
+    - path:
+        exclude: &locale_exclude_path
+          - internal/frontend/i18n/locales/*.json
+  - &when_golang
+    - path:
+        include:
+          - ".woodpecker/test.yaml"
+          - ".golangci.yaml"
+          # go source code
+          - "**/*.go"
+          - "go.*"
+          # tools updates
+          - "Makefile"
 
 steps:
   - name: test
     image: docker.io/library/golang:1.26.5
     commands:
       - make test
+    when: *when_golang
+
+  - name: test-locale
+    image: docker.io/library/golang:1.26.5
+    commands:
+      - make test FOCUS="Bundle|ClientJSON|SupportedLocales|Translator"
+    when:
+      - path:
+          include: *locale_exclude_path
 
   - name: helm-test
     image: quay.io/thegeeklab/kube-tools
     commands:
       - make helm-test
+    when: *when_golang
