@@ -16,6 +16,7 @@
         "ignore_localhost": true
       }
     },
+    "env": false,
     "fs": {
       "mode": "local"
     }
