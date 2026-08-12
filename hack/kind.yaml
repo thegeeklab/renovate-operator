@@ -6,8 +6,14 @@ nodes:
   - role: control-plane
     image: kindest/node:v1.35.0
     extraPortMappings:
+      - containerPort: 30880
+        hostPort: 8080
+        protocol: TCP
       - containerPort: 30882
         hostPort: 8082
+        protocol: TCP
+      - containerPort: 30883
+        hostPort: 8083
         protocol: TCP
       - containerPort: 30300
         hostPort: 3000
