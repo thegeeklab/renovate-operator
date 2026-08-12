@@ -219,13 +219,14 @@ build: manifests generate fmt vet frontend-build build-go ## Build binaries and 
 .PHONY: run
 run: manifests generate fmt vet air-bin ## Run a controller from your host.
 	@$(KUBECTL) set env deployments -n renovate-system renovate-operator-controller-manager ENABLE_CONTROLLERS=false
+	@$(KUBECTL) rollout status deployment renovate-operator-controller-manager -n renovate-system --timeout=120s
 ifeq ($(FRONTEND_DEV),true)
 	@npm install
 	@npm run dev & VITE_PID=$$!; \
 	trap "kill $$VITE_PID 2>/dev/null" EXIT INT TERM; \
-	NODE_ENV=development mirrord exec -f mirrord.json -- $(AIR_BIN) -c .air.toml
+	ENABLE_CONTROLLERS=true ENABLE_WEBHOOKS=false NODE_ENV=development mirrord exec -f mirrord.json -- $(AIR_BIN) -c .air.toml
 else
-	mirrord exec -f mirrord.json -- $(AIR_BIN) -c .air.toml
+	ENABLE_CONTROLLERS=true ENABLE_WEBHOOKS=false mirrord exec -f mirrord.json -- $(AIR_BIN) -c .air.toml
 endif
 
 .PHONY: docker-build

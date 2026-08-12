@@ -20,5 +20,7 @@ spec:
             - --external-url=http://renovate-operator-receiver-service.renovate-system.svc.cluster.local:8083
             - --secure-cookies=false
           ports:
+            - containerPort: 8080
+              name: metrics
             - containerPort: 8083
               name: receiver

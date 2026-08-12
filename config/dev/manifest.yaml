@@ -63,11 +63,13 @@ metadata:
   name: renovate-operator-receiver-service
   namespace: renovate-system
 spec:
+  type: NodePort
   ports:
     - name: receiver
       port: 8083
       protocol: TCP
       targetPort: 8083
+      nodePort: 30883
   selector:
     control-plane: controller-manager
     app.kubernetes.io/name: renovate-operator
