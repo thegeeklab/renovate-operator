@@ -1,12 +1,13 @@
 ---
 when:
   - event: [pull_request, tag]
-    path:
-      exclude:
-        - internal/frontend/i18n/locales/*.json
   - event: [push, manual]
     branch:
       - ${CI_REPO_DEFAULT_BRANCH}
+
+variables:
+  - path: &locale_path
+      - internal/frontend/i18n/locales/*.json
 
 steps:
   - name: security-build
@@ -17,6 +18,9 @@ steps:
       repo: ${CI_REPO}
       registry_config:
         from_secret: DOCKER_REGISTRY_CONFIG_PULL
+    when:
+      - path:
+          exclude: *locale_path
 
   - name: security-scan
     image: ghcr.io/aquasecurity/trivy:0.73.0
@@ -31,6 +35,9 @@ steps:
       TRIVY_SEVERITY: HIGH,CRITICAL
       TRIVY_TIMEOUT: 1m
       TRIVY_DB_REPOSITORY: docker.io/aquasec/trivy-db:2
+    when:
+      - path:
+          exclude: *locale_path
 
   - name: publish-dockerhub
     image: quay.io/thegeeklab/wp-docker-buildx:6
@@ -52,6 +59,8 @@ steps:
       - event: [push, manual]
         branch:
           - ${CI_REPO_DEFAULT_BRANCH}
+        path:
+          exclude: *locale_path
 
   - name: publish-quay
     image: quay.io/thegeeklab/wp-docker-buildx:6
@@ -74,6 +83,8 @@ steps:
       - event: [push, manual]
         branch:
           - ${CI_REPO_DEFAULT_BRANCH}
+        path:
+          exclude: *locale_path
 
 depends_on:
   - static

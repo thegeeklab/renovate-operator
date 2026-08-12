@@ -1,42 +1,58 @@
 ---
 when:
   - event: [pull_request, tag]
-    path:
-      exclude:
-        - internal/frontend/i18n/locales/*.json
   - event: [push, manual]
     branch:
       - ${CI_REPO_DEFAULT_BRANCH}
+
+variables:
+  - path: &locale_path
+      - internal/frontend/i18n/locales/*.json
 
 steps:
   - name: frontend-deps
     image: docker.io/library/node:lts
     commands:
       - make frontend-deps
+    when:
+      - path:
+          exclude: *locale_path
 
   - name: eslint
     image: docker.io/library/node:lts
     depends_on: [frontend-deps]
     commands:
       - make eslint typecheck
+    when:
+      - path:
+          exclude: *locale_path
 
   - name: markdownlint
     image: quay.io/thegeeklab/markdownlint-cli
     depends_on: [frontend-deps]
     commands:
       - markdownlint 'docs/*.md' 'dist/chart/README.md' 'README.md' 'CONTRIBUTING.md'
+    when:
+      - path:
+          exclude: *locale_path
 
   - name: yaml-lint
     image: docker.io/library/golang:1.26.5
     depends_on: [frontend-deps]
     commands:
       - make yamlfmt-lint
+    when:
+      - path:
+          exclude: *locale_path
 
   - name: spellcheck
     image: docker.io/library/node:lts
     depends_on: [frontend-deps]
     commands:
       - make cspell
+    when:
+      - path:
+          exclude: *locale_path
 
   - name: golangci-lint
     image: docker.io/golangci/golangci-lint:v2.12.2
@@ -44,6 +60,9 @@ steps:
     commands:
       - go mod download
       - golangci-lint run
+    when:
+      - path:
+          exclude: *locale_path
 
   - name: helm-lint
     image: quay.io/helmpack/chart-testing:v3.14.0
@@ -51,10 +70,28 @@ steps:
     commands:
       - ct list-changed --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist
       - ct lint --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist --validate-maintainers=false --check-version-increment=false
+    when:
+      - path:
+          exclude: *locale_path
 
   - name: verify-installer
     image: docker.io/library/golang:1.26.5
     depends_on: [frontend-deps]
     commands:
       - make build-installer
+      - git diff --exit-code
+    when:
+      - path:
+          exclude: *locale_path
+
+  - name: format-locale
+    image: docker.io/jauderho/prettier:3.9.6
+    depends_on: [frontend-deps]
+    commands:
+      - prettier -w internal/frontend/i18n/locales/*.json
+
+  - name: verify-locale
+    image: docker.io/library/golang:1.26.5
+    depends_on: [format-locale]
+    commands:
       - git diff --exit-code

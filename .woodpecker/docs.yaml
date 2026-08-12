@@ -1,12 +1,13 @@
 ---
 when:
   - event: [pull_request, tag]
-    path:
-      exclude:
-        - internal/frontend/i18n/locales/*.json
   - event: [push, manual]
     branch:
       - ${CI_REPO_DEFAULT_BRANCH}
+
+variables:
+  - path: &locale_path
+      - internal/frontend/i18n/locales/*.json
 
 steps:
   - name: link-validation
@@ -16,6 +17,9 @@ steps:
     environment:
       GITHUB_TOKEN:
         from_secret: github_token_ro
+    when:
+      - path:
+          exclude: *locale_path
 
   - name: pushrm-dockerhub
     image: docker.io/chko/docker-pushrm:1
@@ -33,6 +37,8 @@ steps:
         branch:
           - ${CI_REPO_DEFAULT_BRANCH}
         status: [success]
+        path:
+          exclude: *locale_path
 
   - name: pushrm-quay
     image: docker.io/chko/docker-pushrm:1
@@ -47,6 +53,8 @@ steps:
         branch:
           - ${CI_REPO_DEFAULT_BRANCH}
         status: [success]
+        path:
+          exclude: *locale_path
 
 depends_on:
   - build-container
