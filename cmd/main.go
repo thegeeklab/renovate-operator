@@ -68,6 +68,12 @@ const (
 	webhookCAName         = "renovate-operator-ca"
 	webhookCAOrganization = "renovate-operator"
 
+	// cert-controller names its controller "cert-rotator" by default, and
+	// controller-runtime rejects duplicate controller names. Give each rotator
+	// its own name so the metrics and webhook certificates can both be rotated.
+	metricsCertRotatorName = "metrics-cert-rotator"
+	webhookCertRotatorName = "webhook-cert-rotator"
+
 	otelShutdownTimeout = 5 * time.Second
 )
 
@@ -421,7 +427,12 @@ func setupMetricsCertRotation(mgr manager.Manager, cfg Config) error {
 		CAName:         webhookCAName,
 		CAOrganization: webhookCAOrganization,
 		DNSName:        fmt.Sprintf("%s.%s.svc", cfg.MetricsServiceName, k8s.GetNamespace()),
-		Webhooks:       []rotator.WebhookInfo{},
+		ControllerName: metricsCertRotatorName,
+		// The rotator closes IsReady unconditionally once the CA is injected, so a
+		// nil channel panics. Nothing waits on this one: the metrics server picks
+		// up the certificate from CertDir via its own certwatcher.
+		IsReady:  make(chan struct{}),
+		Webhooks: []rotator.WebhookInfo{},
 	}); err != nil {
 		return fmt.Errorf("unable to set up metrics cert rotation: %w", err)
 	}
@@ -471,6 +482,7 @@ func setupWebhooks(mgr manager.Manager, cfg Config) error {
 			CAName:         webhookCAName,
 			CAOrganization: webhookCAOrganization,
 			DNSName:        fmt.Sprintf("%s.%s.svc", cfg.WebhookServiceName, k8s.GetNamespace()),
+			ControllerName: webhookCertRotatorName,
 			IsReady:        webhookReady,
 			Webhooks:       webhooks,
 		}); err != nil {
