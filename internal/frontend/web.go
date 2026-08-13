@@ -576,6 +576,17 @@ func (h *WebHandler) HandleJobLogs(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Cache-Control", "no-cache, no-store, must-revalidate")
 	w.Header().Set("Content-Type", "text/html")
+
+	if r.URL.Query().Get("stream") == "1" {
+		if data.IsRunning {
+			_ = view.JobLogsStream(r.Context(), data).Render(r.Context(), w)
+
+			return
+		}
+
+		w.Header().Set("HX-Retarget", "#logs-"+data.JobName)
+	}
+
 	_ = view.JobLogs(r.Context(), data).Render(r.Context(), w)
 }
 

@@ -1,5 +1,5 @@
 import { getPersisted, setPersisted } from "../lib/storage"
-import { getRefs, getData, getBoolData, nextFrame } from "../lib/dom"
+import { getData, getBoolData, nextFrame } from "../lib/dom"
 import { registerComponent, destroyComponents } from "../lib/component.registry"
 import { toggleRawLine } from "../lib/log.raw"
 import { toast } from "../lib/toast"
@@ -9,79 +9,57 @@ export class LogViewerComponent {
   private el: HTMLElement
   private autoscroll: boolean
   private isRunning: boolean
-  private refs: Record<string, HTMLElement>
 
-  private boundToggleAutoscroll: () => void
-  private boundCloseLogs: () => void
-  private boundToggleRawLines: Map<HTMLElement, () => void> = new Map()
-  private boundDownloadLogs: Map<HTMLElement, () => void> = new Map()
+  private boundClick: (e: Event) => void
 
   constructor(el: HTMLElement) {
     this.el = el
     this.isRunning = getBoolData(el, "is-running")
     const key = `autoscroll-${getData(el, "namespace")}-${getData(el, "runner")}-${getData(el, "job-name")}`
     this.autoscroll = getPersisted(key, false)
-    this.refs = getRefs(el)
 
-    this.boundToggleAutoscroll = this.toggleAutoscroll.bind(this)
-    this.boundCloseLogs = this.closeLogs.bind(this)
+    this.boundClick = this.handleClick.bind(this)
 
-    this.bindEvents()
+    this.el.addEventListener("click", this.boundClick)
     this.init()
   }
 
-  private bindEvents(): void {
-    this.el.querySelectorAll<HTMLElement>('[data-action="toggle-autoscroll"]').forEach((btn) => {
-      btn.addEventListener("click", this.boundToggleAutoscroll)
-    })
+  private handleClick(e: Event): void {
+    const target = e.target as HTMLElement | null
+    if (!target) return
+    const actionEl = target.closest<HTMLElement>("[data-action]")
+    if (!actionEl || !this.el.contains(actionEl)) return
 
-    this.el.querySelectorAll<HTMLElement>('[data-action="close-logs"]').forEach((btn) => {
-      btn.addEventListener("click", this.boundCloseLogs)
-    })
-
-    this.el.querySelectorAll<HTMLElement>('[data-action="download-log"]').forEach((btn) => {
-      const handler = () => {
-        const url = getData(btn, "url")
-        const filename = getData(btn, "filename")
-        this.downloadLog(url, filename)
-      }
-      this.boundDownloadLogs.set(btn, handler)
-      btn.addEventListener("click", handler)
-    })
-
-    this.el.querySelectorAll<HTMLElement>('[data-action="toggle-raw"]').forEach((line) => {
-      const handler = () => toggleRawLine(line)
-      this.boundToggleRawLines.set(line, handler)
-      line.addEventListener("click", handler)
-    })
+    switch (actionEl.dataset.action) {
+      case "toggle-autoscroll":
+        this.toggleAutoscroll()
+        break
+      case "close-logs":
+        this.closeLogs()
+        break
+      case "download-log":
+        this.downloadLog(getData(actionEl, "url"), getData(actionEl, "filename"))
+        break
+      case "toggle-raw":
+        toggleRawLine(actionEl)
+        break
+    }
   }
 
   destroy(): void {
-    this.el.querySelectorAll<HTMLElement>('[data-action="toggle-autoscroll"]').forEach((btn) => {
-      btn.removeEventListener("click", this.boundToggleAutoscroll)
-    })
+    this.el.removeEventListener("click", this.boundClick)
+  }
 
-    this.el.querySelectorAll<HTMLElement>('[data-action="close-logs"]').forEach((btn) => {
-      btn.removeEventListener("click", this.boundCloseLogs)
-    })
-
-    this.boundToggleRawLines.forEach((handler, line) => {
-      line.removeEventListener("click", handler)
-    })
-
-    this.boundDownloadLogs.forEach((handler, btn) => {
-      btn.removeEventListener("click", handler)
-    })
-
-    this.boundToggleRawLines.clear()
-    this.boundDownloadLogs.clear()
+  private getScrollBox(): HTMLElement | null {
+    return this.el.querySelector<HTMLElement>('[data-ref="scrollBox"]')
   }
 
   private async init(): Promise<void> {
     this.updateAutoscrollUI()
     await nextFrame()
-    if (this.autoscroll && this.isRunning && this.refs.scrollBox) {
-      this.refs.scrollBox.scrollTop = this.refs.scrollBox.scrollHeight
+    const scrollBox = this.getScrollBox()
+    if (this.autoscroll && this.isRunning && scrollBox) {
+      scrollBox.scrollTop = scrollBox.scrollHeight
     }
   }
 
@@ -91,10 +69,11 @@ export class LogViewerComponent {
     setPersisted(key, this.autoscroll)
     this.updateAutoscrollUI()
 
-    if (this.autoscroll && this.refs.scrollBox) {
+    if (this.autoscroll) {
       nextFrame().then(() => {
-        if (this.refs.scrollBox) {
-          this.refs.scrollBox.scrollTop = this.refs.scrollBox.scrollHeight
+        const scrollBox = this.getScrollBox()
+        if (scrollBox) {
+          scrollBox.scrollTop = scrollBox.scrollHeight
         }
       })
     }

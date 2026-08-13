@@ -68,6 +68,12 @@ func JobLogsURL(namespace, runner, job, platform, repoURL string, all bool) stri
 	return "/joblogs?" + params.Encode()
 }
 
+// JobLogsStreamURL builds a /joblogs URL that returns the streaming log
+// fragment instead of the full log viewer component.
+func JobLogsStreamURL(namespace, runner, job, platform, repoURL string) string {
+	return JobLogsURL(namespace, runner, job, platform, repoURL, false) + "&stream=1"
+}
+
 // JobLogsDownloadURL builds a /joblogs/download URL with safely escaped query parameters.
 func JobLogsDownloadURL(namespace, job string) string {
 	return "/joblogs/download?namespace=" + QueryEscape(namespace) +
