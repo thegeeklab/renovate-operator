@@ -38,153 +38,171 @@ templ JobLogs(ctx context.Context, data viewmodel.JobLogData) {
 		data-job-name={ data.JobName }
 		data-is-running={ sanitize.BoolAttr(data.IsRunning) }
 		class="rounded-lg bg-gray-900 shadow-lg overflow-hidden flex flex-col border border-gray-700 w-full h-full"
-		if data.IsRunning {
-			hx-get={ sanitize.JobLogsURL(data.Namespace, data.Runner, data.JobName, data.Platform, data.RepoURL, false) }
-			hx-trigger="every 2s"
-			hx-swap="outerHTML show:no-scroll"
-		}
 	>
-		<div class="flex flex-wrap items-center justify-between gap-2 bg-gray-800 px-4 py-2 border-b border-gray-700 shrink-0 min-w-0">
-			<div class="flex items-center gap-3 min-w-0">
-				<span class="text-xs font-mono text-gray-400 truncate">{ data.JobName }</span>
-				if data.IsRunning {
-					@Tooltip(i18n.FromContext(ctx).T("log.live_streaming")) {
-						<span class="relative flex h-2 w-2">
-							<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
-							<span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
-						</span>
-					}
+		@logToolbar(ctx, data)
+		@logContent(ctx, data)
+	</div>
+}
+
+templ JobLogsStream(ctx context.Context, data viewmodel.JobLogData) {
+	@logContent(ctx, data)
+}
+
+templ logToolbar(ctx context.Context, data viewmodel.JobLogData) {
+	<div class="flex flex-wrap items-center justify-between gap-2 bg-gray-800 px-4 py-2 border-b border-gray-700 shrink-0 min-w-0">
+		<div class="flex items-center gap-3 min-w-0">
+			<span class="text-xs font-mono text-gray-400 truncate">{ data.JobName }</span>
+			if data.IsRunning {
+				@Tooltip(i18n.FromContext(ctx).T("log.live_streaming")) {
+					<span class="relative flex h-2 w-2">
+						<span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-green-400 opacity-75"></span>
+						<span class="relative inline-flex rounded-full h-2 w-2 bg-green-500"></span>
+					</span>
 				}
-			</div>
-			if data.Parsed != nil && !data.IsRunning {
-				<div data-component="log-search" class="relative flex-1 min-w-[12rem] max-w-md">
-					<input
-						type="search"
-						name="log-search"
-						placeholder={ i18n.FromContext(ctx).T("log.search_placeholder") }
-						autocomplete="off"
-						spellcheck="false"
-						data-role="log-search-input"
-						class="block w-full rounded-md border border-gray-700 bg-gray-900 pl-3 pr-20 py-1.5 text-xs font-mono text-gray-200 placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
-					/>
-					<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-1.5 pr-2">
-						<span
-							data-role="log-search-count"
-							class="hidden text-xs font-mono tabular-nums text-gray-500"
-						></span>
-						<button
-							type="button"
-							data-action="log-search-clear"
-							aria-label={ i18n.FromContext(ctx).T("common.clear_search") }
-							class="hidden pointer-events-auto rounded text-gray-400 hover:text-gray-200"
-						>
-							@IconX("h-4 w-4")
-						</button>
-						<span data-role="log-search-icon" class="flex items-center gap-1.5 text-gray-500">
-							@Kbd("/")
-							@IconSearch("h-4 w-4")
-						</span>
-					</div>
-				</div>
-			} else {
-				<div class="flex-1 min-w-[1rem]"></div>
 			}
-			<div class="flex items-center gap-1">
-				if data.Parsed != nil && !data.IsRunning {
-					<div data-component="log-level-filter" class="relative">
-						<button
-							type="button"
-							data-action="toggle-level-filter"
-							aria-expanded="false"
-							aria-haspopup="listbox"
-							class={ btnGhostLabel() }
-						>
-							@IconFunnel("h-4 w-4")
-							<span>{ i18n.FromContext(ctx).T("log.levels") }</span>
-							<span
-								data-role="level-count"
-								class="text-gray-500 tabular-nums"
-							>
-								{ strconv.Itoa(len(logLevelOptions())) }/{ strconv.Itoa(len(logLevelOptions())) }
-							</span>
-							@IconChevronsUpDown("h-4 w-4 text-gray-500")
-						</button>
-						<div
-							data-role="level-menu"
-							class={ dropdownMenu() + " bg-gray-800 ring-gray-700" }
-							role="listbox"
-							aria-multiselectable="true"
-						>
-							<div class="px-1 pb-1 border-b border-gray-700">
-								<label class={ dropdownMenuItem() + " hover:bg-gray-700/50 rounded-md" }>
-									<input
-										type="checkbox"
-										data-level="all"
-										checked
-										class="custom-checkbox-dark"
-									/>
-									<span class="font-mono font-medium text-gray-300">{ i18n.FromContext(ctx).T("log.all") }</span>
-								</label>
-							</div>
-							<div class="px-1 pt-1">
-								for _, level := range logLevelOptions() {
-									<label class={ dropdownMenuItem() + " hover:bg-gray-700/50 rounded-md" }>
-										<input
-											type="checkbox"
-											data-level={ strconv.Itoa(level.Value) }
-											checked
-											class="custom-checkbox-dark"
-										/>
-										<span class={ "font-mono font-medium " + level.Class }>{ level.Label }</span>
-									</label>
-								}
-							</div>
-						</div>
-					</div>
-				}
-				if data.IsRunning {
-					@Tooltip(i18n.FromContext(ctx).T("log.autoscroll_disabled"), "autoscroll") {
-						<button
-							type="button"
-							data-action="toggle-autoscroll"
-							aria-label={ i18n.FromContext(ctx).T("log.toggle_autoscroll") }
-							class={ btnGhostIcon() }
-						>
-							<span data-role="autoscroll-icon-on" class="hidden">
-								@IconEye("h-4 w-4")
-							</span>
-							<span data-role="autoscroll-icon-off">
-								@IconEyeOff("h-4 w-4")
-							</span>
-						</button>
-					}
-				}
-				if !data.IsRunning {
-					@Tooltip(i18n.FromContext(ctx).T("log.download_full_log") + " [d]") {
-						<button
-							type="button"
-							data-action="download-log"
-							data-url={ sanitize.JobLogsDownloadURL(data.Namespace, data.JobName) }
-							data-filename={ data.JobName + ".log" }
-							aria-label={ i18n.FromContext(ctx).T("log.download_full_log") }
-							class={ btnGhostIcon() }
-						>
-							@IconDownload("h-4 w-4")
-						</button>
-					}
-				}
-				@Tooltip(i18n.FromContext(ctx).T("log.close_logs") + " [c]") {
+		</div>
+		if data.Parsed != nil && !data.IsRunning {
+			<div data-component="log-search" class="relative flex-1 min-w-[12rem] max-w-md">
+				<input
+					type="search"
+					name="log-search"
+					placeholder={ i18n.FromContext(ctx).T("log.search_placeholder") }
+					autocomplete="off"
+					spellcheck="false"
+					data-role="log-search-input"
+					class="block w-full rounded-md border border-gray-700 bg-gray-900 pl-3 pr-20 py-1.5 text-xs font-mono text-gray-200 placeholder-gray-500 focus:border-indigo-500 focus:outline-none"
+				/>
+				<div class="pointer-events-none absolute inset-y-0 right-0 flex items-center gap-1.5 pr-2">
+					<span
+						data-role="log-search-count"
+						class="hidden text-xs font-mono tabular-nums text-gray-500"
+					></span>
 					<button
 						type="button"
-						data-action="close-logs"
-						aria-label={ i18n.FromContext(ctx).T("log.close_logs") }
-						class={ btnGhostIcon() }
+						data-action="log-search-clear"
+						aria-label={ i18n.FromContext(ctx).T("common.clear_search") }
+						class="hidden pointer-events-auto rounded text-gray-400 hover:text-gray-200"
 					>
 						@IconX("h-4 w-4")
 					</button>
-				}
+					<span data-role="log-search-icon" class="flex items-center gap-1.5 text-gray-500">
+						@Kbd("/")
+						@IconSearch("h-4 w-4")
+					</span>
+				</div>
 			</div>
+		} else {
+			<div class="flex-1 min-w-[1rem]"></div>
+		}
+		<div class="flex items-center gap-1">
+			if data.Parsed != nil && !data.IsRunning {
+				<div data-component="log-level-filter" class="relative">
+					<button
+						type="button"
+						data-action="toggle-level-filter"
+						aria-expanded="false"
+						aria-haspopup="listbox"
+						class={ btnGhostLabel() }
+					>
+						@IconFunnel("h-4 w-4")
+						<span>{ i18n.FromContext(ctx).T("log.levels") }</span>
+						<span
+							data-role="level-count"
+							class="text-gray-500 tabular-nums"
+						>
+							{ strconv.Itoa(len(logLevelOptions())) }/{ strconv.Itoa(len(logLevelOptions())) }
+						</span>
+						@IconChevronsUpDown("h-4 w-4 text-gray-500")
+					</button>
+					<div
+						data-role="level-menu"
+						class={ dropdownMenu() + " bg-gray-800 ring-gray-700" }
+						role="listbox"
+						aria-multiselectable="true"
+					>
+						<div class="px-1 pb-1 border-b border-gray-700">
+							<label class={ dropdownMenuItem() + " hover:bg-gray-700/50 rounded-md" }>
+								<input
+									type="checkbox"
+									data-level="all"
+									checked
+									class="custom-checkbox-dark"
+								/>
+								<span class="font-mono font-medium text-gray-300">{ i18n.FromContext(ctx).T("log.all") }</span>
+							</label>
+						</div>
+						<div class="px-1 pt-1">
+							for _, level := range logLevelOptions() {
+								<label class={ dropdownMenuItem() + " hover:bg-gray-700/50 rounded-md" }>
+									<input
+										type="checkbox"
+										data-level={ strconv.Itoa(level.Value) }
+										checked
+										class="custom-checkbox-dark"
+									/>
+									<span class={ "font-mono font-medium " + level.Class }>{ level.Label }</span>
+								</label>
+							}
+						</div>
+					</div>
+				</div>
+			}
+			if data.IsRunning {
+				@Tooltip(i18n.FromContext(ctx).T("log.autoscroll_disabled"), "autoscroll") {
+					<button
+						type="button"
+						data-action="toggle-autoscroll"
+						aria-label={ i18n.FromContext(ctx).T("log.toggle_autoscroll") }
+						class={ btnGhostIcon() }
+					>
+						<span data-role="autoscroll-icon-on" class="hidden">
+							@IconEye("h-4 w-4")
+						</span>
+						<span data-role="autoscroll-icon-off">
+							@IconEyeOff("h-4 w-4")
+						</span>
+					</button>
+				}
+			}
+			if !data.IsRunning {
+				@Tooltip(i18n.FromContext(ctx).T("log.download_full_log") + " [d]") {
+					<button
+						type="button"
+						data-action="download-log"
+						data-url={ sanitize.JobLogsDownloadURL(data.Namespace, data.JobName) }
+						data-filename={ data.JobName + ".log" }
+						aria-label={ i18n.FromContext(ctx).T("log.download_full_log") }
+						class={ btnGhostIcon() }
+					>
+						@IconDownload("h-4 w-4")
+					</button>
+				}
+			}
+			@Tooltip(i18n.FromContext(ctx).T("log.close_logs") + " [c]") {
+				<button
+					type="button"
+					data-action="close-logs"
+					aria-label={ i18n.FromContext(ctx).T("log.close_logs") }
+					class={ btnGhostIcon() }
+				>
+					@IconX("h-4 w-4")
+				</button>
+			}
 		</div>
+	</div>
+}
+
+templ logContent(ctx context.Context, data viewmodel.JobLogData) {
+	<div
+		data-log-stream
+		class="flex-1 min-h-0 flex flex-col"
+		if data.IsRunning {
+			hx-get={ sanitize.JobLogsStreamURL(data.Namespace, data.Runner, data.JobName, data.Platform, data.RepoURL) }
+			hx-trigger="every 2s"
+			hx-target="this"
+			hx-swap="outerHTML show:no-scroll"
+		}
+	>
 		if data.Parsed != nil && data.Message == "" && !data.IsRunning {
 			@logSummaryPanel(ctx, data.Parsed, data.Platform, data.RepoURL)
 		}

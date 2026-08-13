@@ -460,6 +460,47 @@ var _ = Describe("WebHandler", func() {
 			Expect(w.Code).To(Equal(http.StatusOK))
 			Expect(w.Body.String()).To(ContainSubstring("log.failed_to_fetch_logs"))
 		})
+
+		It("should render the streaming fragment for a running job", func() {
+			runningJob := &batchv1.Job{
+				ObjectMeta: metav1.ObjectMeta{Name: "running-job", Namespace: "test-namespace"},
+				Status:     batchv1.JobStatus{},
+			}
+			client := fake.NewClientBuilder().WithScheme(scheme).
+				WithRuntimeObjects(append(testObjects, runningJob)...).Build()
+			h := NewWebHandler(
+				client, fakeClientset, broker, dummyAssets, nil,
+				logreader.NewKubernetesReader(fakeClientset),
+			)
+
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/joblogs?namespace=test-namespace&runner=test-runner&job=running-job&stream=1",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			h.HandleJobLogs(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("HX-Retarget")).To(BeEmpty())
+			Expect(w.Body.String()).To(ContainSubstring("every 2s"))
+		})
+
+		It("should retarget to the full component when the job has finished", func() {
+			req := httptest.NewRequest(
+				http.MethodGet,
+				"/joblogs?namespace=test-namespace&runner=test-runner&job=missing-job&stream=1",
+				nil,
+			)
+			w := httptest.NewRecorder()
+
+			handler.HandleJobLogs(w, req)
+
+			Expect(w.Code).To(Equal(http.StatusOK))
+			Expect(w.Header().Get("HX-Retarget")).To(Equal("#logs-missing-job"))
+			Expect(w.Body.String()).To(ContainSubstring("logs-missing-job"))
+		})
 	})
 
 	Describe("HandleDashboard search", func() {

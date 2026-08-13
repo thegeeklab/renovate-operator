@@ -75,6 +75,14 @@ var _ = Describe("sanitize helpers", func() {
 		})
 	})
 
+	Describe("JobLogsStreamURL", func() {
+		It("builds a URL with the stream flag appended", func() {
+			Expect(JobLogsStreamURL("ns", "runner", "job", "github", "https://github.com/owner/repo")).
+				To(Equal("/joblogs?job=job&namespace=ns&platform=github" +
+					"&repoUrl=https%3A%2F%2Fgithub.com%2Fowner%2Frepo&runner=runner&stream=1"))
+		})
+	})
+
 	Describe("PersistKey", func() {
 		It("builds a key from namespace and name", func() {
 			Expect(PersistKey("ns", "name")).To(Equal("repo-ns-name"))

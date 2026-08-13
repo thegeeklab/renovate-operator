@@ -94,7 +94,8 @@
     "kubelet",
     "PKCE",
     "missingkey",
-    "Weblate"
+    "Weblate",
+    "Retarget"
   ],
   "ignorePaths": [
     ".woodpecker",

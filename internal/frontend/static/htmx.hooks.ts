@@ -145,7 +145,9 @@ export function initHtmxHooks(): void {
       swapping = false
     })
 
-    hideActiveTooltip()
+    if (!target.hasAttribute("data-log-stream")) {
+      hideActiveTooltip()
+    }
 
     if (scrollStates.size > 0) {
       requestAnimationFrame(() => {
