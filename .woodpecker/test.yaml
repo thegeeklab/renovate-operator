@@ -1,6 +1,6 @@
 ---
 when:
-  - event: [pull_request, tag]
+  - event: [pull_request]
   - event: [push, manual]
     branch:
       - ${CI_REPO_DEFAULT_BRANCH}
@@ -8,7 +8,7 @@ when:
 variables:
   - &when_locale
     - path:
-        exclude: &locale_exclude_path
+        include:
           - internal/frontend/i18n/locales/*.json
   - &when_golang
     - path:
@@ -32,9 +32,7 @@ steps:
     image: docker.io/library/golang:1.26.5
     commands:
       - make test FOCUS="Bundle|ClientJSON|SupportedLocales|Translator"
-    when:
-      - path:
-          include: *locale_exclude_path
+    when: *when_locale
 
   - name: helm-test
     image: quay.io/thegeeklab/kube-tools

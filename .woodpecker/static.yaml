@@ -1,14 +1,14 @@
 ---
 when:
-  - event: [pull_request, tag]
+  - event: [pull_request]
   - event: [push, manual]
     branch:
       - ${CI_REPO_DEFAULT_BRANCH}
 
 variables:
-  - &when_locale
+  - &when
     - path:
-        exclude: &locale_exclude_path
+        exclude: &exclude_path
           - internal/frontend/i18n/locales/*.json
   - &when_golang
     - path:
@@ -26,35 +26,35 @@ steps:
     image: docker.io/library/node:lts
     commands:
       - make frontend-deps
-    when: *when_locale
+    when: *when
 
   - name: eslint
     image: docker.io/library/node:lts
     depends_on: [frontend-deps]
     commands:
       - make eslint typecheck
-    when: *when_locale
+    when: *when
 
   - name: markdownlint
     image: quay.io/thegeeklab/markdownlint-cli
     depends_on: [frontend-deps]
     commands:
       - markdownlint 'docs/*.md' 'dist/chart/README.md' 'README.md' 'CONTRIBUTING.md'
-    when: *when_locale
+    when: *when
 
   - name: yaml-lint
     image: docker.io/library/golang:1.26.5
     depends_on: [frontend-deps]
     commands:
       - make yamlfmt-lint
-    when: *when_locale
+    when: *when
 
   - name: spellcheck
     image: docker.io/library/node:lts
     depends_on: [frontend-deps]
     commands:
       - make cspell
-    when: *when_locale
+    when: *when
 
   - name: golangci-lint
     image: docker.io/golangci/golangci-lint:v2.12.2
@@ -70,7 +70,7 @@ steps:
     commands:
       - ct list-changed --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist
       - ct lint --target-branch ${CI_REPO_DEFAULT_BRANCH} --chart-dirs dist --validate-maintainers=false --check-version-increment=false
-    when: *when_locale
+    when: *when
 
   - name: verify-installer
     image: docker.io/library/golang:1.26.5
@@ -78,7 +78,7 @@ steps:
     commands:
       - make build-installer
       - git diff --exit-code
-    when: *when_locale
+    when: *when
 
   - name: format-locale
     image: docker.io/jauderho/prettier:3.9.6
@@ -86,7 +86,7 @@ steps:
       - prettier -w internal/frontend/i18n/locales/*.json
     when:
       - path:
-          include: *locale_exclude_path
+          include: *exclude_path
 
   - name: verify-locale
     image: docker.io/library/golang:1.26.5
@@ -95,4 +95,4 @@ steps:
       - git diff --exit-code
     when:
       - path:
-          include: *locale_exclude_path
+          include: *exclude_path
