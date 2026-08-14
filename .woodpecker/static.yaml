@@ -43,7 +43,7 @@ steps:
     when: *when
 
   - name: yaml-lint
-    image: docker.io/library/golang:1.26.5
+    image: docker.io/library/golang:1.26.6
     depends_on: [frontend-deps]
     commands:
       - make yamlfmt-lint
@@ -73,7 +73,7 @@ steps:
     when: *when
 
   - name: verify-installer
-    image: docker.io/library/golang:1.26.5
+    image: docker.io/library/golang:1.26.6
     depends_on: [frontend-deps]
     commands:
       - make build-installer
@@ -89,7 +89,7 @@ steps:
           include: *exclude_path
 
   - name: verify-locale
-    image: docker.io/library/golang:1.26.5
+    image: docker.io/library/golang:1.26.6
     depends_on: [format-locale]
     commands:
       - git diff --exit-code

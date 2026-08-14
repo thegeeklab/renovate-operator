@@ -23,13 +23,13 @@ variables:
 
 steps:
   - name: test
-    image: docker.io/library/golang:1.26.5
+    image: docker.io/library/golang:1.26.6
     commands:
       - make test
     when: *when_golang
 
   - name: test-locale
-    image: docker.io/library/golang:1.26.5
+    image: docker.io/library/golang:1.26.6
     commands:
       - make test FOCUS="Bundle|ClientJSON|SupportedLocales|Translator"
     when: *when_locale
