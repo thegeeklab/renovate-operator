@@ -1,6 +1,6 @@
 module github.com/thegeeklab/renovate-operator
 
-go 1.26.6
+go 1.27.0
 
 require (
 	code.gitea.io/sdk/gitea v0.25.1
