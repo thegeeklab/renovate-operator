@@ -3,7 +3,7 @@ GOFUMPT_PACKAGE_VERSION := v0.11.0
 # renovate: datasource=github-releases depName=google/yamlfmt
 YAMLFMT_PACKAGE_VERSION := v0.21.0
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_PACKAGE_VERSION := v2.12.2
+GOLANGCI_LINT_PACKAGE_VERSION := v2.13.1
 # renovate: datasource=go depName=github.com/a-h/templ
 TEMPL_PACKAGE_VERSION := v0.3.1020
 # renovate: datasource=github-releases depName=air-verse/air
