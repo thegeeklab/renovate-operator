@@ -10,7 +10,6 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,17 +43,15 @@ var _ = Describe("Runner Controller", func() {
 			}
 
 			config := &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-config-ref",
-					Namespace: "default",
-				},
+				Name:      "test-config-ref",
+				Namespace: "default",
 				Spec: renovatev1beta1.RenovateConfigSpec{
 					Platform: renovatev1beta1.PlatformSpec{
 						Type: "github",
 						Token: corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "token"},
-								Key:                  "key",
+								Name: "token",
+								Key:  "key",
 							},
 						},
 						Endpoint: "https://api.github.com/",
@@ -66,10 +63,8 @@ var _ = Describe("Runner Controller", func() {
 			Expect(k8sClient.Create(ctx, config)).To(Succeed())
 
 			resource := &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 				Spec: renovatev1beta1.RunnerSpec{
 					ConfigRef: "test-config-ref",
 					JobSpec: renovatev1beta1.JobSpec{
@@ -84,18 +79,14 @@ var _ = Describe("Runner Controller", func() {
 
 		AfterEach(func() {
 			runner := &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, runner)
 
 			config := &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-config-ref",
-					Namespace: "default",
-				},
+				Name:      "test-config-ref",
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, config)
 		})
@@ -117,20 +108,18 @@ var _ = Describe("Runner Controller", func() {
 
 		BeforeEach(func() {
 			config := &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      configName,
-					Namespace: "default",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: labelValue,
-					},
+				Name:      configName,
+				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: labelValue,
 				},
 				Spec: renovatev1beta1.RenovateConfigSpec{
 					Platform: renovatev1beta1.PlatformSpec{
 						Type: "github",
 						Token: corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "token"},
-								Key:                  "key",
+								Name: "token",
+								Key:  "key",
 							},
 						},
 					},
@@ -141,12 +130,10 @@ var _ = Describe("Runner Controller", func() {
 			Expect(k8sClient.Create(ctx, config)).To(Succeed())
 
 			runner := &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      runnerName,
-					Namespace: "default",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: labelValue,
-					},
+				Name:      runnerName,
+				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: labelValue,
 				},
 				Spec: renovatev1beta1.RunnerSpec{
 					JobSpec: renovatev1beta1.JobSpec{Schedule: "*/5 * * * *"},
@@ -159,10 +146,8 @@ var _ = Describe("Runner Controller", func() {
 
 		AfterEach(func() {
 			runner := &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      runnerName,
-					Namespace: "default",
-				},
+				Name:      runnerName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, runner)
 
@@ -174,17 +159,15 @@ var _ = Describe("Runner Controller", func() {
 			}
 
 			config := &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      configName,
-					Namespace: "default",
-				},
+				Name:      configName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, config)
 		})
 
 		It("should resolve RenovateConfig via labels", func() {
 			result, err := reconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: types.NamespacedName{Name: runnerName, Namespace: "default"},
+				Name: runnerName, Namespace: "default",
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(BeNumerically(">", 0))
@@ -192,12 +175,10 @@ var _ = Describe("Runner Controller", func() {
 
 		It("should map GitRepo events to the correct Runner", func() {
 			gitRepo := &renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      repoName,
-					Namespace: "default",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: labelValue,
-					},
+				Name:      repoName,
+				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: labelValue,
 				},
 				Spec: renovatev1beta1.GitRepoSpec{
 					Name: "test/repo",
@@ -215,12 +196,10 @@ var _ = Describe("Runner Controller", func() {
 
 		It("should NOT map GitRepo events if labels do not match", func() {
 			gitRepo := &renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "other-repo",
-					Namespace: "default",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "wrong-id",
-					},
+				Name:      "other-repo",
+				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "wrong-id",
 				},
 			}
 
@@ -234,7 +213,7 @@ var _ = Describe("Runner Controller", func() {
 		errorReconciler := &Reconciler{Client: mockClient, Scheme: k8sClient.Scheme(), EventRecorder: &events.FakeRecorder{}}
 
 		result, err := errorReconciler.Reconcile(ctx, reconcile.Request{
-			NamespacedName: types.NamespacedName{Name: "missing-config-runner", Namespace: "default"},
+			Name: "missing-config-runner", Namespace: "default",
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))

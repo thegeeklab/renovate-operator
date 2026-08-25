@@ -33,11 +33,9 @@ var _ = Describe("GitRepo Component - Webhook Secret Logic", func() {
 		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
 
 		instance = &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-repo",
-				Namespace: "default",
-				UID:       "test-uid-123",
-			},
+			Name:      "test-repo",
+			Namespace: "default",
+			UID:       "test-uid-123",
 		}
 
 		secretKey = client.ObjectKey{
@@ -78,10 +76,8 @@ var _ = Describe("GitRepo Component - Webhook Secret Logic", func() {
 		It("should not overwrite an existing secret", func() {
 			existingToken := "existing-token-value"
 			existingSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      secretKey.Name,
-					Namespace: secretKey.Namespace,
-				},
+				Name:      secretKey.Name,
+				Namespace: secretKey.Namespace,
 				Data: map[string][]byte{
 					renovatev1beta1.WebhookSecretDataKey: []byte(existingToken),
 				},

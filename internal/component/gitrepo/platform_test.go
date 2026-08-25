@@ -13,7 +13,6 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/internal/provider/mocks"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -39,32 +38,26 @@ var _ = Describe("GitRepo Component - Platform Info Logic", func() {
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 
 		instance = &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-repo",
-				Namespace: "default",
-				UID:       "test-uid-123",
-			},
+			Name:      "test-repo",
+			Namespace: "default",
+			UID:       "test-uid-123",
 			Spec: renovatev1beta1.GitRepoSpec{
 				Name: "org/repo",
 			},
 		}
 
 		renovate = &renovatev1beta1.RenovateConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-config",
-				Namespace: "default",
-				UID:       "test-renovate-uid-123",
-			},
+			Name:      "test-config",
+			Namespace: "default",
+			UID:       "test-renovate-uid-123",
 			Spec: renovatev1beta1.RenovateConfigSpec{
 				Platform: renovatev1beta1.PlatformSpec{
 					Type:     "gitea",
 					Endpoint: "https://gitea.example.com/api/v1",
 					Token: corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							Key: "token",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "token-secret",
-							},
+							Key:  "token",
+							Name: "token-secret",
 						},
 					},
 				},
@@ -78,10 +71,8 @@ var _ = Describe("GitRepo Component - Platform Info Logic", func() {
 			Build()
 
 		tokenSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "token-secret",
-				Namespace: instance.Namespace,
-			},
+			Name:      "token-secret",
+			Namespace: instance.Namespace,
 			Data: map[string][]byte{
 				"token": []byte("test-token"),
 			},
@@ -178,7 +169,7 @@ var _ = Describe("GitRepo Component - Platform Info Logic", func() {
 		})
 
 		It("should fail if the platform token secret is missing", func() {
-			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "token-secret", Namespace: instance.Namespace}}
+			secret := &corev1.Secret{Name: "token-secret", Namespace: instance.Namespace}
 			Expect(fakeClient.Delete(ctx, secret)).To(Succeed())
 
 			_, err := reconciler.reconcilePlatformInfo(ctx)

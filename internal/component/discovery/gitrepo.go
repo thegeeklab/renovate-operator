@@ -83,10 +83,8 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 		}
 
 		gitRepo := &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      fmt.Sprintf("%s-%s", r.instance.Name, sanitizedName),
-				Namespace: r.instance.Namespace,
-			},
+			Name:      fmt.Sprintf("%s-%s", r.instance.Name, sanitizedName),
+			Namespace: r.instance.Namespace,
 		}
 
 		_, err = k8s.CreateOrUpdate(ctx, r.Client, gitRepo, r.instance, func() error {

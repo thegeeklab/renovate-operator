@@ -155,8 +155,7 @@ func shouldRetry(err error) bool {
 		return false
 	}
 
-	var se *api_errors.StatusError
-	if errors.As(err, &se) {
+	if se, ok := errors.AsType[*api_errors.StatusError](err); ok {
 		return se.ErrStatus.Code >= httpServerError
 	}
 

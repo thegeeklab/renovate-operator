@@ -10,7 +10,6 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -44,17 +43,15 @@ var _ = Describe("Discovery Controller", func() {
 			}
 
 			config := &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-config-ref",
-					Namespace: "default",
-				},
+				Name:      "test-config-ref",
+				Namespace: "default",
 				Spec: renovatev1beta1.RenovateConfigSpec{
 					Platform: renovatev1beta1.PlatformSpec{
 						Type: "github",
 						Token: corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "token"},
-								Key:                  "key",
+								Name: "token",
+								Key:  "key",
 							},
 						},
 						Endpoint: "https://api.github.com/",
@@ -66,10 +63,8 @@ var _ = Describe("Discovery Controller", func() {
 			Expect(k8sClient.Create(ctx, config)).To(Succeed())
 
 			resource := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 				Spec: renovatev1beta1.DiscoverySpec{
 					ConfigRef: "test-config-ref",
 					JobSpec: renovatev1beta1.JobSpec{
@@ -85,10 +80,8 @@ var _ = Describe("Discovery Controller", func() {
 
 		AfterEach(func() {
 			resource := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, resource)
 
@@ -100,10 +93,8 @@ var _ = Describe("Discovery Controller", func() {
 			}
 
 			config := &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-config-ref",
-					Namespace: "default",
-				},
+				Name:      "test-config-ref",
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, config)
 		})
@@ -124,20 +115,18 @@ var _ = Describe("Discovery Controller", func() {
 
 		BeforeEach(func() {
 			config := &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      configName,
-					Namespace: "default",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: labelValue,
-					},
+				Name:      configName,
+				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: labelValue,
 				},
 				Spec: renovatev1beta1.RenovateConfigSpec{
 					Platform: renovatev1beta1.PlatformSpec{
 						Type: "github",
 						Token: corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "token"},
-								Key:                  "key",
+								Name: "token",
+								Key:  "key",
 							},
 						},
 					},
@@ -148,12 +137,10 @@ var _ = Describe("Discovery Controller", func() {
 			Expect(k8sClient.Create(ctx, config)).To(Succeed())
 
 			resource := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      discoveryName,
-					Namespace: "default",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: labelValue,
-					},
+				Name:      discoveryName,
+				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: labelValue,
 				},
 				Spec: renovatev1beta1.DiscoverySpec{
 					JobSpec: renovatev1beta1.JobSpec{
@@ -169,10 +156,8 @@ var _ = Describe("Discovery Controller", func() {
 
 		AfterEach(func() {
 			resource := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      discoveryName,
-					Namespace: "default",
-				},
+				Name:      discoveryName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, resource)
 
@@ -184,17 +169,15 @@ var _ = Describe("Discovery Controller", func() {
 			}
 
 			config := &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      configName,
-					Namespace: "default",
-				},
+				Name:      configName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, config)
 		})
 
 		It("should resolve RenovateConfig via labels", func() {
 			result, err := reconciler.Reconcile(ctx, reconcile.Request{
-				NamespacedName: types.NamespacedName{Name: discoveryName, Namespace: "default"},
+				Name: discoveryName, Namespace: "default",
 			})
 			Expect(err).NotTo(HaveOccurred())
 			Expect(result.RequeueAfter).To(BeNumerically(">", 0))
@@ -206,7 +189,7 @@ var _ = Describe("Discovery Controller", func() {
 		errorReconciler := &Reconciler{Client: mockClient, Scheme: k8sClient.Scheme(), EventRecorder: &events.FakeRecorder{}}
 
 		result, err := errorReconciler.Reconcile(ctx, reconcile.Request{
-			NamespacedName: types.NamespacedName{Name: "missing-config-discovery", Namespace: "default"},
+			Name: "missing-config-discovery", Namespace: "default",
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))

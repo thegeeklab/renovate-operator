@@ -43,12 +43,10 @@ var _ = Describe("ReconcileJob", func() {
 		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
 
 		instance = &renovatev1beta1.Discovery{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-discovery",
-				Namespace: "default",
-				Labels: map[string]string{
-					renovatev1beta1.LabelRenovator: "renovator-id",
-				},
+			Name:      "test-discovery",
+			Namespace: "default",
+			Labels: map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
 			},
 			Spec: renovatev1beta1.DiscoverySpec{
 				JobSpec: renovatev1beta1.JobSpec{
@@ -61,10 +59,8 @@ var _ = Describe("ReconcileJob", func() {
 		Expect(dd.Default(ctx, instance)).To(Succeed())
 
 		renovate = &renovatev1beta1.RenovateConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-renovate",
-				Namespace: "default",
-			},
+			Name:      "test-renovate",
+			Namespace: "default",
 			Spec: renovatev1beta1.RenovateConfigSpec{
 				ImageSpec: renovatev1beta1.ImageSpec{
 					Image:           "renovate/renovate:latest",
@@ -160,11 +156,9 @@ var _ = Describe("ReconcileJob", func() {
 		Context("when there are active jobs", func() {
 			BeforeEach(func() {
 				activeJob := &batchv1.Job{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "active-job",
-						Namespace: "default",
-						Labels:    expectedLabels(),
-					},
+					Name:      "active-job",
+					Namespace: "default",
+					Labels:    expectedLabels(),
 					Status: batchv1.JobStatus{
 						Active: 1,
 					},
@@ -248,10 +242,8 @@ var _ = Describe("ReconcileJob", func() {
 	Describe("updateJob", func() {
 		It("should configure job with init and main containers", func() {
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
@@ -271,10 +263,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
@@ -286,10 +276,8 @@ var _ = Describe("ReconcileJob", func() {
 			instance.Spec.NodeSelector = map[string]string{"disktype": "ssd"}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
@@ -310,10 +298,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
@@ -327,10 +313,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
@@ -344,10 +328,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
@@ -366,10 +348,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
@@ -384,10 +364,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
@@ -402,10 +380,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
@@ -417,18 +393,14 @@ var _ = Describe("ReconcileJob", func() {
 		It("should propagate ExtraVolumes to the job pod spec", func() {
 			instance.Spec.ExtraVolumes = []corev1.Volume{
 				{
-					Name: "extra-vol",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
+					Name:     "extra-vol",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, nil)).To(Succeed())
 
@@ -441,10 +413,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			podLabels := map[string]string{
 				"existing": "label",
@@ -469,11 +439,9 @@ var _ = Describe("ReconcileJob", func() {
 
 		It("should set JobRunning=True when an active job exists", func() {
 			activeJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "active-discovery-job",
-					Namespace: "default",
-					Labels:    labels(),
-				},
+				Name:      "active-discovery-job",
+				Namespace: "default",
+				Labels:    labels(),
 				Status: batchv1.JobStatus{
 					Active: 1,
 				},
@@ -501,12 +469,10 @@ var _ = Describe("ReconcileJob", func() {
 
 		It("should set JobCompleted=True when latest finished job succeeded", func() {
 			completedJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "completed-discovery-job",
-					Namespace:         "default",
-					CreationTimestamp: metav1.Now(),
-					Labels:            labels(),
-				},
+				Name:              "completed-discovery-job",
+				Namespace:         "default",
+				CreationTimestamp: metav1.Now(),
+				Labels:            labels(),
 				Status: batchv1.JobStatus{
 					Succeeded: 1,
 					Conditions: []batchv1.JobCondition{
@@ -533,12 +499,10 @@ var _ = Describe("ReconcileJob", func() {
 
 		It("should set JobFailed=True when latest finished job failed", func() {
 			failedJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "failed-discovery-job",
-					Namespace:         "default",
-					CreationTimestamp: metav1.Now(),
-					Labels:            labels(),
-				},
+				Name:              "failed-discovery-job",
+				Namespace:         "default",
+				CreationTimestamp: metav1.Now(),
+				Labels:            labels(),
 				Status: batchv1.JobStatus{
 					Failed: 1,
 					Conditions: []batchv1.JobCondition{
@@ -565,12 +529,10 @@ var _ = Describe("ReconcileJob", func() {
 
 		It("should transition from completed to failed when a newer job fails", func() {
 			firstJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "first-success-job",
-					Namespace:         "default",
-					CreationTimestamp: metav1.Now(),
-					Labels:            labels(),
-				},
+				Name:              "first-success-job",
+				Namespace:         "default",
+				CreationTimestamp: metav1.Now(),
+				Labels:            labels(),
 				Status: batchv1.JobStatus{
 					Succeeded: 1,
 					Conditions: []batchv1.JobCondition{
@@ -587,12 +549,10 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)).To(BeNil())
 
 			secondJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "second-fail-job",
-					Namespace:         "default",
-					CreationTimestamp: metav1.NewTime(firstJob.CreationTimestamp.Add(time.Minute)),
-					Labels:            labels(),
-				},
+				Name:              "second-fail-job",
+				Namespace:         "default",
+				CreationTimestamp: metav1.NewTime(firstJob.CreationTimestamp.Add(time.Minute)),
+				Labels:            labels(),
 				Status: batchv1.JobStatus{
 					Failed: 1,
 					Conditions: []batchv1.JobCondition{
@@ -611,11 +571,9 @@ var _ = Describe("ReconcileJob", func() {
 
 		It("should report Running=True and Completed=True when both active and finished jobs exist", func() {
 			activeJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "active-job",
-					Namespace: "default",
-					Labels:    labels(),
-				},
+				Name:      "active-job",
+				Namespace: "default",
+				Labels:    labels(),
 				Status: batchv1.JobStatus{
 					Active: 1,
 				},
@@ -623,12 +581,10 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(fakeClient.Create(ctx, activeJob)).To(Succeed())
 
 			finishedJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "previous-done-job",
-					Namespace:         "default",
-					CreationTimestamp: metav1.Now(),
-					Labels:            labels(),
-				},
+				Name:              "previous-done-job",
+				Namespace:         "default",
+				CreationTimestamp: metav1.Now(),
+				Labels:            labels(),
 				Status: batchv1.JobStatus{
 					Succeeded: 1,
 					Conditions: []batchv1.JobCondition{

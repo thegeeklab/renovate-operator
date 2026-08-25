@@ -9,7 +9,6 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -35,20 +34,16 @@ var _ = Describe("GitRepo Component - Finalizer Logic", func() {
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 
 		instance = &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-repo",
-				Namespace: "default",
-			},
+			Name:      "test-repo",
+			Namespace: "default",
 			Spec: renovatev1beta1.GitRepoSpec{
 				Name: "org/repo",
 			},
 		}
 
 		renovate = &renovatev1beta1.RenovateConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-config",
-				Namespace: "default",
-			},
+			Name:      "test-config",
+			Namespace: "default",
 			Spec: renovatev1beta1.RenovateConfigSpec{
 				Platform: renovatev1beta1.PlatformSpec{
 					Type: "gitea",

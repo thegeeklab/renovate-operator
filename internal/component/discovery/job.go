@@ -91,11 +91,9 @@ func (r *Reconciler) runDiscoveryJob(ctx context.Context, discoveryLabels map[st
 	log := logf.FromContext(ctx)
 
 	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: DiscoveryName(r.req) + "-",
-			Namespace:    r.instance.Namespace,
-			Labels:       discoveryLabels,
-		},
+		GenerateName: DiscoveryName(r.req) + "-",
+		Namespace:    r.instance.Namespace,
+		Labels:       discoveryLabels,
 	}
 
 	if err := r.updateJob(job, discoveryLabels); err != nil {

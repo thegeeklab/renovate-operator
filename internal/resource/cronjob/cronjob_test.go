@@ -9,7 +9,6 @@ import (
 
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -38,11 +37,9 @@ var _ = Describe("DeleteOwnedJobs", func() {
 		ctx = context.Background()
 
 		cronJob = &batchv1.CronJob{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-cronjob",
-				Namespace: "test-namespace",
-				UID:       "cronjob-uid-123",
-			},
+			Name:      "test-cronjob",
+			Namespace: "test-namespace",
+			UID:       "cronjob-uid-123",
 			Spec: batchv1.CronJobSpec{
 				Schedule: "* * * * *",
 				JobTemplate: batchv1.JobTemplateSpec{
@@ -92,12 +89,10 @@ var _ = Describe("DeleteOwnedJobs", func() {
 			// Helper function to create a job owned by the cronjob
 			createOwnedJob := func(nameSuffix string) *batchv1.Job {
 				job := &batchv1.Job{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      cronJob.Name + "-" + nameSuffix,
-						Namespace: cronJob.Namespace,
-						Labels:    map[string]string{"cronjob": cronJob.Name},
-					},
-					Spec: *cronJob.Spec.JobTemplate.Spec.DeepCopy(),
+					Name:      cronJob.Name + "-" + nameSuffix,
+					Namespace: cronJob.Namespace,
+					Labels:    map[string]string{"cronjob": cronJob.Name},
+					Spec:      *cronJob.Spec.JobTemplate.Spec.DeepCopy(),
 				}
 				if err := ctrl.SetControllerReference(cronJob, job, scheme); err != nil {
 					Fail("Failed to set controller reference: " + err.Error())
@@ -114,10 +109,8 @@ var _ = Describe("DeleteOwnedJobs", func() {
 
 			// Create a job not owned by the cronjob
 			otherJob = &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "other-job",
-					Namespace: cronJob.Namespace,
-				},
+				Name:      "other-job",
+				Namespace: cronJob.Namespace,
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -204,10 +197,8 @@ var _ = Describe("CheckActiveJobs", func() {
 		It("should return false when no jobs match the pattern", func() {
 			// Create a job with a different name
 			otherJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "different-job",
-					Namespace: namespace,
-				},
+				Name:      "different-job",
+				Namespace: namespace,
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -235,10 +226,8 @@ var _ = Describe("CheckActiveJobs", func() {
 		It("should return true when job has active pods", func() {
 			// Create a job with active pods
 			activeJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job-12345",
-					Namespace: namespace,
-				},
+				Name:      "test-job-12345",
+				Namespace: namespace,
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -268,10 +257,8 @@ var _ = Describe("CheckActiveJobs", func() {
 			// Create a pending job (no succeeded or failed pods)
 			completions := int32(1)
 			pendingJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: namespace,
-				},
+				Name:      "test-job",
+				Namespace: namespace,
 				Spec: batchv1.JobSpec{
 					Completions: &completions,
 					Template: corev1.PodTemplateSpec{
@@ -302,10 +289,8 @@ var _ = Describe("CheckActiveJobs", func() {
 		It("should return false when job has completed", func() {
 			// Create a completed job
 			completedJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job-67890",
-					Namespace: namespace,
-				},
+				Name:      "test-job-67890",
+				Namespace: namespace,
 				Spec: batchv1.JobSpec{
 					Template: corev1.PodTemplateSpec{
 						Spec: corev1.PodSpec{
@@ -335,10 +320,8 @@ var _ = Describe("CheckActiveJobs", func() {
 		It("should return false when job has no completions set (nil)", func() {
 			// Create a job with no completions set and no activity
 			noCompletionsJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job-no-completions",
-					Namespace: namespace,
-				},
+				Name:      "test-job-no-completions",
+				Namespace: namespace,
 				Spec: batchv1.JobSpec{
 					// Completions is nil (not set)
 					Template: corev1.PodTemplateSpec{
@@ -370,10 +353,8 @@ var _ = Describe("CheckActiveJobs", func() {
 			// Create a job with completions set to 0
 			zeroCompletions := int32(0)
 			zeroCompletionsJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job-zero-completions",
-					Namespace: namespace,
-				},
+				Name:      "test-job-zero-completions",
+				Namespace: namespace,
 				Spec: batchv1.JobSpec{
 					Completions: &zeroCompletions,
 					Template: corev1.PodTemplateSpec{

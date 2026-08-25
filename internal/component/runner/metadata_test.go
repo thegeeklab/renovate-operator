@@ -6,7 +6,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -15,10 +14,8 @@ var _ = Describe("RunnerMetadata", func() {
 
 	BeforeEach(func() {
 		request = reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      "test-name",
-				Namespace: "test-namespace",
-			},
+			Name:      "test-name",
+			Namespace: "test-namespace",
 		}
 	})
 
@@ -41,9 +38,7 @@ var _ = Describe("RunnerName", func() {
 
 	BeforeEach(func() {
 		request = reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name: "test-name",
-			},
+			Name: "test-name",
 		}
 	})
 
@@ -77,9 +72,7 @@ var _ = Describe("RunnerLabels", func() {
 
 	BeforeEach(func() {
 		request = reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name: "test-instance",
-			},
+			Name: "test-instance",
 		}
 	})
 

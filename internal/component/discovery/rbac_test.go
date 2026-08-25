@@ -11,7 +11,6 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	corev1 "k8s.io/api/core/v1"
 	rbacv1 "k8s.io/api/rbac/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
@@ -40,11 +39,9 @@ var _ = Describe("RBAC Reconciliation", func() {
 			Build()
 
 		instance = &renovatev1beta1.Discovery{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-discovery",
-				Namespace: "test-namespace",
-			},
-			Spec: renovatev1beta1.DiscoverySpec{},
+			Name:      "test-discovery",
+			Namespace: "test-namespace",
+			Spec:      renovatev1beta1.DiscoverySpec{},
 		}
 		dd := &DiscoveryCustomDefaulter{}
 		Expect(dd.Default(ctx, instance)).To(Succeed())

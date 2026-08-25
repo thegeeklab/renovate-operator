@@ -45,45 +45,37 @@ var _ = Describe("WebHandler", func() {
 
 		testObjects = []runtime.Object{
 			&renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "test-renovator",
-					Namespace:         "test-namespace",
-					UID:               renovator,
-					CreationTimestamp: metav1.NewTime(time.Now()),
-				},
+				Name:              "test-renovator",
+				Namespace:         "test-namespace",
+				UID:               renovator,
+				CreationTimestamp: metav1.NewTime(time.Now()),
 			},
 			&renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-repo",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: string(renovator),
-					},
-					CreationTimestamp: metav1.NewTime(time.Now()),
+				Name:      "test-repo",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: string(renovator),
 				},
+				CreationTimestamp: metav1.NewTime(time.Now()),
 				Status: renovatev1beta1.GitRepoStatus{
 					WebhookID: "12345",
 				},
 			},
 			&renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: string(renovator),
-					},
-					CreationTimestamp: metav1.NewTime(time.Now()),
+				Name:      "test-runner",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: string(renovator),
 				},
+				CreationTimestamp: metav1.NewTime(time.Now()),
 			},
 			&renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: string(renovator),
-					},
-					CreationTimestamp: metav1.NewTime(time.Now()),
+				Name:      "test-discovery",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: string(renovator),
 				},
+				CreationTimestamp: metav1.NewTime(time.Now()),
 			},
 		}
 
@@ -463,8 +455,8 @@ var _ = Describe("WebHandler", func() {
 
 		It("should render the streaming fragment for a running job", func() {
 			runningJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{Name: "running-job", Namespace: "test-namespace"},
-				Status:     batchv1.JobStatus{},
+				Name: "running-job", Namespace: "test-namespace",
+				Status: batchv1.JobStatus{},
 			}
 			client := fake.NewClientBuilder().WithScheme(scheme).
 				WithRuntimeObjects(append(testObjects, runningJob)...).Build()
@@ -555,8 +547,8 @@ var _ = Describe("WebHandler", func() {
 
 		It("should return true when job has no completion time and no terminal conditions", func() {
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{Name: "running-job", Namespace: "test-namespace"},
-				Status:     batchv1.JobStatus{},
+				Name: "running-job", Namespace: "test-namespace",
+				Status: batchv1.JobStatus{},
 			}
 			Expect(fakeClient.Create(context.Background(), job)).To(Succeed())
 
@@ -567,8 +559,8 @@ var _ = Describe("WebHandler", func() {
 		It("should return false when job has CompletionTime", func() {
 			now := metav1.Now()
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{Name: "completed-job", Namespace: "test-namespace"},
-				Status:     batchv1.JobStatus{CompletionTime: &now},
+				Name: "completed-job", Namespace: "test-namespace",
+				Status: batchv1.JobStatus{CompletionTime: &now},
 			}
 			Expect(fakeClient.Create(context.Background(), job)).To(Succeed())
 
@@ -578,7 +570,7 @@ var _ = Describe("WebHandler", func() {
 
 		It("should return false when job has JobFailed condition", func() {
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{Name: "failed-job", Namespace: "test-namespace"},
+				Name: "failed-job", Namespace: "test-namespace",
 				Status: batchv1.JobStatus{
 					Conditions: []batchv1.JobCondition{
 						{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},

@@ -4,7 +4,6 @@ import (
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
 
-	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -13,10 +12,8 @@ var _ = Describe("GenericMetadata", func() {
 
 	BeforeEach(func() {
 		request = reconcile.Request{
-			NamespacedName: types.NamespacedName{
-				Name:      "test-name",
-				Namespace: "test-namespace",
-			},
+			Name:      "test-name",
+			Namespace: "test-namespace",
 		}
 	})
 

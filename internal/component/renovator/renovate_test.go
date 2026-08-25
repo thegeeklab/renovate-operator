@@ -8,7 +8,6 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -32,11 +31,9 @@ var _ = Describe("Renovator Renovate Functions", func() {
 	Describe("reconcileRenovateConfig", func() {
 		It("should create RenovateConfig resource", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-				},
-				Spec: renovatev1beta1.RenovatorSpec{},
+				Name:      "test-renovator",
+				Namespace: "default",
+				Spec:      renovatev1beta1.RenovatorSpec{},
 			}
 
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
@@ -54,11 +51,9 @@ var _ = Describe("Renovator Renovate Functions", func() {
 
 		It("should update existing RenovateConfig resource", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-				},
-				Spec: renovatev1beta1.RenovatorSpec{},
+				Name:      "test-renovator",
+				Namespace: "default",
+				Spec:      renovatev1beta1.RenovatorSpec{},
 			}
 
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
@@ -100,12 +95,10 @@ var _ = Describe("Renovator Renovate Functions", func() {
 
 		It("should update RenovateConfig spec and labels", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-					UID:       "test-uid",
-				},
-				Spec: renovatev1beta1.RenovatorSpec{},
+				Name:      "test-renovator",
+				Namespace: "default",
+				UID:       "test-uid",
+				Spec:      renovatev1beta1.RenovatorSpec{},
 			}
 
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
@@ -124,11 +117,9 @@ var _ = Describe("Renovator Renovate Functions", func() {
 	Describe("reconcileRenovateConfigMap", func() {
 		It("should create Renovate ConfigMap", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-				},
-				Spec: renovatev1beta1.RenovatorSpec{},
+				Name:      "test-renovator",
+				Namespace: "default",
+				Spec:      renovatev1beta1.RenovatorSpec{},
 			}
 
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
@@ -145,11 +136,9 @@ var _ = Describe("Renovator Renovate Functions", func() {
 
 		It("should update existing Renovate ConfigMap", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-				},
-				Spec: renovatev1beta1.RenovatorSpec{},
+				Name:      "test-renovator",
+				Namespace: "default",
+				Spec:      renovatev1beta1.RenovatorSpec{},
 			}
 
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
@@ -193,11 +182,9 @@ var _ = Describe("Renovator Renovate Functions", func() {
 
 		It("should update ConfigMap with renovate config", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-				},
-				Spec: renovatev1beta1.RenovatorSpec{},
+				Name:      "test-renovator",
+				Namespace: "default",
+				Spec:      renovatev1beta1.RenovatorSpec{},
 			}
 
 			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)

@@ -11,7 +11,6 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -31,11 +30,9 @@ var _ = Describe("Renovator Controller", func() {
 
 		BeforeEach(func() {
 			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "renovate-token-secret",
-					Namespace: "default",
-				},
-				Type: corev1.SecretTypeOpaque,
+				Name:      "renovate-token-secret",
+				Namespace: "default",
+				Type:      corev1.SecretTypeOpaque,
 				StringData: map[string]string{
 					"token": "dummy-token",
 				},
@@ -53,20 +50,16 @@ var _ = Describe("Renovator Controller", func() {
 			err = k8sClient.Get(ctx, typeNamespacedName, &renovatev1beta1.Renovator{})
 			if err != nil && api_errors.IsNotFound(err) {
 				resource := &renovatev1beta1.Renovator{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      resourceName,
-						Namespace: "default",
-					},
+					Name:      resourceName,
+					Namespace: "default",
 					Spec: renovatev1beta1.RenovatorSpec{
 						Renovate: renovatev1beta1.RenovateConfigSpec{
 							Platform: renovatev1beta1.PlatformSpec{
 								Type: "github",
 								Token: corev1.EnvVarSource{
 									SecretKeyRef: &corev1.SecretKeySelector{
-										LocalObjectReference: corev1.LocalObjectReference{
-											Name: "renovate-token-secret",
-										},
-										Key: "token",
+										Name: "renovate-token-secret",
+										Key:  "token",
 									},
 								},
 								Endpoint: "https://api.github.com/",
@@ -156,20 +149,16 @@ var _ = Describe("Renovator Controller", func() {
 			By("Verifying resource cleanup")
 
 			additionalResource := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "additional-test-resource",
-					Namespace: "default",
-				},
+				Name:      "additional-test-resource",
+				Namespace: "default",
 				Spec: renovatev1beta1.RenovatorSpec{
 					Renovate: renovatev1beta1.RenovateConfigSpec{
 						Platform: renovatev1beta1.PlatformSpec{
 							Type: "github",
 							Token: corev1.EnvVarSource{
 								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "renovate-token-secret",
-									},
-									Key: "token",
+									Name: "renovate-token-secret",
+									Key:  "token",
 								},
 							},
 							Endpoint: "https://api.github.com/",
@@ -194,12 +183,10 @@ var _ = Describe("Renovator Controller", func() {
 			By("Testing that annotation removal doesn't trigger re-reconciliation")
 
 			rr := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-no-double-reconcile",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
-					},
+				Name:      "test-no-double-reconcile",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Renovate: renovatev1beta1.RenovateConfigSpec{
@@ -207,10 +194,8 @@ var _ = Describe("Renovator Controller", func() {
 							Type: "github",
 							Token: corev1.EnvVarSource{
 								SecretKeyRef: &corev1.SecretKeySelector{
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "renovate-token-secret",
-									},
-									Key: "token",
+									Name: "renovate-token-secret",
+									Key:  "token",
 								},
 							},
 							Endpoint: "https://api.github.com/",

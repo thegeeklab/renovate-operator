@@ -32,12 +32,10 @@ var _ = Describe("ReconcileMetrics", func() {
 		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
 
 		instance = &renovatev1beta1.Runner{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-runner",
-				Namespace: "default",
-				Labels: map[string]string{
-					renovatev1beta1.LabelRenovator: "renovator-id",
-				},
+			Name:      "test-runner",
+			Namespace: "default",
+			Labels: map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
 			},
 		}
 

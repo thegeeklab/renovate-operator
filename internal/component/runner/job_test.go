@@ -55,12 +55,10 @@ var _ = Describe("ReconcileJob", func() {
 		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
 
 		instance = &renovatev1beta1.Runner{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-runner",
-				Namespace: "default",
-				Labels: map[string]string{
-					renovatev1beta1.LabelRenovator: "renovator-id",
-				},
+			Name:      "test-runner",
+			Namespace: "default",
+			Labels: map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
 			},
 			Spec: renovatev1beta1.RunnerSpec{
 				JobSpec: renovatev1beta1.JobSpec{
@@ -72,10 +70,8 @@ var _ = Describe("ReconcileJob", func() {
 		Expect(rr.Default(ctx, instance)).To(Succeed())
 
 		renovate = &renovatev1beta1.RenovateConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-renovate",
-				Namespace: "default",
-			},
+			Name:      "test-renovate",
+			Namespace: "default",
 			Spec: renovatev1beta1.RenovateConfigSpec{
 				ImageSpec: renovatev1beta1.ImageSpec{
 					Image:           "renovate/renovate:latest",
@@ -90,33 +86,27 @@ var _ = Describe("ReconcileJob", func() {
 		Expect(rd.Default(ctx, renovate)).To(Succeed())
 
 		repo1 = &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "repo-1",
-				Namespace: instance.Namespace,
-				Labels: map[string]string{
-					renovatev1beta1.LabelRenovator: "renovator-id",
-				},
+			Name:      "repo-1",
+			Namespace: instance.Namespace,
+			Labels: map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
 			},
 			Spec: renovatev1beta1.GitRepoSpec{Name: "test/repo-1"},
 		}
 		repo2 = &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "repo-2",
-				Namespace: instance.Namespace,
-				Labels: map[string]string{
-					renovatev1beta1.LabelRenovator: "renovator-id",
-				},
+			Name:      "repo-2",
+			Namespace: instance.Namespace,
+			Labels: map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
 			},
 			Spec: renovatev1beta1.GitRepoSpec{Name: "test/repo-2"},
 		}
 
 		repo3 = &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "repo-ignored",
-				Namespace: instance.Namespace,
-				Labels: map[string]string{
-					renovatev1beta1.LabelRenovator: "different-id",
-				},
+			Name:      "repo-ignored",
+			Namespace: instance.Namespace,
+			Labels: map[string]string{
+				renovatev1beta1.LabelRenovator: "different-id",
 			},
 			Spec: renovatev1beta1.GitRepoSpec{Name: "test/repo-ignored"},
 		}
@@ -248,11 +238,9 @@ var _ = Describe("ReconcileJob", func() {
 		Context("when there is an active job for one of the repos", func() {
 			BeforeEach(func() {
 				activeJob := &batchv1.Job{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "active-job-repo-1",
-						Namespace: "default",
-						Labels:    expectedLabels("repo-1"),
-					},
+					Name:      "active-job-repo-1",
+					Namespace: "default",
+					Labels:    expectedLabels("repo-1"),
 					Status: batchv1.JobStatus{
 						Active: 1,
 					},
@@ -383,12 +371,10 @@ var _ = Describe("ReconcileJob", func() {
 			BeforeEach(func() {
 				longName := "very-long-organization-name-very-long-repository-name-that-exceeds-limit"
 				longRepo = &renovatev1beta1.GitRepo{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      longName,
-						Namespace: instance.Namespace,
-						Labels: map[string]string{
-							renovatev1beta1.LabelRenovator: "renovator-id",
-						},
+					Name:      longName,
+					Namespace: instance.Namespace,
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "renovator-id",
 					},
 					Spec: renovatev1beta1.GitRepoSpec{Name: longName},
 				}
@@ -444,10 +430,8 @@ var _ = Describe("ReconcileJob", func() {
 	Describe("updateJob", func() {
 		It("should configure job with correct specifications for a GitRepo", func() {
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -466,10 +450,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -481,10 +463,8 @@ var _ = Describe("ReconcileJob", func() {
 			instance.Spec.NodeSelector = map[string]string{"disktype": "ssd"}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -505,10 +485,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -522,10 +500,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -539,10 +515,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -561,10 +535,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -579,10 +551,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -597,10 +567,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -612,18 +580,14 @@ var _ = Describe("ReconcileJob", func() {
 		It("should propagate ExtraVolumes to the job pod spec", func() {
 			instance.Spec.ExtraVolumes = []corev1.Volume{
 				{
-					Name: "extra-vol",
-					VolumeSource: corev1.VolumeSource{
-						EmptyDir: &corev1.EmptyDirVolumeSource{},
-					},
+					Name:     "extra-vol",
+					EmptyDir: &corev1.EmptyDirVolumeSource{},
 				},
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -634,10 +598,8 @@ var _ = Describe("ReconcileJob", func() {
 			instance.Spec.RuntimeClassName = new("gvisor")
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -649,10 +611,8 @@ var _ = Describe("ReconcileJob", func() {
 			instance.Spec.PodAnnotations = map[string]string{"prometheus.io/scrape": "true"}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -665,10 +625,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			podLabels := map[string]string{
 				"existing": "label",
@@ -694,10 +652,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			podLabels := map[string]string{}
 			Expect(reconciler.updateJob(job, repo1, podLabels)).To(Succeed())
@@ -711,10 +667,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			podLabels := map[string]string{}
 			Expect(reconciler.updateJob(job, repo1, podLabels)).To(Succeed())
@@ -731,10 +685,8 @@ var _ = Describe("ReconcileJob", func() {
 			}
 
 			job := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-				},
+				Name:      "test-job",
+				Namespace: "default",
 			}
 			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
 
@@ -774,14 +726,12 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(fakeClient.Status().Update(ctx, repo1)).To(Succeed())
 
 			finishedJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "finished-job",
-					Namespace:         "default",
-					CreationTimestamp: metav1.Now(),
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "renovator-id",
-						renovatev1beta1.LabelGitRepo:   "repo-1",
-					},
+				Name:              "finished-job",
+				Namespace:         "default",
+				CreationTimestamp: metav1.Now(),
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+					renovatev1beta1.LabelGitRepo:   "repo-1",
 				},
 				Status: batchv1.JobStatus{
 					Succeeded: 1,
@@ -813,14 +763,12 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(fakeClient.Status().Update(ctx, repo2)).To(Succeed())
 
 			failedJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "failed-job",
-					Namespace:         "default",
-					CreationTimestamp: metav1.Now(),
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "renovator-id",
-						renovatev1beta1.LabelGitRepo:   "repo-2",
-					},
+				Name:              "failed-job",
+				Namespace:         "default",
+				CreationTimestamp: metav1.Now(),
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+					renovatev1beta1.LabelGitRepo:   "repo-2",
 				},
 				Status: batchv1.JobStatus{
 					Failed: 1,
@@ -852,14 +800,12 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(fakeClient.Status().Update(ctx, repo1)).To(Succeed())
 
 			finishedJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "finished-job-idempotent",
-					Namespace:         "default",
-					CreationTimestamp: metav1.Now(),
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "renovator-id",
-						renovatev1beta1.LabelGitRepo:   "repo-1",
-					},
+				Name:              "finished-job-idempotent",
+				Namespace:         "default",
+				CreationTimestamp: metav1.Now(),
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+					renovatev1beta1.LabelGitRepo:   "repo-1",
 				},
 				Status: batchv1.JobStatus{
 					Succeeded: 1,
@@ -906,14 +852,12 @@ var _ = Describe("ReconcileJob", func() {
 
 			// First successful run
 			job1 := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "job-1",
-					Namespace:         "default",
-					CreationTimestamp: metav1.Now(),
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "renovator-id",
-						renovatev1beta1.LabelGitRepo:   "repo-1",
-					},
+				Name:              "job-1",
+				Namespace:         "default",
+				CreationTimestamp: metav1.Now(),
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+					renovatev1beta1.LabelGitRepo:   "repo-1",
 				},
 				Status: batchv1.JobStatus{
 					Succeeded: 1,
@@ -956,14 +900,12 @@ var _ = Describe("ReconcileJob", func() {
 
 			// Second successful run
 			job2 := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "job-2",
-					Namespace:         "default",
-					CreationTimestamp: metav1.NewTime(job1.CreationTimestamp.Add(time.Minute)),
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "renovator-id",
-						renovatev1beta1.LabelGitRepo:   "repo-1",
-					},
+				Name:              "job-2",
+				Namespace:         "default",
+				CreationTimestamp: metav1.NewTime(job1.CreationTimestamp.Add(time.Minute)),
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+					renovatev1beta1.LabelGitRepo:   "repo-1",
 				},
 				Status: batchv1.JobStatus{
 					Succeeded: 1,
@@ -1008,14 +950,12 @@ var _ = Describe("ReconcileJob", func() {
 
 			// First run succeeds
 			job1 := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "job-success",
-					Namespace:         "default",
-					CreationTimestamp: metav1.Now(),
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "renovator-id",
-						renovatev1beta1.LabelGitRepo:   "repo-1",
-					},
+				Name:              "job-success",
+				Namespace:         "default",
+				CreationTimestamp: metav1.Now(),
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+					renovatev1beta1.LabelGitRepo:   "repo-1",
 				},
 				Status: batchv1.JobStatus{
 					Succeeded: 1,
@@ -1054,14 +994,12 @@ var _ = Describe("ReconcileJob", func() {
 
 			// Second run fails
 			job2 := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "job-fail",
-					Namespace:         "default",
-					CreationTimestamp: metav1.NewTime(job1.CreationTimestamp.Add(time.Minute)),
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "renovator-id",
-						renovatev1beta1.LabelGitRepo:   "repo-1",
-					},
+				Name:              "job-fail",
+				Namespace:         "default",
+				CreationTimestamp: metav1.NewTime(job1.CreationTimestamp.Add(time.Minute)),
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+					renovatev1beta1.LabelGitRepo:   "repo-1",
 				},
 				Status: batchv1.JobStatus{
 					Failed: 1,
@@ -1096,12 +1034,10 @@ var _ = Describe("ReconcileJob", func() {
 		It("should sanitize long repository names in metric labels", func() {
 			// Create repo with very long name (>63 chars)
 			longRepo := &renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "very-long-repository-name-that-exceeds-the-kubernetes-label-limit-of-63-characters",
-					Namespace: "default",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "renovator-id",
-					},
+				Name:      "very-long-repository-name-that-exceeds-the-kubernetes-label-limit-of-63-characters",
+				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
 				},
 				Spec: renovatev1beta1.GitRepoSpec{Name: "test/long-repo"},
 			}
@@ -1112,14 +1048,12 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(fakeClient.Status().Update(ctx, longRepo)).To(Succeed())
 
 			finishedJob := &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "job-long-name",
-					Namespace:         "default",
-					CreationTimestamp: metav1.Now(),
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "renovator-id",
-						renovatev1beta1.LabelGitRepo:   "very-long-repository-name-that-exceeds-the-kubernetes-label",
-					},
+				Name:              "job-long-name",
+				Namespace:         "default",
+				CreationTimestamp: metav1.Now(),
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+					renovatev1beta1.LabelGitRepo:   "very-long-repository-name-that-exceeds-the-kubernetes-label",
 				},
 				Status: batchv1.JobStatus{
 					Succeeded: 1,
@@ -1173,20 +1107,16 @@ var _ = Describe("ReconcileJob", func() {
 			reconciler.metrics = metricsRecorder
 
 			testJob = &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-job",
-					Namespace: "default",
-					UID:       types.UID("test-uid"),
-				},
+				Name:      "test-job",
+				Namespace: "default",
+				UID:       types.UID("test-uid"),
 			}
 
 			testPod := &corev1.Pod{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-pod",
-					Namespace: "default",
-					Labels:    map[string]string{"job-name": "test-job"},
-				},
-				Status: corev1.PodStatus{Phase: corev1.PodSucceeded},
+				Name:      "test-pod",
+				Namespace: "default",
+				Labels:    map[string]string{"job-name": "test-job"},
+				Status:    corev1.PodStatus{Phase: corev1.PodSucceeded},
 			}
 
 			Expect(fakeClient.Create(ctx, testJob)).To(Succeed())

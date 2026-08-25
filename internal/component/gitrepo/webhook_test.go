@@ -13,7 +13,6 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/internal/provider/mocks"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
 	ctrl "sigs.k8s.io/controller-runtime"
@@ -44,31 +43,25 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 
 		instance = &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-repo",
-				Namespace: "default",
-				UID:       "test-uid-123",
-			},
+			Name:      "test-repo",
+			Namespace: "default",
+			UID:       "test-uid-123",
 			Spec: renovatev1beta1.GitRepoSpec{
 				Name: "org/repo",
 			},
 		}
 
 		renovate = &renovatev1beta1.RenovateConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-config",
-				Namespace: "default",
-				UID:       "test-renovate-uid-123",
-			},
+			Name:      "test-config",
+			Namespace: "default",
+			UID:       "test-renovate-uid-123",
 			Spec: renovatev1beta1.RenovateConfigSpec{
 				Platform: renovatev1beta1.PlatformSpec{
 					Type: "gitea",
 					Token: corev1.EnvVarSource{
 						SecretKeyRef: &corev1.SecretKeySelector{
-							Key: "token",
-							LocalObjectReference: corev1.LocalObjectReference{
-								Name: "token-secret",
-							},
+							Key:  "token",
+							Name: "token-secret",
 						},
 					},
 				},
@@ -85,10 +78,8 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Build()
 
 		tokenSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "token-secret",
-				Namespace: instance.Namespace,
-			},
+			Name:      "token-secret",
+			Namespace: instance.Namespace,
 			Data: map[string][]byte{
 				"token": []byte("test-token"),
 			},
@@ -119,10 +110,8 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 		Context("when the secret exists", func() {
 			BeforeEach(func() {
 				webhookSecret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      secretName,
-						Namespace: instance.Namespace,
-					},
+					Name:      secretName,
+					Namespace: instance.Namespace,
 					Data: map[string][]byte{
 						renovatev1beta1.WebhookSecretDataKey: []byte("test-secret-value"),
 					},
@@ -185,7 +174,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 		})
 
 		It("should fail if the platform token secret is missing", func() {
-			secret := &corev1.Secret{ObjectMeta: metav1.ObjectMeta{Name: "token-secret", Namespace: instance.Namespace}}
+			secret := &corev1.Secret{Name: "token-secret", Namespace: instance.Namespace}
 			Expect(fakeClient.Delete(ctx, secret)).To(Succeed())
 			_, err := reconciler.createWebhook(ctx)
 			Expect(err).To(HaveOccurred())
@@ -341,10 +330,8 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
 			webhookSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      secretName,
-					Namespace: instance.Namespace,
-				},
+				Name:      secretName,
+				Namespace: instance.Namespace,
 			}
 			Expect(fakeClient.Create(ctx, webhookSecret)).To(Succeed())
 
@@ -388,11 +375,9 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
 
 			gr := &renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-repo",
-					Namespace: "default",
-					UID:       "test-uid-123",
-				},
+				Name:      "test-repo",
+				Namespace: "default",
+				UID:       "test-uid-123",
 				Spec: renovatev1beta1.GitRepoSpec{
 					Name:     "org/repo",
 					Webhooks: renovatev1beta1.WebhooksSpec{Enabled: &disabled},
@@ -403,10 +388,8 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			}
 
 			webhookSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      secretName,
-					Namespace: gr.Namespace,
-				},
+				Name:      secretName,
+				Namespace: gr.Namespace,
 			}
 			Expect(fakeClient.Create(ctx, webhookSecret)).To(Succeed())
 
@@ -415,7 +398,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Status().Update(ctx, gr)).To(Succeed())
 
 			reconciler.instance = gr
-			reconciler.req = ctrl.Request{NamespacedName: client.ObjectKey{Namespace: gr.Namespace, Name: gr.Name}}
+			reconciler.req = ctrl.Request{Namespace: gr.Namespace, Name: gr.Name}
 
 			mockMgr.On("DeleteWebhook", mock.Anything, "org/repo", "mock-id-123").
 				Return(nil).

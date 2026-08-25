@@ -9,7 +9,6 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -47,12 +46,10 @@ var _ = Describe("GitRepo Controller", func() {
 			}
 
 			config := &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      configName,
-					Namespace: "default",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: labelValue,
-					},
+				Name:      configName,
+				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: labelValue,
 				},
 				Spec: renovatev1beta1.RenovateConfigSpec{
 					Platform: renovatev1beta1.PlatformSpec{
@@ -60,8 +57,8 @@ var _ = Describe("GitRepo Controller", func() {
 						Endpoint: "https://gitea.com",
 						Token: corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
-								LocalObjectReference: corev1.LocalObjectReference{Name: "gitea-token"},
-								Key:                  "token",
+								Name: "gitea-token",
+								Key:  "token",
 							},
 						},
 					},
@@ -70,12 +67,10 @@ var _ = Describe("GitRepo Controller", func() {
 			Expect(k8sClient.Create(ctx, config)).To(Succeed())
 
 			resource := &renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      repoName,
-					Namespace: "default",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: labelValue,
-					},
+				Name:      repoName,
+				Namespace: "default",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: labelValue,
 				},
 				Spec: renovatev1beta1.GitRepoSpec{
 					Name: "org/repo",
@@ -86,18 +81,14 @@ var _ = Describe("GitRepo Controller", func() {
 
 		AfterEach(func() {
 			resource := &renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      repoName,
-					Namespace: "default",
-				},
+				Name:      repoName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, resource)
 
 			config := &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      configName,
-					Namespace: "default",
-				},
+				Name:      configName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, config)
 		})
@@ -115,7 +106,7 @@ var _ = Describe("GitRepo Controller", func() {
 		errorReconciler := &Reconciler{Client: mockClient, Scheme: k8sClient.Scheme(), EventRecorder: &events.FakeRecorder{}}
 
 		result, err := errorReconciler.Reconcile(ctx, reconcile.Request{
-			NamespacedName: types.NamespacedName{Name: "missing-config-repo", Namespace: "default"},
+			Name: "missing-config-repo", Namespace: "default",
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))
@@ -123,10 +114,8 @@ var _ = Describe("GitRepo Controller", func() {
 
 	It("should handle a GitRepo with no matching RenovateConfig gracefully", func() {
 		unlabeledRepo := &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "unlabeled-repo",
-				Namespace: "default",
-			},
+			Name:      "unlabeled-repo",
+			Namespace: "default",
 			Spec: renovatev1beta1.GitRepoSpec{
 				Name: "org/repo",
 			},
@@ -138,7 +127,7 @@ var _ = Describe("GitRepo Controller", func() {
 		}()
 
 		result, err := reconciler.Reconcile(ctx, reconcile.Request{
-			NamespacedName: types.NamespacedName{Name: "unlabeled-repo", Namespace: "default"},
+			Name: "unlabeled-repo", Namespace: "default",
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))

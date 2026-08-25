@@ -9,7 +9,6 @@ import (
 
 	"github.com/go-chi/chi/v5"
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -30,16 +29,12 @@ var _ = Describe("APIHandler", func() {
 
 		testObjects = []runtime.Object{
 			&renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "test-namespace",
-				},
+				Name:      "test-renovator",
+				Namespace: "test-namespace",
 			},
 			&renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-repo",
-					Namespace: "test-namespace",
-				},
+				Name:      "test-repo",
+				Namespace: "test-namespace",
 				Spec: renovatev1beta1.GitRepoSpec{
 					Name: "testorg/test-repo",
 				},
@@ -50,16 +45,12 @@ var _ = Describe("APIHandler", func() {
 				},
 			},
 			&renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner",
-					Namespace: "test-namespace",
-				},
+				Name:      "test-runner",
+				Namespace: "test-namespace",
 			},
 			&renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "test-namespace",
-				},
+				Name:      "test-discovery",
+				Namespace: "test-namespace",
 			},
 		}
 

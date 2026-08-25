@@ -20,12 +20,10 @@ import (
 
 func newJob(name, status string) *batchv1.Job {
 	j := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:              name,
-			Namespace:         "test-ns",
-			Labels:            map[string]string{"app": "renovate-test"},
-			CreationTimestamp: metav1.Now(),
-		},
+		Name:              name,
+		Namespace:         "test-ns",
+		Labels:            map[string]string{"app": "renovate-test"},
+		CreationTimestamp: metav1.Now(),
 	}
 
 	switch status {
@@ -48,10 +46,8 @@ var _ = Describe("Renovate Job Library", func() {
 
 	BeforeEach(func() {
 		renovateCR = &renovatev1beta1.RenovateConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-renovate",
-				Namespace: "test-namespace",
-			},
+			Name:      "test-renovate",
+			Namespace: "test-namespace",
 			Spec: renovatev1beta1.RenovateConfigSpec{
 				ImageSpec: renovatev1beta1.ImageSpec{Image: "renovate/renovate:latest"},
 				Platform: renovatev1beta1.PlatformSpec{
@@ -72,8 +68,8 @@ var _ = Describe("Renovate Job Library", func() {
 				Endpoint: "https://gitlab.example.com/api/v4/",
 				Token: corev1.EnvVarSource{
 					SecretKeyRef: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "gitlab-token"},
-						Key:                  "token",
+						Name: "gitlab-token",
+						Key:  "token",
 					},
 				},
 			}

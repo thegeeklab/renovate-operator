@@ -47,61 +47,49 @@ var _ = Describe("DataFactory", func() {
 
 		testObjects = []runtime.Object{
 			&renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "test-renovator",
-					Namespace:         "test-namespace",
-					CreationTimestamp: metav1.NewTime(time.Now()),
-				},
+				Name:              "test-renovator",
+				Namespace:         "test-namespace",
+				CreationTimestamp: metav1.NewTime(time.Now()),
 			},
 			&renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-repo-b",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
-					},
-					CreationTimestamp: metav1.NewTime(time.Now()),
+				Name:      "test-repo-b",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "test-renovator",
 				},
+				CreationTimestamp: metav1.NewTime(time.Now()),
 			},
 			&renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-repo-a",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "other-renovator",
-					},
-					CreationTimestamp: metav1.NewTime(time.Now().Add(1 * time.Hour)),
+				Name:      "test-repo-a",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "other-renovator",
 				},
+				CreationTimestamp: metav1.NewTime(time.Now().Add(1 * time.Hour)),
 			},
 			&renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
-					},
-					CreationTimestamp: metav1.NewTime(time.Now()),
+				Name:      "test-runner",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "test-renovator",
 				},
+				CreationTimestamp: metav1.NewTime(time.Now()),
 			},
 			&renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
-					},
-					CreationTimestamp: metav1.NewTime(time.Now()),
+				Name:      "test-discovery",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "test-renovator",
 				},
+				CreationTimestamp: metav1.NewTime(time.Now()),
 			},
 			&batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:              "test-job-1",
-					Namespace:         "test-namespace",
-					CreationTimestamp: metav1.NewTime(time.Now()),
-					Labels: map[string]string{
-						renovatev1beta1.LabelGitRepo:     "test-repo-b",
-						renovatev1beta1.LabelAppInstance: "test-runner",
-					},
+				Name:              "test-job-1",
+				Namespace:         "test-namespace",
+				CreationTimestamp: metav1.NewTime(time.Now()),
+				Labels: map[string]string{
+					renovatev1beta1.LabelGitRepo:     "test-repo-b",
+					renovatev1beta1.LabelAppInstance: "test-runner",
 				},
 				Status: batchv1.JobStatus{
 					Succeeded:      1,
@@ -154,14 +142,12 @@ var _ = Describe("DataFactory", func() {
 			jobTime := time.Now().Add(-2 * time.Hour)
 			completedTime := time.Now().Add(-1 * time.Hour)
 			repoWithStatus := &renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "repo-with-lastrun",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
-					},
-					CreationTimestamp: metav1.NewTime(jobTime),
+				Name:      "repo-with-lastrun",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "test-renovator",
 				},
+				CreationTimestamp: metav1.NewTime(jobTime),
 				Status: renovatev1beta1.GitRepoStatus{
 					LastRenovateTime: &metav1.Time{Time: jobTime},
 					Conditions: []metav1.Condition{
@@ -207,14 +193,12 @@ var _ = Describe("DataFactory", func() {
 
 		It("should populate Platform and RepoURL from GitRepo status", func() {
 			repoWithPlatform := &renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "repo-with-platform",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
-					},
-					CreationTimestamp: metav1.NewTime(time.Now()),
+				Name:      "repo-with-platform",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "test-renovator",
 				},
+				CreationTimestamp: metav1.NewTime(time.Now()),
 				Spec: renovatev1beta1.GitRepoSpec{
 					Name: "testorg/repo-with-platform",
 				},
@@ -261,14 +245,12 @@ var _ = Describe("DataFactory", func() {
 	Describe("GetGitRepo", func() {
 		It("should return a single git repo with all fields populated", func() {
 			repoWithPlatform := &renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "single-repo",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
-					},
-					CreationTimestamp: metav1.NewTime(time.Now()),
+				Name:      "single-repo",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "test-renovator",
 				},
+				CreationTimestamp: metav1.NewTime(time.Now()),
 				Spec: renovatev1beta1.GitRepoSpec{
 					Name: "testorg/single-repo",
 				},
@@ -478,35 +460,29 @@ var _ = Describe("DataFactory", func() {
 
 			jobs := []client.Object{
 				&batchv1.Job{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "repo-a-older",
-						Namespace: "test-namespace",
-						Labels: map[string]string{
-							renovatev1beta1.LabelRenovator: "test-renovator",
-							renovatev1beta1.LabelGitRepo:   "repo-a",
-						},
+					Name:      "repo-a-older",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelGitRepo:   "repo-a",
 					},
 					Status: batchv1.JobStatus{CompletionTime: &older},
 				},
 				&batchv1.Job{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "repo-a-newer",
-						Namespace: "test-namespace",
-						Labels: map[string]string{
-							renovatev1beta1.LabelRenovator: "test-renovator",
-							renovatev1beta1.LabelGitRepo:   "repo-a",
-						},
+					Name:      "repo-a-newer",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelGitRepo:   "repo-a",
 					},
 					Status: batchv1.JobStatus{CompletionTime: &newer},
 				},
 				&batchv1.Job{
-					ObjectMeta: metav1.ObjectMeta{
-						Name:      "repo-b-only",
-						Namespace: "test-namespace",
-						Labels: map[string]string{
-							renovatev1beta1.LabelRenovator: "test-renovator",
-							renovatev1beta1.LabelGitRepo:   "repo-b",
-						},
+					Name:      "repo-b-only",
+					Namespace: "test-namespace",
+					Labels: map[string]string{
+						renovatev1beta1.LabelRenovator: "test-renovator",
+						renovatev1beta1.LabelGitRepo:   "repo-b",
 					},
 					Status: batchv1.JobStatus{CompletionTime: &newer},
 				},
@@ -538,13 +514,11 @@ var _ = Describe("DataFactory", func() {
 
 			now := metav1.NewTime(time.Now().Add(-1 * time.Minute))
 			Expect(fakeClient.Create(context.Background(), &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "long-repo-job",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
-						renovatev1beta1.LabelGitRepo:   normalized,
-					},
+				Name:      "long-repo-job",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "test-renovator",
+					renovatev1beta1.LabelGitRepo:   normalized,
 				},
 				Status: batchv1.JobStatus{CompletionTime: &now},
 			})).To(Succeed())
@@ -562,13 +536,11 @@ var _ = Describe("DataFactory", func() {
 		It("returns the same summary for repeated calls without re-listing jobs", func() {
 			now := metav1.NewTime(time.Now().Add(-1 * time.Minute))
 			Expect(fakeClient.Create(context.Background(), &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cached-job",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
-						renovatev1beta1.LabelGitRepo:   "test-repo-a",
-					},
+				Name:      "cached-job",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "test-renovator",
+					renovatev1beta1.LabelGitRepo:   "test-repo-a",
 				},
 				Status: batchv1.JobStatus{CompletionTime: &now},
 			})).To(Succeed())
@@ -580,10 +552,8 @@ var _ = Describe("DataFactory", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeClient.Delete(context.Background(), &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cached-job",
-					Namespace: "test-namespace",
-				},
+				Name:      "cached-job",
+				Namespace: "test-namespace",
 			})).To(Succeed())
 
 			second, err := dataFactory.GetPRActivityForRenovator(ctx, opts)
@@ -594,13 +564,11 @@ var _ = Describe("DataFactory", func() {
 		It("pre-supplied repos bypass cache and do not pollute it", func() {
 			now := metav1.NewTime(time.Now().Add(-1 * time.Minute))
 			Expect(fakeClient.Create(context.Background(), &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cache-isolation-job",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
-						renovatev1beta1.LabelGitRepo:   "test-repo-a",
-					},
+				Name:      "cache-isolation-job",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "test-renovator",
+					renovatev1beta1.LabelGitRepo:   "test-repo-a",
 				},
 				Status: batchv1.JobStatus{CompletionTime: &now},
 			})).To(Succeed())
@@ -612,10 +580,8 @@ var _ = Describe("DataFactory", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			Expect(fakeClient.Delete(context.Background(), &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "cache-isolation-job",
-					Namespace: "test-namespace",
-				},
+				Name:      "cache-isolation-job",
+				Namespace: "test-namespace",
 			})).To(Succeed())
 
 			repos := []viewmodel.GitRepoInfo{{Name: "test-repo-a"}}
@@ -634,13 +600,11 @@ var _ = Describe("DataFactory", func() {
 		It("different namespace and renovator combinations have isolated caches", func() {
 			now := metav1.NewTime(time.Now().Add(-1 * time.Minute))
 			Expect(fakeClient.Create(context.Background(), &batchv1.Job{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "isolated-job",
-					Namespace: "test-namespace",
-					Labels: map[string]string{
-						renovatev1beta1.LabelRenovator: "test-renovator",
-						renovatev1beta1.LabelGitRepo:   "test-repo-a",
-					},
+				Name:      "isolated-job",
+				Namespace: "test-namespace",
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "test-renovator",
+					renovatev1beta1.LabelGitRepo:   "test-repo-a",
 				},
 				Status: batchv1.JobStatus{CompletionTime: &now},
 			})).To(Succeed())
@@ -749,36 +713,28 @@ var _ = Describe("DataFactory access filtering", func() {
 		// Two GitRepos: one per Renovator.
 		objects := []runtime.Object{
 			&renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "renovator-a",
-					Namespace: "test-namespace",
-					UID:       types.UID(renovatorA),
-					Labels:    map[string]string{renovatev1beta1.LabelAuthProvider: provName},
-				},
+				Name:      "renovator-a",
+				Namespace: "test-namespace",
+				UID:       types.UID(renovatorA),
+				Labels:    map[string]string{renovatev1beta1.LabelAuthProvider: provName},
 			},
 			&renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "renovator-b",
-					Namespace: "test-namespace",
-					UID:       types.UID(renovatorB),
-					Labels:    map[string]string{renovatev1beta1.LabelAuthProvider: provName},
-				},
+				Name:      "renovator-b",
+				Namespace: "test-namespace",
+				UID:       types.UID(renovatorB),
+				Labels:    map[string]string{renovatev1beta1.LabelAuthProvider: provName},
 			},
 			&renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "repo-a",
-					Namespace: "test-namespace",
-					Labels:    map[string]string{renovatev1beta1.LabelRenovator: renovatorA},
-				},
-				Spec: renovatev1beta1.GitRepoSpec{Name: "org/repo-a"},
+				Name:      "repo-a",
+				Namespace: "test-namespace",
+				Labels:    map[string]string{renovatev1beta1.LabelRenovator: renovatorA},
+				Spec:      renovatev1beta1.GitRepoSpec{Name: "org/repo-a"},
 			},
 			&renovatev1beta1.GitRepo{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "repo-b",
-					Namespace: "test-namespace",
-					Labels:    map[string]string{renovatev1beta1.LabelRenovator: renovatorB},
-				},
-				Spec: renovatev1beta1.GitRepoSpec{Name: "org/repo-b"},
+				Name:      "repo-b",
+				Namespace: "test-namespace",
+				Labels:    map[string]string{renovatev1beta1.LabelRenovator: renovatorB},
+				Spec:      renovatev1beta1.GitRepoSpec{Name: "org/repo-b"},
 			},
 		}
 

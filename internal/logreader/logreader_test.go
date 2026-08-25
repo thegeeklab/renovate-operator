@@ -34,11 +34,9 @@ var _ = Describe("KubernetesReader", func() {
 
 	It("streams the requested container's log", func() {
 		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-pod",
-				Namespace: namespace,
-				Labels:    map[string]string{"job-name": "test-job"},
-			},
+			Name:      "test-pod",
+			Namespace: namespace,
+			Labels:    map[string]string{"job-name": "test-job"},
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{Name: "renovate", Image: "renovate/renovate"},
@@ -57,11 +55,9 @@ var _ = Describe("KubernetesReader", func() {
 
 	It("returns a stream that can be read after ReadJobLogs returns", func() {
 		pod := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-pod",
-				Namespace: namespace,
-				Labels:    map[string]string{"job-name": "test-job"},
-			},
+			Name:      "test-pod",
+			Namespace: namespace,
+			Labels:    map[string]string{"job-name": "test-job"},
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{
 					{Name: "renovate", Image: "renovate/renovate"},
@@ -100,11 +96,9 @@ var _ = Describe("KubernetesReader", func() {
 
 	It("returns ErrPodsNotReady when only pending pods exist for the job", func() {
 		pending := &corev1.Pod{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "pending-pod",
-				Namespace: namespace,
-				Labels:    map[string]string{"job-name": "test-job"},
-			},
+			Name:      "pending-pod",
+			Namespace: namespace,
+			Labels:    map[string]string{"job-name": "test-job"},
 			Spec: corev1.PodSpec{
 				Containers: []corev1.Container{{Name: "renovate"}},
 			},

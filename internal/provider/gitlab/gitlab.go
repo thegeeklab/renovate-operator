@@ -80,7 +80,7 @@ func (p *Provider) EnsureWebhook(ctx context.Context, repoName, webhookURL, secr
 	}
 
 	listOpts := &gitlab.ListProjectHooksOptions{
-		ListOptions: gitlab.ListOptions{Page: 1, PerPage: defaultPageSize},
+		Page: 1, PerPage: defaultPageSize,
 	}
 
 	var existingHook *gitlab.ProjectHook
@@ -213,7 +213,7 @@ func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error)
 // and merge requests enabled, applying portable filters locally.
 func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions) ([]provider.Repo, error) {
 	listOpts := &gitlab.ListProjectsOptions{
-		ListOptions:              gitlab.ListOptions{Page: 1, PerPage: defaultPageSize},
+		Page: 1, PerPage: defaultPageSize,
 		Membership:               new(true),
 		MinAccessLevel:           new(gitlab.DeveloperPermissions),
 		WithMergeRequestsEnabled: new(true),

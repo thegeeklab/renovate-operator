@@ -52,9 +52,9 @@ var _ = Describe("Scheduler Manager", func() {
 		mgr = NewManager(nil, nil, fakeClock)
 
 		obj = &MockSchedulable{
-			ObjectMeta: metav1.ObjectMeta{Name: "test-task"},
-			Schedule:   "*/5 * * * *", // Every 5 minutes
-			Suspend:    false,
+			Name:     "test-task",
+			Schedule: "*/5 * * * *", // Every 5 minutes
+			Suspend:  false,
 		}
 	})
 
