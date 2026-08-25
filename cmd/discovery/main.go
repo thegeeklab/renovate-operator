@@ -8,7 +8,6 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/pkg/discovery"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -51,10 +50,8 @@ func run(ctx context.Context) error {
 	}
 
 	cm := &corev1.ConfigMap{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      fmt.Sprintf("%s-discovery", d.Name),
-			Namespace: d.Namespace,
-		},
+		Name:      fmt.Sprintf("%s-discovery", d.Name),
+		Namespace: d.Namespace,
 	}
 
 	op, err := controllerutil.CreateOrUpdate(ctx, d.KubeClient, cm, func() error {

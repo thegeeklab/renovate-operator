@@ -11,7 +11,6 @@ import (
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
@@ -236,10 +235,8 @@ func (r *Reconciler) deleteWebhookSecret(ctx context.Context) error {
 	}
 
 	secret := &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: r.instance.Namespace,
-		},
+		Name:      secretName,
+		Namespace: r.instance.Namespace,
 	}
 
 	if err := r.Delete(ctx, secret); err != nil && !api_errors.IsNotFound(err) {

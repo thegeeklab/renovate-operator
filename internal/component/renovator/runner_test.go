@@ -9,7 +9,6 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -33,12 +32,10 @@ var _ = Describe("Renovator Runner", func() {
 	Describe("Annotation Forwarding", func() {
 		It("should forward operation annotation from Renovator to Runner", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
-					},
+				Name:      "test-renovator",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Runner: renovatev1beta1.RunnerSpec{
@@ -53,10 +50,8 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			runner := &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner",
-					Namespace: "default",
-				},
+				Name:      "test-runner",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateRunner(runner)
@@ -69,10 +64,8 @@ var _ = Describe("Renovator Runner", func() {
 
 		It("should not forward annotation when Renovator has no annotations", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-				},
+				Name:      "test-renovator",
+				Namespace: "default",
 				Spec: renovatev1beta1.RenovatorSpec{
 					Runner: renovatev1beta1.RunnerSpec{
 						JobSpec: renovatev1beta1.JobSpec{
@@ -86,10 +79,8 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			runner := &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner",
-					Namespace: "default",
-				},
+				Name:      "test-runner",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateRunner(runner)
@@ -100,12 +91,10 @@ var _ = Describe("Renovator Runner", func() {
 
 		It("should preserve existing annotations on Runner", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
-					},
+				Name:      "test-renovator",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Runner: renovatev1beta1.RunnerSpec{
@@ -120,12 +109,10 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			runner := &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner",
-					Namespace: "default",
-					Annotations: map[string]string{
-						"existing-annotation": "existing-value",
-					},
+				Name:      "test-runner",
+				Namespace: "default",
+				Annotations: map[string]string{
+					"existing-annotation": "existing-value",
 				},
 			}
 
@@ -141,12 +128,10 @@ var _ = Describe("Renovator Runner", func() {
 
 		It("should test annotation cleanup in component reconciler", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-cleanup",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
-					},
+				Name:      "test-renovator-cleanup",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Runner: renovatev1beta1.RunnerSpec{
@@ -175,12 +160,10 @@ var _ = Describe("Renovator Runner", func() {
 
 		It("should consume renovate annotation on propagation to prevent duplicate jobs", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-consume",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
-					},
+				Name:      "test-renovator-consume",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationRenovate,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Runner: renovatev1beta1.RunnerSpec{
@@ -210,10 +193,8 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(renovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
 
 			secondRunner := &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner-2",
-					Namespace: "default",
-				},
+				Name:      "test-runner-2",
+				Namespace: "default",
 			}
 			err = reconciler.updateRunner(secondRunner)
 			Expect(err).NotTo(HaveOccurred())
@@ -222,12 +203,10 @@ var _ = Describe("Renovator Runner", func() {
 
 		It("should not forward annotation when Renovator has no renovate operation", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-discover",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
-					},
+				Name:      "test-renovator-discover",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Runner: renovatev1beta1.RunnerSpec{
@@ -242,10 +221,8 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			runner := &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner",
-					Namespace: "default",
-				},
+				Name:      "test-runner",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateRunner(runner)
@@ -255,12 +232,10 @@ var _ = Describe("Renovator Runner", func() {
 
 		It("should forward renovate operation annotation when Renovator has multiple operations", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-multi",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover + ";" + renovatev1beta1.OperationRenovate,
-					},
+				Name:      "test-renovator-multi",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover + ";" + renovatev1beta1.OperationRenovate,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Runner: renovatev1beta1.RunnerSpec{
@@ -275,10 +250,8 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			runner := &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner",
-					Namespace: "default",
-				},
+				Name:      "test-runner",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateRunner(runner)
@@ -295,10 +268,8 @@ var _ = Describe("Renovator Runner", func() {
 
 		BeforeEach(func() {
 			existingRunner = &renovatev1beta1.Runner{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-runner",
-					Namespace: "default",
-				},
+				Name:      "test-runner",
+				Namespace: "default",
 				Spec: renovatev1beta1.RunnerSpec{
 					JobSpec: renovatev1beta1.JobSpec{
 						TTLSecondsAfterFinished: new(int32(3600)),
@@ -652,7 +623,7 @@ var _ = Describe("Renovator Runner", func() {
 				Spec: renovatev1beta1.RenovatorSpec{
 					PodSpec: renovatev1beta1.PodSpec{
 						ExtraVolumes: []corev1.Volume{
-							{Name: "global-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+							{Name: "global-vol", EmptyDir: &corev1.EmptyDirVolumeSource{}},
 						},
 					},
 					Runner: renovatev1beta1.RunnerSpec{},
@@ -674,13 +645,13 @@ var _ = Describe("Renovator Runner", func() {
 				Spec: renovatev1beta1.RenovatorSpec{
 					PodSpec: renovatev1beta1.PodSpec{
 						ExtraVolumes: []corev1.Volume{
-							{Name: "global-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+							{Name: "global-vol", EmptyDir: &corev1.EmptyDirVolumeSource{}},
 						},
 					},
 					Runner: renovatev1beta1.RunnerSpec{
 						PodSpec: renovatev1beta1.PodSpec{
 							ExtraVolumes: []corev1.Volume{
-								{Name: "runner-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+								{Name: "runner-vol", EmptyDir: &corev1.EmptyDirVolumeSource{}},
 							},
 						},
 					},

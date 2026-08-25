@@ -70,7 +70,7 @@ func (p *Provider) EnsureWebhook(ctx context.Context, repoName, webhookURL, secr
 
 	var existingHook *gitea.Hook
 
-	opts := gitea.ListHooksOptions{ListOptions: gitea.ListOptions{Page: 1, PageSize: defaultPageSize}}
+	opts := gitea.ListHooksOptions{Page: 1, PageSize: defaultPageSize}
 
 	for {
 		hooks, resp, err := p.client.ListRepoHooks(owner, repo, opts)
@@ -184,7 +184,7 @@ func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error)
 // topics are included (client-side filter).
 func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions) ([]provider.Repo, error) {
 	listOpts := gitea.ListReposOptions{
-		ListOptions: gitea.ListOptions{Page: 1, PageSize: defaultPageSize},
+		Page: 1, PageSize: defaultPageSize,
 	}
 
 	var out []provider.Repo

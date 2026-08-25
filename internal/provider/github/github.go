@@ -199,7 +199,7 @@ func (p *Provider) RepoURL(ctx context.Context, repoName string) (string, error)
 // topics are included (client-side filter).
 func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions) ([]provider.Repo, error) {
 	listOpts := &github.RepositoryListByAuthenticatedUserOptions{
-		ListOptions: github.ListOptions{Page: 1, PerPage: defaultPageSize},
+		Page: 1, PerPage: defaultPageSize,
 		Affiliation: "owner,collaborator,organization_member",
 	}
 

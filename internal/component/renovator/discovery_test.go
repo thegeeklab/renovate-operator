@@ -9,7 +9,6 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/apimachinery/pkg/api/resource"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -33,12 +32,10 @@ var _ = Describe("Renovator Discovery", func() {
 	Describe("Annotation Forwarding", func() {
 		It("should forward operation annotation from Renovator to Discovery", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
-					},
+				Name:      "test-renovator",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Discovery: renovatev1beta1.DiscoverySpec{
@@ -53,10 +50,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			discovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-				},
+				Name:      "test-discovery",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateDiscovery(discovery)
@@ -69,10 +64,8 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should not forward annotation when Renovator has no annotations", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-				},
+				Name:      "test-renovator",
+				Namespace: "default",
 				Spec: renovatev1beta1.RenovatorSpec{
 					Discovery: renovatev1beta1.DiscoverySpec{
 						JobSpec: renovatev1beta1.JobSpec{
@@ -86,10 +79,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			discovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-				},
+				Name:      "test-discovery",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateDiscovery(discovery)
@@ -100,12 +91,10 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should preserve existing annotations on Discovery", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
-					},
+				Name:      "test-renovator",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Discovery: renovatev1beta1.DiscoverySpec{
@@ -120,12 +109,10 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			discovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-					Annotations: map[string]string{
-						"existing-annotation": "existing-value",
-					},
+				Name:      "test-discovery",
+				Namespace: "default",
+				Annotations: map[string]string{
+					"existing-annotation": "existing-value",
 				},
 			}
 
@@ -141,12 +128,10 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should test annotation cleanup in component reconciler", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-cleanup",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
-					},
+				Name:      "test-renovator-cleanup",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Discovery: renovatev1beta1.DiscoverySpec{
@@ -175,12 +160,10 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should consume discover annotation on propagation to prevent duplicate jobs", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-consume",
-					Namespace: "default",
-					Annotations: map[string]string{
-						renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
-					},
+				Name:      "test-renovator-consume",
+				Namespace: "default",
+				Annotations: map[string]string{
+					renovatev1beta1.RenovatorOperation: renovatev1beta1.OperationDiscover,
 				},
 				Spec: renovatev1beta1.RenovatorSpec{
 					Discovery: renovatev1beta1.DiscoverySpec{
@@ -210,10 +193,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(renovator.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
 
 			secondDiscovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery-2",
-					Namespace: "default",
-				},
+				Name:      "test-discovery-2",
+				Namespace: "default",
 			}
 			err = reconciler.updateDiscovery(secondDiscovery)
 			Expect(err).NotTo(HaveOccurred())
@@ -222,10 +203,8 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should copy Discovery configuration from Renovator spec", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-config",
-					Namespace: "default",
-				},
+				Name:      "test-renovator-config",
+				Namespace: "default",
 				Spec: renovatev1beta1.RenovatorSpec{
 					ImageSpec: renovatev1beta1.ImageSpec{
 						Image:           "renovate/renovate:36",
@@ -249,10 +228,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			discovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-				},
+				Name:      "test-discovery",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateDiscovery(discovery)
@@ -269,10 +246,8 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should set default Image and ImagePullPolicy from Renovator", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-defaults",
-					Namespace: "default",
-				},
+				Name:      "test-renovator-defaults",
+				Namespace: "default",
 				Spec: renovatev1beta1.RenovatorSpec{
 					ImageSpec: renovatev1beta1.ImageSpec{
 						Image:           "renovate/renovate:35",
@@ -290,10 +265,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			discovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-				},
+				Name:      "test-discovery",
+				Namespace: "default",
 				Spec: renovatev1beta1.DiscoverySpec{
 					JobSpec: renovatev1beta1.JobSpec{
 						Schedule: "0 0 * * *",
@@ -310,10 +283,8 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should set default ImagePullSecrets from Renovator and allow Discovery override", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-pull-secrets",
-					Namespace: "default",
-				},
+				Name:      "test-renovator-pull-secrets",
+				Namespace: "default",
 				Spec: renovatev1beta1.RenovatorSpec{
 					ImageSpec: renovatev1beta1.ImageSpec{
 						ImagePullSecrets: []corev1.LocalObjectReference{
@@ -337,10 +308,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			discovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-				},
+				Name:      "test-discovery",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateDiscovery(discovery)
@@ -353,10 +322,8 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should inherit ImagePullSecrets from Renovator when Discovery ImagePullSecrets is nil", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-inherit-secrets",
-					Namespace: "default",
-				},
+				Name:      "test-renovator-inherit-secrets",
+				Namespace: "default",
 				Spec: renovatev1beta1.RenovatorSpec{
 					ImageSpec: renovatev1beta1.ImageSpec{
 						ImagePullSecrets: []corev1.LocalObjectReference{
@@ -375,10 +342,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			discovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-				},
+				Name:      "test-discovery",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateDiscovery(discovery)
@@ -391,10 +356,8 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should allow Discovery to clear ImagePullSecrets with empty slice", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-clear-secrets",
-					Namespace: "default",
-				},
+				Name:      "test-renovator-clear-secrets",
+				Namespace: "default",
 				Spec: renovatev1beta1.RenovatorSpec{
 					ImageSpec: renovatev1beta1.ImageSpec{
 						ImagePullSecrets: []corev1.LocalObjectReference{
@@ -416,10 +379,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			discovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-				},
+				Name:      "test-discovery",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateDiscovery(discovery)
@@ -430,11 +391,9 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should set Renovator UID label on Discovery", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-label",
-					Namespace: "default",
-					UID:       "test-uid-123",
-				},
+				Name:      "test-renovator-label",
+				Namespace: "default",
+				UID:       "test-uid-123",
 				Spec: renovatev1beta1.RenovatorSpec{
 					Discovery: renovatev1beta1.DiscoverySpec{
 						JobSpec: renovatev1beta1.JobSpec{
@@ -448,10 +407,8 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			discovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-				},
+				Name:      "test-discovery",
+				Namespace: "default",
 			}
 
 			err = reconciler.updateDiscovery(discovery)
@@ -464,11 +421,9 @@ var _ = Describe("Renovator Discovery", func() {
 
 		It("should preserve existing labels on Discovery", func() {
 			renovator := &renovatev1beta1.Renovator{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-renovator-preserve-labels",
-					Namespace: "default",
-					UID:       "test-uid-456",
-				},
+				Name:      "test-renovator-preserve-labels",
+				Namespace: "default",
+				UID:       "test-uid-456",
 				Spec: renovatev1beta1.RenovatorSpec{
 					Discovery: renovatev1beta1.DiscoverySpec{
 						JobSpec: renovatev1beta1.JobSpec{
@@ -482,12 +437,10 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(err).NotTo(HaveOccurred())
 
 			discovery := &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-					Labels: map[string]string{
-						"existing-label": "existing-value",
-					},
+				Name:      "test-discovery",
+				Namespace: "default",
+				Labels: map[string]string{
+					"existing-label": "existing-value",
 				},
 			}
 
@@ -507,10 +460,8 @@ var _ = Describe("Renovator Discovery", func() {
 
 		BeforeEach(func() {
 			existingDiscovery = &renovatev1beta1.Discovery{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-discovery",
-					Namespace: "default",
-				},
+				Name:      "test-discovery",
+				Namespace: "default",
 				Spec: renovatev1beta1.DiscoverySpec{
 					JobSpec: renovatev1beta1.JobSpec{
 						TTLSecondsAfterFinished: new(int32(3600)),
@@ -791,7 +742,7 @@ var _ = Describe("Renovator Discovery", func() {
 				Spec: renovatev1beta1.RenovatorSpec{
 					PodSpec: renovatev1beta1.PodSpec{
 						ExtraVolumes: []corev1.Volume{
-							{Name: "global-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+							{Name: "global-vol", EmptyDir: &corev1.EmptyDirVolumeSource{}},
 						},
 					},
 					Discovery: renovatev1beta1.DiscoverySpec{},
@@ -813,13 +764,13 @@ var _ = Describe("Renovator Discovery", func() {
 				Spec: renovatev1beta1.RenovatorSpec{
 					PodSpec: renovatev1beta1.PodSpec{
 						ExtraVolumes: []corev1.Volume{
-							{Name: "global-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+							{Name: "global-vol", EmptyDir: &corev1.EmptyDirVolumeSource{}},
 						},
 					},
 					Discovery: renovatev1beta1.DiscoverySpec{
 						PodSpec: renovatev1beta1.PodSpec{
 							ExtraVolumes: []corev1.Volume{
-								{Name: "discovery-vol", VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}}},
+								{Name: "discovery-vol", EmptyDir: &corev1.EmptyDirVolumeSource{}},
 							},
 						},
 					},

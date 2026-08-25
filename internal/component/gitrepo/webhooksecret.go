@@ -9,7 +9,6 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -45,10 +44,8 @@ func (r *Reconciler) reconcileWebhookSecret(ctx context.Context) (*ctrl.Result, 
 	}
 
 	webhookSecret = &corev1.Secret{
-		ObjectMeta: metav1.ObjectMeta{
-			Name:      secretName,
-			Namespace: r.instance.Namespace,
-		},
+		Name:      secretName,
+		Namespace: r.instance.Namespace,
 	}
 	r.updateSecret(webhookSecret, secretString)
 

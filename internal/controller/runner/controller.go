@@ -209,10 +209,8 @@ func (r *Reconciler) mapGitRepoToRunner(ctx context.Context, obj client.Object) 
 	for _, runner := range runnerList.Items {
 		if runner.Labels != nil && runner.Labels[renovatev1beta1.LabelRenovator] == renovatorID {
 			reqs = append(reqs, ctrl.Request{
-				NamespacedName: client.ObjectKey{
-					Name:      runner.Name,
-					Namespace: runner.Namespace,
-				},
+				Name:      runner.Name,
+				Namespace: runner.Namespace,
 			})
 		}
 	}
@@ -234,10 +232,8 @@ func (r *Reconciler) mapConfigToRunner(ctx context.Context, obj client.Object) [
 	reqs := make([]ctrl.Request, len(runnerList.Items))
 	for i := range runnerList.Items {
 		reqs[i] = ctrl.Request{
-			NamespacedName: client.ObjectKey{
-				Name:      runnerList.Items[i].Name,
-				Namespace: runnerList.Items[i].Namespace,
-			},
+			Name:      runnerList.Items[i].Name,
+			Namespace: runnerList.Items[i].Namespace,
 		}
 	}
 

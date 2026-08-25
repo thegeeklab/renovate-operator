@@ -34,11 +34,9 @@ var _ = Describe("GitRepo Reconciliation", func() {
 	createDiscoveryCM := func(name string, repos []string) *corev1.ConfigMap {
 		repoData, _ := json.Marshal(repos)
 		cm := &corev1.ConfigMap{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: "default",
-			},
-			Data: map[string]string{"repositories": string(repoData)},
+			Name:      name,
+			Namespace: "default",
+			Data:      map[string]string{"repositories": string(repoData)},
 		}
 		Expect(controllerutil.SetControllerReference(instance, cm, scheme)).To(Succeed())
 
@@ -47,11 +45,9 @@ var _ = Describe("GitRepo Reconciliation", func() {
 
 	newGitRepo := func(name, specName string) *renovatev1beta1.GitRepo {
 		return &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      name,
-				Namespace: "default",
-			},
-			Spec: renovatev1beta1.GitRepoSpec{Name: specName},
+			Name:      name,
+			Namespace: "default",
+			Spec:      renovatev1beta1.GitRepoSpec{Name: specName},
 		}
 	}
 
@@ -61,13 +57,11 @@ var _ = Describe("GitRepo Reconciliation", func() {
 		Expect(corev1.AddToScheme(scheme)).To(Succeed())
 
 		instance = &renovatev1beta1.Discovery{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-discovery",
-				Namespace: "default",
-				UID:       "test-uid",
-				Labels: map[string]string{
-					renovatev1beta1.LabelRenovator: "test-renovator",
-				},
+			Name:      "test-discovery",
+			Namespace: "default",
+			UID:       "test-uid",
+			Labels: map[string]string{
+				renovatev1beta1.LabelRenovator: "test-renovator",
 			},
 		}
 
@@ -107,8 +101,8 @@ var _ = Describe("GitRepo Reconciliation", func() {
 
 		It("should skip ConfigMaps not controlled by the instance", func() {
 			cm := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{Name: "stranger-danger", Namespace: "default"},
-				Data:       map[string]string{"repositories": `["repo1"]`},
+				Name: "stranger-danger", Namespace: "default",
+				Data: map[string]string{"repositories": `["repo1"]`},
 			}
 			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
 
@@ -152,11 +146,9 @@ var _ = Describe("GitRepo Reconciliation", func() {
 
 		It("should handle invalid JSON in ConfigMap", func() {
 			cm := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-config",
-					Namespace: "default",
-				},
-				Data: map[string]string{"repositories": `invalid-json`},
+				Name:      "test-config",
+				Namespace: "default",
+				Data:      map[string]string{"repositories": `invalid-json`},
 			}
 			Expect(controllerutil.SetControllerReference(instance, cm, scheme)).To(Succeed())
 			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
@@ -171,11 +163,9 @@ var _ = Describe("GitRepo Reconciliation", func() {
 
 		It("should handle missing 'repositories' key in ConfigMap", func() {
 			cm := &corev1.ConfigMap{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-config",
-					Namespace: "default",
-				},
-				Data: map[string]string{"other-key": `value`},
+				Name:      "test-config",
+				Namespace: "default",
+				Data:      map[string]string{"other-key": `value`},
 			}
 			Expect(controllerutil.SetControllerReference(instance, cm, scheme)).To(Succeed())
 			Expect(fakeClient.Create(ctx, cm)).To(Succeed())
@@ -194,16 +184,14 @@ var _ = Describe("GitRepo Reconciliation", func() {
 				instance.Spec.SkipForks = &skipForks
 
 				reconciler.renovate = &renovatev1beta1.RenovateConfig{
-					ObjectMeta: metav1.ObjectMeta{Name: "test-config", Namespace: "default"},
+					Name: "test-config", Namespace: "default",
 					Spec: renovatev1beta1.RenovateConfigSpec{
 						Platform: renovatev1beta1.PlatformSpec{
 							Type: "stub",
 							Token: corev1.EnvVarSource{
 								SecretKeyRef: &corev1.SecretKeySelector{
-									Key: "token",
-									LocalObjectReference: corev1.LocalObjectReference{
-										Name: "platform-secret",
-									},
+									Key:  "token",
+									Name: "platform-secret",
 								},
 							},
 						},
@@ -211,8 +199,8 @@ var _ = Describe("GitRepo Reconciliation", func() {
 				}
 
 				tokenSecret := &corev1.Secret{
-					ObjectMeta: metav1.ObjectMeta{Name: "platform-secret", Namespace: "default"},
-					Data:       map[string][]byte{"token": []byte("test-token")},
+					Name: "platform-secret", Namespace: "default",
+					Data: map[string][]byte{"token": []byte("test-token")},
 				}
 				Expect(fakeClient.Create(ctx, tokenSecret)).To(Succeed())
 			})
@@ -251,14 +239,14 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			reconciler.instance.Spec.SkipForks = &skipForks
 
 			reconciler.renovate = &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-config", Namespace: "default"},
+				Name: "test-config", Namespace: "default",
 				Spec: renovatev1beta1.RenovateConfigSpec{
 					Platform: renovatev1beta1.PlatformSpec{
 						Type: "stub",
 						Token: corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
-								Key:                  "token",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "platform-secret"},
+								Key:  "token",
+								Name: "platform-secret",
 							},
 						},
 					},
@@ -266,8 +254,8 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			}
 
 			tokenSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "platform-secret", Namespace: "default"},
-				Data:       map[string][]byte{"token": []byte("test-token")},
+				Name: "platform-secret", Namespace: "default",
+				Data: map[string][]byte{"token": []byte("test-token")},
 			}
 			Expect(fakeClient.Create(ctx, tokenSecret)).To(Succeed())
 
@@ -287,14 +275,14 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			reconciler.instance.Spec.Topics = []string{"renovate", "production"}
 
 			reconciler.renovate = &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-config", Namespace: "default"},
+				Name: "test-config", Namespace: "default",
 				Spec: renovatev1beta1.RenovateConfigSpec{
 					Platform: renovatev1beta1.PlatformSpec{
 						Type: "stub",
 						Token: corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
-								Key:                  "token",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "platform-secret"},
+								Key:  "token",
+								Name: "platform-secret",
 							},
 						},
 					},
@@ -302,8 +290,8 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			}
 
 			tokenSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "platform-secret", Namespace: "default"},
-				Data:       map[string][]byte{"token": []byte("test-token")},
+				Name: "platform-secret", Namespace: "default",
+				Data: map[string][]byte{"token": []byte("test-token")},
 			}
 			Expect(fakeClient.Create(ctx, tokenSecret)).To(Succeed())
 
@@ -324,14 +312,14 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			reconciler.instance.Spec.Topics = []string{"renovate"}
 
 			reconciler.renovate = &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-config", Namespace: "default"},
+				Name: "test-config", Namespace: "default",
 				Spec: renovatev1beta1.RenovateConfigSpec{
 					Platform: renovatev1beta1.PlatformSpec{
 						Type: "stub",
 						Token: corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
-								Key:                  "token",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "platform-secret"},
+								Key:  "token",
+								Name: "platform-secret",
 							},
 						},
 					},
@@ -339,8 +327,8 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			}
 
 			tokenSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "platform-secret", Namespace: "default"},
-				Data:       map[string][]byte{"token": []byte("test-token")},
+				Name: "platform-secret", Namespace: "default",
+				Data: map[string][]byte{"token": []byte("test-token")},
 			}
 			Expect(fakeClient.Create(ctx, tokenSecret)).To(Succeed())
 
@@ -363,14 +351,14 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			}
 
 			reconciler.renovate = &renovatev1beta1.RenovateConfig{
-				ObjectMeta: metav1.ObjectMeta{Name: "test-config", Namespace: "default"},
+				Name: "test-config", Namespace: "default",
 				Spec: renovatev1beta1.RenovateConfigSpec{
 					Platform: renovatev1beta1.PlatformSpec{
 						Type: "stub",
 						Token: corev1.EnvVarSource{
 							SecretKeyRef: &corev1.SecretKeySelector{
-								Key:                  "token",
-								LocalObjectReference: corev1.LocalObjectReference{Name: "platform-secret"},
+								Key:  "token",
+								Name: "platform-secret",
 							},
 						},
 					},
@@ -378,8 +366,8 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			}
 
 			tokenSecret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "platform-secret", Namespace: "default"},
-				Data:       map[string][]byte{"token": []byte("test-token")},
+				Name: "platform-secret", Namespace: "default",
+				Data: map[string][]byte{"token": []byte("test-token")},
 			}
 			Expect(fakeClient.Create(ctx, tokenSecret)).To(Succeed())
 

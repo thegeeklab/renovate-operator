@@ -19,7 +19,6 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/receiver/mocks"
 	batchv1 "k8s.io/api/batch/v1"
 	corev1 "k8s.io/api/core/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -48,33 +47,29 @@ var _ = Describe("Server", func() {
 		Expect(batchv1.AddToScheme(scheme)).To(Succeed())
 
 		repo := &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      testGitRepoName,
-				Namespace: testNamespace,
-				Labels:    map[string]string{renovatev1beta1.LabelRenovator: testRenovatorID},
-			},
+			Name:      testGitRepoName,
+			Namespace: testNamespace,
+			Labels:    map[string]string{renovatev1beta1.LabelRenovator: testRenovatorID},
 		}
 		baseConfig = renovatev1beta1.RenovateConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      testRenovatorID,
-				Namespace: testNamespace,
-				Labels:    map[string]string{renovatev1beta1.LabelRenovator: testRenovatorID},
-			},
+			Name:      testRenovatorID,
+			Namespace: testNamespace,
+			Labels:    map[string]string{renovatev1beta1.LabelRenovator: testRenovatorID},
 			Spec: renovatev1beta1.RenovateConfigSpec{Platform: renovatev1beta1.PlatformSpec{
 				Type: renovatev1beta1.PlatformType_GITHUB,
 				Token: corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "platform-token"},
-					Key:                  "token",
+					Name: "platform-token",
+					Key:  "token",
 				}},
 			}},
 		}
 		webhookSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: testGitRepoName + "-webhook-secret", Namespace: testNamespace},
-			Data:       map[string][]byte{renovatev1beta1.WebhookSecretDataKey: []byte("webhook-secret")},
+			Name: testGitRepoName + "-webhook-secret", Namespace: testNamespace,
+			Data: map[string][]byte{renovatev1beta1.WebhookSecretDataKey: []byte("webhook-secret")},
 		}
 		platformSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "platform-token", Namespace: testNamespace},
-			Data:       map[string][]byte{"token": []byte("platform-secret")},
+			Name: "platform-token", Namespace: testNamespace,
+			Data: map[string][]byte{"token": []byte("platform-secret")},
 		}
 
 		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithObjects(
@@ -171,33 +166,29 @@ var _ = Describe("Server Metrics", func() {
 		Expect(batchv1.AddToScheme(scheme)).To(Succeed())
 
 		repo := &renovatev1beta1.GitRepo{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      testGitRepoName,
-				Namespace: testNamespace,
-				Labels:    map[string]string{renovatev1beta1.LabelRenovator: testRenovatorID},
-			},
+			Name:      testGitRepoName,
+			Namespace: testNamespace,
+			Labels:    map[string]string{renovatev1beta1.LabelRenovator: testRenovatorID},
 		}
 		config := &renovatev1beta1.RenovateConfig{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      testRenovatorID,
-				Namespace: testNamespace,
-				Labels:    map[string]string{renovatev1beta1.LabelRenovator: testRenovatorID},
-			},
+			Name:      testRenovatorID,
+			Namespace: testNamespace,
+			Labels:    map[string]string{renovatev1beta1.LabelRenovator: testRenovatorID},
 			Spec: renovatev1beta1.RenovateConfigSpec{Platform: renovatev1beta1.PlatformSpec{
 				Type: renovatev1beta1.PlatformType_GITHUB,
 				Token: corev1.EnvVarSource{SecretKeyRef: &corev1.SecretKeySelector{
-					LocalObjectReference: corev1.LocalObjectReference{Name: "platform-token"},
-					Key:                  "token",
+					Name: "platform-token",
+					Key:  "token",
 				}},
 			}},
 		}
 		webhookSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: testGitRepoName + "-webhook-secret", Namespace: testNamespace},
-			Data:       map[string][]byte{renovatev1beta1.WebhookSecretDataKey: []byte("webhook-secret")},
+			Name: testGitRepoName + "-webhook-secret", Namespace: testNamespace,
+			Data: map[string][]byte{renovatev1beta1.WebhookSecretDataKey: []byte("webhook-secret")},
 		}
 		platformSecret := &corev1.Secret{
-			ObjectMeta: metav1.ObjectMeta{Name: "platform-token", Namespace: testNamespace},
-			Data:       map[string][]byte{"token": []byte("platform-secret")},
+			Name: "platform-token", Namespace: testNamespace,
+			Data: map[string][]byte{"token": []byte("platform-secret")},
 		}
 
 		k8sClient = fake.NewClientBuilder().WithScheme(scheme).WithObjects(

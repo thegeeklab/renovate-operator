@@ -57,10 +57,8 @@ var _ = Describe("AuthProvider Controller", func() {
 			}
 
 			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret",
-					Namespace: "default",
-				},
+				Name:      "test-secret",
+				Namespace: "default",
 				Data: map[string][]byte{
 					"client-secret": []byte("test-client-secret"),
 				},
@@ -68,10 +66,8 @@ var _ = Describe("AuthProvider Controller", func() {
 			Expect(k8sClient.Create(ctx, secret)).To(Succeed())
 
 			resource := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 				Spec: renovatev1beta1.AuthProviderSpec{
 					Type:     "gitea",
 					Endpoint: "https://gitea.example.com",
@@ -90,18 +86,14 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		AfterEach(func() {
 			resource := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, resource)
 
 			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret",
-					Namespace: "default",
-				},
+				Name:      "test-secret",
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, secret)
 		})
@@ -131,10 +123,8 @@ var _ = Describe("AuthProvider Controller", func() {
 			}
 
 			resource := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 				Spec: renovatev1beta1.AuthProviderSpec{
 					Type:     "gitea",
 					Endpoint: "https://gitea.example.com",
@@ -153,10 +143,8 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		AfterEach(func() {
 			resource := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, resource)
 		})
@@ -180,10 +168,8 @@ var _ = Describe("AuthProvider Controller", func() {
 			}
 
 			resource := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 				Spec: renovatev1beta1.AuthProviderSpec{
 					Type:     "gitea",
 					Endpoint: "https://gitea.example.com",
@@ -202,10 +188,8 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		AfterEach(func() {
 			resource := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, resource)
 		})
@@ -229,7 +213,7 @@ var _ = Describe("AuthProvider Controller", func() {
 
 	It("should create a GitLab auth provider with configured values", func() {
 		provider, err := reconciler.createAuthProvider(ctx, &renovatev1beta1.AuthProvider{
-			ObjectMeta: metav1.ObjectMeta{Name: "gitlab-auth"},
+			Name: "gitlab-auth",
 			Spec: renovatev1beta1.AuthProviderSpec{
 				Type:        renovatev1beta1.PlatformType_GITLAB,
 				Endpoint:    "https://gitlab.example.com",
@@ -280,10 +264,8 @@ var _ = Describe("AuthProvider Controller", func() {
 			}
 
 			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret-ca",
-					Namespace: "default",
-				},
+				Name:      "test-secret-ca",
+				Namespace: "default",
 				Data: map[string][]byte{
 					"client-secret": []byte("test-client-secret"),
 				},
@@ -291,10 +273,8 @@ var _ = Describe("AuthProvider Controller", func() {
 			Expect(k8sClient.Create(ctx, secret)).To(Succeed())
 
 			resource := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 				Spec: renovatev1beta1.AuthProviderSpec{
 					Type:     "gitea",
 					Endpoint: "https://gitea.example.com",
@@ -307,10 +287,8 @@ var _ = Describe("AuthProvider Controller", func() {
 					ClientID:    "test-client-id",
 					RedirectURL: "https://operator.example.com/auth/callback",
 					CABundleSecret: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{
-							Name: "non-existent-ca-secret",
-						},
-						Key: "ca-bundle",
+						Name: "non-existent-ca-secret",
+						Key:  "ca-bundle",
 					},
 				},
 			}
@@ -319,18 +297,14 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		AfterEach(func() {
 			resource := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      resourceName,
-					Namespace: "default",
-				},
+				Name:      resourceName,
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, resource)
 
 			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "test-secret-ca",
-					Namespace: "default",
-				},
+				Name:      "test-secret-ca",
+				Namespace: "default",
 			}
 			_ = k8sClient.Delete(ctx, secret)
 		})
@@ -355,10 +329,8 @@ var _ = Describe("AuthProvider Controller", func() {
 			resourceName = "test-ca-getter"
 
 			secret = &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "ca-secret",
-					Namespace: "default",
-				},
+				Name:      "ca-secret",
+				Namespace: "default",
 				Data: map[string][]byte{
 					"ca.crt": []byte("ca-data"),
 				},
@@ -368,20 +340,18 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		AfterEach(func() {
 			_ = k8sClient.Delete(ctx, &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:      "ca-secret",
-					Namespace: "default",
-				},
+				Name:      "ca-secret",
+				Namespace: "default",
 			})
 		})
 
 		It("should return the secret when CABundleSecret is set", func() {
 			ap := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: "default"},
+				Name: resourceName, Namespace: "default",
 				Spec: renovatev1beta1.AuthProviderSpec{
 					CABundleSecret: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "ca-secret"},
-						Key:                  "ca.crt",
+						Name: "ca-secret",
+						Key:  "ca.crt",
 					},
 				},
 			}
@@ -394,11 +364,11 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		It("should return an error when secret does not exist", func() {
 			ap := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{Name: resourceName, Namespace: "default"},
+				Name: resourceName, Namespace: "default",
 				Spec: renovatev1beta1.AuthProviderSpec{
 					CABundleSecret: &corev1.SecretKeySelector{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "non-existent"},
-						Key:                  "ca.crt",
+						Name: "non-existent",
+						Key:  "ca.crt",
 					},
 				},
 			}
@@ -457,7 +427,7 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		It("should reject invalid PEM data", func() {
 			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "ca-secret"},
+				Name: "ca-secret",
 				Data: map[string][]byte{
 					"ca.crt": []byte("not-valid-pem"),
 				},
@@ -498,8 +468,8 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		It("should return an error when the key is missing from the secret", func() {
 			secret := &corev1.Secret{
-				ObjectMeta: metav1.ObjectMeta{Name: "ca-secret"},
-				Data:       map[string][]byte{},
+				Name: "ca-secret",
+				Data: map[string][]byte{},
 			}
 
 			ap := &renovatev1beta1.AuthProvider{
@@ -519,9 +489,7 @@ var _ = Describe("AuthProvider Controller", func() {
 	Context("isProviderUpToDate", func() {
 		It("should return false when CABundleSecretResourceVersion does not match", func() {
 			ap := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Generation: 1,
-				},
+				Generation: 1,
 				Status: renovatev1beta1.AuthProviderStatus{
 					Registered:                    true,
 					SecretResourceVersion:         "v1",
@@ -543,10 +511,8 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		It("should return true when both secret versions match", func() {
 			ap := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:       "test-provider-uptodate",
-					Generation: 1,
-				},
+				Name:       "test-provider-uptodate",
+				Generation: 1,
 				Status: renovatev1beta1.AuthProviderStatus{
 					Registered:                    true,
 					SecretResourceVersion:         "v1",
@@ -568,10 +534,8 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		It("should return true when caSecret is nil and no CA bundle is configured", func() {
 			ap := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:       "test-provider-no-ca",
-					Generation: 1,
-				},
+				Name:       "test-provider-no-ca",
+				Generation: 1,
 				Status: renovatev1beta1.AuthProviderStatus{
 					Registered:            true,
 					SecretResourceVersion: "v1",
@@ -589,10 +553,8 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		It("should return false when client SecretResourceVersion does not match", func() {
 			ap := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:       "test-provider-ver-mismatch",
-					Generation: 1,
-				},
+				Name:       "test-provider-ver-mismatch",
+				Generation: 1,
 				Status: renovatev1beta1.AuthProviderStatus{
 					Registered:            true,
 					SecretResourceVersion: "v1",
@@ -610,10 +572,8 @@ var _ = Describe("AuthProvider Controller", func() {
 
 		It("should return false when condition Ready is not true", func() {
 			ap := &renovatev1beta1.AuthProvider{
-				ObjectMeta: metav1.ObjectMeta{
-					Name:       "test-provider-not-ready",
-					Generation: 1,
-				},
+				Name:       "test-provider-not-ready",
+				Generation: 1,
 				Status: renovatev1beta1.AuthProviderStatus{
 					Registered:            true,
 					SecretResourceVersion: "v1",

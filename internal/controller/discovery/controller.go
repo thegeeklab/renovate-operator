@@ -196,10 +196,8 @@ func (r *Reconciler) mapConfigToDiscovery(ctx context.Context, obj client.Object
 	reqs := make([]ctrl.Request, len(discoveryList.Items))
 	for i := range discoveryList.Items {
 		reqs[i] = ctrl.Request{
-			NamespacedName: client.ObjectKey{
-				Name:      discoveryList.Items[i].Name,
-				Namespace: discoveryList.Items[i].Namespace,
-			},
+			Name:      discoveryList.Items[i].Name,
+			Namespace: discoveryList.Items[i].Namespace,
 		}
 	}
 

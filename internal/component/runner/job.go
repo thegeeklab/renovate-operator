@@ -239,11 +239,9 @@ func (r *Reconciler) ensureRepoJob(
 	}
 
 	job := &batchv1.Job{
-		ObjectMeta: metav1.ObjectMeta{
-			GenerateName: repo.Name + "-",
-			Namespace:    repo.Namespace,
-			Labels:       repoLabels,
-		},
+		GenerateName: repo.Name + "-",
+		Namespace:    repo.Namespace,
+		Labels:       repoLabels,
 	}
 	if err := r.updateJob(job, repo, repoLabels); err != nil {
 		return false, fmt.Errorf("failed to update job: %w", err)

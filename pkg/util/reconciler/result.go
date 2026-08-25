@@ -26,7 +26,6 @@ func (r *Results) Collect(res *ctrl.Result) {
 
 func (r *Results) ToResult() *ctrl.Result {
 	return &ctrl.Result{
-		Requeue:      r.shouldRequeue,
 		RequeueAfter: r.minRequeueAfter,
 	}
 }

@@ -5,16 +5,13 @@ import (
 	. "github.com/onsi/gomega"
 
 	batchv1 "k8s.io/api/batch/v1"
-	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var _ = Describe("FailureReason", func() {
 	It("should return the reason from a Failed condition", func() {
 		job := &batchv1.Job{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-job",
-				Namespace: "default",
-			},
+			Name:      "test-job",
+			Namespace: "default",
 			Status: batchv1.JobStatus{
 				Conditions: []batchv1.JobCondition{
 					{
@@ -30,10 +27,8 @@ var _ = Describe("FailureReason", func() {
 
 	It("should return the first matching reason when multiple conditions exist", func() {
 		job := &batchv1.Job{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-job",
-				Namespace: "default",
-			},
+			Name:      "test-job",
+			Namespace: "default",
 			Status: batchv1.JobStatus{
 				Conditions: []batchv1.JobCondition{
 					{
@@ -57,10 +52,8 @@ var _ = Describe("FailureReason", func() {
 
 	It("should return unknown when the Failed condition has an empty reason", func() {
 		job := &batchv1.Job{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-job",
-				Namespace: "default",
-			},
+			Name:      "test-job",
+			Namespace: "default",
 			Status: batchv1.JobStatus{
 				Conditions: []batchv1.JobCondition{
 					{
@@ -76,11 +69,9 @@ var _ = Describe("FailureReason", func() {
 
 	It("should return unknown when there are no conditions", func() {
 		job := &batchv1.Job{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-job",
-				Namespace: "default",
-			},
-			Status: batchv1.JobStatus{},
+			Name:      "test-job",
+			Namespace: "default",
+			Status:    batchv1.JobStatus{},
 		}
 
 		Expect(FailureReason(job)).To(Equal("unknown"))
@@ -88,10 +79,8 @@ var _ = Describe("FailureReason", func() {
 
 	It("should return unknown when there is no Failed condition", func() {
 		job := &batchv1.Job{
-			ObjectMeta: metav1.ObjectMeta{
-				Name:      "test-job",
-				Namespace: "default",
-			},
+			Name:      "test-job",
+			Namespace: "default",
 			Status: batchv1.JobStatus{
 				Conditions: []batchv1.JobCondition{
 					{

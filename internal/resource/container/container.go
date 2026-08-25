@@ -93,8 +93,8 @@ func VolumesTemplate(mutators ...VolumeMutator) []corev1.Volume {
 func WithEmptyDirVolume(name string) VolumeMutator {
 	return func(volumes *[]corev1.Volume) {
 		*volumes = append(*volumes, corev1.Volume{
-			Name:         name,
-			VolumeSource: corev1.VolumeSource{EmptyDir: &corev1.EmptyDirVolumeSource{}},
+			Name:     name,
+			EmptyDir: &corev1.EmptyDirVolumeSource{},
 		})
 	}
 }
@@ -104,13 +104,9 @@ func WithConfigMapVolume(name, configMapName string) VolumeMutator {
 	return func(volumes *[]corev1.Volume) {
 		*volumes = append(*volumes, corev1.Volume{
 			Name: name,
-			VolumeSource: corev1.VolumeSource{
-				ConfigMap: &corev1.ConfigMapVolumeSource{
-					DefaultMode: new(corev1.ConfigMapVolumeSourceDefaultMode),
-					LocalObjectReference: corev1.LocalObjectReference{
-						Name: configMapName,
-					},
-				},
+			ConfigMap: &corev1.ConfigMapVolumeSource{
+				DefaultMode: new(corev1.ConfigMapVolumeSourceDefaultMode),
+				Name:        configMapName,
 			},
 		})
 	}
@@ -121,11 +117,9 @@ func WithSecretVolume(name, secretName string) VolumeMutator {
 	return func(volumes *[]corev1.Volume) {
 		*volumes = append(*volumes, corev1.Volume{
 			Name: name,
-			VolumeSource: corev1.VolumeSource{
-				Secret: &corev1.SecretVolumeSource{
-					DefaultMode: new(corev1.SecretVolumeSourceDefaultMode),
-					SecretName:  secretName,
-				},
+			Secret: &corev1.SecretVolumeSource{
+				DefaultMode: new(corev1.SecretVolumeSourceDefaultMode),
+				SecretName:  secretName,
 			},
 		})
 	}
@@ -136,10 +130,8 @@ func WithPersistentVolumeClaim(name, claimName string) VolumeMutator {
 	return func(volumes *[]corev1.Volume) {
 		*volumes = append(*volumes, corev1.Volume{
 			Name: name,
-			VolumeSource: corev1.VolumeSource{
-				PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
-					ClaimName: claimName,
-				},
+			PersistentVolumeClaim: &corev1.PersistentVolumeClaimVolumeSource{
+				ClaimName: claimName,
 			},
 		})
 	}
