@@ -13,7 +13,7 @@ RUN make frontend-build GO=true
 # ---------------------------------------------------------
 # 2. Go Build Stage
 # ---------------------------------------------------------
-FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.26.6@sha256:0d1d3a794be25f809dd2cb3160d8c73276c4056a9f8242a138e908ddeee7b6b6 AS go-build
+FROM --platform=$BUILDPLATFORM docker.io/library/golang:1.27.0@sha256:f42f8545265b7fe4124ecdd50a7778c15d5e3fc4d0af648e508e4f4c6a4c572b AS go-build
 
 ARG TARGETOS
 ARG TARGETARCH
