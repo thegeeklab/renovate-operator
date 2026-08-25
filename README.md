@@ -1,6 +1,7 @@
 # renovate-operator
 
 [![Build Status](https://ci.thegeeklab.de/api/badges/thegeeklab/renovate-operator/status.svg)](https://ci.thegeeklab.de/repos/thegeeklab/renovate-operator)
+[![Translation status](https://hosted.weblate.org/widget/renovate-operator/svg-badge.svg)](https://hosted.weblate.org/engage/renovate-operator/)
 [![GitHub contributors](https://img.shields.io/github/contributors/thegeeklab/renovate-operator)](https://github.com/thegeeklab/renovate-operator/graphs/contributors)
 [![License: MIT](https://img.shields.io/github/license/thegeeklab/renovate-operator)](https://github.com/thegeeklab/renovate-operator/blob/main/LICENSE)
 
@@ -163,6 +164,12 @@ helm uninstall renovate-operator -n renovate-system
 # If using static manifest
 kubectl delete -f install.yaml
 ```
+
+### Localization
+
+Thanks to [Weblate](https://hosted.weblate.org/engage/renovate-operator/) for hosting our localization infrastructure. Help translate renovate-operator into your language on Weblate.
+
+[![Translation status](https://hosted.weblate.org/widget/renovate-operator/horizontal-auto.svg)](https://hosted.weblate.org/engage/renovate-operator/)
 
 ## Contributors
 
