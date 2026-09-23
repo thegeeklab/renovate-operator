@@ -21,7 +21,7 @@
   "dependencies": {
     "@floating-ui/dom": "1.8.0",
     "htmx-ext-sse": "2.2.4",
-    "htmx.org": "2.0.10",
+    "htmx.org": "2.0.11",
     "store2": "2.14.4",
     "tinykeys": "4.0.0"
   },
