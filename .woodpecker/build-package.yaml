@@ -37,7 +37,7 @@ steps:
     when: *when
 
   - name: prettier
-    image: docker.io/jauderho/prettier:3.9.8
+    image: docker.io/jauderho/prettier:3.9.9
     depends_on: [helm-docs]
     commands:
       - prettier -w dist/chart/README.md
