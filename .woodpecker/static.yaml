@@ -57,7 +57,7 @@ steps:
     when: *when
 
   - name: golangci-lint
-    image: docker.io/golangci/golangci-lint:v2.13.2
+    image: docker.io/golangci/golangci-lint:v2.14.0
     depends_on: [frontend-deps]
     commands:
       - go mod download
