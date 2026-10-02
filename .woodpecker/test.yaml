@@ -52,6 +52,7 @@ steps:
 
   - name: test-locale
     image: docker.io/library/golang:1.27.1
+    depends_on: [restore-go-cache]
     commands:
       - export GOCACHE="$CI_WORKSPACE/.cache/go/build"
       - export GOMODCACHE="$CI_WORKSPACE/.cache/go/mod"
@@ -67,7 +68,7 @@ steps:
 
   - name: save-go-cache
     image: quay.io/thegeeklab/wp-s3-action
-    depends_on: [test]
+    depends_on: [test, test-locale]
     settings:
       action: [upload]
       archive: True

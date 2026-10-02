@@ -310,7 +310,7 @@ set -e; \
 package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
 tmpdir=$$(mktemp -d) ;\
-GOBIN=$${tmpdir} $(GO) install $${package} ;\
+GOBIN=$${tmpdir} GOMODCACHE=$${tmpdir}/mod $(GO) install $${package} ;\
 binary_name=$$(basename $(1)) ;\
 mv $${tmpdir}/$${binary_name} $(1)-$(3) ;\
 rm -rf $${tmpdir} ;\

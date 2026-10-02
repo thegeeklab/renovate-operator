@@ -114,11 +114,12 @@ steps:
 
   - name: verify-installer
     image: docker.io/library/golang:1.27.1
-    depends_on: [frontend-deps]
+    depends_on: [frontend-deps, restore-go-cache]
     commands:
       - export GOCACHE="$CI_WORKSPACE/.cache/go/build"
       - export GOMODCACHE="$CI_WORKSPACE/.cache/go/mod"
       - export GOWORK=off
+      - go mod download
       - make build-installer
       - git diff --exit-code
     when: *when
@@ -162,7 +163,7 @@ steps:
 
   - name: save-go-cache
     image: quay.io/thegeeklab/wp-s3-action
-    depends_on: [golangci-lint]
+    depends_on: [golangci-lint, verify-installer]
     settings:
       action: [upload]
       archive: True
