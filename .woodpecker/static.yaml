@@ -22,8 +22,39 @@ variables:
           - "Makefile"
 
 steps:
+  - name: restore-node-cache
+    image: quay.io/thegeeklab/wp-s3-action
+    settings:
+      action: [download]
+      archive: True
+      bucket:
+        from_secret: s3_cache_bucket
+      source: node_modules
+      target: '{{ .Repository.Slug }}/node/{{ sha256file "package-lock.json" }}.tar.gz'
+      access_key:
+        from_secret: s3_cache_access_key
+      secret_key:
+        from_secret: s3_cache_secret_key
+    when: *when
+
+  - name: restore-go-cache
+    image: quay.io/thegeeklab/wp-s3-action
+    settings:
+      action: [download]
+      archive: True
+      bucket:
+        from_secret: s3_cache_bucket
+      source: .cache/go
+      target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
+      access_key:
+        from_secret: s3_cache_access_key
+      secret_key:
+        from_secret: s3_cache_secret_key
+    when: *when_golang
+
   - name: frontend-deps
     image: docker.io/library/node:lts
+    depends_on: [restore-node-cache]
     commands:
       - make frontend-deps
     when: *when
@@ -58,8 +89,10 @@ steps:
 
   - name: golangci-lint
     image: docker.io/golangci/golangci-lint:v2.14.0
-    depends_on: [frontend-deps]
+    depends_on: [frontend-deps, restore-go-cache]
     commands:
+      - export GOCACHE="$CI_WORKSPACE/.cache/go/build"
+      - export GOMODCACHE="$CI_WORKSPACE/.cache/go/mod"
       - go mod download
       - golangci-lint run
     when: *when_golang
@@ -96,3 +129,37 @@ steps:
     when:
       - path:
           include: *exclude_path
+
+  - name: save-node-cache
+    image: quay.io/thegeeklab/wp-s3-action
+    depends_on: [frontend-deps]
+    settings:
+      action: [upload]
+      archive: True
+      bucket:
+        from_secret: s3_cache_bucket
+      source: node_modules
+      upload_allow_empty_source: True
+      target: '{{ .Repository.Slug }}/node/{{ sha256file "package-lock.json" }}.tar.gz'
+      access_key:
+        from_secret: s3_cache_access_key
+      secret_key:
+        from_secret: s3_cache_secret_key
+    when: *when
+
+  - name: save-go-cache
+    image: quay.io/thegeeklab/wp-s3-action
+    depends_on: [golangci-lint]
+    settings:
+      action: [upload]
+      archive: True
+      bucket:
+        from_secret: s3_cache_bucket
+      source: .cache/go
+      upload_allow_empty_source: True
+      target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
+      access_key:
+        from_secret: s3_cache_access_key
+      secret_key:
+        from_secret: s3_cache_secret_key
+    when: *when_golang

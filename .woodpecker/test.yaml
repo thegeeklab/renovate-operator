@@ -22,9 +22,27 @@ variables:
           - "Makefile"
 
 steps:
+  - name: restore-go-cache
+    image: quay.io/thegeeklab/wp-s3-action
+    settings:
+      action: [download]
+      archive: True
+      bucket:
+        from_secret: s3_cache_bucket
+      source: .cache/go
+      target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
+      access_key:
+        from_secret: s3_cache_access_key
+      secret_key:
+        from_secret: s3_cache_secret_key
+    when: *when_golang
+
   - name: test
     image: docker.io/library/golang:1.27.1
+    depends_on: [restore-go-cache]
     commands:
+      - export GOCACHE="$CI_WORKSPACE/.cache/go/build"
+      - export GOMODCACHE="$CI_WORKSPACE/.cache/go/mod"
       - make test
     when: *when_golang
 
@@ -38,4 +56,21 @@ steps:
     image: quay.io/thegeeklab/kube-tools
     commands:
       - make helm-test
+    when: *when_golang
+
+  - name: save-go-cache
+    image: quay.io/thegeeklab/wp-s3-action
+    depends_on: [test]
+    settings:
+      action: [upload]
+      archive: True
+      bucket:
+        from_secret: s3_cache_bucket
+      source: .cache/go
+      upload_allow_empty_source: True
+      target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
+      access_key:
+        from_secret: s3_cache_access_key
+      secret_key:
+        from_secret: s3_cache_secret_key
     when: *when_golang
