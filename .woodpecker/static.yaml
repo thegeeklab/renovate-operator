@@ -28,13 +28,16 @@ steps:
       action: [download]
       archive: True
       bucket:
-        from_secret: s3_cache_bucket
+        from_secret: s3_bucket_cache
+      endpoint:
+        from_secret: s3_endpoint
+      path_style: true
       source: node_modules
       target: '{{ .Repository.Slug }}/node/{{ sha256file "package-lock.json" }}.tar.gz'
       access_key:
-        from_secret: s3_cache_access_key
+        from_secret: s3_access_key_cache
       secret_key:
-        from_secret: s3_cache_secret_key
+        from_secret: s3_secret_access_key_cache
     when: *when
 
   - name: restore-go-cache
@@ -43,13 +46,16 @@ steps:
       action: [download]
       archive: True
       bucket:
-        from_secret: s3_cache_bucket
+        from_secret: s3_bucket_cache
+      endpoint:
+        from_secret: s3_endpoint
+      path_style: true
       source: .cache/go
       target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
       access_key:
-        from_secret: s3_cache_access_key
+        from_secret: s3_access_key_cache
       secret_key:
-        from_secret: s3_cache_secret_key
+        from_secret: s3_secret_access_key_cache
     when: *when_golang
 
   - name: frontend-deps
@@ -137,14 +143,17 @@ steps:
       action: [upload]
       archive: True
       bucket:
-        from_secret: s3_cache_bucket
+        from_secret: s3_bucket_cache
+      endpoint:
+        from_secret: s3_endpoint
+      path_style: true
       source: node_modules
       upload_allow_empty_source: True
       target: '{{ .Repository.Slug }}/node/{{ sha256file "package-lock.json" }}.tar.gz'
       access_key:
-        from_secret: s3_cache_access_key
+        from_secret: s3_access_key_cache
       secret_key:
-        from_secret: s3_cache_secret_key
+        from_secret: s3_secret_access_key_cache
     when: *when
 
   - name: save-go-cache
@@ -154,12 +163,15 @@ steps:
       action: [upload]
       archive: True
       bucket:
-        from_secret: s3_cache_bucket
+        from_secret: s3_bucket_cache
+      endpoint:
+        from_secret: s3_endpoint
+      path_style: true
       source: .cache/go
       upload_allow_empty_source: True
       target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
       access_key:
-        from_secret: s3_cache_access_key
+        from_secret: s3_access_key_cache
       secret_key:
-        from_secret: s3_cache_secret_key
+        from_secret: s3_secret_access_key_cache
     when: *when_golang
