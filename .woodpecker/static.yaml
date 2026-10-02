@@ -50,7 +50,7 @@ steps:
       endpoint:
         from_secret: s3_endpoint
       path_style: true
-      source: /woodpecker/cache/go
+      source: ../cache/go
       target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
       access_key:
         from_secret: s3_access_key_cache
@@ -96,11 +96,10 @@ steps:
   - name: golangci-lint
     image: docker.io/golangci/golangci-lint:v2.14.0
     depends_on: [frontend-deps, restore-go-cache]
-    environment:
-      GOCACHE: /woodpecker/cache/go/build
-      GOMODCACHE: /woodpecker/cache/go/mod
-      GOWORK: "off"
     commands:
+      - export GOCACHE="$CI_WORKSPACE/../cache/go/build"
+      - export GOMODCACHE="$CI_WORKSPACE/../cache/go/mod"
+      - export GOWORK=off
       - go mod download
       - golangci-lint run
     when: *when_golang
@@ -116,11 +115,10 @@ steps:
   - name: verify-installer
     image: docker.io/library/golang:1.27.1
     depends_on: [frontend-deps, restore-go-cache]
-    environment:
-      GOCACHE: /woodpecker/cache/go/build
-      GOMODCACHE: /woodpecker/cache/go/mod
-      GOWORK: "off"
     commands:
+      - export GOCACHE="$CI_WORKSPACE/../cache/go/build"
+      - export GOMODCACHE="$CI_WORKSPACE/../cache/go/mod"
+      - export GOWORK=off
       - go mod download
       - make build-installer
       - git diff --exit-code
@@ -174,7 +172,7 @@ steps:
       endpoint:
         from_secret: s3_endpoint
       path_style: true
-      source: /woodpecker/cache/go
+      source: ../cache/go
       upload_allow_empty_source: True
       target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
       access_key:
