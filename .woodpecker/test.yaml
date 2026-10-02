@@ -68,7 +68,7 @@ steps:
 
   - name: save-go-cache
     image: quay.io/thegeeklab/wp-s3-action
-    depends_on: [test, test-locale]
+    depends_on: [test]
     settings:
       action: [upload]
       archive: True
