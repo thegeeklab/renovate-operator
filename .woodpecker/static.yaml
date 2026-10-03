@@ -56,7 +56,7 @@ steps:
         from_secret: s3_access_key_cache
       secret_key:
         from_secret: s3_secret_access_key_cache
-    when: *when_golang
+    when: *when
 
   - name: frontend-deps
     image: docker.io/library/node:lts
@@ -165,7 +165,7 @@ steps:
 
   - name: save-go-cache
     image: quay.io/thegeeklab/wp-s3-action
-    depends_on: [golangci-lint, verify-installer]
+    depends_on: [verify-installer]
     settings:
       action: [upload]
       archive: True
@@ -181,4 +181,4 @@ steps:
         from_secret: s3_access_key_cache
       secret_key:
         from_secret: s3_secret_access_key_cache
-    when: *when_golang
+    when: *when
