@@ -32,7 +32,7 @@ steps:
       endpoint:
         from_secret: s3_endpoint
       path_style: true
-      source: ../cache/go
+      source: /woodpecker/cache/go
       target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
       access_key:
         from_secret: s3_access_key_cache
@@ -43,20 +43,22 @@ steps:
   - name: test
     image: docker.io/library/golang:1.27.1
     depends_on: [restore-go-cache]
+    environment:
+      GOCACHE: /woodpecker/cache/go/build
+      GOMODCACHE: /woodpecker/cache/go/mod
+      GOWORK: "off"
     commands:
-      - export GOCACHE="$CI_WORKSPACE/../cache/go/build"
-      - export GOMODCACHE="$CI_WORKSPACE/../cache/go/mod"
-      - export GOWORK=off
       - make test
     when: *when_golang
 
   - name: test-locale
     image: docker.io/library/golang:1.27.1
     depends_on: [restore-go-cache]
+    environment:
+      GOCACHE: /woodpecker/cache/go/build
+      GOMODCACHE: /woodpecker/cache/go/mod
+      GOWORK: "off"
     commands:
-      - export GOCACHE="$CI_WORKSPACE/../cache/go/build"
-      - export GOMODCACHE="$CI_WORKSPACE/../cache/go/mod"
-      - export GOWORK=off
       - make test FOCUS="Bundle|ClientJSON|SupportedLocales|Translator"
     when: *when_locale
 
@@ -77,7 +79,7 @@ steps:
       endpoint:
         from_secret: s3_endpoint
       path_style: true
-      source: ../cache/go
+      source: /woodpecker/cache/go
       upload_allow_empty_source: True
       target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
       access_key:
