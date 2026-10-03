@@ -5,7 +5,28 @@
     {
       "groupName": "kubernetes packages",
       "matchDatasources": ["go"],
-      "matchPackageNames": ["/^k8s.io/", "sigs.k8s.io/controller-runtime"]
+      "matchPackageNames": ["/^k8s\\.io\\//", "sigs.k8s.io/controller-runtime"]
+    },
+    {
+      "groupName": "opentelemetry packages",
+      "matchDatasources": ["go"],
+      "matchPackageNames": ["/^go\\.opentelemetry\\.io\\//"]
+    },
+    {
+      "groupName": "golang.org/x packages",
+      "matchDatasources": ["go"],
+      "matchPackageNames": ["/^golang\\.org/x\\//"]
+    },
+    {
+      "groupName": "git platform SDKs",
+      "matchDatasources": ["go"],
+      "matchPackageNames": [
+        "code.gitea.io/sdk/gitea",
+        "/^github\\.com/google/go-github\\//",
+        "/^gitlab\\.com/gitlab-org/api/client-go\\//"
+      ],
+      "matchUpdateTypes": ["minor", "patch"],
+      "extends": ["schedule:weekly"]
     },
     {
       "groupName": "golangci-lint",
