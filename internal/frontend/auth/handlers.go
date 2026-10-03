@@ -42,12 +42,12 @@ func encodeState(provider string) (string, string, error) {
 // PKCE code verifier. The cookie value is encoded as "<state>|<verifier>".
 // Returns false if the value is malformed.
 func decodeStateCookie(cookieValue string) (string, string, bool) {
-	idx := strings.LastIndex(cookieValue, "|")
-	if idx < 0 {
+	before, after, found := strings.CutLast(cookieValue, "|")
+	if !found {
 		return "", "", false
 	}
 
-	return cookieValue[:idx], cookieValue[idx+1:], true
+	return before, after, true
 }
 
 // decodeState extracts the provider name from a state value previously produced by encodeState.

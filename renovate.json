@@ -6,6 +6,11 @@
       "groupName": "kubernetes packages",
       "matchDatasources": ["go"],
       "matchPackageNames": ["/^k8s.io/", "sigs.k8s.io/controller-runtime"]
+    },
+    {
+      "groupName": "golangci-lint",
+      "matchDatasources": ["docker", "github-releases"],
+      "matchPackageNames": ["golangci/golangci-lint"]
     }
   ]
 }

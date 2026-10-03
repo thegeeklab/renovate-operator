@@ -3,7 +3,7 @@ GOFUMPT_PACKAGE_VERSION := v0.12.0
 # renovate: datasource=github-releases depName=google/yamlfmt
 YAMLFMT_PACKAGE_VERSION := v0.21.0
 # renovate: datasource=github-releases depName=golangci/golangci-lint
-GOLANGCI_LINT_PACKAGE_VERSION := v2.13.2
+GOLANGCI_LINT_PACKAGE_VERSION := v2.14.0
 # renovate: datasource=go depName=github.com/a-h/templ
 TEMPL_PACKAGE_VERSION := v0.3.1020
 # renovate: datasource=github-releases depName=air-verse/air
@@ -310,7 +310,7 @@ set -e; \
 package=$(2)@$(3) ;\
 echo "Downloading $${package}" ;\
 tmpdir=$$(mktemp -d) ;\
-GOBIN=$${tmpdir} $(GO) install $${package} ;\
+GOBIN=$${tmpdir} GOMODCACHE=$${tmpdir}/mod $(GO) install $${package} ;\
 binary_name=$$(basename $(1)) ;\
 mv $${tmpdir}/$${binary_name} $(1)-$(3) ;\
 rm -rf $${tmpdir} ;\

@@ -22,14 +22,42 @@ variables:
           - "Makefile"
 
 steps:
+  - name: restore-go-cache
+    image: quay.io/thegeeklab/wp-s3-action
+    settings:
+      action: [download]
+      archive: True
+      bucket:
+        from_secret: s3_bucket_cache
+      endpoint:
+        from_secret: s3_endpoint
+      path_style: true
+      source: /woodpecker/cache/go
+      target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
+      access_key:
+        from_secret: s3_access_key_cache
+      secret_key:
+        from_secret: s3_secret_access_key_cache
+    when: *when_golang
+
   - name: test
     image: docker.io/library/golang:1.27.1
+    depends_on: [restore-go-cache]
+    environment:
+      GOCACHE: /woodpecker/cache/go/build
+      GOMODCACHE: /woodpecker/cache/go/mod
+      GOWORK: "off"
     commands:
       - make test
     when: *when_golang
 
   - name: test-locale
     image: docker.io/library/golang:1.27.1
+    depends_on: [restore-go-cache]
+    environment:
+      GOCACHE: /woodpecker/cache/go/build
+      GOMODCACHE: /woodpecker/cache/go/mod
+      GOWORK: "off"
     commands:
       - make test FOCUS="Bundle|ClientJSON|SupportedLocales|Translator"
     when: *when_locale
@@ -38,4 +66,24 @@ steps:
     image: quay.io/thegeeklab/kube-tools
     commands:
       - make helm-test
+    when: *when_golang
+
+  - name: save-go-cache
+    image: quay.io/thegeeklab/wp-s3-action
+    depends_on: [test]
+    settings:
+      action: [upload]
+      archive: True
+      bucket:
+        from_secret: s3_bucket_cache
+      endpoint:
+        from_secret: s3_endpoint
+      path_style: true
+      source: /woodpecker/cache/go
+      upload_allow_empty_source: True
+      target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
+      access_key:
+        from_secret: s3_access_key_cache
+      secret_key:
+        from_secret: s3_secret_access_key_cache
     when: *when_golang
