@@ -15,8 +15,10 @@ import (
 )
 
 const (
-	defaultPageSize = 50
-	httpTimeout     = 30 * time.Second
+	defaultPageSize   = 50
+	httpTimeout       = 30 * time.Second
+	defaultAPIBaseURL = "https://api.github.com"
+	defaultWebURL     = "https://github.com"
 )
 
 var (
@@ -32,7 +34,7 @@ type Provider struct {
 func NewProvider(ctx context.Context, endpoint, token string) (*Provider, error) {
 	baseURL := sanitizeEndpoint(endpoint)
 	if baseURL == "" {
-		baseURL = "https://api.github.com"
+		baseURL = defaultAPIBaseURL
 	}
 
 	forgeURL := deriveForgeURL(endpoint)
@@ -42,7 +44,7 @@ func NewProvider(ctx context.Context, endpoint, token string) (*Provider, error)
 		github.WithTimeout(httpTimeout),
 	}
 
-	if baseURL != "https://api.github.com" {
+	if baseURL != defaultAPIBaseURL {
 		opts = append(opts, github.WithEnterpriseURLs(baseURL, baseURL))
 	}
 
@@ -248,8 +250,8 @@ func (p *Provider) ListRepos(ctx context.Context, opts provider.ListReposOptions
 func sanitizeEndpoint(endpoint string) string {
 	endpoint = strings.TrimRight(endpoint, "/")
 
-	if endpoint == "https://github.com" {
-		return "https://api.github.com"
+	if endpoint == defaultWebURL {
+		return defaultAPIBaseURL
 	}
 
 	if !strings.HasSuffix(endpoint, "/api/v3") {
@@ -262,8 +264,8 @@ func sanitizeEndpoint(endpoint string) string {
 func deriveForgeURL(endpoint string) string {
 	endpoint = strings.TrimRight(endpoint, "/")
 
-	if endpoint == "" || endpoint == "https://github.com" || endpoint == "https://api.github.com" {
-		return "https://github.com"
+	if endpoint == "" || endpoint == defaultWebURL || endpoint == defaultAPIBaseURL {
+		return defaultWebURL
 	}
 
 	return strings.TrimSuffix(endpoint, "/api/v3")

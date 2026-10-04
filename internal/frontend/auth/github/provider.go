@@ -29,6 +29,7 @@ const (
 	maxFetchTimeout    = 2 * time.Minute
 	repoCheckTimeout   = 10 * time.Second
 	defaultHTTPTimeout = 30 * time.Second
+	defaultAPIBaseURL  = "https://api.github.com"
 
 	maxRepoPages = 200
 
@@ -176,7 +177,7 @@ func (p *GitHubProvider) ValidateToken(ctx context.Context, token string) (*auth
 	}
 
 	apiURL := p.apiURL()
-	if apiURL != "https://api.github.com" {
+	if apiURL != defaultAPIBaseURL {
 		opts = append(opts, github.WithEnterpriseURLs(apiURL, apiURL))
 	}
 
@@ -341,8 +342,8 @@ func (p *GitHubProvider) apiURL() string {
 		return strings.TrimRight(p.forgeURL, "/")
 	}
 
-	if p.endpoint == "" || p.endpoint == "https://github.com" || p.endpoint == "https://api.github.com" {
-		return "https://api.github.com"
+	if p.endpoint == "" || p.endpoint == "https://github.com" || p.endpoint == defaultAPIBaseURL {
+		return defaultAPIBaseURL
 	}
 
 	return strings.TrimRight(p.endpoint, "/") + "/api/v3"

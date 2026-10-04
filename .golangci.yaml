@@ -27,7 +27,7 @@ linters:
     - ginkgolinter
     - gocheckcompilerdirectives
     - gocognit
-    # - goconst
+    - goconst
     - gocritic
     - gocyclo
     - godot
@@ -77,6 +77,13 @@ linters:
     - wsl_v5
     - zerologlint
   settings:
+    goconst:
+      ignore-tests: true
+      exclude-types:
+        - Call
+        - CompositeLit
+      ignore-string-values:
+        - ^(true|false)$
     gosec:
       excludes:
         - G117 # Potential exposure of secrets via JSON marshaling
@@ -112,7 +119,6 @@ linters:
           - gosec
           - revive
           - dupl
-          - goconst
           - ireturn
         path: (_test\.go|test/.+\.go)
     paths:
@@ -126,7 +132,6 @@ linters:
 
 formatters:
   enable:
-    - gofmt
     - gofumpt
     - goimports
   settings:
