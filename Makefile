@@ -5,7 +5,7 @@ YAMLFMT_PACKAGE_VERSION := v0.21.0
 # renovate: datasource=github-releases depName=golangci/golangci-lint
 GOLANGCI_LINT_PACKAGE_VERSION := v2.14.0
 # renovate: datasource=go depName=github.com/a-h/templ
-TEMPL_PACKAGE_VERSION := v0.3.1020
+TEMPL_PACKAGE_VERSION := v0.3.1070
 # renovate: datasource=github-releases depName=air-verse/air
 AIR_PACKAGE_VERSION := v1.67.4
 # renovate: datasource=github-releases depName=norwoodj/helm-docs
