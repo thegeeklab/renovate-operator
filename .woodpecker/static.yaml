@@ -95,7 +95,7 @@ steps:
 
   - name: golangci-lint
     image: docker.io/golangci/golangci-lint:v2.14.0
-    depends_on: [frontend-deps, restore-go-cache]
+    depends_on: [restore-go-cache]
     environment:
       GOCACHE: /woodpecker/cache/go/build
       GOMODCACHE: /woodpecker/cache/go/mod
