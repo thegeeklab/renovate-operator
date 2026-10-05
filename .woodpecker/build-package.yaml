@@ -88,5 +88,7 @@ steps:
       - event: [tag]
 
 depends_on:
-  - static
-  - test
+  - name: static
+    optional: true
+  - name: test
+    optional: true
