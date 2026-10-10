@@ -127,7 +127,7 @@ steps:
     when: *when
 
   - name: format-locale
-    image: docker.io/jauderho/prettier:3.9.9
+    image: docker.io/jauderho/prettier:3.9.10
     commands:
       - prettier -w internal/frontend/i18n/locales/*.json
     when:
