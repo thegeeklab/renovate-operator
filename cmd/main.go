@@ -6,6 +6,7 @@ import (
 	"errors"
 	"flag"
 	"fmt"
+	"net/http"
 	"os"
 	"strings"
 	"time"
@@ -59,6 +60,8 @@ var (
 	errWebhookTimeout = errors.New("timeout waiting for webhook")
 	errFlagRequired   = errors.New("missing required flag")
 	errInvalidDNSName = errors.New("invalid DNS name")
+
+	errCacheNotSynced = errors.New("informer cache not synced")
 
 	version  = "unknown"
 	setupLog logr.Logger
@@ -178,10 +181,6 @@ func run() error {
 		return fmt.Errorf("unable to set up health check: %w", err)
 	}
 
-	if err := mgr.AddReadyzCheck("readyz", healthz.Ping); err != nil {
-		return fmt.Errorf("unable to set up ready check: %w", err)
-	}
-
 	if err := setupMetricsCertRotation(mgr, cfg); err != nil {
 		return fmt.Errorf("unable to setup metrics certificate rotation: %w", err)
 	}
@@ -190,8 +189,13 @@ func run() error {
 		return fmt.Errorf("unable to setup webhooks: %w", err)
 	}
 
-	if err := setupHTTPServers(mgr, cfg, clientset, sseBroker, authManager, metricsRecorder, logReader); err != nil {
+	readyzChecker, err := setupHTTPServers(mgr, cfg, clientset, sseBroker, authManager, metricsRecorder, logReader)
+	if err != nil {
 		return fmt.Errorf("unable to setup auxiliary servers: %w", err)
+	}
+
+	if err := mgr.AddReadyzCheck("readyz", readyzChecker); err != nil {
+		return fmt.Errorf("unable to set up ready check: %w", err)
 	}
 
 	setupLog.Info("Starting manager")
@@ -533,6 +537,8 @@ func setupWebhooks(mgr manager.Manager, cfg Config) error {
 }
 
 // setupHTTPServers registers the web frontend and event receiver HTTP servers.
+// It returns a readiness checker that reports not ready until the informer cache
+// has synced and every enabled auxiliary HTTP server has bound its listener.
 func setupHTTPServers(
 	mgr manager.Manager,
 	cfg Config,
@@ -541,7 +547,9 @@ func setupHTTPServers(
 	authManager *auth.Manager,
 	metricsRecorder metrics.Recorder,
 	logReader logreader.Reader,
-) error {
+) (healthz.Checker, error) {
+	readyChecks := []healthz.Checker{cacheSyncReadyzCheck(mgr)}
+
 	if cfg.FrontendAddr != "0" {
 		frontendConfig := frontend.DefaultServerConfig()
 		frontendConfig.Addr = cfg.FrontendAddr
@@ -560,8 +568,10 @@ func setupHTTPServers(
 		setupLog.Info("Adding HTTP server to manager", "server", "frontend", "addr", cfg.FrontendAddr)
 
 		if err := mgr.Add(frontendServer); err != nil {
-			return fmt.Errorf("failed to add frontend HTTP server to manager: %w", err)
+			return nil, fmt.Errorf("failed to add frontend HTTP server to manager: %w", err)
 		}
+
+		readyChecks = append(readyChecks, frontendServer.StartedChecker())
 	}
 
 	if cfg.ReceiverAddr != "0" {
@@ -574,7 +584,7 @@ func setupHTTPServers(
 				"reason", "Git providers need the public external URL to know where to send webhooks.",
 			)
 
-			return fmt.Errorf("receiver HTTP server validation failed: %w", err)
+			return nil, fmt.Errorf("receiver HTTP server validation failed: %w", err)
 		}
 
 		receiverConfig := receiver.DefaultServerConfig()
@@ -590,11 +600,40 @@ func setupHTTPServers(
 		setupLog.Info("Adding HTTP server to manager", "server", "receiver", "addr", cfg.ReceiverAddr)
 
 		if err := mgr.Add(receiverServer); err != nil {
-			return fmt.Errorf("failed to add receiver HTTP server to manager: %w", err)
+			return nil, fmt.Errorf("failed to add receiver HTTP server to manager: %w", err)
 		}
+
+		readyChecks = append(readyChecks, receiverServer.StartedChecker())
 	}
 
-	return nil
+	return allReadyzChecks(readyChecks...), nil
+}
+
+// cacheSyncReadyzCheck reports not ready until the informer cache has synced.
+func cacheSyncReadyzCheck(mgr manager.Manager) healthz.Checker {
+	cache := mgr.GetCache()
+
+	return func(req *http.Request) error {
+		if cache.WaitForCacheSync(req.Context()) {
+			return nil
+		}
+
+		return errCacheNotSynced
+	}
+}
+
+// allReadyzChecks aggregates multiple readiness checks and reports ready only
+// when every check passes.
+func allReadyzChecks(checks ...healthz.Checker) healthz.Checker {
+	return func(req *http.Request) error {
+		for _, check := range checks {
+			if err := check(req); err != nil {
+				return err
+			}
+		}
+
+		return nil
+	}
 }
 
 // watchedNamespaces get the list of additional watched namespaces.

@@ -3,6 +3,7 @@ package frontend
 import (
 	"context"
 	"net/http"
+	"net/http/httptest"
 	"time"
 
 	. "github.com/onsi/ginkgo/v2"
@@ -68,6 +69,42 @@ var _ = Describe("Server", func() {
 			}
 
 			Expect(err).NotTo(HaveOccurred())
+
+			cancel()
+
+			var startErr error
+			Eventually(errChan, 3*time.Second).Should(Receive(&startErr))
+			Expect(startErr).NotTo(HaveOccurred())
+		})
+	})
+
+	Describe("Readiness", func() {
+		It("should not report ready before the listener is bound", func() {
+			config.Addr = "127.0.0.1:18083"
+			server = NewServer(config, fakeClient, nil, broker, nil, nil)
+
+			req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+
+			Expect(server.StartedChecker()(req)).To(HaveOccurred())
+		})
+
+		It("should report ready once the listener is bound", func() {
+			config.Addr = "127.0.0.1:18084"
+			server = NewServer(config, fakeClient, nil, broker, nil, nil)
+
+			check := server.StartedChecker()
+			req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+
+			ctx, cancel := context.WithCancel(context.Background())
+			defer cancel()
+
+			errChan := make(chan error, 1)
+
+			go func() {
+				errChan <- server.Start(ctx)
+			}()
+
+			Eventually(func() error { return check(req) }).Should(Succeed())
 
 			cancel()
 

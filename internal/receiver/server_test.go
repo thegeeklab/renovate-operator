@@ -6,6 +6,7 @@ import (
 	"net/http"
 	"net/http/httptest"
 	"strings"
+	"time"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
@@ -148,6 +149,58 @@ var _ = Describe("Server", func() {
 			Namespace: testNamespace, Name: testGitRepoName,
 		}, repo)).To(Succeed())
 		Expect(repo.Annotations).NotTo(HaveKey(renovatev1beta1.RenovatorOperation))
+	})
+})
+
+var _ = Describe("Server Readiness", func() {
+	var (
+		k8sClient client.Client
+		server    *receiver.Server
+	)
+
+	BeforeEach(func() {
+		scheme := runtime.NewScheme()
+		Expect(renovatev1beta1.AddToScheme(scheme)).To(Succeed())
+		Expect(corev1.AddToScheme(scheme)).To(Succeed())
+		Expect(batchv1.AddToScheme(scheme)).To(Succeed())
+
+		k8sClient = fake.NewClientBuilder().WithScheme(scheme).Build()
+	})
+
+	It("should not report ready before the listener is bound", func() {
+		config := receiver.DefaultServerConfig()
+		config.Addr = "127.0.0.1:18085"
+		server = receiver.NewServer(config, k8sClient, nil, nil)
+
+		req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+
+		Expect(server.StartedChecker()(req)).To(HaveOccurred())
+	})
+
+	It("should report ready once the listener is bound", func() {
+		config := receiver.DefaultServerConfig()
+		config.Addr = "127.0.0.1:18086"
+		server = receiver.NewServer(config, k8sClient, nil, nil)
+
+		check := server.StartedChecker()
+		req := httptest.NewRequest(http.MethodGet, "/readyz", nil)
+
+		ctx, cancel := context.WithCancel(context.Background())
+		defer cancel()
+
+		errChan := make(chan error, 1)
+
+		go func() {
+			errChan <- server.Start(ctx)
+		}()
+
+		Eventually(func() error { return check(req) }).Should(Succeed())
+
+		cancel()
+
+		var startErr error
+		Eventually(errChan, 3*time.Second).Should(Receive(&startErr))
+		Expect(startErr).NotTo(HaveOccurred())
 	})
 })
 
