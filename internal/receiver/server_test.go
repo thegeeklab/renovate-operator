@@ -167,7 +167,7 @@ var _ = Describe("Server Readiness", func() {
 		k8sClient = fake.NewClientBuilder().WithScheme(scheme).Build()
 	})
 
-	It("should not report ready before the listener is bound", func() {
+	It("does not report ready before the listener is bound", func() {
 		config := receiver.DefaultServerConfig()
 		config.Addr = "127.0.0.1:18085"
 		server = receiver.NewServer(config, k8sClient, nil, nil)
@@ -177,7 +177,7 @@ var _ = Describe("Server Readiness", func() {
 		Expect(server.StartedChecker()(req)).To(HaveOccurred())
 	})
 
-	It("should report ready once the listener is bound", func() {
+	It("reports ready once the listener is bound", func() {
 		config := receiver.DefaultServerConfig()
 		config.Addr = "127.0.0.1:18086"
 		server = receiver.NewServer(config, k8sClient, nil, nil)
