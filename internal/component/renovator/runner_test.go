@@ -712,6 +712,50 @@ var _ = Describe("Renovator Runner", func() {
 			Expect(*existingRunner.Spec.RuntimeClassName).To(Equal("kata"))
 		})
 
+		It("should inherit PriorityClassName from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						PriorityClassName: new("high-priority"),
+					},
+					Runner: renovatev1beta1.RunnerSpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.PriorityClassName).NotTo(BeNil())
+			Expect(*existingRunner.Spec.PriorityClassName).To(Equal("high-priority"))
+		})
+
+		It("should override global PriorityClassName with runner-specific PriorityClassName", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						PriorityClassName: new("high-priority"),
+					},
+					Runner: renovatev1beta1.RunnerSpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							PriorityClassName: new("low-priority"),
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateRunner(existingRunner)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingRunner.Spec.PriorityClassName).NotTo(BeNil())
+			Expect(*existingRunner.Spec.PriorityClassName).To(Equal("low-priority"))
+		})
+
 		It("should inherit PodAnnotations from the global spec", func() {
 			renovator := &renovatev1beta1.Renovator{
 				Spec: renovatev1beta1.RenovatorSpec{

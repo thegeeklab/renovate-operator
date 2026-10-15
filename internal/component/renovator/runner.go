@@ -136,6 +136,11 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.RuntimeClassName = runnerSpec.RuntimeClassName
 	}
 
+	runner.Spec.PriorityClassName = spec.PriorityClassName
+	if runnerSpec.PriorityClassName != nil {
+		runner.Spec.PriorityClassName = runnerSpec.PriorityClassName
+	}
+
 	runner.Spec.PodAnnotations = spec.PodAnnotations
 	if runnerSpec.PodAnnotations != nil {
 		runner.Spec.PodAnnotations = runnerSpec.PodAnnotations

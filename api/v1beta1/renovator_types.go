@@ -167,6 +167,10 @@ type PodSpec struct {
 	// +kubebuilder:validation:Optional
 	RuntimeClassName *string `json:"runtimeClassName,omitempty"`
 
+	// PriorityClassName specifies the priority class for the renovate pod.
+	// +kubebuilder:validation:Optional
+	PriorityClassName *string `json:"priorityClassName,omitempty"`
+
 	// PodAnnotations specifies additional annotations for the renovate pod.
 	// +kubebuilder:validation:Optional
 	PodAnnotations map[string]string `json:"podAnnotations,omitempty"`

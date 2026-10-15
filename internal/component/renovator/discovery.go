@@ -137,6 +137,11 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Spec.RuntimeClassName = discoverySpec.RuntimeClassName
 	}
 
+	discovery.Spec.PriorityClassName = spec.PriorityClassName
+	if discoverySpec.PriorityClassName != nil {
+		discovery.Spec.PriorityClassName = discoverySpec.PriorityClassName
+	}
+
 	discovery.Spec.PodAnnotations = spec.PodAnnotations
 	if discoverySpec.PodAnnotations != nil {
 		discovery.Spec.PodAnnotations = discoverySpec.PodAnnotations

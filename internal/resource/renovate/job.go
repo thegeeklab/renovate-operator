@@ -31,6 +31,7 @@ type jobConfig struct {
 	Resources                 corev1.ResourceRequirements
 	SecurityContext           *corev1.SecurityContext
 	RuntimeClassName          *string
+	PriorityClassName         *string
 	ScratchVolume             *renovatev1beta1.ScratchVolumeSpec
 }
 
@@ -85,6 +86,10 @@ func DefaultJobSpec(
 	spec.Template.Spec.TopologySpreadConstraints = cfg.TopologySpreadConstraints
 	spec.Template.Spec.RuntimeClassName = cfg.RuntimeClassName
 
+	if cfg.PriorityClassName != nil {
+		spec.Template.Spec.PriorityClassName = *cfg.PriorityClassName
+	}
+
 	// Build Main Container
 	volumeMounts := []corev1.VolumeMount{
 		{
@@ -134,6 +139,7 @@ func WithPodSpec(podSpec renovatev1beta1.PodSpec) JobOption {
 		c.Resources = podSpec.Resources
 		c.SecurityContext = podSpec.SecurityContext
 		c.RuntimeClassName = podSpec.RuntimeClassName
+		c.PriorityClassName = podSpec.PriorityClassName
 		c.PodAnnotations = podSpec.PodAnnotations
 		c.ScratchVolume = podSpec.ScratchVolume
 	}

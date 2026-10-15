@@ -831,6 +831,50 @@ var _ = Describe("Renovator Discovery", func() {
 			Expect(*existingDiscovery.Spec.RuntimeClassName).To(Equal("kata"))
 		})
 
+		It("should inherit PriorityClassName from the global spec", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						PriorityClassName: new("high-priority"),
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.PriorityClassName).NotTo(BeNil())
+			Expect(*existingDiscovery.Spec.PriorityClassName).To(Equal("high-priority"))
+		})
+
+		It("should override global PriorityClassName with discovery-specific PriorityClassName", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					PodSpec: renovatev1beta1.PodSpec{
+						PriorityClassName: new("high-priority"),
+					},
+					Discovery: renovatev1beta1.DiscoverySpec{
+						PodSpec: renovatev1beta1.PodSpec{
+							PriorityClassName: new("low-priority"),
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			err = reconciler.updateDiscovery(existingDiscovery)
+			Expect(err).NotTo(HaveOccurred())
+
+			Expect(existingDiscovery.Spec.PriorityClassName).NotTo(BeNil())
+			Expect(*existingDiscovery.Spec.PriorityClassName).To(Equal("low-priority"))
+		})
+
 		It("should inherit PodAnnotations from the global spec", func() {
 			renovator := &renovatev1beta1.Renovator{
 				Spec: renovatev1beta1.RenovatorSpec{
