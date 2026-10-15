@@ -9,7 +9,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/go-github/v92/github"
+	"github.com/google/go-github/v93/github"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/pkg/util"
 )
