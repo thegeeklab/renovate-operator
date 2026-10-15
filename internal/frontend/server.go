@@ -11,6 +11,7 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -22,6 +23,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/logreader"
 	"k8s.io/client-go/kubernetes"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -30,6 +32,7 @@ var (
 
 	errAssetManifest    = errors.New("could not read asset manifest")
 	errMainEntryMissing = errors.New("main entry point not found in asset manifest")
+	errNotReady         = errors.New("frontend server not ready")
 )
 
 const (
@@ -75,6 +78,8 @@ type Server struct {
 	webHandler  *WebHandler
 	authManager *auth.Manager
 	i18nBundle  *goi18n.Bundle
+
+	ready atomic.Bool
 }
 
 // NewServer creates a new HTTP server instance.
@@ -390,14 +395,34 @@ func (s *Server) loadFrontendAssets() error {
 	return nil
 }
 
+// StartedChecker returns a healthz.Checker that reports healthy once the HTTP
+// listener has been bound and the server is accepting connections.
+func (s *Server) StartedChecker() healthz.Checker {
+	return func(_ *http.Request) error {
+		if s.ready.Load() {
+			return nil
+		}
+
+		return errNotReady
+	}
+}
+
 // Start runs the HTTP server in a separate goroutine.
 func (s *Server) Start(ctx context.Context) error {
 	const shutdownTimeout = 5 * time.Second
 
 	frontendLog.Info("Starting Frontend server", "address", s.config.Addr)
 
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", s.config.Addr)
+	if err != nil {
+		return fmt.Errorf("failed to listen on %s: %w", s.config.Addr, err)
+	}
+
+	s.ready.Store(true)
+
 	go func() {
 		<-ctx.Done()
+		s.ready.Store(false)
 		frontendLog.Info("Shutting down Frontend server")
 
 		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
@@ -408,7 +433,7 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 	}()
 
-	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := s.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		frontendLog.Error(err, "Frontend server error")
 
 		return err

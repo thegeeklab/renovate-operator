@@ -5,7 +5,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
+	"sync/atomic"
 	"time"
 
 	"github.com/go-chi/chi/v5"
@@ -16,6 +18,7 @@ import (
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
 	"k8s.io/apimachinery/pkg/types"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/healthz"
 	logf "sigs.k8s.io/controller-runtime/pkg/log"
 )
 
@@ -28,6 +31,7 @@ var (
 	ErrGitRepoInvalid                   = errors.New("GitRepo invalid")
 	ErrRenovateConfigNotFound           = errors.New("RenovateConfig not found")
 	ErrWebhookSecretKeyNotFound         = errors.New("webhook secret key not found in secret")
+	errNotReady                         = errors.New("receiver server not ready")
 )
 
 // ReceiverFactory creates a Receiver for a given platform type.
@@ -67,6 +71,8 @@ type Server struct {
 	providerFactory factory.ProviderFactory
 	receiverFactory ReceiverFactory
 	metrics         metrics.Recorder
+
+	ready atomic.Bool
 }
 
 func NewServer(
@@ -98,14 +104,34 @@ func NewServer(
 	return s
 }
 
+// StartedChecker returns a healthz.Checker that reports healthy once the HTTP
+// listener has been bound and the server is accepting connections.
+func (s *Server) StartedChecker() healthz.Checker {
+	return func(_ *http.Request) error {
+		if s.ready.Load() {
+			return nil
+		}
+
+		return errNotReady
+	}
+}
+
 // Start runs the HTTP server and blocks until the context is closed or an error occurs.
 func (s *Server) Start(ctx context.Context) error {
 	const shutdownTimeout = 5 * time.Second
 
 	receiverLog.Info("Starting Event Receiver server", "address", s.config.Addr)
 
+	listener, err := (&net.ListenConfig{}).Listen(ctx, "tcp", s.config.Addr)
+	if err != nil {
+		return fmt.Errorf("failed to listen on %s: %w", s.config.Addr, err)
+	}
+
+	s.ready.Store(true)
+
 	go func() {
 		<-ctx.Done()
+		s.ready.Store(false)
 		receiverLog.Info("Shutting down Event Receiver server")
 
 		shutdownCtx, cancel := context.WithTimeout(context.WithoutCancel(ctx), shutdownTimeout)
@@ -116,7 +142,7 @@ func (s *Server) Start(ctx context.Context) error {
 		}
 	}()
 
-	if err := s.server.ListenAndServe(); err != nil && !errors.Is(err, http.ErrServerClosed) {
+	if err := s.server.Serve(listener); err != nil && !errors.Is(err, http.ErrServerClosed) {
 		receiverLog.Error(err, "Event Receiver server error")
 
 		return err
