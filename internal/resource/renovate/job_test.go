@@ -440,6 +440,150 @@ var _ = Describe("Renovate Job Library", func() {
 		)
 	})
 
+	Describe("Security Hardening", func() {
+		It("should force privileged and privilege escalation off by default", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
+
+			securityContext := jobSpec.Template.Spec.Containers[0].SecurityContext
+			Expect(securityContext).NotTo(BeNil())
+			Expect(securityContext.Privileged).NotTo(BeNil())
+			Expect(*securityContext.Privileged).To(BeFalse())
+			Expect(securityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+			Expect(*securityContext.AllowPrivilegeEscalation).To(BeFalse())
+		})
+
+		It("should return false when no user-provided settings were overridden", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
+			restricted := renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
+
+			Expect(restricted).To(BeFalse())
+		})
+
+		It("should return true when privileged settings were overridden", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(
+				jobSpec, renovateCR, renovateCM,
+				renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					SecurityContext: &corev1.SecurityContext{Privileged: new(true)},
+				}),
+			)
+			restricted := renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
+
+			Expect(restricted).To(BeTrue())
+		})
+
+		It("should harden init containers by default", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(
+				jobSpec, renovateCR, renovateCM,
+				renovate.WithInitContainer(corev1.Container{
+					Name:            "init",
+					Image:           "busybox",
+					SecurityContext: &corev1.SecurityContext{Privileged: new(true)},
+				}),
+			)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
+
+			securityContext := jobSpec.Template.Spec.InitContainers[0].SecurityContext
+			Expect(securityContext).NotTo(BeNil())
+			Expect(securityContext.Privileged).NotTo(BeNil())
+			Expect(*securityContext.Privileged).To(BeFalse())
+			Expect(securityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+			Expect(*securityContext.AllowPrivilegeEscalation).To(BeFalse())
+		})
+
+		It("should strip hostPath volumes by default", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(
+				jobSpec, renovateCR, renovateCM,
+				renovate.WithExtraVolumes(containers.WithRawVolumes([]corev1.Volume{
+					{
+						Name:     "host",
+						HostPath: &corev1.HostPathVolumeSource{Path: "/var/run/docker.sock"},
+					},
+					{Name: "extra", EmptyDir: &corev1.EmptyDirVolumeSource{}},
+				})),
+			)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
+
+			Expect(jobSpec.Template.Spec.Volumes).NotTo(ContainElement(HaveField("Name", "host")))
+			Expect(jobSpec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "extra")))
+		})
+
+		It("should preserve safe fields of a user-provided security context", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(
+				jobSpec, renovateCR, renovateCM,
+				renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					SecurityContext: &corev1.SecurityContext{
+						RunAsUser:              new(int64(1000)),
+						ReadOnlyRootFilesystem: new(true),
+					},
+				}),
+			)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
+
+			securityContext := jobSpec.Template.Spec.Containers[0].SecurityContext
+			Expect(securityContext).NotTo(BeNil())
+			Expect(securityContext.RunAsUser).NotTo(BeNil())
+			Expect(*securityContext.RunAsUser).To(Equal(int64(1000)))
+			Expect(securityContext.ReadOnlyRootFilesystem).NotTo(BeNil())
+			Expect(*securityContext.ReadOnlyRootFilesystem).To(BeTrue())
+			Expect(securityContext.Privileged).NotTo(BeNil())
+			Expect(*securityContext.Privileged).To(BeFalse())
+			Expect(securityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+			Expect(*securityContext.AllowPrivilegeEscalation).To(BeFalse())
+		})
+
+		It("should drop user-provided capabilities by default", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(
+				jobSpec, renovateCR, renovateCM,
+				renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					SecurityContext: &corev1.SecurityContext{
+						Capabilities: &corev1.Capabilities{
+							Add: []corev1.Capability{"SYS_ADMIN", "NET_RAW"},
+						},
+					},
+				}),
+			)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
+
+			securityContext := jobSpec.Template.Spec.Containers[0].SecurityContext
+			Expect(securityContext).NotTo(BeNil())
+			Expect(securityContext.Capabilities).NotTo(BeNil())
+			Expect(securityContext.Capabilities.Add).To(BeEmpty())
+			Expect(securityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
+		})
+
+		It("should pass through privileged settings when allowPrivileged is set", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(
+				jobSpec, renovateCR, renovateCM,
+				renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					SecurityContext: &corev1.SecurityContext{Privileged: new(true)},
+				}),
+				renovate.WithExtraVolumes(containers.WithRawVolumes([]corev1.Volume{
+					{
+						Name:     "host",
+						HostPath: &corev1.HostPathVolumeSource{Path: "/var/run/docker.sock"},
+					},
+				})),
+			)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, true)
+
+			securityContext := jobSpec.Template.Spec.Containers[0].SecurityContext
+			Expect(securityContext).NotTo(BeNil())
+			Expect(securityContext.Privileged).NotTo(BeNil())
+			Expect(*securityContext.Privileged).To(BeTrue())
+
+			Expect(jobSpec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "host")))
+		})
+	})
+
 	Describe("Controller Helpers", func() {
 		var (
 			ctx        context.Context

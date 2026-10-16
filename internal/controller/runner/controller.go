@@ -30,11 +30,12 @@ const ControllerName = "runner"
 // Reconciler reconciles a Runner object.
 type Reconciler struct {
 	client.Client
-	Scheme        *runtime.Scheme
-	Broker        *frontend.SSEBroker
-	EventRecorder events.EventRecorder
-	Metrics       metrics.Recorder
-	LogReader     logreader.Reader
+	Scheme          *runtime.Scheme
+	Broker          *frontend.SSEBroker
+	EventRecorder   events.EventRecorder
+	Metrics         metrics.Recorder
+	LogReader       logreader.Reader
+	AllowPrivileged bool
 }
 
 // +kubebuilder:rbac:groups=batch,resources=jobs,verbs=get;list;watch;create;update;patch;delete
@@ -103,7 +104,9 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: err}
 	}
 
-	componentReconciler, err := runner.NewReconciler(r.Client, r.Scheme, r.Broker, rr, rc, r.Metrics, r.LogReader)
+	componentReconciler, err := runner.NewReconciler(
+		r.Client, r.Scheme, r.Broker, rr, rc, r.Metrics, r.LogReader, r.EventRecorder, r.AllowPrivileged,
+	)
 	if err != nil {
 		return controller.Outcome{Err: err}
 	}

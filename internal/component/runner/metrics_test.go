@@ -13,6 +13,7 @@ import (
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
@@ -44,9 +45,10 @@ var _ = Describe("ReconcileMetrics", func() {
 		fakeClient := fake.NewClientBuilder().WithScheme(scheme).WithObjects(instance).Build()
 
 		reconciler = &Reconciler{
-			Client:   fakeClient,
-			instance: instance,
-			metrics:  metrics.New(reg, reg, 100),
+			Client:        fakeClient,
+			instance:      instance,
+			metrics:       metrics.New(reg, reg, 100),
+			eventRecorder: &events.FakeRecorder{},
 		}
 	})
 

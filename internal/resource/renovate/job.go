@@ -38,7 +38,9 @@ type jobConfig struct {
 // JobOption defines a function that modifies the job configuration.
 type JobOption func(*jobConfig)
 
-// DefaultJobSpec applies the Renovate job specification.
+// DefaultJobSpec applies the Renovate job specification. Callers must invoke
+// ApplySecurityHardening separately once all containers and volumes are
+// assembled.
 func DefaultJobSpec(
 	spec *batchv1.JobSpec, renovate *renovatev1beta1.RenovateConfig, renovateCM string, opts ...JobOption,
 ) {

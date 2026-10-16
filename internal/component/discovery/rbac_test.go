@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
@@ -47,10 +48,15 @@ var _ = Describe("RBAC Reconciliation", func() {
 		Expect(dd.Default(ctx, instance)).To(Succeed())
 
 		reconciler = &Reconciler{
-			Client:   fakeClient,
-			scheme:   scheme,
-			req:      ctrl.Request{NamespacedName: types.NamespacedName{Namespace: "test-namespace", Name: "test-discovery"}},
-			instance: instance,
+			Client: fakeClient,
+			scheme: scheme,
+			req: ctrl.Request{
+				NamespacedName: types.NamespacedName{
+					Namespace: "test-namespace", Name: "test-discovery",
+				},
+			},
+			instance:      instance,
+			eventRecorder: &events.FakeRecorder{},
 		}
 	})
 
