@@ -9,6 +9,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
+	"github.com/thegeeklab/renovate-operator/internal/controller"
 	"github.com/thegeeklab/renovate-operator/internal/metadata"
 	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/parser"
@@ -309,8 +310,16 @@ func (r *Reconciler) updateJob(
 
 	if renovate.ApplySecurityHardening(&job.Spec.Template.Spec, r.allowPrivileged) {
 		log.Info(
-			"Security hardening applied: privileged settings and/or hostPath volumes were restricted",
+			"Security hardening applied: privileged settings, capabilities and/or hostPath volumes were restricted",
 			"runner", r.instance.Name,
+		)
+		controller.Eventf(
+			r.eventRecorder, r.instance,
+			renovatev1beta1.EventTypeWarning,
+			renovatev1beta1.ReasonPrivilegedRestricted,
+			renovatev1beta1.EventActionReconciling,
+			"Privileged settings, capabilities and/or hostPath volumes were restricted; "+
+				"set --allow-privileged=true to disable hardening",
 		)
 	}
 

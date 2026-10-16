@@ -27,6 +27,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/types"
 	clientgoscheme "k8s.io/client-go/kubernetes/scheme"
+	"k8s.io/client-go/tools/events"
 	fakeclock "k8s.io/utils/clock/testing"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -130,9 +131,10 @@ var _ = Describe("ReconcileJob", func() {
 					Name:      instance.Name,
 				},
 			},
-			instance: instance,
-			renovate: renovate,
-			metrics:  nil,
+			instance:      instance,
+			renovate:      renovate,
+			metrics:       nil,
+			eventRecorder: &events.FakeRecorder{},
 		}
 	})
 

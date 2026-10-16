@@ -16,6 +16,7 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/controller-runtime/pkg/client/fake"
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
@@ -66,7 +67,12 @@ var _ = Describe("GitRepo Reconciliation", func() {
 		}
 
 		fakeClient = fake.NewClientBuilder().WithScheme(scheme).Build()
-		reconciler = &Reconciler{Client: fakeClient, scheme: scheme, instance: instance}
+		reconciler = &Reconciler{
+			Client:        fakeClient,
+			scheme:        scheme,
+			instance:      instance,
+			eventRecorder: &events.FakeRecorder{},
+		}
 		ctx = context.Background()
 
 		mockMgr = mocks.NewProviderManager(GinkgoT())

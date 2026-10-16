@@ -11,6 +11,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/scheduler"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	"k8s.io/utils/clock"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -28,6 +29,7 @@ type Reconciler struct {
 	renovate        *renovatev1beta1.RenovateConfig
 	metrics         metrics.Recorder
 	logReader       logreader.Reader
+	eventRecorder   events.EventRecorder
 	allowPrivileged bool
 }
 
@@ -43,6 +45,7 @@ func NewReconciler(
 	renovate *renovatev1beta1.RenovateConfig,
 	metricsRecorder metrics.Recorder,
 	logReader logreader.Reader,
+	eventRecorder events.EventRecorder,
 	allowPrivileged bool,
 ) (*Reconciler, error) {
 	return &Reconciler{
@@ -55,6 +58,7 @@ func NewReconciler(
 		renovate:        renovate,
 		metrics:         metricsRecorder,
 		logReader:       logReader,
+		eventRecorder:   eventRecorder,
 		allowPrivileged: allowPrivileged,
 	}, nil
 }

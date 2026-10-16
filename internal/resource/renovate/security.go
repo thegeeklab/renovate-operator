@@ -6,10 +6,10 @@ import (
 
 // ApplySecurityHardening hardens the given pod spec against privileged
 // execution. Unless allowPrivileged is true, hostPath volumes are removed and
-// privileged/privilege-escalation are forced off on every container (init and
-// app). It reports whether a user-provided privileged setting or hostPath
-// volume was overridden. Call this after all containers and volumes have been
-// assembled.
+// privileged/privilege-escalation/capabilities are forced off on every
+// container (init and app). It reports whether a user-provided privileged
+// setting or hostPath volume was overridden. Call this after all containers and
+// volumes have been assembled.
 func ApplySecurityHardening(podSpec *corev1.PodSpec, allowPrivileged bool) bool {
 	if allowPrivileged {
 		return false
@@ -46,9 +46,9 @@ func ApplySecurityHardening(podSpec *corev1.PodSpec, allowPrivileged bool) bool 
 }
 
 // hardenedSecurityContext returns the effective container security context with
-// privileged and privilege escalation forced off, preserving any other
-// user-provided settings. It reports whether a user-requested privileged or
-// privilege-escalation flag was overridden.
+// privileged, privilege escalation, and capabilities forced off, preserving any
+// other user-provided settings. It reports whether a user-requested privileged
+// or privilege-escalation flag was overridden.
 func hardenedSecurityContext(user *corev1.SecurityContext) (*corev1.SecurityContext, bool) {
 	securityContext := &corev1.SecurityContext{}
 	if user != nil {
@@ -58,23 +58,36 @@ func hardenedSecurityContext(user *corev1.SecurityContext) (*corev1.SecurityCont
 	changed := (securityContext.Privileged != nil && *securityContext.Privileged) ||
 		(securityContext.AllowPrivilegeEscalation != nil && *securityContext.AllowPrivilegeEscalation)
 
+	if securityContext.Capabilities != nil && len(securityContext.Capabilities.Add) > 0 {
+		changed = true
+	}
+
 	securityContext.Privileged = new(false)
 	securityContext.AllowPrivilegeEscalation = new(false)
+	securityContext.Capabilities = &corev1.Capabilities{
+		Drop: []corev1.Capability{"ALL"},
+	}
 
 	return securityContext, changed
 }
 
-// filterHostPathVolumes removes hostPath volumes from the given volumes.
+// filterHostPathVolumes removes hostPath volumes from the given volumes. When
+// no hostPath volume is present, the original slice is returned unchanged.
 func filterHostPathVolumes(volumes []corev1.Volume) []corev1.Volume {
-	filtered := make([]corev1.Volume, 0, len(volumes))
-
 	for _, volume := range volumes {
-		if volume.HostPath != nil {
+		if volume.HostPath == nil {
 			continue
 		}
 
-		filtered = append(filtered, volume)
+		filtered := make([]corev1.Volume, 0, len(volumes)-1)
+		for _, vol := range volumes {
+			if vol.HostPath == nil {
+				filtered = append(filtered, vol)
+			}
+		}
+
+		return filtered
 	}
 
-	return filtered
+	return volumes
 }

@@ -75,6 +75,7 @@ const (
 	ReasonReconcileSuccess       = "ReconcileSuccess"
 	ReasonReconcileError         = "ReconcileError"
 	ReasonReconciled             = "Reconciled"
+	ReasonPrivilegedRestricted   = "PrivilegedRestricted"
 
 	// Event action constants.
 	EventActionReconciling = "Reconciling"

@@ -105,7 +105,7 @@ func (r *Reconciler) reconcile(
 	}
 
 	componentReconciler, err := runner.NewReconciler(
-		r.Client, r.Scheme, r.Broker, rr, rc, r.Metrics, r.LogReader, r.AllowPrivileged,
+		r.Client, r.Scheme, r.Broker, rr, rc, r.Metrics, r.LogReader, r.EventRecorder, r.AllowPrivileged,
 	)
 	if err != nil {
 		return controller.Outcome{Err: err}

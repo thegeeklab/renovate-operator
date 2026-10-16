@@ -104,7 +104,9 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: err}
 	}
 
-	componentReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc, r.Metrics, r.AllowPrivileged)
+	componentReconciler, err := discovery.NewReconciler(
+		r.Client, r.Scheme, rd, rc, r.Metrics, r.EventRecorder, r.AllowPrivileged,
+	)
 	if err != nil {
 		return controller.Outcome{Err: err}
 	}

@@ -517,6 +517,27 @@ var _ = Describe("Renovate Job Library", func() {
 			Expect(*securityContext.AllowPrivilegeEscalation).To(BeFalse())
 		})
 
+		It("should drop user-provided capabilities by default", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(
+				jobSpec, renovateCR, renovateCM,
+				renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					SecurityContext: &corev1.SecurityContext{
+						Capabilities: &corev1.Capabilities{
+							Add: []corev1.Capability{"SYS_ADMIN", "NET_RAW"},
+						},
+					},
+				}),
+			)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
+
+			securityContext := jobSpec.Template.Spec.Containers[0].SecurityContext
+			Expect(securityContext).NotTo(BeNil())
+			Expect(securityContext.Capabilities).NotTo(BeNil())
+			Expect(securityContext.Capabilities.Add).To(BeEmpty())
+			Expect(securityContext.Capabilities.Drop).To(ContainElement(corev1.Capability("ALL")))
+		})
+
 		It("should pass through privileged settings when allowPrivileged is set", func() {
 			jobSpec := &batchv1.JobSpec{}
 			renovate.DefaultJobSpec(
