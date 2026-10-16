@@ -294,7 +294,7 @@ func (r *Reconciler) updateJob(
 	}
 
 	// Set default job spec for the repository
-	restricted := renovate.DefaultJobSpec(
+	renovate.DefaultJobSpec(
 		&job.Spec,
 		r.renovate,
 		renovateConfigCM,
@@ -305,12 +305,11 @@ func (r *Reconciler) updateJob(
 		renovate.WithPodSpec(r.instance.Spec.PodSpec),
 		renovate.WithExtraEnv(r.instance.Spec.ExtraEnv),
 		renovate.WithExtraVolumes(containers.WithRawVolumes(r.instance.Spec.ExtraVolumes)),
-		renovate.WithAllowPrivileged(r.allowPrivileged),
 	)
 
-	if restricted {
+	if renovate.ApplySecurityHardening(&job.Spec.Template.Spec, r.allowPrivileged) {
 		log.Info(
-			"Security hardening applied: privileged settings and hostPath volumes were restricted",
+			"Security hardening applied: privileged settings and/or hostPath volumes were restricted",
 			"runner", r.instance.Name,
 		)
 	}

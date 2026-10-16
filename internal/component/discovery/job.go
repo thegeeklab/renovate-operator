@@ -171,7 +171,7 @@ func (r *Reconciler) updateJob(ctx context.Context, job *batchv1.Job, podLabels 
 		})),
 	)
 
-	restricted := renovate.DefaultJobSpec(
+	renovate.DefaultJobSpec(
 		&job.Spec,
 		r.renovate,
 		renovateConfigCM,
@@ -182,7 +182,6 @@ func (r *Reconciler) updateJob(ctx context.Context, job *batchv1.Job, podLabels 
 		renovate.WithPodSpec(r.instance.Spec.PodSpec),
 		renovate.WithExtraEnv(r.instance.Spec.ExtraEnv),
 		renovate.WithExtraVolumes(containers.WithRawVolumes(r.instance.Spec.ExtraVolumes)),
-		renovate.WithAllowPrivileged(r.allowPrivileged),
 	)
 
 	discoveryMutators := []containers.ContainerMutator{
@@ -224,9 +223,9 @@ func (r *Reconciler) updateJob(ctx context.Context, job *batchv1.Job, podLabels 
 
 	job.Spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
 
-	if renovate.ApplySecurityHardening(&job.Spec.Template.Spec, r.allowPrivileged) || restricted {
+	if renovate.ApplySecurityHardening(&job.Spec.Template.Spec, r.allowPrivileged) {
 		log.Info(
-			"Security hardening applied: privileged settings and hostPath volumes were restricted",
+			"Security hardening applied: privileged settings and/or hostPath volumes were restricted",
 			"discovery", r.instance.Name,
 		)
 	}

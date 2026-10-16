@@ -614,7 +614,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.PriorityClassName).To(Equal("high-priority"))
 		})

@@ -33,18 +33,17 @@ type jobConfig struct {
 	RuntimeClassName          *string
 	PriorityClassName         *string
 	ScratchVolume             *renovatev1beta1.ScratchVolumeSpec
-	AllowPrivileged           bool
 }
 
 // JobOption defines a function that modifies the job configuration.
 type JobOption func(*jobConfig)
 
-// DefaultJobSpec applies the Renovate job specification. It returns true when
-// security hardening overrode a user-provided privileged setting or hostPath
-// volume.
+// DefaultJobSpec applies the Renovate job specification. Callers must invoke
+// ApplySecurityHardening separately once all containers and volumes are
+// assembled.
 func DefaultJobSpec(
 	spec *batchv1.JobSpec, renovate *renovatev1beta1.RenovateConfig, renovateCM string, opts ...JobOption,
-) bool {
+) {
 	// Initialize Configuration with Safe Defaults
 	cfg := &jobConfig{
 		Renovate:         renovate,
@@ -123,8 +122,6 @@ func DefaultJobSpec(
 			containerMutators...,
 		),
 	}
-
-	return ApplySecurityHardening(&spec.Template.Spec, cfg.AllowPrivileged)
 }
 
 // WithPodLabels injects custom labels into the Pod template.
@@ -147,16 +144,6 @@ func WithPodSpec(podSpec renovatev1beta1.PodSpec) JobOption {
 		c.PriorityClassName = podSpec.PriorityClassName
 		c.PodAnnotations = podSpec.PodAnnotations
 		c.ScratchVolume = podSpec.ScratchVolume
-	}
-}
-
-// WithAllowPrivileged toggles the pod security hardening. When false (the
-// default), the Renovate container is forced to run without privilege
-// escalation and any hostPath volumes are dropped. Set to true only for
-// trusted setups that require e.g. DinD via a mounted Docker socket.
-func WithAllowPrivileged(allowed bool) JobOption {
-	return func(c *jobConfig) {
-		c.AllowPrivileged = allowed
 	}
 }
 

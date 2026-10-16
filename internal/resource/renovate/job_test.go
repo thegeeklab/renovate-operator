@@ -444,6 +444,7 @@ var _ = Describe("Renovate Job Library", func() {
 		It("should force privileged and privilege escalation off by default", func() {
 			jobSpec := &batchv1.JobSpec{}
 			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
 
 			securityContext := jobSpec.Template.Spec.Containers[0].SecurityContext
 			Expect(securityContext).NotTo(BeNil())
@@ -463,6 +464,7 @@ var _ = Describe("Renovate Job Library", func() {
 					SecurityContext: &corev1.SecurityContext{Privileged: new(true)},
 				}),
 			)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
 
 			securityContext := jobSpec.Template.Spec.InitContainers[0].SecurityContext
 			Expect(securityContext).NotTo(BeNil())
@@ -484,6 +486,7 @@ var _ = Describe("Renovate Job Library", func() {
 					{Name: "extra", EmptyDir: &corev1.EmptyDirVolumeSource{}},
 				})),
 			)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
 
 			Expect(jobSpec.Template.Spec.Volumes).NotTo(ContainElement(HaveField("Name", "host")))
 			Expect(jobSpec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "extra")))
@@ -500,6 +503,7 @@ var _ = Describe("Renovate Job Library", func() {
 					},
 				}),
 			)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
 
 			securityContext := jobSpec.Template.Spec.Containers[0].SecurityContext
 			Expect(securityContext).NotTo(BeNil())
@@ -517,7 +521,6 @@ var _ = Describe("Renovate Job Library", func() {
 			jobSpec := &batchv1.JobSpec{}
 			renovate.DefaultJobSpec(
 				jobSpec, renovateCR, renovateCM,
-				renovate.WithAllowPrivileged(true),
 				renovate.WithPodSpec(renovatev1beta1.PodSpec{
 					SecurityContext: &corev1.SecurityContext{Privileged: new(true)},
 				}),
@@ -528,6 +531,7 @@ var _ = Describe("Renovate Job Library", func() {
 					},
 				})),
 			)
+			renovate.ApplySecurityHardening(&jobSpec.Template.Spec, true)
 
 			securityContext := jobSpec.Template.Spec.Containers[0].SecurityContext
 			Expect(securityContext).NotTo(BeNil())
