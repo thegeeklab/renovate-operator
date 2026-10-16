@@ -454,6 +454,27 @@ var _ = Describe("Renovate Job Library", func() {
 			Expect(*securityContext.AllowPrivilegeEscalation).To(BeFalse())
 		})
 
+		It("should return false when no user-provided settings were overridden", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(jobSpec, renovateCR, renovateCM)
+			restricted := renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
+
+			Expect(restricted).To(BeFalse())
+		})
+
+		It("should return true when privileged settings were overridden", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(
+				jobSpec, renovateCR, renovateCM,
+				renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					SecurityContext: &corev1.SecurityContext{Privileged: new(true)},
+				}),
+			)
+			restricted := renovate.ApplySecurityHardening(&jobSpec.Template.Spec, false)
+
+			Expect(restricted).To(BeTrue())
+		})
+
 		It("should harden init containers by default", func() {
 			jobSpec := &batchv1.JobSpec{}
 			renovate.DefaultJobSpec(
