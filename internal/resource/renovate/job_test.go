@@ -340,6 +340,15 @@ var _ = Describe("Renovate Job Library", func() {
 				},
 			),
 			Entry(
+				"WithPodSpec PriorityClassName",
+				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
+					PriorityClassName: new("high-priority"),
+				})},
+				func(spec *batchv1.JobSpec) {
+					Expect(spec.Template.Spec.PriorityClassName).To(Equal("high-priority"))
+				},
+			),
+			Entry(
 				"WithPodSpec PodAnnotations",
 				[]renovate.JobOption{renovate.WithPodSpec(renovatev1beta1.PodSpec{
 					PodAnnotations: map[string]string{"prometheus.io/scrape": "true"},

@@ -518,6 +518,11 @@ func (in *PodSpec) DeepCopyInto(out *PodSpec) {
 		*out = new(string)
 		**out = **in
 	}
+	if in.PriorityClassName != nil {
+		in, out := &in.PriorityClassName, &out.PriorityClassName
+		*out = new(string)
+		**out = **in
+	}
 	if in.PodAnnotations != nil {
 		in, out := &in.PodAnnotations, &out.PodAnnotations
 		*out = make(map[string]string, len(*in))

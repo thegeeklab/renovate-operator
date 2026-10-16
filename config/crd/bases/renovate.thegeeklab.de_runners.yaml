@@ -3060,6 +3060,9 @@ spec:
                     PodLabelTemplates are merged into Job pod labels. Values support
                     Go template variables: {{ .namespace }}, {{ .renovator }}, {{ .runner }}, {{ .discovery }}, {{ .gitrepo }}.
                   type: object
+                priorityClassName:
+                  description: PriorityClassName specifies the priority class for the renovate pod.
+                  type: string
                 resources:
                   description: Resources specifies the resource requirements for the renovate container.
                   properties:

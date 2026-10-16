@@ -607,6 +607,18 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(*job.Spec.Template.Spec.RuntimeClassName).To(Equal("gvisor"))
 		})
 
+		It("should propagate PriorityClassName to the job pod spec", func() {
+			instance.Spec.PriorityClassName = new("high-priority")
+
+			job := &batchv1.Job{
+				Name:      "test-job",
+				Namespace: "default",
+			}
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+
+			Expect(job.Spec.Template.Spec.PriorityClassName).To(Equal("high-priority"))
+		})
+
 		It("should propagate PodAnnotations to the job pod spec", func() {
 			instance.Spec.PodAnnotations = map[string]string{"prometheus.io/scrape": "true"}
 
