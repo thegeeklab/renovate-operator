@@ -631,6 +631,51 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(job.Spec.Template.Annotations).To(HaveKeyWithValue("prometheus.io/scrape", "true"))
 		})
 
+		It("should harden the renovate container by default", func() {
+			instance.Spec.SecurityContext = &corev1.SecurityContext{Privileged: new(true)}
+			instance.Spec.ExtraVolumes = []corev1.Volume{
+				{
+					Name:     "host",
+					HostPath: &corev1.HostPathVolumeSource{Path: "/var/run/docker.sock"},
+				},
+			}
+
+			job := &batchv1.Job{
+				Name:      "test-job",
+				Namespace: "default",
+			}
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+
+			securityContext := job.Spec.Template.Spec.Containers[0].SecurityContext
+			Expect(securityContext).NotTo(BeNil())
+			Expect(securityContext.Privileged).NotTo(BeNil())
+			Expect(*securityContext.Privileged).To(BeFalse())
+			Expect(job.Spec.Template.Spec.Volumes).NotTo(ContainElement(HaveField("Name", "host")))
+		})
+
+		It("should pass through privileged settings when allowPrivileged is enabled", func() {
+			reconciler.allowPrivileged = true
+			instance.Spec.SecurityContext = &corev1.SecurityContext{Privileged: new(true)}
+			instance.Spec.ExtraVolumes = []corev1.Volume{
+				{
+					Name:     "host",
+					HostPath: &corev1.HostPathVolumeSource{Path: "/var/run/docker.sock"},
+				},
+			}
+
+			job := &batchv1.Job{
+				Name:      "test-job",
+				Namespace: "default",
+			}
+			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+
+			securityContext := job.Spec.Template.Spec.Containers[0].SecurityContext
+			Expect(securityContext).NotTo(BeNil())
+			Expect(securityContext.Privileged).NotTo(BeNil())
+			Expect(*securityContext.Privileged).To(BeTrue())
+			Expect(job.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "host")))
+		})
+
 		It("should merge rendered PodLabelTemplates into pod labels", func() {
 			instance.Spec.PodLabelTemplates = map[string]string{
 				"cost-center": "ns-{{ .namespace }}-run-{{ .runner }}-repo-{{ .gitrepo }}",

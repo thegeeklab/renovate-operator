@@ -20,14 +20,15 @@ var ErrMaxRepoCount = errors.New("max repo count reached")
 
 type Reconciler struct {
 	client.Client
-	scheme    *runtime.Scheme
-	scheduler *scheduler.Manager
-	broker    *frontend.SSEBroker
-	req       ctrl.Request
-	instance  *renovatev1beta1.Runner
-	renovate  *renovatev1beta1.RenovateConfig
-	metrics   metrics.Recorder
-	logReader logreader.Reader
+	scheme          *runtime.Scheme
+	scheduler       *scheduler.Manager
+	broker          *frontend.SSEBroker
+	req             ctrl.Request
+	instance        *renovatev1beta1.Runner
+	renovate        *renovatev1beta1.RenovateConfig
+	metrics         metrics.Recorder
+	logReader       logreader.Reader
+	allowPrivileged bool
 }
 
 type JobData struct {
@@ -42,17 +43,19 @@ func NewReconciler(
 	renovate *renovatev1beta1.RenovateConfig,
 	metricsRecorder metrics.Recorder,
 	logReader logreader.Reader,
+	allowPrivileged bool,
 ) (*Reconciler, error) {
 	return &Reconciler{
-		Client:    c,
-		scheme:    scheme,
-		scheduler: scheduler.NewManager(c, scheme, clock.RealClock{}),
-		broker:    broker,
-		req:       ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
-		instance:  instance,
-		renovate:  renovate,
-		metrics:   metricsRecorder,
-		logReader: logReader,
+		Client:          c,
+		scheme:          scheme,
+		scheduler:       scheduler.NewManager(c, scheme, clock.RealClock{}),
+		broker:          broker,
+		req:             ctrl.Request{NamespacedName: client.ObjectKey{Namespace: instance.Namespace, Name: instance.Name}},
+		instance:        instance,
+		renovate:        renovate,
+		metrics:         metricsRecorder,
+		logReader:       logReader,
+		allowPrivileged: allowPrivileged,
 	}, nil
 }
 

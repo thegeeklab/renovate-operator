@@ -28,9 +28,10 @@ const ControllerName = "discovery"
 // Reconciler reconciles a Renovator object.
 type Reconciler struct {
 	client.Client
-	Scheme        *runtime.Scheme
-	EventRecorder events.EventRecorder
-	Metrics       metrics.Recorder
+	Scheme          *runtime.Scheme
+	EventRecorder   events.EventRecorder
+	Metrics         metrics.Recorder
+	AllowPrivileged bool
 }
 
 //nolint:lll
@@ -103,7 +104,7 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: err}
 	}
 
-	componentReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc, r.Metrics)
+	componentReconciler, err := discovery.NewReconciler(r.Client, r.Scheme, rd, rc, r.Metrics, r.AllowPrivileged)
 	if err != nil {
 		return controller.Outcome{Err: err}
 	}

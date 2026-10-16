@@ -23,6 +23,7 @@ type Reconciler struct {
 	renovate        *renovatev1beta1.RenovateConfig
 	providerFactory factory.ProviderFactory
 	metrics         metrics.Recorder
+	allowPrivileged bool
 }
 
 func NewReconciler(
@@ -31,6 +32,7 @@ func NewReconciler(
 	instance *renovatev1beta1.Discovery,
 	renovate *renovatev1beta1.RenovateConfig,
 	metricsRecorder metrics.Recorder,
+	allowPrivileged bool,
 ) (*Reconciler, error) {
 	return &Reconciler{
 		Client:          c,
@@ -41,6 +43,7 @@ func NewReconciler(
 		renovate:        renovate,
 		providerFactory: factory.DefaultProviderFactory,
 		metrics:         metricsRecorder,
+		allowPrivileged: allowPrivileged,
 	}, nil
 }
 

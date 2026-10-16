@@ -180,6 +180,7 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) er
 		renovate.WithPodSpec(r.instance.Spec.PodSpec),
 		renovate.WithExtraEnv(r.instance.Spec.ExtraEnv),
 		renovate.WithExtraVolumes(containers.WithRawVolumes(r.instance.Spec.ExtraVolumes)),
+		renovate.WithAllowPrivileged(r.allowPrivileged),
 	)
 
 	discoveryMutators := []containers.ContainerMutator{

@@ -302,6 +302,7 @@ func (r *Reconciler) updateJob(
 		renovate.WithPodSpec(r.instance.Spec.PodSpec),
 		renovate.WithExtraEnv(r.instance.Spec.ExtraEnv),
 		renovate.WithExtraVolumes(containers.WithRawVolumes(r.instance.Spec.ExtraVolumes)),
+		renovate.WithAllowPrivileged(r.allowPrivileged),
 	)
 
 	// Configure job execution details

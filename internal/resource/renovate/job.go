@@ -33,6 +33,7 @@ type jobConfig struct {
 	RuntimeClassName          *string
 	PriorityClassName         *string
 	ScratchVolume             *renovatev1beta1.ScratchVolumeSpec
+	AllowPrivileged           bool
 }
 
 // JobOption defines a function that modifies the job configuration.
@@ -78,7 +79,9 @@ func DefaultJobSpec(
 	spec.Template.Annotations = cfg.PodAnnotations
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 	spec.Template.Spec.InitContainers = cfg.InitContainers
-	spec.Template.Spec.Volumes = containers.VolumesTemplate(cfg.VolumeMutators...)
+	spec.Template.Spec.Volumes = filterHostPathVolumes(
+		containers.VolumesTemplate(cfg.VolumeMutators...), cfg.AllowPrivileged,
+	)
 	spec.Template.Spec.ImagePullSecrets = cfg.ImagePullSecrets
 	spec.Template.Spec.NodeSelector = cfg.NodeSelector
 	spec.Template.Spec.Affinity = cfg.Affinity
@@ -108,8 +111,8 @@ func DefaultJobSpec(
 		containerMutators = append(containerMutators, containers.WithResourceRequirements(cfg.Resources))
 	}
 
-	if cfg.SecurityContext != nil {
-		containerMutators = append(containerMutators, containers.WithSecurityContext(cfg.SecurityContext))
+	if securityContext := hardenedSecurityContext(cfg.SecurityContext, cfg.AllowPrivileged); securityContext != nil {
+		containerMutators = append(containerMutators, containers.WithSecurityContext(securityContext))
 	}
 
 	spec.Template.Spec.Containers = []corev1.Container{
@@ -142,6 +145,16 @@ func WithPodSpec(podSpec renovatev1beta1.PodSpec) JobOption {
 		c.PriorityClassName = podSpec.PriorityClassName
 		c.PodAnnotations = podSpec.PodAnnotations
 		c.ScratchVolume = podSpec.ScratchVolume
+	}
+}
+
+// WithAllowPrivileged toggles the pod security hardening. When false (the
+// default), the Renovate container is forced to run without privilege
+// escalation and any hostPath volumes are dropped. Set to true only for
+// trusted setups that require e.g. DinD via a mounted Docker socket.
+func WithAllowPrivileged(allowed bool) JobOption {
+	return func(c *jobConfig) {
+		c.AllowPrivileged = allowed
 	}
 }
 

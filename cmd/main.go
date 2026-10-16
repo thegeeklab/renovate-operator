@@ -122,6 +122,7 @@ type Config struct {
 	ExternalURL           string
 	SecureCookies         bool
 	MetricsCardinalityCap int
+	AllowPrivileged       bool
 }
 
 func main() {
@@ -255,6 +256,8 @@ func parseFlags() Config {
 		"Force Secure attribute on auth cookies. Set to false for localhost-only development.")
 	flag.IntVar(&cfg.MetricsCardinalityCap, "metrics-cardinality-cap", 5000,
 		"Maximum number of unique label combinations tracked before series are dropped.")
+	flag.BoolVar(&cfg.AllowPrivileged, "allow-privileged", false,
+		"Allow privileged Renovate pods (hostPath volumes and privileged/privilege-escalation security contexts).")
 
 	opts := zap.Options{
 		Development: false,
@@ -364,19 +367,21 @@ func setupControllers(
 	}
 
 	if err := (&discovery.Reconciler{
-		Client:  mgr.GetClient(),
-		Scheme:  mgr.GetScheme(),
-		Metrics: metricsRecorder,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		Metrics:         metricsRecorder,
+		AllowPrivileged: cfg.AllowPrivileged,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller %s: %w", discovery.ControllerName, err)
 	}
 
 	if err := (&runner.Reconciler{
-		Client:    mgr.GetClient(),
-		Scheme:    mgr.GetScheme(),
-		Broker:    sseBroker,
-		Metrics:   metricsRecorder,
-		LogReader: logReader,
+		Client:          mgr.GetClient(),
+		Scheme:          mgr.GetScheme(),
+		Broker:          sseBroker,
+		Metrics:         metricsRecorder,
+		LogReader:       logReader,
+		AllowPrivileged: cfg.AllowPrivileged,
 	}).SetupWithManager(mgr); err != nil {
 		return fmt.Errorf("unable to create controller %s: %w", runner.ControllerName, err)
 	}
