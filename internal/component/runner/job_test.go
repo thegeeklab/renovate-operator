@@ -648,10 +648,10 @@ var _ = Describe("ReconcileJob", func() {
 			}
 			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
-			securityContext := job.Spec.Template.Spec.Containers[0].SecurityContext
-			Expect(securityContext).NotTo(BeNil())
-			Expect(securityContext.Privileged).NotTo(BeNil())
-			Expect(*securityContext.Privileged).To(BeFalse())
+			mainContainer := job.Spec.Template.Spec.Containers[0]
+			Expect(mainContainer.SecurityContext).NotTo(BeNil())
+			Expect(mainContainer.SecurityContext.Privileged).NotTo(BeNil())
+			Expect(*mainContainer.SecurityContext.Privileged).To(BeFalse())
 			Expect(job.Spec.Template.Spec.Volumes).NotTo(ContainElement(HaveField("Name", "host")))
 		})
 
@@ -671,10 +671,10 @@ var _ = Describe("ReconcileJob", func() {
 			}
 			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
-			securityContext := job.Spec.Template.Spec.Containers[0].SecurityContext
-			Expect(securityContext).NotTo(BeNil())
-			Expect(securityContext.Privileged).NotTo(BeNil())
-			Expect(*securityContext.Privileged).To(BeTrue())
+			mainContainer := job.Spec.Template.Spec.Containers[0]
+			Expect(mainContainer.SecurityContext).NotTo(BeNil())
+			Expect(mainContainer.SecurityContext.Privileged).NotTo(BeNil())
+			Expect(*mainContainer.SecurityContext.Privileged).To(BeTrue())
 			Expect(job.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "host")))
 		})
 
