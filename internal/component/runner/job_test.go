@@ -433,7 +433,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Containers).To(HaveLen(1))
 			mainContainer := job.Spec.Template.Spec.Containers[0]
@@ -453,7 +453,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.ImagePullSecrets).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.ImagePullSecrets[0].Name).To(Equal("runner-registry-secret"))
@@ -466,7 +466,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "ssd"))
 		})
@@ -488,7 +488,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Affinity).NotTo(BeNil())
 			Expect(job.Spec.Template.Spec.Affinity.NodeAffinity).NotTo(BeNil())
@@ -503,7 +503,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Tolerations).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.Tolerations[0].Key).To(Equal("key1"))
@@ -518,7 +518,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.TopologySpreadConstraints).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.TopologySpreadConstraints[0].TopologyKey).To(Equal("zone"))
@@ -538,7 +538,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			mainContainer := job.Spec.Template.Spec.Containers[0]
 			Expect(mainContainer.Resources.Requests).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("100m")))
@@ -554,7 +554,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			mainContainer := job.Spec.Template.Spec.Containers[0]
 			Expect(mainContainer.SecurityContext).NotTo(BeNil())
@@ -570,7 +570,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			env := job.Spec.Template.Spec.Containers[0].Env
 			Expect(env).To(ContainElement(HaveField("Name", "CUSTOM_VAR")))
@@ -589,7 +589,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "extra-vol")))
 		})
@@ -601,7 +601,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.RuntimeClassName).NotTo(BeNil())
 			Expect(*job.Spec.Template.Spec.RuntimeClassName).To(Equal("gvisor"))
@@ -626,7 +626,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Annotations).To(HaveKeyWithValue("prometheus.io/scrape", "true"))
 		})
@@ -644,7 +644,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			securityContext := job.Spec.Template.Spec.Containers[0].SecurityContext
 			Expect(securityContext).NotTo(BeNil())
@@ -667,7 +667,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			securityContext := job.Spec.Template.Spec.Containers[0].SecurityContext
 			Expect(securityContext).NotTo(BeNil())
@@ -688,7 +688,7 @@ var _ = Describe("ReconcileJob", func() {
 			podLabels := map[string]string{
 				"existing": "label",
 			}
-			Expect(reconciler.updateJob(job, repo1, podLabels)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, podLabels)).To(Succeed())
 
 			Expect(job.Spec.Template.Labels["cost-center"]).To(Equal("ns-default-run-test-runner-repo-repo-1"))
 		})
@@ -713,7 +713,7 @@ var _ = Describe("ReconcileJob", func() {
 				Namespace: "default",
 			}
 			podLabels := map[string]string{}
-			Expect(reconciler.updateJob(job, repo1, podLabels)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, podLabels)).To(Succeed())
 
 			Expect(job.Spec.Template.Labels["discovery-name"]).To(Equal("my-discovery"))
 		})
@@ -728,7 +728,7 @@ var _ = Describe("ReconcileJob", func() {
 				Namespace: "default",
 			}
 			podLabels := map[string]string{}
-			Expect(reconciler.updateJob(job, repo1, podLabels)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, podLabels)).To(Succeed())
 
 			Expect(job.Spec.Template.Labels["discovery-name"]).To(Equal(""))
 		})
@@ -745,7 +745,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, repo1, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, repo1, nil)).To(Succeed())
 
 			var scratchVol *corev1.Volume
 

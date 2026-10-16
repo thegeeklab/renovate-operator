@@ -96,7 +96,7 @@ func (r *Reconciler) runDiscoveryJob(ctx context.Context, discoveryLabels map[st
 		Labels:       discoveryLabels,
 	}
 
-	if err := r.updateJob(job, discoveryLabels); err != nil {
+	if err := r.updateJob(ctx, job, discoveryLabels); err != nil {
 		return fmt.Errorf("failed to update job: %w", err)
 	}
 
@@ -124,7 +124,9 @@ func (r *Reconciler) runDiscoveryJob(ctx context.Context, discoveryLabels map[st
 }
 
 // updateJob configures the job spec for discovery.
-func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) error {
+func (r *Reconciler) updateJob(ctx context.Context, job *batchv1.Job, podLabels map[string]string) error {
+	log := logf.FromContext(ctx)
+
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 	scratchPath := renovate.GetScratchVolumePath(r.instance.Spec.ScratchVolume)
 	reposFile := filepath.Join(scratchPath, renovate.FilenameRepositories)
@@ -169,7 +171,7 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) er
 		})),
 	)
 
-	renovate.DefaultJobSpec(
+	restricted := renovate.DefaultJobSpec(
 		&job.Spec,
 		r.renovate,
 		renovateConfigCM,
@@ -221,6 +223,13 @@ func (r *Reconciler) updateJob(job *batchv1.Job, podLabels map[string]string) er
 	}
 
 	job.Spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
+
+	if renovate.ApplySecurityHardening(&job.Spec.Template.Spec, r.allowPrivileged) || restricted {
+		log.Info(
+			"Security hardening applied: privileged settings and hostPath volumes were restricted",
+			"discovery", r.instance.Name,
+		)
+	}
 
 	return nil
 }

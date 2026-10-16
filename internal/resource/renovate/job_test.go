@@ -453,6 +453,25 @@ var _ = Describe("Renovate Job Library", func() {
 			Expect(*securityContext.AllowPrivilegeEscalation).To(BeFalse())
 		})
 
+		It("should harden init containers by default", func() {
+			jobSpec := &batchv1.JobSpec{}
+			renovate.DefaultJobSpec(
+				jobSpec, renovateCR, renovateCM,
+				renovate.WithInitContainer(corev1.Container{
+					Name:            "init",
+					Image:           "busybox",
+					SecurityContext: &corev1.SecurityContext{Privileged: new(true)},
+				}),
+			)
+
+			securityContext := jobSpec.Template.Spec.InitContainers[0].SecurityContext
+			Expect(securityContext).NotTo(BeNil())
+			Expect(securityContext.Privileged).NotTo(BeNil())
+			Expect(*securityContext.Privileged).To(BeFalse())
+			Expect(securityContext.AllowPrivilegeEscalation).NotTo(BeNil())
+			Expect(*securityContext.AllowPrivilegeEscalation).To(BeFalse())
+		})
+
 		It("should strip hostPath volumes by default", func() {
 			jobSpec := &batchv1.JobSpec{}
 			renovate.DefaultJobSpec(

@@ -243,7 +243,7 @@ func (r *Reconciler) ensureRepoJob(
 		Namespace:    repo.Namespace,
 		Labels:       repoLabels,
 	}
-	if err := r.updateJob(job, repo, repoLabels); err != nil {
+	if err := r.updateJob(ctx, job, repo, repoLabels); err != nil {
 		return false, fmt.Errorf("failed to update job: %w", err)
 	}
 
@@ -269,8 +269,11 @@ func (r *Reconciler) ensureRepoJob(
 
 // updateJob configures the job spec for a GitRepo.
 func (r *Reconciler) updateJob(
+	ctx context.Context,
 	job *batchv1.Job, repo *renovatev1beta1.GitRepo, podLabels map[string]string,
 ) error {
+	log := logf.FromContext(ctx)
+
 	renovateConfigCM := metadata.GenericName(r.req, renovator.ConfigMapSuffix)
 
 	if len(r.instance.Spec.PodLabelTemplates) > 0 {
@@ -291,7 +294,7 @@ func (r *Reconciler) updateJob(
 	}
 
 	// Set default job spec for the repository
-	renovate.DefaultJobSpec(
+	restricted := renovate.DefaultJobSpec(
 		&job.Spec,
 		r.renovate,
 		renovateConfigCM,
@@ -305,6 +308,13 @@ func (r *Reconciler) updateJob(
 		renovate.WithAllowPrivileged(r.allowPrivileged),
 	)
 
+	if restricted {
+		log.Info(
+			"Security hardening applied: privileged settings and hostPath volumes were restricted",
+			"runner", r.instance.Name,
+		)
+	}
+
 	// Configure job execution details
 	job.Spec.Template.Spec.ServiceAccountName = metadata.GenericMetadata(r.req).Name
 
@@ -316,6 +326,8 @@ func (r *Reconciler) updateJob(
 func (r *Reconciler) updateJobStatus(
 	ctx context.Context, repo *renovatev1beta1.GitRepo, labels map[string]string,
 ) error {
+	log := logf.FromContext(ctx)
+
 	var jobList batchv1.JobList
 
 	if err := r.List(ctx, &jobList, client.InNamespace(repo.Namespace), client.MatchingLabels(labels)); err != nil {
@@ -388,7 +400,7 @@ func (r *Reconciler) updateJobStatus(
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateCompleted)
 			repo.RemoveCondition(renovatev1beta1.GitRepoConditionRenovateFailed)
 
-			logf.FromContext(ctx).Info(
+			log.Info(
 				"finished job has no Succeeded/Failed counters, skipping metric emission",
 				"job", latestFinishedJob.Name,
 				"namespace", latestFinishedJob.Namespace,
@@ -447,13 +459,15 @@ func (r *Reconciler) updateJobStatus(
 func (r *Reconciler) updateLogMetrics(
 	ctx context.Context, job *batchv1.Job, renovatorLabel, gitrepoLabel string,
 ) {
+	log := logf.FromContext(ctx)
+
 	if r.logReader == nil {
 		return
 	}
 
 	stream, err := r.logReader.ReadJobLogs(ctx, job.Namespace, job.Name, renovate.ContainerName, 0)
 	if err != nil {
-		logf.FromContext(ctx).V(1).Info(
+		log.V(1).Info(
 			"Failed to read job logs for metrics", "job", job.Name, "error", err,
 		)
 
@@ -463,7 +477,7 @@ func (r *Reconciler) updateLogMetrics(
 
 	res, err := parser.ParseLogs(stream, -1)
 	if err != nil {
-		logf.FromContext(ctx).V(1).Info(
+		log.V(1).Info(
 			"Failed to parse job logs for metrics", "job", job.Name, "error", err,
 		)
 

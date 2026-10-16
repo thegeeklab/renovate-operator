@@ -245,7 +245,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.InitContainers).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.InitContainers[0].Name).To(Equal("renovate-init"))
@@ -266,7 +266,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.ImagePullSecrets).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.ImagePullSecrets[0].Name).To(Equal("discovery-registry-secret"))
@@ -279,7 +279,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.NodeSelector).To(HaveKeyWithValue("disktype", "ssd"))
 		})
@@ -301,7 +301,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Affinity).NotTo(BeNil())
 			Expect(job.Spec.Template.Spec.Affinity.NodeAffinity).NotTo(BeNil())
@@ -316,7 +316,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Tolerations).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.Tolerations[0].Key).To(Equal("key1"))
@@ -331,7 +331,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.TopologySpreadConstraints).To(HaveLen(1))
 			Expect(job.Spec.Template.Spec.TopologySpreadConstraints[0].TopologyKey).To(Equal("zone"))
@@ -351,7 +351,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
 
 			mainContainer := job.Spec.Template.Spec.Containers[0]
 			Expect(mainContainer.Resources.Requests).To(HaveKeyWithValue(corev1.ResourceCPU, resource.MustParse("100m")))
@@ -367,11 +367,56 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
 
 			mainContainer := job.Spec.Template.Spec.Containers[0]
 			Expect(mainContainer.SecurityContext).NotTo(BeNil())
 			Expect(*mainContainer.SecurityContext.RunAsNonRoot).To(BeTrue())
+		})
+
+		It("should harden the discovery container by default", func() {
+			instance.Spec.SecurityContext = &corev1.SecurityContext{Privileged: new(true)}
+			instance.Spec.ExtraVolumes = []corev1.Volume{
+				{
+					Name:     "host",
+					HostPath: &corev1.HostPathVolumeSource{Path: "/var/run/docker.sock"},
+				},
+			}
+
+			job := &batchv1.Job{
+				Name:      "test-job",
+				Namespace: "default",
+			}
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
+
+			mainContainer := job.Spec.Template.Spec.Containers[0]
+			Expect(mainContainer.SecurityContext).NotTo(BeNil())
+			Expect(mainContainer.SecurityContext.Privileged).NotTo(BeNil())
+			Expect(*mainContainer.SecurityContext.Privileged).To(BeFalse())
+			Expect(job.Spec.Template.Spec.Volumes).NotTo(ContainElement(HaveField("Name", "host")))
+		})
+
+		It("should pass through privileged settings when allowPrivileged is enabled", func() {
+			reconciler.allowPrivileged = true
+			instance.Spec.SecurityContext = &corev1.SecurityContext{Privileged: new(true)}
+			instance.Spec.ExtraVolumes = []corev1.Volume{
+				{
+					Name:     "host",
+					HostPath: &corev1.HostPathVolumeSource{Path: "/var/run/docker.sock"},
+				},
+			}
+
+			job := &batchv1.Job{
+				Name:      "test-job",
+				Namespace: "default",
+			}
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
+
+			mainContainer := job.Spec.Template.Spec.Containers[0]
+			Expect(mainContainer.SecurityContext).NotTo(BeNil())
+			Expect(mainContainer.SecurityContext.Privileged).NotTo(BeNil())
+			Expect(*mainContainer.SecurityContext.Privileged).To(BeTrue())
+			Expect(job.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "host")))
 		})
 
 		It("should propagate ExtraEnv to the job container", func() {
@@ -383,7 +428,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
 
 			env := job.Spec.Template.Spec.Containers[0].Env
 			Expect(env).To(ContainElement(HaveField("Name", "CUSTOM_VAR")))
@@ -402,7 +447,7 @@ var _ = Describe("ReconcileJob", func() {
 				Name:      "test-job",
 				Namespace: "default",
 			}
-			Expect(reconciler.updateJob(job, nil)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, nil)).To(Succeed())
 
 			Expect(job.Spec.Template.Spec.Volumes).To(ContainElement(HaveField("Name", "extra-vol")))
 		})
@@ -419,7 +464,7 @@ var _ = Describe("ReconcileJob", func() {
 			podLabels := map[string]string{
 				"existing": "label",
 			}
-			Expect(reconciler.updateJob(job, podLabels)).To(Succeed())
+			Expect(reconciler.updateJob(ctx, job, podLabels)).To(Succeed())
 
 			Expect(job.Spec.Template.Labels["cost-center"]).To(Equal("ns-default-disco-test-discovery"))
 		})

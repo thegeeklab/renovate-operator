@@ -39,10 +39,12 @@ type jobConfig struct {
 // JobOption defines a function that modifies the job configuration.
 type JobOption func(*jobConfig)
 
-// DefaultJobSpec applies the Renovate job specification.
+// DefaultJobSpec applies the Renovate job specification. It returns true when
+// security hardening overrode a user-provided privileged setting or hostPath
+// volume.
 func DefaultJobSpec(
 	spec *batchv1.JobSpec, renovate *renovatev1beta1.RenovateConfig, renovateCM string, opts ...JobOption,
-) {
+) bool {
 	// Initialize Configuration with Safe Defaults
 	cfg := &jobConfig{
 		Renovate:         renovate,
@@ -79,9 +81,7 @@ func DefaultJobSpec(
 	spec.Template.Annotations = cfg.PodAnnotations
 	spec.Template.Spec.RestartPolicy = corev1.RestartPolicyNever
 	spec.Template.Spec.InitContainers = cfg.InitContainers
-	spec.Template.Spec.Volumes = filterHostPathVolumes(
-		containers.VolumesTemplate(cfg.VolumeMutators...), cfg.AllowPrivileged,
-	)
+	spec.Template.Spec.Volumes = containers.VolumesTemplate(cfg.VolumeMutators...)
 	spec.Template.Spec.ImagePullSecrets = cfg.ImagePullSecrets
 	spec.Template.Spec.NodeSelector = cfg.NodeSelector
 	spec.Template.Spec.Affinity = cfg.Affinity
@@ -111,8 +111,8 @@ func DefaultJobSpec(
 		containerMutators = append(containerMutators, containers.WithResourceRequirements(cfg.Resources))
 	}
 
-	if securityContext := hardenedSecurityContext(cfg.SecurityContext, cfg.AllowPrivileged); securityContext != nil {
-		containerMutators = append(containerMutators, containers.WithSecurityContext(securityContext))
+	if cfg.SecurityContext != nil {
+		containerMutators = append(containerMutators, containers.WithSecurityContext(cfg.SecurityContext))
 	}
 
 	spec.Template.Spec.Containers = []corev1.Container{
@@ -123,6 +123,8 @@ func DefaultJobSpec(
 			containerMutators...,
 		),
 	}
+
+	return ApplySecurityHardening(&spec.Template.Spec, cfg.AllowPrivileged)
 }
 
 // WithPodLabels injects custom labels into the Pod template.
