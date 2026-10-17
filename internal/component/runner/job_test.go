@@ -1090,6 +1090,115 @@ var _ = Describe("ReconcileJob", func() {
 			Expect(runFailed).To(Equal(float64(1)))
 		})
 
+		It("should restore gitrepo status gauges without a new job", func() {
+			finishedJob := &batchv1.Job{
+				Name:              "finished-job-restart",
+				Namespace:         "default",
+				CreationTimestamp: metav1.NewTime(now),
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+					renovatev1beta1.LabelGitRepo:   "repo-1",
+				},
+				Status: batchv1.JobStatus{
+					Succeeded: 1,
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobComplete, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, finishedJob)).To(Succeed())
+
+			// Simulate persisted status after an operator restart: the job is
+			// no longer "new", so the gated counter/log emission must not fire,
+			// but the status gauges still need to be restored.
+			repo1.Status.LastRenovateTime = &metav1.Time{Time: finishedJob.CreationTimestamp.Time}
+			repo1.SetCondition(
+				renovatev1beta1.GitRepoConditionRenovateCompleted,
+				metav1.ConditionTrue, "JobSucceeded", "completed",
+			)
+			Expect(fakeClient.Status().Update(ctx, repo1)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, repo1, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "repo-1",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var runFailed float64
+
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "renovate_operator_gitrepo_run_failed" {
+					for _, m := range mf.GetMetric() {
+						runFailed = m.GetGauge().GetValue()
+					}
+				}
+			}
+
+			Expect(runFailed).To(Equal(float64(0)))
+
+			var lastRun float64
+
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "renovate_operator_gitrepo_last_run_timestamp_seconds" {
+					for _, m := range mf.GetMetric() {
+						lastRun = m.GetGauge().GetValue()
+					}
+				}
+			}
+
+			Expect(lastRun).To(Equal(float64(finishedJob.CreationTimestamp.Unix())))
+		})
+
+		It("should restore failed gauge after operator restart", func() {
+			finishedJob := &batchv1.Job{
+				Name:              "failed-job-restart",
+				Namespace:         "default",
+				CreationTimestamp: metav1.NewTime(now),
+				Labels: map[string]string{
+					renovatev1beta1.LabelRenovator: "renovator-id",
+					renovatev1beta1.LabelGitRepo:   "repo-1",
+				},
+				Status: batchv1.JobStatus{
+					Failed: 1,
+					Conditions: []batchv1.JobCondition{
+						{Type: batchv1.JobFailed, Status: corev1.ConditionTrue},
+					},
+				},
+			}
+			Expect(fakeClient.Create(ctx, finishedJob)).To(Succeed())
+
+			repo1.Status.LastRenovateTime = &metav1.Time{Time: finishedJob.CreationTimestamp.Time}
+			repo1.SetCondition(
+				renovatev1beta1.GitRepoConditionRenovateFailed,
+				metav1.ConditionTrue, "JobFailed", "failed",
+			)
+			Expect(fakeClient.Status().Update(ctx, repo1)).To(Succeed())
+
+			err := reconciler.updateJobStatus(ctx, repo1, map[string]string{
+				renovatev1beta1.LabelRenovator: "renovator-id",
+				renovatev1beta1.LabelGitRepo:   "repo-1",
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			metricFamilies, err := metricsRecorder.Gatherer().Gather()
+			Expect(err).NotTo(HaveOccurred())
+
+			var runFailed float64
+
+			for _, mf := range metricFamilies {
+				if mf.GetName() == "renovate_operator_gitrepo_run_failed" {
+					for _, m := range mf.GetMetric() {
+						runFailed = m.GetGauge().GetValue()
+					}
+				}
+			}
+
+			Expect(runFailed).To(Equal(float64(1)))
+		})
+
 		It("should sanitize long repository names in metric labels", func() {
 			// Create repo with very long name (>63 chars)
 			longRepo := &renovatev1beta1.GitRepo{
