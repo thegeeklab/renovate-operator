@@ -424,6 +424,10 @@ func (r *Reconciler) updateJobStatus(
 		return fmt.Errorf("failed to patch job status: %w", err)
 	}
 
+	if r.metrics != nil {
+		r.emitGitRepoStatusMetrics(ctx, repo)
+	}
+
 	if r.metrics != nil && latestFinishedJob != nil && runStatus != "" &&
 		(previousLast == nil || latestFinishedJob.CreationTimestamp.After(previousLast.Time)) {
 		renovatorLabel := repo.Labels[renovatev1beta1.LabelRenovator]
@@ -431,14 +435,6 @@ func (r *Reconciler) updateJobStatus(
 
 		r.metrics.RecordGitRepoRun(
 			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, runStatus,
-		)
-		r.metrics.SetRunFailed(
-			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel,
-			runStatus == metrics.StatusFailed,
-		)
-		r.metrics.SetLastRunTimestamp(
-			repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel,
-			float64(latestFinishedJob.CreationTimestamp.Unix()),
 		)
 
 		if latestFinishedJob.Status.CompletionTime != nil {
@@ -459,6 +455,35 @@ func (r *Reconciler) updateJobStatus(
 	}
 
 	return nil
+}
+
+// emitGitRepoStatusMetrics updates the run-failed and last-run-timestamp gauges
+// from the persisted GitRepo status. It runs on every reconcile, independent of
+// new-job detection, so the gauges are restored immediately after an operator
+// restart without waiting for the next finished job.
+func (r *Reconciler) emitGitRepoStatusMetrics(ctx context.Context, repo *renovatev1beta1.GitRepo) {
+	log := logf.FromContext(ctx)
+
+	renovatorLabel := repo.Labels[renovatev1beta1.LabelRenovator]
+
+	gitrepoLabel, err := k8s.SanitizeLabel(repo.Name)
+	if err != nil {
+		log.V(1).Info("Failed to sanitize repo name for metric label", "gitrepo", repo.Name, "error", err)
+
+		return
+	}
+
+	failed := false
+	if c := repo.GetCondition(renovatev1beta1.GitRepoConditionRenovateFailed); c != nil &&
+		c.Status == metav1.ConditionTrue {
+		failed = true
+	}
+
+	r.metrics.SetRunFailed(repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, failed)
+
+	if t := repo.GetLastRenovateTime(); t != nil {
+		r.metrics.SetLastRunTimestamp(repo.Namespace, renovatorLabel, r.instance.Name, gitrepoLabel, float64(t.Unix()))
+	}
 }
 
 // updateLogMetrics parses the Renovate job logs and updates the
