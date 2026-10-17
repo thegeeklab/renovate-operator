@@ -4,12 +4,16 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"strings"
 
 	. "github.com/onsi/ginkgo/v2"
 	. "github.com/onsi/gomega"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/mock"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/metrics"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/internal/provider/mocks"
@@ -66,7 +70,11 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			},
 		}
 
-		fakeClient = fake.NewClientBuilder().WithScheme(scheme).Build()
+		fakeClient = fake.NewClientBuilder().
+			WithScheme(scheme).
+			WithObjects(instance).
+			WithStatusSubresource(instance).
+			Build()
 		reconciler = &Reconciler{
 			Client:        fakeClient,
 			scheme:        scheme,
@@ -182,6 +190,122 @@ var _ = Describe("GitRepo Reconciliation", func() {
 			gitRepos := &renovatev1beta1.GitRepoList{}
 			Expect(fakeClient.List(ctx, gitRepos)).To(Succeed())
 			Expect(gitRepos.Items).To(BeEmpty())
+		})
+
+		Context("when the discovery result is empty or invalid", func() {
+			It("should mark DiscoveryFailed when the result is empty", func() {
+				cm := createDiscoveryCM("test-config", []string{})
+				Expect(fakeClient.Create(ctx, cm)).To(Succeed())
+
+				_, err := reconciler.reconcileGitRepos(ctx)
+				Expect(err).ToNot(HaveOccurred())
+
+				failedCond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)
+				Expect(failedCond).NotTo(BeNil())
+				Expect(failedCond.Status).To(Equal(metav1.ConditionTrue))
+				Expect(failedCond.Reason).To(Equal(renovatev1beta1.ReasonEmptyDiscoveryResult))
+
+				Expect(instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)).To(BeNil())
+
+				gitRepos := &renovatev1beta1.GitRepoList{}
+				Expect(fakeClient.List(ctx, gitRepos)).To(Succeed())
+				Expect(gitRepos.Items).To(BeEmpty())
+			})
+
+			It("should not prune existing GitRepos when the result is empty", func() {
+				existing := newGitRepo("test-discovery-existing", "existing-repo")
+				Expect(controllerutil.SetControllerReference(instance, existing, scheme)).To(Succeed())
+				Expect(fakeClient.Create(ctx, existing)).To(Succeed())
+
+				cm := createDiscoveryCM("test-config", []string{})
+				Expect(fakeClient.Create(ctx, cm)).To(Succeed())
+
+				_, err := reconciler.reconcileGitRepos(ctx)
+				Expect(err).ToNot(HaveOccurred())
+
+				gitRepos := &renovatev1beta1.GitRepoList{}
+				Expect(fakeClient.List(ctx, gitRepos)).To(Succeed())
+				Expect(gitRepos.Items).To(HaveLen(1))
+				Expect(gitRepos.Items[0].Spec.Name).To(Equal("existing-repo"))
+			})
+
+			It("should mark DiscoveryFailed when the 'repositories' key is missing", func() {
+				cm := &corev1.ConfigMap{
+					Name:      "test-config",
+					Namespace: "default",
+					Data:      map[string]string{"other-key": `value`},
+				}
+				Expect(controllerutil.SetControllerReference(instance, cm, scheme)).To(Succeed())
+				Expect(fakeClient.Create(ctx, cm)).To(Succeed())
+
+				_, err := reconciler.reconcileGitRepos(ctx)
+				Expect(err).ToNot(HaveOccurred())
+
+				failedCond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)
+				Expect(failedCond).NotTo(BeNil())
+				Expect(failedCond.Reason).To(Equal(renovatev1beta1.ReasonInvalidDiscoveryResult))
+			})
+
+			It("should mark DiscoveryFailed when the result JSON is invalid", func() {
+				cm := &corev1.ConfigMap{
+					Name:      "test-config",
+					Namespace: "default",
+					Data:      map[string]string{"repositories": `invalid-json`},
+				}
+				Expect(controllerutil.SetControllerReference(instance, cm, scheme)).To(Succeed())
+				Expect(fakeClient.Create(ctx, cm)).To(Succeed())
+
+				_, err := reconciler.reconcileGitRepos(ctx)
+				Expect(err).ToNot(HaveOccurred())
+
+				failedCond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)
+				Expect(failedCond).NotTo(BeNil())
+				Expect(failedCond.Reason).To(Equal(renovatev1beta1.ReasonInvalidDiscoveryResult))
+			})
+
+			It("should record a discovery failure metric when the result is empty", func() {
+				reg := prometheus.NewRegistry()
+				reconciler.metrics = metrics.New(reg, reg, 5000)
+
+				cm := createDiscoveryCM("test-config", []string{})
+				Expect(fakeClient.Create(ctx, cm)).To(Succeed())
+
+				_, err := reconciler.reconcileGitRepos(ctx)
+				Expect(err).ToNot(HaveOccurred())
+
+				//nolint:lll
+				expected := `
+					# HELP renovate_operator_discovery_job_failures_total Total number of failed discovery Kubernetes Jobs by failure reason.
+					# TYPE renovate_operator_discovery_job_failures_total counter
+					renovate_operator_discovery_job_failures_total{discovery="test-discovery",namespace="default",reason="EmptyDiscoveryResult",renovator="test-renovator"} 1
+				`
+
+				err = testutil.GatherAndCompare(
+					reg, strings.NewReader(expected), "renovate_operator_discovery_job_failures_total",
+				)
+				Expect(err).ToNot(HaveOccurred())
+			})
+
+			It("should transition from DiscoveryCompleted to DiscoveryFailed on empty result", func() {
+				instance.SetCondition(
+					renovatev1beta1.DiscoveryConditionDiscoveryCompleted,
+					metav1.ConditionTrue,
+					"JobSucceeded", "Discovery job completed successfully",
+				)
+				Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+
+				cm := createDiscoveryCM("test-config", []string{})
+				Expect(fakeClient.Create(ctx, cm)).To(Succeed())
+
+				_, err := reconciler.reconcileGitRepos(ctx)
+				Expect(err).ToNot(HaveOccurred())
+
+				Expect(instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)).To(BeNil())
+
+				failedCond := instance.GetCondition(renovatev1beta1.DiscoveryConditionDiscoveryFailed)
+				Expect(failedCond).NotTo(BeNil())
+				Expect(failedCond.Status).To(Equal(metav1.ConditionTrue))
+			})
 		})
 
 		Context("when skipForks is enabled", func() {

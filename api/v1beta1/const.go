@@ -76,6 +76,8 @@ const (
 	ReasonReconcileError         = "ReconcileError"
 	ReasonReconciled             = "Reconciled"
 	ReasonPrivilegedRestricted   = "PrivilegedRestricted"
+	ReasonEmptyDiscoveryResult   = "EmptyDiscoveryResult"
+	ReasonInvalidDiscoveryResult = "InvalidDiscoveryResult"
 
 	// Event action constants.
 	EventActionReconciling = "Reconciling"

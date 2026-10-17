@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/controller"
 	"github.com/thegeeklab/renovate-operator/internal/provider"
 	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
@@ -49,16 +50,28 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 
 	repoData, exists := targetCM.Data["repositories"]
 	if !exists {
-		log.Error(nil, "ConfigMap does not contain 'repositories' key", "cm", targetCM.Name)
-
-		return &ctrl.Result{}, nil
+		return &ctrl.Result{}, r.markDiscoveryFailed(
+			ctx,
+			renovatev1beta1.ReasonInvalidDiscoveryResult,
+			fmt.Sprintf("Discovery result ConfigMap %q is missing the 'repositories' key", targetCM.Name),
+		)
 	}
 
 	var discoveredRepos []string
 	if err := json.Unmarshal([]byte(repoData), &discoveredRepos); err != nil {
-		log.Error(err, "Failed to unmarshal discovery results from ConfigMap", "cm", targetCM.Name)
+		return &ctrl.Result{}, r.markDiscoveryFailed(
+			ctx,
+			renovatev1beta1.ReasonInvalidDiscoveryResult,
+			fmt.Sprintf("Failed to decode discovery result from ConfigMap %q: %v", targetCM.Name, err),
+		)
+	}
 
-		return &ctrl.Result{}, nil
+	if len(discoveredRepos) == 0 {
+		return &ctrl.Result{}, r.markDiscoveryFailed(
+			ctx,
+			renovatev1beta1.ReasonEmptyDiscoveryResult,
+			"Discovery completed without discovering any repositories",
+		)
 	}
 
 	filteredRepos, err := r.filterRepos(ctx, discoveredRepos)
@@ -109,6 +122,44 @@ func (r *Reconciler) reconcileGitRepos(ctx context.Context) (*ctrl.Result, error
 	}
 
 	return &ctrl.Result{}, nil
+}
+
+// markDiscoveryFailed records a discovery result failure on the Discovery
+// status, emits a warning event and records the failure metric. It returns an
+// error only when the status cannot be persisted.
+//
+// It is intentionally one-way: DiscoveryCompleted is owned by updateJobStatus
+// and reflects job completion, not result validity. A stale-but-valid result
+// ConfigMap must not clear DiscoveryFailed after a failed job, so there is no
+// symmetric markDiscoverySucceeded here.
+func (r *Reconciler) markDiscoveryFailed(ctx context.Context, reason, message string) error {
+	patch := client.MergeFrom(r.instance.DeepCopy())
+	r.instance.SetCondition(
+		renovatev1beta1.DiscoveryConditionDiscoveryFailed,
+		metav1.ConditionTrue,
+		reason,
+		message,
+	)
+	r.instance.RemoveCondition(renovatev1beta1.DiscoveryConditionDiscoveryCompleted)
+
+	if err := r.Status().Patch(ctx, r.instance, patch); err != nil {
+		return fmt.Errorf("failed to patch discovery status: %w", err)
+	}
+
+	if r.metrics != nil {
+		renovatorLabel := r.instance.Labels[renovatev1beta1.LabelRenovator]
+		r.metrics.RecordDiscoveryJobFailure(r.instance.Namespace, renovatorLabel, r.instance.Name, reason)
+	}
+
+	controller.Eventf(
+		r.eventRecorder, r.instance,
+		renovatev1beta1.EventTypeWarning,
+		reason,
+		renovatev1beta1.EventActionReconciling,
+		"%s", message,
+	)
+
+	return nil
 }
 
 // filterRepos returns repos with forks removed when skipForks is enabled and/or

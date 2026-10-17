@@ -10,7 +10,8 @@ const (
 	DiscoveryConditionDiscoveryRunning = "DiscoveryRunning"
 	// DiscoveryConditionDiscoveryCompleted indicates whether the last discovery job completed successfully.
 	DiscoveryConditionDiscoveryCompleted = "DiscoveryCompleted"
-	// DiscoveryConditionDiscoveryFailed indicates whether the last discovery job failed.
+	// DiscoveryConditionDiscoveryFailed indicates whether the last discovery failed,
+	// either because the job failed or because the discovered result was empty or invalid.
 	DiscoveryConditionDiscoveryFailed = "DiscoveryFailed"
 )
 
