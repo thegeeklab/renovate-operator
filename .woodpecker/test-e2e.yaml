@@ -27,7 +27,7 @@ services:
       - k3d kubeconfig get renovate-operator > kubeconfig-$${CI_BUILD_NUMBER}.yaml
       - chmod 0600 kubeconfig-$${CI_BUILD_NUMBER}.yaml
       - docker build -t docker.io/thegeeklab/renovate-operator:e2e -f Containerfile.multiarch .
-      - k3d image import docker.io/thegeeklab/renovate-operator:e2e --name renovate-operator
+      - k3d image import docker.io/thegeeklab/renovate-operator:e2e --cluster renovate-operator
       - for i in $(seq 1 90); do kubectl get --raw=/healthz 2>&1 >/dev/null && break; [ $$i -eq 90 ] && exit 1; sleep 2; done
       - kubectl wait --for=condition=Ready pods --all -n kube-system --timeout=120s
       - touch .k3d-ready
