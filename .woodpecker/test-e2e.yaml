@@ -22,7 +22,7 @@ services:
     privileged: true
     commands:
       - nohup dockerd-entrypoint.sh &
-      - until docker ps 2>&1 >/dev/null; do sleep 1s; done
+      - for i in $(seq 1 120); do docker ps 2>&1 >/dev/null && break; [ $$i -eq 120 ] && exit 1; sleep 1; done
       - k3d cluster create renovate-operator --api-port k3d:6445
       - k3d kubeconfig get renovate-operator > kubeconfig-$${CI_BUILD_NUMBER}.yaml
       - chmod 0600 kubeconfig-$${CI_BUILD_NUMBER}.yaml
@@ -30,8 +30,9 @@ services:
         docker build -t docker.io/thegeeklab/renovate-operator:e2e \
           -f Containerfile.multiarch .
       - k3d image import \ docker.io/thegeeklab/renovate-operator:e2e \ --name renovate-operator
-      - kubectl get pods -Aw
-      - printf '@@@@@@@@@@@@@@@@@@@@@@@\n@@@@ k3d is ready @@@@\n@@@@@@@@@@@@@@@@@@@@@@@\n'
+      - for i in $(seq 1 90); do kubectl get --raw=/healthz 2>&1 >/dev/null && break; [ $$i -eq 90 ] && exit 1; sleep 2; done
+      - kubectl wait --for=condition=Ready pods --all -n kube-system --timeout=120s
+      - touch .k3d-ready
 
 steps:
   - name: restore-go-cache
@@ -64,6 +65,7 @@ steps:
     commands:
       - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
       - install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
+      - for i in $(seq 1 120); do [ -f .k3d-ready ] && break; [ $$i -eq 120 ] && exit 1; sleep 5; done
       - make test-e2e
     when: *when_e2e
 
