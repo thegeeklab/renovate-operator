@@ -132,11 +132,42 @@ spec:
                     Platform is the type of the Git provider.
                     This field is managed by the operator and should not be set manually.
                   type: string
+                platformEndpoint:
+                  description: |-
+                    PlatformEndpoint is the Git provider API endpoint.
+                    This field is managed by the operator and should not be set manually.
+                  type: string
                 repoUrl:
                   description: |-
                     RepoURL is the web-accessible URL for the repository.
                     This field is managed by the operator and should not be set manually.
                   type: string
+                tokenSecretRef:
+                  description: |-
+                    TokenSecretRef references the Secret holding the platform API token. It
+                    is persisted so webhook cleanup can proceed even after the RenovateConfig
+                    has been removed.
+                    This field is managed by the operator and should not be set manually.
+                  properties:
+                    key:
+                      description: The key of the secret to select from.  Must be a valid secret key.
+                      type: string
+                    name:
+                      default: ""
+                      description: |-
+                        Name of the referent.
+                        This field is effectively required, but due to backwards compatibility is
+                        allowed to be empty. Instances of this type with an empty value here are
+                        almost certainly wrong.
+                        More info: https://kubernetes.io/docs/concepts/overview/working-with-objects/names/#names
+                      type: string
+                    optional:
+                      description: Specify whether the Secret or its key must be defined
+                      type: boolean
+                  required:
+                    - key
+                  type: object
+                  x-kubernetes-map-type: atomic
                 webhookId:
                   description: |-
                     WebhookID is the ID of the webhook registered on the remote Git provider.

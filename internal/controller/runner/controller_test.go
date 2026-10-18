@@ -231,6 +231,47 @@ var _ = Describe("Runner Controller", func() {
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))
 	})
+
+	It("removes the metrics finalizer on deletion without a RenovateConfig", func() {
+		const name = "test-runner-deleting"
+
+		key := types.NamespacedName{Name: name, Namespace: "default"}
+
+		resource := &renovatev1beta1.Runner{
+			Name:      name,
+			Namespace: "default",
+			Spec: renovatev1beta1.RunnerSpec{
+				JobSpec: renovatev1beta1.JobSpec{Schedule: renovatev1beta1.DefaultSchedule},
+			},
+		}
+		controllerutil.AddFinalizer(resource, renovatev1beta1.FinalizerMetricsCleanup)
+		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+
+		DeferCleanup(func() {
+			got := &renovatev1beta1.Runner{}
+			if err := k8sClient.Get(ctx, key, got); err == nil {
+				if controllerutil.ContainsFinalizer(got, renovatev1beta1.FinalizerMetricsCleanup) {
+					controllerutil.RemoveFinalizer(got, renovatev1beta1.FinalizerMetricsCleanup)
+					_ = k8sClient.Update(ctx, got)
+				}
+
+				_ = k8sClient.Delete(ctx, got)
+			}
+		})
+
+		Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+
+		got := &renovatev1beta1.Runner{}
+		if getErr := k8sClient.Get(ctx, key, got); getErr == nil {
+			Expect(controllerutil.ContainsFinalizer(got, renovatev1beta1.FinalizerMetricsCleanup)).To(BeFalse())
+		} else {
+			Expect(api_errors.IsNotFound(getErr)).To(BeTrue())
+		}
+	})
 })
 
 type mockErrorClient struct {

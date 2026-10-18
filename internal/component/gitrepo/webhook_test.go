@@ -21,6 +21,17 @@ import (
 	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 )
 
+// setPlatformStatus populates the GitRepo status with the platform details that
+// reconcilePlatformInfo persists during a normal reconcile.
+func setPlatformStatus(gr *renovatev1beta1.GitRepo) {
+	gr.Status.Platform = "gitea"
+	gr.Status.PlatformEndpoint = "https://gitea.example.com/api/v1"
+	gr.Status.TokenSecretRef = &corev1.SecretKeySelector{
+		Name: "token-secret",
+		Key:  "token",
+	}
+}
+
 var _ = Describe("GitRepo Component - Webhook Logic", func() {
 	var (
 		ctx                context.Context
@@ -88,7 +99,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 		var err error
 
-		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, nil, instance, renovate, nil)
+		reconciler, err = NewReconciler(fakeClient, scheme, externalURL, nil, instance, renovate, nil, nil)
 		Expect(err).NotTo(HaveOccurred())
 
 		secretName, err = reconciler.webhookSecretName()
@@ -213,6 +224,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
 
 			instance.Status.WebhookID = "mock-id-123"
+			setPlatformStatus(instance)
 			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
 
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
@@ -243,6 +255,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
 
 			instance.Status.WebhookID = "123"
+			setPlatformStatus(instance)
 			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
 
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
@@ -270,6 +283,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
 
 			instance.Status.WebhookID = "123"
+			setPlatformStatus(instance)
 			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
 
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
@@ -303,7 +317,62 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
-			renovate.Spec.Platform.Token.SecretKeyRef = nil
+			reconciler.instance.Status.TokenSecretRef = nil
+			reconciler.renovate = nil
+
+			_, err := reconciler.deleteWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
+		})
+
+		It("should delete the webhook from status when the RenovateConfig is unavailable", func() {
+			instance.Status.WebhookID = "mock-id-123"
+			setPlatformStatus(instance)
+			instance.Finalizers = append(instance.Finalizers, renovatev1beta1.FinalizerGitRepoWebhook)
+			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+
+			instance.Status.WebhookID = "mock-id-123"
+			setPlatformStatus(instance)
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			reconciler.renovate = nil
+
+			mockMgr.On("DeleteWebhook", mock.Anything, "org/repo", "mock-id-123").
+				Return(nil).
+				Once()
+
+			_, err := reconciler.deleteWebhook(ctx)
+			Expect(err).NotTo(HaveOccurred())
+
+			updated := &renovatev1beta1.GitRepo{}
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
+			Expect(updated.Status.WebhookID).To(BeEmpty())
+		})
+
+		It("should fall back to the RenovateConfig spec when the status token secret is missing", func() {
+			instance.Status.WebhookID = "mock-id-123"
+			instance.Finalizers = append(instance.Finalizers, renovatev1beta1.FinalizerGitRepoWebhook)
+			Expect(fakeClient.Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), instance)).To(Succeed())
+
+			instance.Status.WebhookID = "mock-id-123"
+			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
+
+			Expect(fakeClient.Delete(ctx, instance)).To(Succeed())
+			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
+
+			mockMgr.On("DeleteWebhook", mock.Anything, "org/repo", "mock-id-123").
+				Return(nil).
+				Once()
 
 			_, err := reconciler.deleteWebhook(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -313,7 +382,6 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(updated.Status.WebhookID).To(BeEmpty())
 		})
 	})
-
 	Describe("disableWebhook", func() {
 		It("should be a no-op when there is no existing webhook to remove", func() {
 			_, err := reconciler.disableWebhook(ctx)
@@ -326,6 +394,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 
 		It("should remove the webhook from the provider and clear the status", func() {
 			instance.Status.WebhookID = "mock-id-123"
+			setPlatformStatus(instance)
 			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
@@ -357,7 +426,8 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())
 
-			renovate.Spec.Platform.Token.SecretKeyRef = nil
+			reconciler.instance.Status.TokenSecretRef = nil
+			reconciler.renovate = nil
 
 			_, err := reconciler.disableWebhook(ctx)
 			Expect(err).NotTo(HaveOccurred())
@@ -386,6 +456,7 @@ var _ = Describe("GitRepo Component - Webhook Logic", func() {
 					WebhookID: "mock-id-123",
 				},
 			}
+			setPlatformStatus(gr)
 
 			webhookSecret := &corev1.Secret{
 				Name:      secretName,

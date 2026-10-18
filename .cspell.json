@@ -95,7 +95,8 @@
     "PKCE",
     "missingkey",
     "Weblate",
-    "Retarget"
+    "Retarget",
+    "envconf"
   ],
   "ignorePaths": [
     ".woodpecker",
@@ -135,6 +136,7 @@
     // ignore colors
     "color: .*",
     ".*v1beta1.*",
+    ".*appsv1.*",
     ".*corev1.*",
     ".*rbacv1.*",
     ".*batchv1.*",

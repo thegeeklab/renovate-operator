@@ -55,17 +55,24 @@ func (r *Reconciler) reconcilePlatformInfo(ctx context.Context) (*ctrl.Result, e
 	}
 
 	platform := string(r.renovate.Spec.Platform.Type)
+	endpoint := r.renovate.Spec.Platform.Endpoint
+	tokenSecretRef := r.renovate.Spec.Platform.Token.SecretKeyRef
 
-	if r.instance.Status.Platform == platform && r.instance.Status.RepoURL == repoURL {
+	if r.instance.Status.Platform == platform &&
+		r.instance.Status.PlatformEndpoint == endpoint &&
+		r.instance.Status.RepoURL == repoURL &&
+		secretKeySelectorEqual(r.instance.Status.TokenSecretRef, tokenSecretRef) {
 		log.V(1).Info("Platform info already up to date")
 
 		return &ctrl.Result{}, nil
 	}
 
-	log.Info("Updating platform info", "platform", platform, "repoURL", repoURL)
+	log.Info("Updating platform info", "platform", platform, "endpoint", endpoint, "repoURL", repoURL)
 
 	patch := client.MergeFrom(r.instance.DeepCopy())
 	r.instance.Status.Platform = platform
+	r.instance.Status.PlatformEndpoint = endpoint
+	r.instance.Status.TokenSecretRef = tokenSecretRef
 	r.instance.Status.RepoURL = repoURL
 
 	if err := r.Status().Patch(ctx, r.instance, patch); err != nil && !api_errors.IsNotFound(err) {
@@ -73,4 +80,14 @@ func (r *Reconciler) reconcilePlatformInfo(ctx context.Context) (*ctrl.Result, e
 	}
 
 	return &ctrl.Result{}, nil
+}
+
+// secretKeySelectorEqual reports whether two SecretKeySelector references point
+// at the same secret key.
+func secretKeySelectorEqual(a, b *corev1.SecretKeySelector) bool {
+	if a == nil || b == nil {
+		return a == b
+	}
+
+	return a.Name == b.Name && a.Key == b.Key
 }

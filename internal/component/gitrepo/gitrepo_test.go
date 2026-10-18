@@ -59,7 +59,7 @@ var _ = Describe("GitRepo Component - Finalizer Logic", func() {
 
 		var err error
 
-		reconciler, err = NewReconciler(fakeClient, scheme, "https://renovate.example.com", nil, instance, renovate, nil)
+		reconciler, err = NewReconciler(fakeClient, scheme, "https://renovate.example.com", nil, instance, renovate, nil, nil)
 		Expect(err).NotTo(HaveOccurred())
 	})
 

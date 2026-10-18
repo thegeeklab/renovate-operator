@@ -12,6 +12,8 @@ AIR_PACKAGE_VERSION := v1.67.4
 HELM_DOCS_PACKAGE_VERSION := v1.14.2
 # renovate: datasource=docker depName=ghcr.io/helm-unittest/helm-unittest/unittest
 HELM_UNITTEST_VERSION := 1.2.1
+# renovate: datasource=docker depName=kindest/node
+KIND_NODE_IMAGE_VERSION := v1.37.0
 
 MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
 
@@ -32,6 +34,10 @@ FRONTEND_DEV ?= false
 
 # Kind Cluster Name
 KIND_CLUSTER ?= renovate-operator
+
+# Set E2E_SKIP_TEARDOWN=true to keep the Kind cluster and namespace after
+# 'make test-e2e' for debugging.
+E2E_SKIP_TEARDOWN ?=
 
 GO ?= go
 SOURCES ?= $(shell find . -name "*.go" -type f ! -path "*/mocks/*" ! -name "*_templ.go")
@@ -186,8 +192,7 @@ kind-delete: ## Delete the Kind cluster.
 .PHONY: test-e2e
 test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
 	$(call check-kind-installed)
-	$(call check-kind-cluster-running)
-	$(GO) test ./test/e2e/ -v -ginkgo.v
+	KIND_NODE_IMAGE="kindest/node:$(KIND_NODE_IMAGE_VERSION)" E2E_SKIP_TEARDOWN="$(E2E_SKIP_TEARDOWN)" $(GO) test ./test/e2e/ -v -count=1
 
 .PHONY: golangci-lint
 golangci-lint: golangci-lint-bin ## Run golangci-lint.

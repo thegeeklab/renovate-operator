@@ -12,6 +12,7 @@ import (
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
+	"sigs.k8s.io/controller-runtime/pkg/controller/controllerutil"
 	"sigs.k8s.io/controller-runtime/pkg/reconcile"
 )
 
@@ -144,6 +145,48 @@ var _ = Describe("GitRepo Controller", func() {
 		})
 		Expect(err).NotTo(HaveOccurred())
 		Expect(result).To(Equal(reconcile.Result{}))
+	})
+
+	It("removes the finalizers on deletion without a RenovateConfig", func() {
+		const name = "test-gitrepo-deleting"
+
+		key := types.NamespacedName{Name: name, Namespace: "default"}
+
+		resource := &renovatev1beta1.GitRepo{
+			Name:      name,
+			Namespace: "default",
+			Spec: renovatev1beta1.GitRepoSpec{
+				Name: "org/repo",
+			},
+		}
+		controllerutil.AddFinalizer(resource, renovatev1beta1.FinalizerGitRepoWebhook)
+		controllerutil.AddFinalizer(resource, renovatev1beta1.FinalizerMetricsCleanup)
+		Expect(k8sClient.Create(ctx, resource)).To(Succeed())
+
+		DeferCleanup(func() {
+			got := &renovatev1beta1.GitRepo{}
+			if err := k8sClient.Get(ctx, key, got); err == nil {
+				controllerutil.RemoveFinalizer(got, renovatev1beta1.FinalizerGitRepoWebhook)
+				controllerutil.RemoveFinalizer(got, renovatev1beta1.FinalizerMetricsCleanup)
+				_ = k8sClient.Update(ctx, got)
+
+				_ = k8sClient.Delete(ctx, got)
+			}
+		})
+
+		Expect(k8sClient.Delete(ctx, resource)).To(Succeed())
+
+		result, err := reconciler.Reconcile(ctx, reconcile.Request{NamespacedName: key})
+		Expect(err).NotTo(HaveOccurred())
+		Expect(result).To(Equal(reconcile.Result{}))
+
+		got := &renovatev1beta1.GitRepo{}
+		if getErr := k8sClient.Get(ctx, key, got); getErr == nil {
+			Expect(controllerutil.ContainsFinalizer(got, renovatev1beta1.FinalizerGitRepoWebhook)).To(BeFalse())
+			Expect(controllerutil.ContainsFinalizer(got, renovatev1beta1.FinalizerMetricsCleanup)).To(BeFalse())
+		} else {
+			Expect(api_errors.IsNotFound(getErr)).To(BeTrue())
+		}
 	})
 })
 

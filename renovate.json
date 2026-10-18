@@ -1,11 +1,21 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["github>thegeeklab/renovate-presets:golang"],
+  "customManagers": [
+    {
+      "description": "Track the kindest/node image in hack/kind.yaml",
+      "customType": "regex",
+      "managerFilePatterns": ["/^hack/kind\\.yaml$/"],
+      "matchStrings": ["image: kindest/node:(?<currentValue>v\\d+\\.\\d+\\.\\d+)"],
+      "datasourceTemplate": "docker",
+      "depNameTemplate": "kindest/node"
+    }
+  ],
   "packageRules": [
     {
       "groupName": "kubernetes packages",
-      "matchDatasources": ["go"],
-      "matchPackageNames": ["/^k8s\\.io\\//", "sigs.k8s.io/controller-runtime"]
+      "matchDatasources": ["go", "docker"],
+      "matchDepNames": ["/^k8s\\.io\\//", "sigs.k8s.io/controller-runtime", "kindest/node"]
     },
     {
       "groupName": "opentelemetry packages",

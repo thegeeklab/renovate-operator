@@ -64,6 +64,10 @@ func NewReconciler(
 }
 
 func (r *Reconciler) Reconcile(ctx context.Context) (*ctrl.Result, error) {
+	if !r.instance.DeletionTimestamp.IsZero() {
+		return r.reconcileMetrics(ctx)
+	}
+
 	results := &reconciler.Results{}
 
 	reconcileFuncs := []func(context.Context) (*ctrl.Result, error){

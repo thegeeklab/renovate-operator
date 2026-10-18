@@ -450,7 +450,9 @@ func setupMetricsCertRotation(mgr manager.Manager, cfg Config) error {
 }
 
 // setupWebhooks configures webhook certificate rotation if enabled and registers
-// webhook handlers once the webhook certificate is ready.
+// webhook handlers. When cert rotation is enabled, handlers are registered after
+// the CA bundle is injected. When cert rotation is disabled, handlers are
+// registered synchronously before the manager starts.
 func setupWebhooks(mgr manager.Manager, cfg Config) error {
 	if os.Getenv("ENABLE_WEBHOOKS") == "false" {
 		return nil
@@ -460,85 +462,94 @@ func setupWebhooks(mgr manager.Manager, cfg Config) error {
 		return err
 	}
 
-	var webhookReady chan struct{}
-
 	if cfg.WebhookCertRotation {
-		setupLog.Info("Setting up webhook cert rotation")
+		return setupWebhooksWithCertRotation(mgr, cfg)
+	}
 
-		webhooks := []rotator.WebhookInfo{
-			{
-				Name: cfg.WebhookName,
-				Type: rotator.Mutating,
-			},
-			{
-				Name: cfg.WebhookName,
-				Type: rotator.Validating,
-			},
-		}
+	setupLog.Info("Skipping webhook cert rotation, registering handlers synchronously")
 
-		if err := waitForWebhooks(mgr.GetAPIReader(), webhooks); err != nil {
-			return fmt.Errorf("unable to find required WebhookConfiguration %s: %w", cfg.WebhookName, err)
-		}
+	if err := verifyCertFiles(cfg.WebhookCertPath, "webhook"); err != nil {
+		return err
+	}
 
-		webhookReady = make(chan struct{})
+	return registerWebhookHandlers(mgr)
+}
 
-		if err := rotator.AddRotator(mgr, &rotator.CertRotator{
-			SecretKey: types.NamespacedName{
-				Namespace: k8s.GetNamespace(),
-				Name:      cfg.WebhookSecretName,
-			},
-			CertDir:        cfg.WebhookCertPath,
-			CAName:         webhookCAName,
-			CAOrganization: webhookCAOrganization,
-			DNSName:        fmt.Sprintf("%s.%s.svc", cfg.WebhookServiceName, k8s.GetNamespace()),
-			ControllerName: webhookCertRotatorName,
-			IsReady:        webhookReady,
-			Webhooks:       webhooks,
-		}); err != nil {
-			return fmt.Errorf("unable to set up webhook cert rotation: %w", err)
-		}
+// setupWebhooksWithCertRotation configures cert rotation and registers handlers
+// after the CA bundle is injected.
+func setupWebhooksWithCertRotation(mgr manager.Manager, cfg Config) error {
+	setupLog.Info("Setting up webhook cert rotation")
+
+	webhooks := []rotator.WebhookInfo{
+		{
+			Name: cfg.WebhookName,
+			Type: rotator.Mutating,
+		},
+		{
+			Name: cfg.WebhookName,
+			Type: rotator.Validating,
+		},
+	}
+
+	if err := waitForWebhooks(mgr.GetAPIReader(), webhooks); err != nil {
+		return fmt.Errorf("unable to find required WebhookConfiguration %s: %w", cfg.WebhookName, err)
+	}
+
+	webhookReady := make(chan struct{})
+
+	if err := rotator.AddRotator(mgr, &rotator.CertRotator{
+		SecretKey: types.NamespacedName{
+			Namespace: k8s.GetNamespace(),
+			Name:      cfg.WebhookSecretName,
+		},
+		CertDir:        cfg.WebhookCertPath,
+		CAName:         webhookCAName,
+		CAOrganization: webhookCAOrganization,
+		DNSName:        fmt.Sprintf("%s.%s.svc", cfg.WebhookServiceName, k8s.GetNamespace()),
+		ControllerName: webhookCertRotatorName,
+		IsReady:        webhookReady,
+		Webhooks:       webhooks,
+	}); err != nil {
+		return fmt.Errorf("unable to set up webhook cert rotation: %w", err)
 	}
 
 	return mgr.Add(manager.RunnableFunc(func(ctx context.Context) error {
-		if cfg.WebhookCertRotation {
-			setupLog.Info("Waiting for webhook certificate to be ready before registering handlers")
+		setupLog.Info("Waiting for webhook certificate to be ready before registering handlers")
 
-			select {
-			case <-webhookReady:
-				setupLog.Info("Webhook certificate ready, registering handlers")
-			case <-ctx.Done():
-				setupLog.Info("Manager shutting down, aborting webhook setup")
+		select {
+		case <-webhookReady:
+			setupLog.Info("Webhook certificate ready, registering handlers")
+		case <-ctx.Done():
+			setupLog.Info("Manager shutting down, aborting webhook setup")
 
-				return ctx.Err()
-			}
-		} else {
-			setupLog.Info("Skipping cert rotation, setting up webhook")
-
-			if err := verifyCertFiles(cfg.WebhookCertPath, "webhook"); err != nil {
-				return err
-			}
+			return ctx.Err()
 		}
 
-		setupLog.Info("Registering webhook handlers")
-
-		if err := webhookrenovatev1beta1.SetupRenovatorWebhookWithManager(mgr); err != nil {
-			return fmt.Errorf("unable to create webhook %s: %w", renovator.ControllerName, err)
-		}
-
-		if err := webhookrenovatev1beta1.SetupRenovateConfigWebhookWithManager(mgr); err != nil {
-			return fmt.Errorf("unable to create webhook RenovateConfig: %w", err)
-		}
-
-		if err := webhookrenovatev1beta1.SetupDiscoveryWebhookWithManager(mgr); err != nil {
-			return fmt.Errorf("unable to create webhook Discovery: %w", err)
-		}
-
-		if err := webhookrenovatev1beta1.SetupRunnerWebhookWithManager(mgr); err != nil {
-			return fmt.Errorf("unable to create webhook Runner: %w", err)
-		}
-
-		return nil
+		return registerWebhookHandlers(mgr)
 	}))
+}
+
+// registerWebhookHandlers registers all webhook handlers with the manager.
+func registerWebhookHandlers(mgr manager.Manager) error {
+	setupLog.Info("Registering webhook handlers")
+
+	if err := webhookrenovatev1beta1.SetupRenovatorWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("unable to create webhook %s: %w", renovator.ControllerName, err)
+	}
+
+	if err := webhookrenovatev1beta1.SetupRenovateConfigWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("unable to create webhook RenovateConfig: %w", err)
+	}
+
+	if err := webhookrenovatev1beta1.SetupDiscoveryWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("unable to create webhook Discovery: %w", err)
+	}
+
+	if err := webhookrenovatev1beta1.SetupRunnerWebhookWithManager(mgr); err != nil {
+		return fmt.Errorf("unable to create webhook Runner: %w", err)
+	}
+
+	return nil
 }
 
 // setupHTTPServers registers the web frontend and event receiver HTTP servers.

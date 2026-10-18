@@ -78,6 +78,7 @@ const (
 	ReasonPrivilegedRestricted   = "PrivilegedRestricted"
 	ReasonEmptyDiscoveryResult   = "EmptyDiscoveryResult"
 	ReasonInvalidDiscoveryResult = "InvalidDiscoveryResult"
+	ReasonWebhookCleanupSkipped  = "WebhookCleanupSkipped"
 
 	// Event action constants.
 	EventActionReconciling = "Reconciling"
