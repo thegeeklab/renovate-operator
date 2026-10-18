@@ -9,6 +9,7 @@
 | Full build         | `make build`                 |
 | All tests          | `make test`                  |
 | Single test        | `make test FOCUS="TestName"` |
+| E2E tests          | `make test-e2e`              |
 | Lint all           | `make lint`                  |
 | Generate code      | `make generate`              |
 | Generate CRDs/RBAC | `make manifests`             |
@@ -42,6 +43,7 @@
 - `make test` — all unit tests (envtest, excludes e2e)
 - `make test FOCUS="TestName"` — single test
 - `make test SKIP="TestName"` — skip test
+- `make test-e2e` — end-to-end tests (creates Kind cluster automatically)
 - `make helm-test` — Helm unit tests
 - `go test -race ./...` — race detector (only non-envtest packages)
 
@@ -238,7 +240,7 @@ Do not write production code before its test. Do not write multiple tests before
 | ---------------------- | ---------------------------------- | ---------------------------------------------- |
 | Component unit         | `fake.NewClientBuilder()` + Ginkgo | Reconciler logic, status updates, job creation |
 | Controller integration | envtest (via `make test`)          | Full reconciliation loops, webhook interaction |
-| E2E                    | Kind cluster                       | **Do not run** — not yet implemented           |
+| E2E                    | Kind cluster                       | Webhook TLS, admission, full deployment        |
 
 Component unit tests preferred for `internal/component/`. Only use envtest when controller predicate integration must be verified.
 
@@ -301,7 +303,8 @@ Component unit tests preferred for `internal/component/`. Only use envtest when 
 
 Woodpecker CI pipelines in `.woodpecker/`:
 
-- `test.yaml` — `make test-ci` (manifests, generate, fmt, vet, test)
+- `test.yaml` — `make test` (manifests, generate-backend, fmt, vet, test)
+- `test-e2e.yaml` — `make test-e2e` (end-to-end tests with k3d cluster)
 - `static.yaml` — linting (golangci-lint, eslint, typecheck, yamlfmt, cspell)
 - `build-container.yaml` — multi-arch container build
 - `build-package.yaml` — release packaging

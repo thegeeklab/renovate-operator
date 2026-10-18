@@ -29,9 +29,7 @@ services:
       - |
         docker build -t docker.io/thegeeklab/renovate-operator:e2e \
           -f Containerfile.multiarch .
-      - k3d image import \
-          docker.io/thegeeklab/renovate-operator:e2e \
-          --name renovate-operator
+      - k3d image import \ docker.io/thegeeklab/renovate-operator:e2e \ --name renovate-operator
       - kubectl get pods -Aw
       - printf '@@@@@@@@@@@@@@@@@@@@@@@\n@@@@ k3d is ready @@@@\n@@@@@@@@@@@@@@@@@@@@@@@\n'
 

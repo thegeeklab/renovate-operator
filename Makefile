@@ -164,9 +164,6 @@ yamlfmt-lint: yamlfmt-bin
 test: setup-envtest gotestsum ## Run tests without setup.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GOTESTSUM_BIN) $(GOTEST_FLAGS) $$($(GO) list ./... | grep -v /e2e) $(GINKGO_FLAGS)
 
-.PHONY: test-ci
-test-ci: manifests generate fmt vet test ## Run tests with full setup.
-
 .PHONY: kind-create
 kind-create: ## Create a Kind cluster.
 	$(call check-kind-installed)
@@ -190,7 +187,7 @@ kind-delete: ## Delete the Kind cluster.
 	} || echo "No Kind cluster named $(KIND_CLUSTER) exists."
 
 .PHONY: test-e2e
-test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
+test-e2e: ## Run the e2e tests. Expected an isolated environment using Kind.
 	$(call check-kind-installed)
 	KIND_NODE_IMAGE="kindest/node:$(KIND_NODE_IMAGE_VERSION)" E2E_SKIP_TEARDOWN="$(E2E_SKIP_TEARDOWN)" $(GO) test ./test/e2e/ -v -count=1 -timeout 10m
 
