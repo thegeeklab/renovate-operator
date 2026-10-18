@@ -188,7 +188,9 @@ kind-delete: ## Delete the Kind cluster.
 
 .PHONY: test-e2e
 test-e2e: ## Run the e2e tests. Expected an isolated environment using Kind.
+ifndef KUBECONFIG
 	$(call check-kind-installed)
+endif
 	KIND_NODE_IMAGE="kindest/node:$(KIND_NODE_IMAGE_VERSION)" E2E_SKIP_TEARDOWN="$(E2E_SKIP_TEARDOWN)" $(GO) test ./test/e2e/ -v -count=1 -timeout 10m
 
 .PHONY: golangci-lint
