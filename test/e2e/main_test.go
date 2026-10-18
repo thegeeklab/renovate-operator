@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"os"
 	"os/signal"
+	"sync"
 	"testing"
 
 	utilruntime "k8s.io/apimachinery/pkg/util/runtime"
@@ -37,6 +38,7 @@ var (
 	clusterName   string
 	finishFuncs   []env.Func
 	testCfg       *envconf.Config
+	cleanupOnce   sync.Once
 )
 
 func init() {
@@ -47,18 +49,19 @@ func init() {
 // This is called both by the e2e framework on normal completion and by
 // the signal handler on interrupt.
 func runCleanup() {
-	if testCfg == nil {
-		return
-	}
-
-	ctx := context.Background()
-
-	for _, fn := range finishFuncs {
-		if _, err := fn(ctx, testCfg); err != nil {
-			// Log error but continue cleanup
-			os.Stderr.WriteString("cleanup error: " + err.Error() + "\n")
+	cleanupOnce.Do(func() {
+		if testCfg == nil {
+			return
 		}
-	}
+
+		ctx := context.Background()
+
+		for _, fn := range finishFuncs {
+			if _, err := fn(ctx, testCfg); err != nil {
+				os.Stderr.WriteString("cleanup error: " + err.Error() + "\n")
+			}
+		}
+	})
 }
 
 // TestMain assembles the test environment: it creates the Kind cluster, builds
