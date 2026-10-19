@@ -52,25 +52,28 @@ steps:
         from_secret: s3_secret_access_key_cache
     when: *when_e2e
 
-  - name: e2e
+  - name: build-e2e
     image: docker.io/library/golang:1.27.2
-    depends_on: [restore-go-cache]
     environment:
       GOCACHE: /woodpecker/cache/go/build
       GOMODCACHE: /woodpecker/cache/go/mod
       GOWORK: "off"
+    commands:
+      - make test-e2e-build
+    when: *when_e2e
+
+  - name: e2e
+    image: quay.io/thegeeklab/kube-tools
+    environment:
       E2E_IMAGE: docker.io/thegeeklab/renovate-operator:e2e
     commands:
-      - export KUBECONFIG="$$CI_WORKSPACE/kubeconfig.yaml"
-      - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
-      - install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
       - for i in $(seq 1 120); do [ -f .k3d-ready ] && break; [ $$i -eq 120 ] && exit 1; sleep 5; done
-      - make test-e2e
+      - export KUBECONFIG="$$CI_WORKSPACE/kubeconfig.yaml"
+      - make test-e2e-run
     when: *when_e2e
 
   - name: save-go-cache
     image: quay.io/thegeeklab/wp-s3-action
-    depends_on: [e2e]
     settings:
       action: [upload]
       archive: True

@@ -187,11 +187,18 @@ kind-delete: ## Delete the Kind cluster.
 	} || echo "No Kind cluster named $(KIND_CLUSTER) exists."
 
 .PHONY: test-e2e
-test-e2e: ## Run the e2e tests. Expected an isolated environment using Kind.
+test-e2e: test-e2e-build test-e2e-run ## Run the e2e tests.
+
+.PHONY: test-e2e-build
+test-e2e-build: ## Compile the e2e test binary without running it.
+	CGO_ENABLED=0 $(GO) test -c -o bin/e2e.test ./test/e2e/
+
+.PHONY: test-e2e-run
+test-e2e-run: ## Run the compiled e2e test binary (creates a Kind cluster unless KUBECONFIG is set).
 ifndef KUBECONFIG
 	$(call check-kind-installed)
 endif
-	KIND_NODE_IMAGE="kindest/node:$(KIND_NODE_IMAGE_VERSION)" E2E_SKIP_TEARDOWN="$(E2E_SKIP_TEARDOWN)" $(GO) test ./test/e2e/ -v -count=1 -timeout 10m $(if $(KUBECONFIG),-kubeconfig "$(KUBECONFIG)")
+	KIND_NODE_IMAGE="kindest/node:$(KIND_NODE_IMAGE_VERSION)" E2E_SKIP_TEARDOWN="$(E2E_SKIP_TEARDOWN)" ./bin/e2e.test -test.v -test.timeout 10m $(if $(KUBECONFIG),-kubeconfig "$(KUBECONFIG)")
 
 .PHONY: golangci-lint
 golangci-lint: golangci-lint-bin ## Run golangci-lint.
