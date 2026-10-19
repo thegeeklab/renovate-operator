@@ -26,8 +26,8 @@ services:
       - k3d cluster create renovate-operator --api-port k3d:6445
       - k3d kubeconfig get renovate-operator > kubeconfig.yaml
       - chmod 0600 kubeconfig.yaml
-      - docker build -t docker.io/thegeeklab/renovate-operator:e2e -f Containerfile.multiarch .
-      - k3d image import docker.io/thegeeklab/renovate-operator:e2e --cluster renovate-operator
+      # - docker build -t docker.io/thegeeklab/renovate-operator:e2e -f Containerfile.multiarch .
+      # - k3d image import docker.io/thegeeklab/renovate-operator:e2e --cluster renovate-operator
       - for i in $(seq 1 90); do kubectl get --raw=/readyz 2>&1 >/dev/null && break; [ $$i -eq 90 ] && exit 1; sleep 2; done
       - kubectl wait --for=condition=Ready nodes --all --timeout=120s
       - touch .k3d-ready
@@ -65,6 +65,9 @@ steps:
       - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
       - install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
       - for i in $(seq 1 120); do [ -f .k3d-ready ] && break; [ $$i -eq 120 ] && exit 1; sleep 5; done
+      - pwd
+      - ls -la
+      - sleep 500
       - make test-e2e
     when: *when_e2e
 
