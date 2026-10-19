@@ -59,17 +59,12 @@ steps:
       GOCACHE: /woodpecker/cache/go/build
       GOMODCACHE: /woodpecker/cache/go/mod
       GOWORK: "off"
-      KUBECONFIG: ${CI_WORKSPACE}/kubeconfig.yaml
       E2E_IMAGE: docker.io/thegeeklab/renovate-operator:e2e
     commands:
+      - export KUBECONFIG="$$CI_WORKSPACE/kubeconfig.yaml"
       - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
       - install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
       - for i in $(seq 1 120); do [ -f .k3d-ready ] && break; [ $$i -eq 120 ] && exit 1; sleep 5; done
-      - pwd
-      - ls -la
-      - echo $$KUBECONFIG
-      - ls -l $$KUBECONFIG
-      - kubectl get nodes
       - make test-e2e
     when: *when_e2e
 
