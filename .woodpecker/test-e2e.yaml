@@ -67,6 +67,9 @@ steps:
       - for i in $(seq 1 120); do [ -f .k3d-ready ] && break; [ $$i -eq 120 ] && exit 1; sleep 5; done
       - pwd
       - ls -la
+      - echo $$KUBECONFIG
+      - ls -l $$KUBECONFIG
+      - kubectl get nodes
       - sleep 500
       - make test-e2e
     when: *when_e2e
