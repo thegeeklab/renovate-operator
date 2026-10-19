@@ -26,6 +26,8 @@ services:
       - k3d cluster create renovate-operator --api-port k3d:6445
       - k3d kubeconfig get renovate-operator > kubeconfig.yaml
       - chmod 0600 kubeconfig.yaml
+      - pwd
+      - ls -la
       - docker build -t docker.io/thegeeklab/renovate-operator:e2e -f Containerfile.multiarch .
       - k3d image import docker.io/thegeeklab/renovate-operator:e2e --cluster renovate-operator
       - for i in $(seq 1 90); do kubectl get --raw=/readyz 2>&1 >/dev/null && break; [ $$i -eq 90 ] && exit 1; sleep 2; done
@@ -61,6 +63,8 @@ steps:
       KUBECONFIG: kubeconfig.yaml
       E2E_IMAGE: docker.io/thegeeklab/renovate-operator:e2e
     commands:
+      - pwd
+      - ls -la
       - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
       - install -o root -g root -m 0755 kubectl /usr/local/bin/kubectl
       - for i in $(seq 1 120); do [ -f .k3d-ready ] && break; [ $$i -eq 120 ] && exit 1; sleep 5; done
