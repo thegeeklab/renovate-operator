@@ -70,7 +70,6 @@ steps:
       - echo $$KUBECONFIG
       - ls -l $$KUBECONFIG
       - kubectl get nodes
-      - sleep 500
       - make test-e2e
     when: *when_e2e
 
