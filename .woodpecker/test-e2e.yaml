@@ -59,7 +59,7 @@ steps:
       GOCACHE: /woodpecker/cache/go/build
       GOMODCACHE: /woodpecker/cache/go/mod
       GOWORK: "off"
-      KUBECONFIG: kubeconfig.yaml
+      KUBECONFIG: ${CI_WORKSPACE}/kubeconfig.yaml
       E2E_IMAGE: docker.io/thegeeklab/renovate-operator:e2e
     commands:
       - curl -LO "https://dl.k8s.io/release/$(curl -L -s https://dl.k8s.io/release/stable.txt)/bin/linux/amd64/kubectl"
