@@ -5,9 +5,13 @@ tests:
   - it: should render webhook configuration by default
     asserts:
       - hasDocuments:
-          count: 1
+          count: 2
       - isKind:
           of: MutatingWebhookConfiguration
+        documentIndex: 0
+      - isKind:
+          of: ValidatingWebhookConfiguration
+        documentIndex: 1
 
   - it: should not render webhook configuration when disabled
     set:

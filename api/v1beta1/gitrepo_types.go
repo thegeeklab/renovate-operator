@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	corev1 "k8s.io/api/core/v1"
 	api_meta "k8s.io/apimachinery/pkg/api/meta"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -50,6 +51,18 @@ type GitRepoStatus struct {
 	// This field is managed by the operator and should not be set manually.
 	// +kubebuilder:validation:Optional
 	Platform string `json:"platform,omitempty"`
+
+	// PlatformEndpoint is the Git provider API endpoint.
+	// This field is managed by the operator and should not be set manually.
+	// +kubebuilder:validation:Optional
+	PlatformEndpoint string `json:"platformEndpoint,omitempty"`
+
+	// TokenSecretRef references the Secret holding the platform API token. It
+	// is persisted so webhook cleanup can proceed even after the RenovateConfig
+	// has been removed.
+	// This field is managed by the operator and should not be set manually.
+	// +kubebuilder:validation:Optional
+	TokenSecretRef *corev1.SecretKeySelector `json:"tokenSecretRef,omitempty"`
 
 	// RepoURL is the web-accessible URL for the repository.
 	// This field is managed by the operator and should not be set manually.

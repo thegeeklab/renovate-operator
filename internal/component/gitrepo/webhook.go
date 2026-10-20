@@ -7,6 +7,7 @@ import (
 	"strings"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"github.com/thegeeklab/renovate-operator/internal/controller"
 	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/pkg/util/k8s"
 	corev1 "k8s.io/api/core/v1"
@@ -126,8 +127,20 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 		return &ctrl.Result{}, nil
 	}
 
-	if r.renovate.Spec.Platform.Token.SecretKeyRef == nil {
-		log.Info("Platform token secret not configured, skipping remote webhook cleanup")
+	platform, endpoint, tokenSecretRef := r.cleanupPlatformConfig()
+
+	if tokenSecretRef == nil {
+		log.Info("Platform token secret not configured, skipping remote webhook cleanup",
+			"webhookID", r.instance.Status.WebhookID)
+
+		controller.Eventf(
+			r.eventRecorder, r.instance,
+			renovatev1beta1.EventTypeWarning,
+			renovatev1beta1.ReasonWebhookCleanupSkipped,
+			renovatev1beta1.EventActionReconciling,
+			"Platform token secret not configured; skipping remote webhook cleanup and leaving webhook %q on the provider",
+			r.instance.Status.WebhookID,
+		)
 
 		if err := r.clearWebhookIDStatus(ctx); err != nil {
 			return &ctrl.Result{}, err
@@ -138,16 +151,16 @@ func (r *Reconciler) deleteWebhook(ctx context.Context) (*ctrl.Result, error) {
 
 	secret := &corev1.Secret{}
 	if err := r.Get(ctx, client.ObjectKey{
-		Name:      r.renovate.Spec.Platform.Token.SecretKeyRef.Name,
+		Name:      tokenSecretRef.Name,
 		Namespace: r.instance.Namespace,
 	}, secret); err != nil {
 		return &ctrl.Result{}, fmt.Errorf("failed to get platform token secret: %w", err)
 	}
 
 	platformConfig := factory.PlatformConfig{
-		Type:     string(r.renovate.Spec.Platform.Type),
-		Endpoint: r.renovate.Spec.Platform.Endpoint,
-		Token:    string(secret.Data[r.renovate.Spec.Platform.Token.SecretKeyRef.Key]),
+		Type:     platform,
+		Endpoint: endpoint,
+		Token:    string(secret.Data[tokenSecretRef.Key]),
 	}
 
 	providerManager, err := r.providerFactory(ctx, platformConfig)
@@ -191,6 +204,40 @@ func (r *Reconciler) clearWebhookIDStatus(ctx context.Context) error {
 	}
 
 	return nil
+}
+
+// cleanupPlatformConfig resolves the platform details required to delete the
+// remote webhook. It prefers the values persisted on the GitRepo status and
+// falls back to the RenovateConfig spec when the status has not been populated
+// yet, which happens for resources created before the status fields existed or
+// when the config is resolved one last time during finalization.
+//
+// TODO: Remove the RenovateConfig spec fallback once all pre-existing GitRepos
+// have migrated and their status carries the platform details. This fallback is
+// a transitional migration shim; status is intended to be the sole source of
+// truth for cleanup.
+func (r *Reconciler) cleanupPlatformConfig() (string, string, *corev1.SecretKeySelector) {
+	platform := r.instance.Status.Platform
+	endpoint := r.instance.Status.PlatformEndpoint
+	tokenSecretRef := r.instance.Status.TokenSecretRef
+
+	if r.renovate == nil {
+		return platform, endpoint, tokenSecretRef
+	}
+
+	if platform == "" {
+		platform = string(r.renovate.Spec.Platform.Type)
+	}
+
+	if endpoint == "" {
+		endpoint = r.renovate.Spec.Platform.Endpoint
+	}
+
+	if tokenSecretRef == nil {
+		tokenSecretRef = r.renovate.Spec.Platform.Token.SecretKeyRef
+	}
+
+	return platform, endpoint, tokenSecretRef
 }
 
 // disableWebhook removes any existing managed webhook and clears the status

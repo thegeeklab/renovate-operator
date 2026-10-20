@@ -87,3 +87,5 @@ depends_on:
     optional: true
   - name: test
     optional: true
+  - name: test-e2e
+    optional: true

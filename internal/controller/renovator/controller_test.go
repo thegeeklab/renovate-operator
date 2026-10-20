@@ -11,6 +11,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/component/renovator"
 	corev1 "k8s.io/api/core/v1"
 	api_errors "k8s.io/apimachinery/pkg/api/errors"
+	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/types"
 	"k8s.io/client-go/tools/events"
 	"sigs.k8s.io/controller-runtime/pkg/client"
@@ -102,6 +103,42 @@ var _ = Describe("Renovator Controller", func() {
 
 			resource := &renovatev1beta1.Renovator{}
 			Expect(k8sClient.Get(ctx, typeNamespacedName, resource)).To(Succeed())
+		})
+
+		It("should create owned child resources and mark ready", func() {
+			By("Reconciling the created resource")
+
+			controllerReconciler := &Reconciler{
+				Client:        k8sClient,
+				Scheme:        k8sClient.Scheme(),
+				EventRecorder: &events.FakeRecorder{},
+			}
+
+			_, err := controllerReconciler.Reconcile(ctx, reconcile.Request{
+				NamespacedName: typeNamespacedName,
+			})
+			Expect(err).NotTo(HaveOccurred())
+
+			By("Verifying child resources are created and owned by the Renovator")
+
+			renovator := &renovatev1beta1.Renovator{}
+			Expect(k8sClient.Get(ctx, typeNamespacedName, renovator)).To(Succeed())
+
+			for _, child := range []client.Object{
+				&renovatev1beta1.RenovateConfig{},
+				&renovatev1beta1.Discovery{},
+				&renovatev1beta1.Runner{},
+			} {
+				Expect(k8sClient.Get(ctx, typeNamespacedName, child)).To(Succeed())
+				Expect(metav1.IsControlledBy(child, renovator)).To(BeTrue(),
+					"child %T should be controlled by the Renovator", child)
+			}
+
+			By("Verifying the Ready condition is set to True")
+
+			ready := renovator.GetCondition(renovatev1beta1.ConditionReady)
+			Expect(ready).NotTo(BeNil())
+			Expect(ready.Status).To(Equal(metav1.ConditionTrue))
 		})
 
 		It("should handle non-existent resource gracefully", func() {

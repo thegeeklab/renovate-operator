@@ -9,6 +9,7 @@ import (
 	"github.com/thegeeklab/renovate-operator/internal/provider/factory"
 	"github.com/thegeeklab/renovate-operator/pkg/util/reconciler"
 	"k8s.io/apimachinery/pkg/runtime"
+	"k8s.io/client-go/tools/events"
 	ctrl "sigs.k8s.io/controller-runtime"
 	"sigs.k8s.io/controller-runtime/pkg/client"
 )
@@ -23,6 +24,7 @@ type Reconciler struct {
 	renovate        *renovatev1beta1.RenovateConfig
 	providerFactory factory.ProviderFactory
 	metrics         metrics.Recorder
+	eventRecorder   events.EventRecorder
 }
 
 func NewReconciler(
@@ -33,6 +35,7 @@ func NewReconciler(
 	instance *renovatev1beta1.GitRepo,
 	renovate *renovatev1beta1.RenovateConfig,
 	metricsRecorder metrics.Recorder,
+	eventRecorder events.EventRecorder,
 ) (*Reconciler, error) {
 	return &Reconciler{
 		Client:          c,
@@ -44,6 +47,7 @@ func NewReconciler(
 		renovate:        renovate,
 		providerFactory: factory.DefaultProviderFactory,
 		metrics:         metricsRecorder,
+		eventRecorder:   eventRecorder,
 	}, nil
 }
 

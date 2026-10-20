@@ -12,6 +12,8 @@ AIR_PACKAGE_VERSION := v1.67.4
 HELM_DOCS_PACKAGE_VERSION := v1.14.2
 # renovate: datasource=docker depName=ghcr.io/helm-unittest/helm-unittest/unittest
 HELM_UNITTEST_VERSION := 1.2.1
+# renovate: datasource=docker depName=kindest/node
+KIND_NODE_IMAGE_VERSION := v1.37.0
 
 MOCKERY_PACKAGE ?= github.com/vektra/mockery/v3@latest
 
@@ -32,6 +34,10 @@ FRONTEND_DEV ?= false
 
 # Kind Cluster Name
 KIND_CLUSTER ?= renovate-operator
+
+# Set E2E_SKIP_TEARDOWN=true to keep the Kind cluster and namespace after
+# 'make test-e2e' for debugging.
+E2E_SKIP_TEARDOWN ?=
 
 GO ?= go
 SOURCES ?= $(shell find . -name "*.go" -type f ! -path "*/mocks/*" ! -name "*_templ.go")
@@ -158,9 +164,6 @@ yamlfmt-lint: yamlfmt-bin
 test: setup-envtest gotestsum ## Run tests without setup.
 	KUBEBUILDER_ASSETS="$(shell $(ENVTEST) use $(ENVTEST_K8S_VERSION) --bin-dir $(LOCALBIN) -p path)" $(GOTESTSUM_BIN) $(GOTEST_FLAGS) $$($(GO) list ./... | grep -v /e2e) $(GINKGO_FLAGS)
 
-.PHONY: test-ci
-test-ci: manifests generate fmt vet test ## Run tests with full setup.
-
 .PHONY: kind-create
 kind-create: ## Create a Kind cluster.
 	$(call check-kind-installed)
@@ -184,10 +187,18 @@ kind-delete: ## Delete the Kind cluster.
 	} || echo "No Kind cluster named $(KIND_CLUSTER) exists."
 
 .PHONY: test-e2e
-test-e2e: manifests generate fmt vet ## Run the e2e tests. Expected an isolated environment using Kind.
+test-e2e: test-e2e-build test-e2e-run ## Run the e2e tests.
+
+.PHONY: test-e2e-build
+test-e2e-build: ## Compile the e2e test binary without running it.
+	CGO_ENABLED=0 $(GO) test -c -o bin/e2e.test ./test/e2e/
+
+.PHONY: test-e2e-run
+test-e2e-run: ## Run the compiled e2e test binary (creates a Kind cluster unless KUBECONFIG is set).
+ifndef KUBECONFIG
 	$(call check-kind-installed)
-	$(call check-kind-cluster-running)
-	$(GO) test ./test/e2e/ -v -ginkgo.v
+endif
+	KIND_NODE_IMAGE="kindest/node:$(KIND_NODE_IMAGE_VERSION)" E2E_SKIP_TEARDOWN="$(E2E_SKIP_TEARDOWN)" ./bin/e2e.test -test.v -test.timeout 10m $(if $(KUBECONFIG),-kubeconfig "$(KUBECONFIG)")
 
 .PHONY: golangci-lint
 golangci-lint: golangci-lint-bin ## Run golangci-lint.

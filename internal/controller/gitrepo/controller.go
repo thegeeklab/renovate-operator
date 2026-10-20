@@ -48,6 +48,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	if !gr.DeletionTimestamp.IsZero() {
+		return r.finalize(ctx, gr)
+	}
+
 	original := gr.DeepCopy()
 
 	outcome := r.reconcile(ctx, gr)
@@ -88,7 +92,9 @@ func (r *Reconciler) reconcile(
 		return controller.Outcome{Err: err}
 	}
 
-	componentReconciler, err := gitrepo.NewReconciler(r.Client, r.Scheme, r.ExternalURL, r.Broker, gr, rc, r.Metrics)
+	componentReconciler, err := gitrepo.NewReconciler(
+		r.Client, r.Scheme, r.ExternalURL, r.Broker, gr, rc, r.Metrics, r.EventRecorder,
+	)
 	if err != nil {
 		return controller.Outcome{Err: err}
 	}
@@ -96,6 +102,39 @@ func (r *Reconciler) reconcile(
 	res, err := componentReconciler.Reconcile(ctx)
 
 	return controller.Outcome{Result: res, Err: err}
+}
+
+// finalize removes the webhook and metrics finalizers when the GitRepo is being
+// deleted. It runs before config resolution so deletion is not blocked by a
+// missing RenovateConfig; the platform details required for webhook cleanup are
+// persisted on the GitRepo status.
+func (r *Reconciler) finalize(ctx context.Context, gr *renovatev1beta1.GitRepo) (ctrl.Result, error) {
+	var rc *renovatev1beta1.RenovateConfig
+
+	// TODO: Remove this best-effort config resolution once all pre-existing
+	// GitRepos have migrated and their status carries the platform details. It
+	// only exists to backfill cleanup details during the transition; status is
+	// intended to be the sole source of truth (see cleanupPlatformConfig).
+	if rcKey, err := r.resolveRenovateConfig(ctx, gr.Namespace, gr); err == nil {
+		rc = &renovatev1beta1.RenovateConfig{}
+		if err := r.Get(ctx, rcKey, rc); err != nil {
+			rc = nil
+		}
+	}
+
+	componentReconciler, err := gitrepo.NewReconciler(
+		r.Client, r.Scheme, r.ExternalURL, r.Broker, gr, rc, r.Metrics, r.EventRecorder,
+	)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	res, err := componentReconciler.Reconcile(ctx)
+	if res == nil {
+		return ctrl.Result{}, err
+	}
+
+	return *res, err
 }
 
 // SetupWithManager sets up the controller with the Manager.

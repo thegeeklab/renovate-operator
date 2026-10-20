@@ -81,7 +81,7 @@ var _ = Describe("GitRepo Component - Platform Info Logic", func() {
 
 		var err error
 
-		reconciler, err = NewReconciler(fakeClient, scheme, "https://renovate.example.com", nil, instance, renovate, nil)
+		reconciler, err = NewReconciler(fakeClient, scheme, "https://renovate.example.com", nil, instance, renovate, nil, nil)
 		Expect(err).NotTo(HaveOccurred())
 
 		mockMgr = mocks.NewProviderManager(GinkgoT())
@@ -108,11 +108,15 @@ var _ = Describe("GitRepo Component - Platform Info Logic", func() {
 			updated := &renovatev1beta1.GitRepo{}
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), updated)).To(Succeed())
 			Expect(updated.Status.Platform).To(Equal("gitea"))
+			Expect(updated.Status.PlatformEndpoint).To(Equal("https://gitea.example.com/api/v1"))
 			Expect(updated.Status.RepoURL).To(Equal("https://gitea.example.com/org/repo"))
+			Expect(updated.Status.TokenSecretRef).NotTo(BeNil())
+			Expect(updated.Status.TokenSecretRef.Name).To(Equal("token-secret"))
+			Expect(updated.Status.TokenSecretRef.Key).To(Equal("token"))
 		})
 
 		It("should not update status if platform and repoURL are already correct", func() {
-			instance.Status.Platform = "gitea"
+			setPlatformStatus(instance)
 			instance.Status.RepoURL = "https://gitea.example.com/org/repo"
 			Expect(fakeClient.Status().Update(ctx, instance)).To(Succeed())
 			Expect(fakeClient.Get(ctx, client.ObjectKeyFromObject(instance), reconciler.instance)).To(Succeed())

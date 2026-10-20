@@ -1,0 +1,92 @@
+---
+when:
+  - event: [pull_request]
+  - event: [push, manual]
+    branch:
+      - ${CI_REPO_DEFAULT_BRANCH}
+
+variables:
+  - &when_e2e
+    - path:
+        include:
+          - ".woodpecker/test-e2e.yaml"
+          - "**/*.go"
+          - "go.*"
+          - "Makefile"
+          - "config/**"
+          - "dist/**"
+
+services:
+  - name: k3d
+    image: ghcr.io/k3d-io/k3d:5-dind
+    privileged: true
+    commands:
+      - nohup dockerd-entrypoint.sh &
+      - for i in $(seq 1 120); do docker ps 2>&1 >/dev/null && break; [ $$i -eq 120 ] && exit 1; sleep 1; done
+      - k3d cluster create renovate-operator --api-port k3d:6445
+      - k3d kubeconfig get renovate-operator > kubeconfig.yaml
+      - chmod 0600 kubeconfig.yaml
+      - docker build -t docker.io/thegeeklab/renovate-operator:e2e -f Containerfile.multiarch .
+      - k3d image import docker.io/thegeeklab/renovate-operator:e2e --cluster renovate-operator
+      - for i in $(seq 1 90); do kubectl get --raw=/readyz 2>&1 >/dev/null && break; [ $$i -eq 90 ] && exit 1; sleep 2; done
+      - kubectl wait --for=condition=Ready nodes --all --timeout=120s
+      - touch .k3d-ready
+      - kubectl get events --all-namespaces --watch
+
+steps:
+  - name: restore-go-cache
+    image: quay.io/thegeeklab/wp-s3-action
+    settings:
+      action: [download]
+      archive: True
+      bucket:
+        from_secret: s3_bucket_cache
+      endpoint:
+        from_secret: s3_endpoint
+      path_style: true
+      source: /woodpecker/cache/go
+      target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
+      access_key:
+        from_secret: s3_access_key_cache
+      secret_key:
+        from_secret: s3_secret_access_key_cache
+    when: *when_e2e
+
+  - name: build-e2e
+    image: docker.io/library/golang:1.27.2
+    environment:
+      GOCACHE: /woodpecker/cache/go/build
+      GOMODCACHE: /woodpecker/cache/go/mod
+      GOWORK: "off"
+    commands:
+      - make test-e2e-build
+    when: *when_e2e
+
+  - name: e2e
+    image: quay.io/thegeeklab/kube-tools
+    environment:
+      E2E_IMAGE: docker.io/thegeeklab/renovate-operator:e2e
+    commands:
+      - for i in $(seq 1 120); do [ -f .k3d-ready ] && break; [ $$i -eq 120 ] && exit 1; sleep 5; done
+      - export KUBECONFIG="$$CI_WORKSPACE/kubeconfig.yaml"
+      - make test-e2e-run
+    when: *when_e2e
+
+  - name: save-go-cache
+    image: quay.io/thegeeklab/wp-s3-action
+    settings:
+      action: [upload]
+      archive: True
+      bucket:
+        from_secret: s3_bucket_cache
+      endpoint:
+        from_secret: s3_endpoint
+      path_style: true
+      source: /woodpecker/cache/go
+      upload_allow_empty_source: True
+      target: '{{ .Repository.Slug }}/go/{{ sha256file "go.mod" "go.sum" }}.tar.gz'
+      access_key:
+        from_secret: s3_access_key_cache
+      secret_key:
+        from_secret: s3_secret_access_key_cache
+    when: *when_e2e

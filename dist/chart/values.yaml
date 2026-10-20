@@ -421,7 +421,7 @@ webhook:
   enabled: true
   # -- Webhook server port
   port: 9443
-  # -- Annotations added to the MutatingWebhookConfiguration.
+  # -- Annotations added to the validating and mutating WebhookConfigurations.
   # Useful for CA injection, e.g. cert-manager.io/inject-ca-from.
   annotations: {}
 

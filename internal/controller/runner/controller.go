@@ -63,6 +63,10 @@ func (r *Reconciler) Reconcile(ctx context.Context, req ctrl.Request) (ctrl.Resu
 		return ctrl.Result{}, err
 	}
 
+	if !rr.DeletionTimestamp.IsZero() {
+		return r.finalize(ctx, rr)
+	}
+
 	original := rr.DeepCopy()
 
 	outcome := r.reconcile(ctx, rr)
@@ -116,6 +120,25 @@ func (r *Reconciler) reconcile(
 	return controller.Outcome{Result: res, Err: err}
 }
 
+// finalize releases the metrics series and removes the metrics-cleanup
+// finalizer when the Runner is being deleted. It runs before config resolution
+// so deletion is not blocked by a missing RenovateConfig.
+func (r *Reconciler) finalize(ctx context.Context, rr *renovatev1beta1.Runner) (ctrl.Result, error) {
+	componentReconciler, err := runner.NewReconciler(
+		r.Client, r.Scheme, r.Broker, rr, nil, r.Metrics, r.LogReader, r.EventRecorder, r.AllowPrivileged,
+	)
+	if err != nil {
+		return ctrl.Result{}, err
+	}
+
+	res, err := componentReconciler.Reconcile(ctx)
+	if res == nil {
+		return ctrl.Result{}, err
+	}
+
+	return *res, err
+}
+
 // SetupWithManager sets up the controller with the Manager.
 func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 	r.EventRecorder = mgr.GetEventRecorder(ControllerName)
@@ -159,12 +182,22 @@ func (r *Reconciler) SetupWithManager(mgr ctrl.Manager) error {
 		GenericFunc: func(e event.GenericEvent) bool { return false },
 	}
 
+	deletionPredicate := predicate.Funcs{
+		UpdateFunc: func(e event.UpdateEvent) bool {
+			return !e.ObjectNew.GetDeletionTimestamp().IsZero()
+		},
+		CreateFunc:  func(e event.CreateEvent) bool { return false },
+		DeleteFunc:  func(e event.DeleteEvent) bool { return false },
+		GenericFunc: func(e event.GenericEvent) bool { return false },
+	}
+
 	return ctrl.NewControllerManagedBy(mgr).
 		For(&renovatev1beta1.Runner{}).
 		WithEventFilter(predicate.Or(
 			predicate.GenerationChangedPredicate{},
 			renovateOperationPredicate,
 			jobStatusPredicate,
+			deletionPredicate,
 		)).
 		Watches(
 			&renovatev1beta1.GitRepo{},
