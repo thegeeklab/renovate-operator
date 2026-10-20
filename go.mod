@@ -11,7 +11,7 @@ require (
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/go-logr/logr v1.4.4
 	github.com/google/go-github/v93 v93.0.0
-	github.com/maypok86/otter/v2 v2.3.0
+	github.com/maypok86/otter/v2 v2.4.0
 	github.com/netresearch/go-cron v0.16.1
 	github.com/nicksnyder/go-i18n/v2 v2.6.1
 	github.com/onsi/ginkgo/v2 v2.33.1
