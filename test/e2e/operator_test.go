@@ -32,14 +32,11 @@ const (
 	finalizerRenovatorName = "renovator-finalizer-test"
 	rejectedRenovatorName  = "renovator-rejected"
 	e2eTokenSecretName     = "renovate-token-e2e"
+	helmReleaseName        = "renovate-operator-e2e"
 
 	healthEndpoint = "/healthz"
 	readyEndpoint  = "/readyz"
 )
-
-type contextKey string
-
-const helmReleaseKey contextKey = "helm-release-name"
 
 // TestOperator verifies that the operator Deployment becomes healthy, that the
 // certificate controller injects the CA bundle into the webhook configurations,
@@ -406,7 +403,8 @@ func renovatorFinalizerCleanup(ctx context.Context, t *testing.T, cfg *envconf.C
 		&renovatev1beta1.Runner{},
 	} {
 		if err := waitResourceDeleted(ctx, cfg, finalizerRenovatorName, obj); err != nil {
-			t.Errorf("child resource %T not garbage collected: %v", obj, err)
+			t.Errorf("child resource %T not garbage collected: %v\nstuck renovate resources:\n%s",
+				obj, err, dumpStuckRenovateResources(ctx, cfg))
 		}
 	}
 
@@ -595,7 +593,6 @@ func helmInstall(ctx context.Context, t *testing.T, cfg *envconf.Config) context
 	t.Helper()
 
 	chartPath := filepath.Join(utils.RepoRoot(), "dist", "chart")
-	releaseName := "renovate-operator-e2e"
 
 	imageTag := strings.TrimPrefix(projectImage, "docker.io/thegeeklab/renovate-operator:")
 
@@ -603,7 +600,7 @@ func helmInstall(ctx context.Context, t *testing.T, cfg *envconf.Config) context
 		ctx,
 		"helm",
 		"install",
-		releaseName,
+		helmReleaseName,
 		chartPath,
 		"--namespace", "helm-test",
 		"--create-namespace",
@@ -617,21 +614,16 @@ func helmInstall(ctx context.Context, t *testing.T, cfg *envconf.Config) context
 		t.Fatalf("helm install failed: %v\n%s", err, string(output))
 	}
 
-	return context.WithValue(ctx, helmReleaseKey, releaseName)
+	return ctx
 }
 
 func helmDeploymentAvailable(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 	t.Helper()
 
-	releaseName, ok := ctx.Value(helmReleaseKey).(string)
-	if !ok {
-		t.Fatal("helm release name not found in context")
-	}
-
 	resources := cfg.Client().Resources("helm-test")
 
 	err := wait.For(
-		conditions.New(resources).DeploymentAvailable(releaseName+"-controller-manager", "helm-test"),
+		conditions.New(resources).DeploymentAvailable(helmReleaseName+"-controller-manager", "helm-test"),
 		wait.WithTimeout(2*time.Minute),
 		wait.WithInterval(2*time.Second),
 	)
@@ -645,16 +637,11 @@ func helmDeploymentAvailable(ctx context.Context, t *testing.T, cfg *envconf.Con
 func helmUninstall(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 	t.Helper()
 
-	releaseName, ok := ctx.Value(helmReleaseKey).(string)
-	if !ok {
-		t.Fatal("helm release name not found in context")
-	}
-
 	cmd := exec.CommandContext(
 		ctx,
 		"helm",
 		"uninstall",
-		releaseName,
+		helmReleaseName,
 		"--namespace", "helm-test",
 	)
 

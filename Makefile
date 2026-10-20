@@ -244,6 +244,10 @@ endif
 docker-build: ## Build container image.
 	docker build --tag ${IMG} -f Containerfile.multiarch .
 
+.PHONY: docker-build-stub
+docker-build-stub: ## Build the e2e stub container image.
+	docker build --tag ${IMG} -f test/e2e/fixtures/stub/Containerfile test/e2e/fixtures/stub
+
 PLATFORMS ?= linux/amd64,linux/arm64
 .PHONY: docker-buildx
 docker-buildx: ## Build container image for cross-platform support.

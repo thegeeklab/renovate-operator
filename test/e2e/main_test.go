@@ -29,12 +29,17 @@ const (
 	// not set. It must not use the "latest" tag so that the loaded image is
 	// preferred over a pull from the registry.
 	defaultProjectImage = "docker.io/thegeeklab/renovate-operator:e2e"
+	// defaultStubImage is used when the E2E_STUB_IMAGE environment variable is
+	// not set. It is the no-op image that stands in for the Renovate container
+	// in the job-execution e2e tests.
+	defaultStubImage = "docker.io/thegeeklab/renovate-operator-stub:e2e"
 )
 
 var (
 	testEnv       env.Environment
 	testNamespace string
 	projectImage  string
+	stubImage     string
 	clusterName   string
 	finishFuncs   []env.Func
 	testCfg       *envconf.Config
@@ -95,6 +100,11 @@ func TestMain(m *testing.M) {
 		projectImage = defaultProjectImage
 	}
 
+	stubImage = os.Getenv("E2E_STUB_IMAGE")
+	if stubImage == "" {
+		stubImage = defaultStubImage
+	}
+
 	// kindNodeImage is set by make test-e2e from KIND_NODE_IMAGE_VERSION; when
 	// unset the framework falls back to the Kind CLI's default node image.
 	kindNodeImage := os.Getenv("KIND_NODE_IMAGE")
@@ -112,7 +122,9 @@ func TestMain(m *testing.M) {
 			envfuncs.CreateClusterWithOpts(kind.NewProvider(), clusterName, clusterOpts...),
 			envfuncs.CreateNamespace(testNamespace),
 			utils.BuildImage(projectImage),
+			utils.BuildStubImage(stubImage),
 			envfuncs.LoadImageToCluster(clusterName, projectImage),
+			envfuncs.LoadImageToCluster(clusterName, stubImage),
 			utils.DeployOperator(projectImage),
 		)
 		if !skipTeardown {
