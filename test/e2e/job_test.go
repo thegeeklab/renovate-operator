@@ -12,6 +12,8 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	apiwait "k8s.io/apimachinery/pkg/util/wait"
+	"k8s.io/client-go/util/retry"
 
 	crclient "sigs.k8s.io/controller-runtime/pkg/client"
 	"sigs.k8s.io/e2e-framework/klient/k8s"
@@ -107,7 +109,15 @@ func createJobExecutionRenovator(ctx context.Context, t *testing.T, cfg *envconf
 	webhooksDisabled := false
 	renovator.Spec.Webhooks.Enabled = &webhooksDisabled
 
-	if err := resources.Create(ctx, renovator); err != nil {
+	// The admission webhook can still be becoming routable right after the
+	// manager Deployment becomes available, so retry the create on the transient
+	// Internal error (502) until the webhook server is reachable.
+	err := retry.OnError(
+		apiwait.Backoff{Duration: time.Second, Factor: 2, Jitter: 0.1, Steps: 7},
+		apierrors.IsInternalError,
+		func() error { return resources.Create(ctx, renovator) },
+	)
+	if err != nil && !apierrors.IsAlreadyExists(err) {
 		t.Fatalf("failed to create renovator: %v\n%s", err, utils.ManagerLogs(ctx))
 	}
 
