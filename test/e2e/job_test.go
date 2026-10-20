@@ -108,7 +108,7 @@ func createJobExecutionRenovator(ctx context.Context, t *testing.T, cfg *envconf
 	renovator.Spec.Webhooks.Enabled = &webhooksDisabled
 
 	if err := resources.Create(ctx, renovator); err != nil {
-		t.Fatalf("failed to create renovator: %v", err)
+		t.Fatalf("failed to create renovator: %v\n%s", err, utils.ManagerLogs(ctx))
 	}
 
 	if err := waitRenovatorReady(ctx, cfg, jobExecutionRenovatorName); err != nil {

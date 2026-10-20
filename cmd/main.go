@@ -564,7 +564,10 @@ func setupHTTPServers(
 	metricsRecorder metrics.Recorder,
 	logReader logreader.Reader,
 ) (healthz.Checker, error) {
-	readyChecks := []healthz.Checker{cacheSyncReadyzCheck(mgr)}
+	readyChecks := []healthz.Checker{
+		cacheSyncReadyzCheck(mgr),
+		mgr.GetWebhookServer().StartedChecker(),
+	}
 
 	if cfg.FrontendAddr != "0" {
 		frontendConfig := frontend.DefaultServerConfig()
