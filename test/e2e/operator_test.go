@@ -75,7 +75,9 @@ func TestHelmChart(t *testing.T) {
 	testEnv.Test(t, helmFeature)
 }
 
-func createTestTokenSecret(secretName string) func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+func createTestTokenSecret(secretName string) func(
+	ctx context.Context, t *testing.T, cfg *envconf.Config,
+) context.Context {
 	return func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 		t.Helper()
 
@@ -94,7 +96,9 @@ func createTestTokenSecret(secretName string) func(ctx context.Context, t *testi
 	}
 }
 
-func deleteTestResources(secretName string, renovatorNames []string) func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+func deleteTestResources(secretName string, renovatorNames []string) func(
+	ctx context.Context, t *testing.T, cfg *envconf.Config,
+) context.Context {
 	return func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 		t.Helper()
 
