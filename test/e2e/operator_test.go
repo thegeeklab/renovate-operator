@@ -32,14 +32,11 @@ const (
 	finalizerRenovatorName = "renovator-finalizer-test"
 	rejectedRenovatorName  = "renovator-rejected"
 	e2eTokenSecretName     = "renovate-token-e2e"
+	helmReleaseName        = "renovate-operator-e2e"
 
 	healthEndpoint = "/healthz"
 	readyEndpoint  = "/readyz"
 )
-
-type contextKey string
-
-const helmReleaseKey contextKey = "helm-release-name"
 
 // TestOperator verifies that the operator Deployment becomes healthy, that the
 // certificate controller injects the CA bundle into the webhook configurations,
@@ -50,14 +47,14 @@ const helmReleaseKey contextKey = "helm-release-name"
 // cannot verify.
 func TestOperator(t *testing.T) {
 	deploymentFeature := features.New("operator deployment").
-		Setup(createTokenSecret).
+		Setup(createTestTokenSecret(e2eTokenSecretName)).
 		Assess("manager deployment becomes available", managerDeploymentAvailable).
 		Assess("webhook CA bundle is injected", webhookCABundleInjected).
 		Assess("health and metrics endpoints are accessible", managerEndpointsHealthy).
 		Assess("renovator defaults applied through admission webhook", renovatorDefaultsApplied).
 		Assess("renovator validation rejects invalid resource through admission webhook", renovatorValidationRejected).
 		Assess("renovator cleanup removes all child resources via garbage collection", renovatorFinalizerCleanup).
-		Teardown(deleteTokenSecret).
+		Teardown(deleteTestResources(e2eTokenSecretName, []string{defaultedRenovatorName, finalizerRenovatorName})).
 		Feature()
 
 	testEnv.Test(t, deploymentFeature)
@@ -78,47 +75,55 @@ func TestHelmChart(t *testing.T) {
 	testEnv.Test(t, helmFeature)
 }
 
-func createTokenSecret(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-	t.Helper()
+func createTestTokenSecret(secretName string) func(
+	ctx context.Context, t *testing.T, cfg *envconf.Config,
+) context.Context {
+	return func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		t.Helper()
 
-	secret := &corev1.Secret{
-		Name:       e2eTokenSecretName,
-		Namespace:  testNamespace,
-		StringData: map[string]string{"token": "dummy-token"},
+		secret := &corev1.Secret{
+			Name:       secretName,
+			Namespace:  testNamespace,
+			StringData: map[string]string{"token": "dummy-token"},
+		}
+
+		resources := cfg.Client().Resources(testNamespace)
+		if err := resources.Create(ctx, secret); err != nil {
+			t.Fatalf("failed to create token secret: %v", err)
+		}
+
+		return ctx
 	}
-
-	resources := cfg.Client().Resources(testNamespace)
-	if err := resources.Create(ctx, secret); err != nil {
-		t.Fatalf("failed to create token secret: %v", err)
-	}
-
-	return ctx
 }
 
-func deleteTokenSecret(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-	t.Helper()
+func deleteTestResources(secretName string, renovatorNames []string) func(
+	ctx context.Context, t *testing.T, cfg *envconf.Config,
+) context.Context {
+	return func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+		t.Helper()
 
-	resources := cfg.Client().Resources(testNamespace)
+		resources := cfg.Client().Resources(testNamespace)
 
-	for _, name := range []string{defaultedRenovatorName, finalizerRenovatorName} {
-		renovator := &renovatev1beta1.Renovator{
-			Name:      name,
+		for _, name := range renovatorNames {
+			renovator := &renovatev1beta1.Renovator{
+				Name:      name,
+				Namespace: testNamespace,
+			}
+			if err := resources.Delete(ctx, renovator); err != nil && !apierrors.IsNotFound(err) {
+				t.Errorf("failed to delete renovator %s: %v", name, err)
+			}
+		}
+
+		secret := &corev1.Secret{
+			Name:      secretName,
 			Namespace: testNamespace,
 		}
-		if err := resources.Delete(ctx, renovator); err != nil && !apierrors.IsNotFound(err) {
-			t.Errorf("failed to delete renovator %s: %v", name, err)
+		if err := resources.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
+			t.Errorf("failed to delete token secret %s: %v", secretName, err)
 		}
-	}
 
-	secret := &corev1.Secret{
-		Name:      e2eTokenSecretName,
-		Namespace: testNamespace,
+		return ctx
 	}
-	if err := resources.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
-		t.Errorf("failed to delete token secret: %v", err)
-	}
-
-	return ctx
 }
 
 func managerDeploymentAvailable(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
@@ -406,7 +411,8 @@ func renovatorFinalizerCleanup(ctx context.Context, t *testing.T, cfg *envconf.C
 		&renovatev1beta1.Runner{},
 	} {
 		if err := waitResourceDeleted(ctx, cfg, finalizerRenovatorName, obj); err != nil {
-			t.Errorf("child resource %T not garbage collected: %v", obj, err)
+			t.Errorf("child resource %T not garbage collected: %v\nstuck renovate resources:\n%s",
+				obj, err, dumpStuckRenovateResources(ctx, cfg))
 		}
 	}
 
@@ -595,7 +601,6 @@ func helmInstall(ctx context.Context, t *testing.T, cfg *envconf.Config) context
 	t.Helper()
 
 	chartPath := filepath.Join(utils.RepoRoot(), "dist", "chart")
-	releaseName := "renovate-operator-e2e"
 
 	imageTag := strings.TrimPrefix(projectImage, "docker.io/thegeeklab/renovate-operator:")
 
@@ -603,7 +608,7 @@ func helmInstall(ctx context.Context, t *testing.T, cfg *envconf.Config) context
 		ctx,
 		"helm",
 		"install",
-		releaseName,
+		helmReleaseName,
 		chartPath,
 		"--namespace", "helm-test",
 		"--create-namespace",
@@ -617,21 +622,16 @@ func helmInstall(ctx context.Context, t *testing.T, cfg *envconf.Config) context
 		t.Fatalf("helm install failed: %v\n%s", err, string(output))
 	}
 
-	return context.WithValue(ctx, helmReleaseKey, releaseName)
+	return ctx
 }
 
 func helmDeploymentAvailable(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 	t.Helper()
 
-	releaseName, ok := ctx.Value(helmReleaseKey).(string)
-	if !ok {
-		t.Fatal("helm release name not found in context")
-	}
-
 	resources := cfg.Client().Resources("helm-test")
 
 	err := wait.For(
-		conditions.New(resources).DeploymentAvailable(releaseName+"-controller-manager", "helm-test"),
+		conditions.New(resources).DeploymentAvailable(helmReleaseName+"-controller-manager", "helm-test"),
 		wait.WithTimeout(2*time.Minute),
 		wait.WithInterval(2*time.Second),
 	)
@@ -645,16 +645,11 @@ func helmDeploymentAvailable(ctx context.Context, t *testing.T, cfg *envconf.Con
 func helmUninstall(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
 	t.Helper()
 
-	releaseName, ok := ctx.Value(helmReleaseKey).(string)
-	if !ok {
-		t.Fatal("helm release name not found in context")
-	}
-
 	cmd := exec.CommandContext(
 		ctx,
 		"helm",
 		"uninstall",
-		releaseName,
+		helmReleaseName,
 		"--namespace", "helm-test",
 	)
 

@@ -91,6 +91,18 @@ func BuildImage(image string) env.Func {
 	}
 }
 
+// BuildStubImage builds the no-op stub image used by the e2e suite to stand in
+// for the Renovate container image in the job-execution tests.
+func BuildStubImage(image string) env.Func {
+	return func(ctx context.Context, _ *envconf.Config) (context.Context, error) {
+		if err := RunCommand(ctx, RepoRoot(), "make", "docker-build-stub", "IMG="+image); err != nil {
+			return ctx, fmt.Errorf("build stub image: %w", err)
+		}
+
+		return ctx, nil
+	}
+}
+
 // DeployOperator installs the operator into the cluster using config/default
 // and points the manager Deployment at the given locally built image.
 func DeployOperator(image string) env.Func {
