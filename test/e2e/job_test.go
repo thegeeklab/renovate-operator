@@ -9,7 +9,6 @@ import (
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	"github.com/thegeeklab/renovate-operator/test/utils"
 
-	corev1 "k8s.io/api/core/v1"
 	apierrors "k8s.io/apimachinery/pkg/api/errors"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	apiwait "k8s.io/apimachinery/pkg/util/wait"
@@ -47,50 +46,17 @@ type conditionObject interface {
 // real kube-scheduler and job controller.
 func TestJobExecution(t *testing.T) {
 	jobFeature := features.New("job execution").
-		Setup(createJobExecutionTokenSecret).
+		Setup(createTestTokenSecret(jobExecutionTokenSecret)).
 		Assess("manager deployment becomes available", managerDeploymentAvailable).
 		Assess("webhook CA bundle is injected", webhookCABundleInjected).
 		Assess("renovator is created", createJobExecutionRenovator).
 		Assess("discovery job completes and creates GitRepos", discoveryCreatesGitRepos).
 		Assess("renovate job completes and is reflected in status", renovateJobCompletes).
 		Teardown(deleteJobExecutionRenovator).
-		Teardown(deleteJobExecutionTokenSecret).
+		Teardown(deleteTestResources(jobExecutionTokenSecret, []string{jobExecutionRenovatorName})).
 		Feature()
 
 	testEnv.Test(t, jobFeature)
-}
-
-func createJobExecutionTokenSecret(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-	t.Helper()
-
-	secret := &corev1.Secret{
-		Name:       jobExecutionTokenSecret,
-		Namespace:  testNamespace,
-		StringData: map[string]string{"token": "dummy-token"},
-	}
-
-	resources := cfg.Client().Resources(testNamespace)
-	if err := resources.Create(ctx, secret); err != nil {
-		t.Fatalf("failed to create token secret: %v", err)
-	}
-
-	return ctx
-}
-
-func deleteJobExecutionTokenSecret(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-	t.Helper()
-
-	resources := cfg.Client().Resources(testNamespace)
-
-	secret := &corev1.Secret{
-		Name:      jobExecutionTokenSecret,
-		Namespace: testNamespace,
-	}
-	if err := resources.Delete(ctx, secret); err != nil && !apierrors.IsNotFound(err) {
-		t.Errorf("failed to delete token secret %s: %v", jobExecutionTokenSecret, err)
-	}
-
-	return ctx
 }
 
 func createJobExecutionRenovator(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
@@ -109,9 +75,9 @@ func createJobExecutionRenovator(ctx context.Context, t *testing.T, cfg *envconf
 	webhooksDisabled := false
 	renovator.Spec.Webhooks.Enabled = &webhooksDisabled
 
-	// The admission webhook can still be becoming routable right after the
-	// manager Deployment becomes available, so retry the create on the transient
-	// Internal error (502) until the webhook server is reachable.
+	// With controller-runtime's cert rotation, webhook certificates are injected
+	// asynchronously after the pod becomes ready. The webhook server isn't
+	// reachable during this brief window. The retry handles this expected race.
 	err := retry.OnError(
 		apiwait.Backoff{Duration: time.Second, Factor: 2, Jitter: 0.1, Steps: 7},
 		apierrors.IsInternalError,
