@@ -80,7 +80,7 @@ steps:
     when: *when
 
   - name: yaml-lint
-    image: docker.io/library/golang:1.27.2
+    image: docker.io/library/golang:1.27.3
     depends_on: [frontend-deps]
     commands:
       - make yamlfmt-lint
@@ -114,7 +114,7 @@ steps:
     when: *when
 
   - name: verify-installer
-    image: docker.io/library/golang:1.27.2
+    image: docker.io/library/golang:1.27.3
     depends_on: [frontend-deps, restore-go-cache]
     environment:
       GOCACHE: /woodpecker/cache/go/build
@@ -135,7 +135,7 @@ steps:
           include: *exclude_path
 
   - name: verify-locale
-    image: docker.io/library/golang:1.27.2
+    image: docker.io/library/golang:1.27.3
     depends_on: [format-locale]
     commands:
       - git diff --exit-code
