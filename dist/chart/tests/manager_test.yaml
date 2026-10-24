@@ -142,3 +142,30 @@ tests:
       - equal:
           path: spec.template.metadata.labels["control-plane"]
           value: controller-manager
+
+  - it: should add receiver and external-url args when receiver is enabled
+    set:
+      receiver.enabled: true
+      receiver.externalUrl: https://renovate.example.com
+    asserts:
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --receiver-bind-address=:8083
+      - contains:
+          path: spec.template.spec.containers[0].args
+          content: --external-url=https://renovate.example.com
+
+  - it: should fail when receiver is enabled without externalUrl
+    set:
+      receiver.enabled: true
+    asserts:
+      - failedTemplate:
+          errorMessage: receiver.externalUrl is required when receiver.enabled is true
+
+  - it: should not add external-url arg when receiver is disabled
+    set:
+      receiver.externalUrl: https://renovate.example.com
+    asserts:
+      - notContains:
+          path: spec.template.spec.containers[0].args
+          content: --external-url=https://renovate.example.com
