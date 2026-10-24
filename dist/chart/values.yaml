@@ -208,7 +208,7 @@ receiver:
   # -- Enable the webhook receiver server (--receiver-bind-address)
   enabled: false
 
-  # -- Public base URL of the operator (e.g. https://renovate.example.com).
+  # -- Public base URL of the operator (e.g. `https://renovate.example.com`).
   # Required when the receiver is enabled; used to register webhooks on the Git platform.
   externalUrl: ""
 
