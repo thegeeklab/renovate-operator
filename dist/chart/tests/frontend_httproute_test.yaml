@@ -183,3 +183,12 @@ tests:
       - equal:
           path: spec.hostnames[0]
           value: custom.example.com
+
+  - it: should fail when externalUrl does not start with http:// or https://
+    set:
+      frontend.gateway.enabled: true
+      frontend.gateway.gatewayName: my-shared-gateway
+      externalUrl: renovate.example.com
+    asserts:
+      - failedTemplate:
+          errorMessage: externalUrl must start with http:// or https://

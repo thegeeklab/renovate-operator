@@ -160,7 +160,7 @@ tests:
       receiver.enabled: true
     asserts:
       - failedTemplate:
-          errorMessage: externalUrl is required when receiver.enabled is true
+          errorMessage: set externalUrl to the public base URL (e.g. https://renovate.example.com) when receiver.enabled is true
 
   - it: should not add external-url arg when receiver is disabled
     set:

@@ -29,6 +29,9 @@ Used as the default hostname for the frontend and receiver HTTPRoutes.
 */}}
 {{- define "renovate-operator.externalUrlHost" -}}
 {{- if .Values.externalUrl -}}
+{{- if not (or (hasPrefix "http://" .Values.externalUrl) (hasPrefix "https://" .Values.externalUrl)) -}}
+{{- fail "externalUrl must start with http:// or https://" -}}
+{{- end -}}
 {{- (urlParse .Values.externalUrl).hostname -}}
 {{- end -}}
 {{- end -}}
