@@ -24,6 +24,15 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
+Validate externalUrl when set.
+*/}}
+{{- define "renovate-operator.validateExternalUrl" -}}
+{{- if and .Values.externalUrl (not (or (hasPrefix "http://" .Values.externalUrl) (hasPrefix "https://" .Values.externalUrl))) -}}
+{{- fail "externalUrl must start with http:// or https://" -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Resource name with proper truncation for Kubernetes 63-character limit.
 Takes a dict with:
   - .suffix: Resource name suffix (e.g., "metrics", "webhook")

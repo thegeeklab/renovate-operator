@@ -1,4 +1,5 @@
 {{- if .Values.manager.enabled }}
+{{- include "renovate-operator.validateExternalUrl" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -99,6 +100,7 @@ spec:
         {{- end }}
         {{- if .Values.receiver.enabled }}
         - --receiver-bind-address=:8083
+        - --external-url={{ required "set externalUrl to the public base URL (e.g. https://renovate.example.com) when receiver.enabled is true" .Values.externalUrl | quote }}
         {{- end }}
         command:
         - /manager
