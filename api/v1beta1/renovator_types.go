@@ -159,6 +159,11 @@ type PodSpec struct {
 	// +kubebuilder:validation:Optional
 	ExtraEnv []corev1.EnvVar `json:"extraEnv,omitempty"`
 
+	// ExtraEnvFrom specifies additional environment variables to inject into the
+	// renovate container from ConfigMaps or Secrets.
+	// +kubebuilder:validation:Optional
+	ExtraEnvFrom []corev1.EnvFromSource `json:"extraEnvFrom,omitempty"`
+
 	// ExtraVolumes specifies additional volumes for the renovate pod.
 	// +kubebuilder:validation:Optional
 	ExtraVolumes []corev1.Volume `json:"extraVolumes,omitempty"`

@@ -21,6 +21,7 @@ type jobConfig struct {
 	InitContainers            []corev1.Container
 	VolumeMutators            []containers.VolumeMutator
 	EnvVars                   []corev1.EnvVar
+	EnvFrom                   []corev1.EnvFromSource
 	PodLabels                 map[string]string
 	PodAnnotations            map[string]string
 	ImagePullSecrets          []corev1.LocalObjectReference
@@ -103,6 +104,7 @@ func DefaultJobSpec(
 
 	containerMutators := []containers.ContainerMutator{
 		containers.WithEnvVars(cfg.EnvVars),
+		containers.WithEnvFrom(cfg.EnvFrom),
 		containers.WithVolumeMounts(volumeMounts),
 	}
 
@@ -196,6 +198,13 @@ func WithExtraVolumes(mutators ...containers.VolumeMutator) JobOption {
 func WithExtraEnv(env []corev1.EnvVar) JobOption {
 	return func(c *jobConfig) {
 		c.EnvVars = append(c.EnvVars, env...)
+	}
+}
+
+// WithExtraEnvFrom allows injecting environment variables from ConfigMaps or Secrets.
+func WithExtraEnvFrom(envFrom []corev1.EnvFromSource) JobOption {
+	return func(c *jobConfig) {
+		c.EnvFrom = append(c.EnvFrom, envFrom...)
 	}
 }
 

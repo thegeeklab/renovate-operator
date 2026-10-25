@@ -305,6 +305,7 @@ func (r *Reconciler) updateJob(
 		renovate.WithImagePullSecrets(r.instance.Spec.ImagePullSecrets),
 		renovate.WithPodSpec(r.instance.Spec.PodSpec),
 		renovate.WithExtraEnv(r.instance.Spec.ExtraEnv),
+		renovate.WithExtraEnvFrom(r.instance.Spec.ExtraEnvFrom),
 		renovate.WithExtraVolumes(containers.WithRawVolumes(r.instance.Spec.ExtraVolumes)),
 	)
 
