@@ -6,12 +6,12 @@ nameOverride: renovate-operator
 fullnameOverride: ""
 
 # -- Public base URL of the operator (e.g. `https://renovate.example.com`).
-# Required when `receiver.enabled` is `true``. Used to register webhooks on the Git platform.
+# Required when `receiver.enabled` is `true`. Used to register webhooks on the Git platform.
 # Must start with `http://` or `https://`.
 externalUrl: ""
 
 manager:
-  # -- Set to false to skip manager installation
+  # -- Set to `false` to skip manager installation
   enabled: true
 
   # -- Number of replicas for the manager deployment
@@ -41,7 +41,7 @@ manager:
         fieldRef:
           fieldPath: metadata.namespace
 
-  # -- Env overrides (`--set manager.envOverrides.VAR=value`)
+  # -- Environment variable overrides (`--set manager.envOverrides.VAR=value`)
   # Same name in `env` above: this value takes precedence.
   envOverrides: {}
 
@@ -140,7 +140,7 @@ frontend:
   ingress:
     # -- Enable Ingress resource
     enabled: false
-    # -- Ingress class name (e.g. "nginx")
+    # -- Ingress class name (e.g. `nginx`)
     className: ""
     # -- Annotations added to the Ingress
     annotations: {}
@@ -159,7 +159,7 @@ frontend:
   gateway:
     # -- Enable Gateway API HTTPRoute (and optionally a Gateway)
     enabled: false
-    # -- Gateway class name (e.g. "nginx", "istio-waypoint", "traefik")
+    # -- Gateway class name (e.g. `nginx`, `istio-waypoint`, `traefik`)
     className: ""
     # -- Labels added to the Gateway and HTTPRoute
     labels: {}
@@ -186,7 +186,7 @@ frontend:
     # When empty and a new Gateway is created, the first listener name is used.
     # sectionName: ""
     # -- Existing Gateway to attach the HTTPRoute to. When empty and `listeners`
-    # are not empty, a new Gateway is created in the release namespace.
+    # is not empty, a new Gateway is created in the release namespace.
     # gatewayName: ""
     # gatewayNamespace: ""
     # -- ReferenceGrant configuration for cross-namespace Gateway attachment.
@@ -241,7 +241,7 @@ receiver:
   ingress:
     # -- Enable Ingress resource
     enabled: false
-    # -- Ingress class name (e.g. "nginx")
+    # -- Ingress class name (e.g. `nginx`)
     className: ""
     # -- Annotations added to the Ingress
     annotations: {}
@@ -260,7 +260,7 @@ receiver:
   gateway:
     # -- Enable Gateway API HTTPRoute (and optionally a Gateway)
     enabled: false
-    # -- Gateway class name (e.g. "nginx", "istio-waypoint", "traefik")
+    # -- Gateway class name (e.g. `nginx`, `istio-waypoint`, `traefik`)
     className: ""
     # -- Labels added to the Gateway and HTTPRoute
     labels: {}
@@ -287,7 +287,7 @@ receiver:
     # When empty and a new Gateway is created, the first listener name is used.
     # sectionName: ""
     # -- Existing Gateway to attach the HTTPRoute to. When empty and `listeners`
-    # are not empty, a new Gateway is created in the release namespace.
+    # is not empty, a new Gateway is created in the release namespace.
     # gatewayName: ""
     # gatewayNamespace: ""
     # -- ReferenceGrant configuration for cross-namespace Gateway attachment.
@@ -313,13 +313,13 @@ receiver:
 
 rbac:
   # -- RBAC resource scope
-  # - false (default): ClusterRole/ClusterRoleBinding (all namespaces)
-  # - true: Role/RoleBinding (release namespace only)
+  # - `false` (default): ClusterRole/ClusterRoleBinding (all namespaces)
+  # - `true`: Role/RoleBinding (release namespace only)
   #
-  # WARNING: When set to false (default), the manager ClusterRole grants full CRUD on
+  # WARNING: When set to `false` (default), the manager ClusterRole grants full CRUD on
   # roles and rolebindings across all namespaces. If the operator is compromised, an attacker
   # could create a ClusterRoleBinding granting cluster-admin. Consider using `rbac.namespaced=true`
-  # for reduced privilege escalation surface.
+  # for a reduced privilege escalation surface.
   namespaced: false
 
   # -- Helper roles for CRD management (admin/editor/viewer)
@@ -328,10 +328,10 @@ rbac:
     enabled: false
 
 serviceAccount:
-  # -- Install default ServiceAccount provided
+  # -- Install the default ServiceAccount
   enabled: true
 
-  # -- Existing ServiceAccount name (only when `enabled=false`)
+  # -- Existing ServiceAccount name (only used when `enabled=false`)
   # Note: When `enabled=true`, respects `nameOverride`/`fullnameOverride`
   # name: ""
 
@@ -352,7 +352,7 @@ metrics:
   enabled: true
   # -- Metrics server port
   port: 8443
-  # -- Enable secure metrics: HTTPS with certs/auth (true) or HTTP (false).
+  # -- Enable secure metrics: HTTPS with certs/auth (`true`) or HTTP (`false`).
   # Note: Metrics authn/authz needs ClusterRole access.
   secure: true
   # -- Maximum number of unique label combinations tracked before series are dropped.
@@ -369,7 +369,7 @@ metrics:
   ingress:
     # -- Enable Ingress resource
     enabled: false
-    # -- Ingress class name (e.g. "nginx")
+    # -- Ingress class name (e.g. `nginx`)
     className: ""
     # -- Annotations added to the Ingress
     annotations: {}
@@ -388,7 +388,7 @@ metrics:
   gateway:
     # -- Enable Gateway API HTTPRoute (and optionally a Gateway)
     enabled: false
-    # -- Gateway class name (e.g. "nginx", "istio-waypoint", "traefik")
+    # -- Gateway class name (e.g. `nginx`, `istio-waypoint`, `traefik`)
     className: ""
     # -- Labels added to the Gateway and HTTPRoute
     labels: {}
@@ -415,7 +415,7 @@ metrics:
     # When empty and a new Gateway is created, the first listener name is used.
     # sectionName: ""
     # -- Existing Gateway to attach the HTTPRoute to. When empty and `listeners`
-    # are not empty, a new Gateway is created in the release namespace.
+    # is not empty, a new Gateway is created in the release namespace.
     # gatewayName: ""
     # gatewayNamespace: ""
     # -- ReferenceGrant configuration for cross-namespace Gateway attachment.
