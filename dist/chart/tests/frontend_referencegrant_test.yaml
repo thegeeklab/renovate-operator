@@ -85,3 +85,12 @@ tests:
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: should not render ReferenceGrant when referenceGrant is disabled
+    values:
+      - ./fixtures/frontend/gateway-existing-cross-ns.yaml
+    set:
+      frontend.gateway.referenceGrant.enabled: false
+    asserts:
+      - hasDocuments:
+          count: 0

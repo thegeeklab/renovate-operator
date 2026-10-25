@@ -161,3 +161,25 @@ tests:
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: should derive hostname from externalUrl when hosts are not set
+    set:
+      frontend.gateway.enabled: true
+      frontend.gateway.gatewayName: my-shared-gateway
+      externalUrl: https://renovate.example.com
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: renovate.example.com
+
+  - it: should prefer explicit hosts over externalUrl
+    set:
+      frontend.gateway.enabled: true
+      frontend.gateway.gatewayName: my-shared-gateway
+      externalUrl: https://renovate.example.com
+      frontend.gateway.hosts:
+        - custom.example.com
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: custom.example.com

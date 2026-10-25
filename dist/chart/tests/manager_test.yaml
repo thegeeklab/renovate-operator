@@ -146,7 +146,7 @@ tests:
   - it: should add receiver and external-url args when receiver is enabled
     set:
       receiver.enabled: true
-      receiver.externalUrl: https://renovate.example.com
+      externalUrl: https://renovate.example.com
     asserts:
       - contains:
           path: spec.template.spec.containers[0].args
@@ -160,11 +160,11 @@ tests:
       receiver.enabled: true
     asserts:
       - failedTemplate:
-          errorMessage: receiver.externalUrl is required when receiver.enabled is true
+          errorMessage: externalUrl is required when receiver.enabled is true
 
   - it: should not add external-url arg when receiver is disabled
     set:
-      receiver.externalUrl: https://renovate.example.com
+      externalUrl: https://renovate.example.com
     asserts:
       - notContains:
           path: spec.template.spec.containers[0].args

@@ -1,7 +1,7 @@
 {{- if and .Values.manager.enabled .Values.metrics.enabled .Values.metrics.gateway.enabled }}
 {{- $component := "metrics" }}
 {{- $gw := .Values.metrics.gateway }}
-{{- if and $gw.gatewayName $gw.gatewayNamespace }}
+{{- if and $gw.gatewayName $gw.gatewayNamespace (dig "referenceGrant" "enabled" true $gw) }}
 {{- $gwNamespace := $gw.gatewayNamespace }}
 {{- if ne $gwNamespace .Release.Namespace }}
 {{- $fullname := include "renovate-operator.resourceName" (dict "suffix" "metrics-service" "context" $) }}

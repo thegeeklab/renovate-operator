@@ -24,6 +24,16 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
+Extract the hostname from the operator external URL.
+Used as the default hostname for the frontend and receiver HTTPRoutes.
+*/}}
+{{- define "renovate-operator.externalUrlHost" -}}
+{{- if .Values.externalUrl -}}
+{{- (urlParse .Values.externalUrl).hostname -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
 Resource name with proper truncation for Kubernetes 63-character limit.
 Takes a dict with:
   - .suffix: Resource name suffix (e.g., "metrics", "webhook")
@@ -205,6 +215,7 @@ Takes a dict with:
   - .fullname: resource fullname (for backendRefs)
   - .gwName: gateway name (for parentRefs)
   - .gwNamespace: gateway namespace (for parentRefs)
+  - .defaultHost: default hostname used when .gw.hosts is empty
 */}}
 {{- define "renovate-operator.httpRouteSpec" -}}
 {{- $gw := .gw }}
@@ -212,6 +223,7 @@ Takes a dict with:
 {{- $fullname := .fullname }}
 {{- $gwName := .gwName }}
 {{- $gwNamespace := .gwNamespace }}
+{{- $defaultHost := .defaultHost }}
 {{- $ownGW := not $gw.gatewayName }}
 {{- $sectionName := $gw.sectionName }}
 {{- if and $ownGW (not $sectionName) }}
@@ -227,10 +239,14 @@ parentRefs:
     {{- if $sectionName }}
     sectionName: {{ $sectionName | quote }}
     {{- end }}
-{{- with $gw.hosts }}
+{{- if or $gw.hosts $defaultHost }}
 hostnames:
-  {{- range . }}
+  {{- if $gw.hosts }}
+  {{- range $gw.hosts }}
   - {{ . | quote }}
+  {{- end }}
+  {{- else }}
+  - {{ $defaultHost | quote }}
   {{- end }}
 {{- end }}
 rules:

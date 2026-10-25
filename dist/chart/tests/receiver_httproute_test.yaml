@@ -163,3 +163,14 @@ tests:
     asserts:
       - hasDocuments:
           count: 0
+
+  - it: should derive hostname from externalUrl when hosts are not set
+    set:
+      receiver.enabled: true
+      receiver.gateway.enabled: true
+      receiver.gateway.gatewayName: my-shared-gateway
+      externalUrl: https://renovate.example.com
+    asserts:
+      - equal:
+          path: spec.hostnames[0]
+          value: renovate.example.com

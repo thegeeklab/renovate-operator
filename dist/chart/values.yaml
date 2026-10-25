@@ -5,6 +5,11 @@ nameOverride: renovate-operator
 # -- String to fully override chart.fullname template
 fullnameOverride: ""
 
+# -- Public base URL of the operator (e.g. `https://renovate.example.com`).
+# Required when receiver.enabled is true; used to register webhooks on the Git platform
+# and as the default hostname for the frontend and receiver HTTPRoutes.
+externalUrl: ""
+
 manager:
   # -- Set to false to skip manager installation
   enabled: true
@@ -184,6 +189,11 @@ frontend:
     # are not empty, a new Gateway is created in the release namespace.
     # gatewayName: ""
     # gatewayNamespace: ""
+    # -- ReferenceGrant configuration for cross-namespace Gateway attachment.
+    referenceGrant:
+      # -- Enable creating the ReferenceGrant. Disable when the target Gateway
+      # already allows routes from all namespaces.
+      enabled: true
     # -- Gateway addresses (only when creating a new Gateway)
     addresses: []
     #   - type: IPAddress
@@ -207,10 +217,6 @@ frontend:
 receiver:
   # -- Enable the webhook receiver server (--receiver-bind-address)
   enabled: false
-
-  # -- Public base URL of the operator (e.g. `https://renovate.example.com`).
-  # Required when the receiver is enabled; used to register webhooks on the Git platform.
-  externalUrl: ""
 
   service:
     # -- Enable receiver Service resource
@@ -284,6 +290,11 @@ receiver:
     # are not empty, a new Gateway is created in the release namespace.
     # gatewayName: ""
     # gatewayNamespace: ""
+    # -- ReferenceGrant configuration for cross-namespace Gateway attachment.
+    referenceGrant:
+      # -- Enable creating the ReferenceGrant. Disable when the target Gateway
+      # already allows routes from all namespaces.
+      enabled: true
     # -- Gateway addresses (only when creating a new Gateway)
     addresses: []
     #   - type: IPAddress
@@ -399,6 +410,11 @@ metrics:
     # are not empty, a new Gateway is created in the release namespace.
     # gatewayName: ""
     # gatewayNamespace: ""
+    # -- ReferenceGrant configuration for cross-namespace Gateway attachment.
+    referenceGrant:
+      # -- Enable creating the ReferenceGrant. Disable when the target Gateway
+      # already allows routes from all namespaces.
+      enabled: true
     # -- Gateway addresses (only when creating a new Gateway)
     addresses: []
     #   - type: IPAddress
