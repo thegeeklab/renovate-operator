@@ -126,6 +126,11 @@ func (r *Reconciler) updateRunner(runner *renovatev1beta1.Runner) error {
 		runner.Spec.ExtraEnv = runnerSpec.ExtraEnv
 	}
 
+	runner.Spec.ExtraEnvFrom = spec.ExtraEnvFrom
+	if runnerSpec.ExtraEnvFrom != nil {
+		runner.Spec.ExtraEnvFrom = runnerSpec.ExtraEnvFrom
+	}
+
 	runner.Spec.ExtraVolumes = spec.ExtraVolumes
 	if runnerSpec.ExtraVolumes != nil {
 		runner.Spec.ExtraVolumes = runnerSpec.ExtraVolumes

@@ -195,6 +195,16 @@ var _ = Describe("Renovate Job Library", func() {
 				},
 			),
 			Entry(
+				"WithExtraEnvFrom",
+				[]renovate.JobOption{renovate.WithExtraEnvFrom([]corev1.EnvFromSource{
+					{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "extra-secret"}}},
+				})},
+				func(spec *batchv1.JobSpec) {
+					envFrom := spec.Template.Spec.Containers[0].EnvFrom
+					Expect(envFrom).To(ContainElement(HaveField("SecretRef.Name", "extra-secret")))
+				},
+			),
+			Entry(
 				"WithImagePullSecrets",
 				[]renovate.JobOption{renovate.WithImagePullSecrets([]corev1.LocalObjectReference{
 					{Name: "extra-registry-secret"},

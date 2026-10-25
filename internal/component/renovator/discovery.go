@@ -127,6 +127,11 @@ func (r *Reconciler) updateDiscovery(discovery *renovatev1beta1.Discovery) error
 		discovery.Spec.ExtraEnv = discoverySpec.ExtraEnv
 	}
 
+	discovery.Spec.ExtraEnvFrom = spec.ExtraEnvFrom
+	if discoverySpec.ExtraEnvFrom != nil {
+		discovery.Spec.ExtraEnvFrom = discoverySpec.ExtraEnvFrom
+	}
+
 	discovery.Spec.ExtraVolumes = spec.ExtraVolumes
 	if discoverySpec.ExtraVolumes != nil {
 		discovery.Spec.ExtraVolumes = discoverySpec.ExtraVolumes

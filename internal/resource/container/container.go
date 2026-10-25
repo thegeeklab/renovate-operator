@@ -49,6 +49,13 @@ func WithEnvVars(envVars []corev1.EnvVar) ContainerMutator {
 	}
 }
 
+// WithEnvFrom adds environment variables from ConfigMaps or Secrets.
+func WithEnvFrom(envFrom []corev1.EnvFromSource) ContainerMutator {
+	return func(c *corev1.Container) {
+		c.EnvFrom = append(c.EnvFrom, envFrom...)
+	}
+}
+
 // WithVolumeMounts adds additional volume mounts.
 func WithVolumeMounts(mounts []corev1.VolumeMount) ContainerMutator {
 	return func(c *corev1.Container) {

@@ -182,6 +182,7 @@ func (r *Reconciler) updateJob(ctx context.Context, job *batchv1.Job, podLabels 
 		renovate.WithImagePullSecrets(r.instance.Spec.ImagePullSecrets),
 		renovate.WithPodSpec(r.instance.Spec.PodSpec),
 		renovate.WithExtraEnv(r.instance.Spec.ExtraEnv),
+		renovate.WithExtraEnvFrom(r.instance.Spec.ExtraEnvFrom),
 		renovate.WithExtraVolumes(containers.WithRawVolumes(r.instance.Spec.ExtraVolumes)),
 	)
 
@@ -202,6 +203,7 @@ func (r *Reconciler) updateJob(ctx context.Context, job *batchv1.Job, podLabels 
 			},
 		}),
 		containers.WithEnvVars(r.instance.Spec.ExtraEnv),
+		containers.WithEnvFrom(r.instance.Spec.ExtraEnvFrom),
 		containers.WithVolumeMounts(scratchMounts),
 	}
 
