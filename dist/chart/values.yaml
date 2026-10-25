@@ -6,8 +6,8 @@ nameOverride: renovate-operator
 fullnameOverride: ""
 
 # -- Public base URL of the operator (e.g. `https://renovate.example.com`).
-# Required when receiver.enabled is true; used to register webhooks on the Git platform
-# and as the default hostname for the frontend and receiver HTTPRoutes.
+# Required when receiver.enabled is true; used to register webhooks on the Git platform.
+# Must start with http:// or https://.
 externalUrl: ""
 
 manager:

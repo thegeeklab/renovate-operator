@@ -1,4 +1,5 @@
 {{- if .Values.manager.enabled }}
+{{- include "renovate-operator.validateExternalUrl" . }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:

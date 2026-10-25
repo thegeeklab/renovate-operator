@@ -24,15 +24,11 @@ If release name contains chart name it will be used as a full name.
 {{- end }}
 
 {{/*
-Extract the hostname from the operator external URL.
-Used as the default hostname for the frontend and receiver HTTPRoutes.
+Validate externalUrl when set.
 */}}
-{{- define "renovate-operator.externalUrlHost" -}}
-{{- if .Values.externalUrl -}}
-{{- if not (or (hasPrefix "http://" .Values.externalUrl) (hasPrefix "https://" .Values.externalUrl)) -}}
+{{- define "renovate-operator.validateExternalUrl" -}}
+{{- if and .Values.externalUrl (not (or (hasPrefix "http://" .Values.externalUrl) (hasPrefix "https://" .Values.externalUrl))) -}}
 {{- fail "externalUrl must start with http:// or https://" -}}
-{{- end -}}
-{{- (urlParse .Values.externalUrl).hostname -}}
 {{- end -}}
 {{- end -}}
 
@@ -218,7 +214,6 @@ Takes a dict with:
   - .fullname: resource fullname (for backendRefs)
   - .gwName: gateway name (for parentRefs)
   - .gwNamespace: gateway namespace (for parentRefs)
-  - .defaultHost: default hostname used when .gw.hosts is empty
 */}}
 {{- define "renovate-operator.httpRouteSpec" -}}
 {{- $gw := .gw }}
@@ -226,7 +221,6 @@ Takes a dict with:
 {{- $fullname := .fullname }}
 {{- $gwName := .gwName }}
 {{- $gwNamespace := .gwNamespace }}
-{{- $defaultHost := .defaultHost }}
 {{- $ownGW := not $gw.gatewayName }}
 {{- $sectionName := $gw.sectionName }}
 {{- if and $ownGW (not $sectionName) }}
@@ -242,14 +236,10 @@ parentRefs:
     {{- if $sectionName }}
     sectionName: {{ $sectionName | quote }}
     {{- end }}
-{{- if or $gw.hosts $defaultHost }}
+{{- with $gw.hosts }}
 hostnames:
-  {{- if $gw.hosts }}
-  {{- range $gw.hosts }}
+  {{- range . }}
   - {{ . | quote }}
-  {{- end }}
-  {{- else }}
-  - {{ $defaultHost | quote }}
   {{- end }}
 {{- end }}
 rules:
