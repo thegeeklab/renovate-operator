@@ -1,0 +1,88 @@
+---
+suite: test metrics reader rolebinding
+templates:
+  - templates/rbac/metrics-reader-rolebinding.yaml
+tests:
+  - it: should not render ClusterRoleBinding by default
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should render ClusterRoleBinding for configured reader service accounts
+    set:
+      metrics.readerServiceAccounts:
+        - name: prometheus-kube-prometheus-stack
+          namespace: prometheus
+    asserts:
+      - hasDocuments:
+          count: 1
+      - isKind:
+          of: ClusterRoleBinding
+      - equal:
+          path: roleRef.kind
+          value: ClusterRole
+      - equal:
+          path: roleRef.name
+          value: RELEASE-NAME-renovate-operator-metrics-reader
+      - equal:
+          path: subjects[0].kind
+          value: ServiceAccount
+      - equal:
+          path: subjects[0].name
+          value: prometheus-kube-prometheus-stack
+      - equal:
+          path: subjects[0].namespace
+          value: prometheus
+      - matchRegex:
+          path: metadata.name
+          pattern: metrics-reader-prometheus-prometheus-kube-prometheus-stack
+
+  - it: should render multiple ClusterRoleBindings
+    set:
+      metrics.readerServiceAccounts:
+        - name: prometheus-a
+          namespace: prometheus
+        - name: prometheus-b
+          namespace: prometheus
+    asserts:
+      - hasDocuments:
+          count: 2
+
+  - it: should render unique names for same ServiceAccount name in different namespaces
+    set:
+      metrics.readerServiceAccounts:
+        - name: prometheus
+          namespace: monitoring
+        - name: prometheus
+          namespace: central
+    asserts:
+      - hasDocuments:
+          count: 2
+      - matchRegex:
+          path: metadata.name
+          pattern: metrics-reader-monitoring-prometheus
+        documentIndex: 0
+      - matchRegex:
+          path: metadata.name
+          pattern: metrics-reader-central-prometheus
+        documentIndex: 1
+
+  - it: should not render ClusterRoleBinding when metrics is disabled
+    set:
+      metrics.enabled: false
+      metrics.readerServiceAccounts:
+        - name: prometheus
+          namespace: prometheus
+    asserts:
+      - hasDocuments:
+          count: 0
+
+  - it: should not render ClusterRoleBinding when metrics.secure is disabled
+    set:
+      metrics.secure: false
+      metrics.readerServiceAccounts:
+        - name: prometheus
+          namespace: prometheus
+    asserts:
+      - hasDocuments:
+          count: 0

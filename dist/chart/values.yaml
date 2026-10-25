@@ -358,6 +358,12 @@ metrics:
   # -- Maximum number of unique label combinations tracked before series are dropped.
   cardinalityCap: 5000
 
+  # -- ServiceAccounts authorized to scrape the secure metrics endpoint.
+  # A ClusterRoleBinding to the metrics-reader ClusterRole is created for each entry.
+  readerServiceAccounts: []
+  #   - name: prometheus-kube-prometheus-stack
+  #     namespace: prometheus
+
   ingress:
     # -- Enable Ingress resource
     enabled: false

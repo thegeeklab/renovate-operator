@@ -1,0 +1,19 @@
+{{- if and .Values.metrics.enabled .Values.metrics.secure }}
+{{- range $sa := .Values.metrics.readerServiceAccounts }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: {{ include "renovate-operator.resourceName" (dict "suffix" (printf "metrics-reader-%s-%s" $sa.namespace $sa.name) "context" $) }}
+  labels:
+    {{- include "renovate-operator.labels" $ | nindent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: {{ include "renovate-operator.resourceName" (dict "suffix" "metrics-reader" "context" $) }}
+subjects:
+  - kind: ServiceAccount
+    name: {{ $sa.name | quote }}
+    namespace: {{ $sa.namespace | quote }}
+{{- end }}
+{{- end }}
