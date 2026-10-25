@@ -197,7 +197,7 @@ var _ = Describe("Renovate Job Library", func() {
 			Entry(
 				"WithExtraEnvFrom",
 				[]renovate.JobOption{renovate.WithExtraEnvFrom([]corev1.EnvFromSource{
-					{SecretRef: &corev1.SecretEnvSource{LocalObjectReference: corev1.LocalObjectReference{Name: "extra-secret"}}},
+					{SecretRef: &corev1.SecretEnvSource{Name: "extra-secret"}},
 				})},
 				func(spec *batchv1.JobSpec) {
 					envFrom := spec.Template.Spec.Containers[0].EnvFrom

@@ -73,11 +73,7 @@ var _ = Describe("Container Template", func() {
 	Describe("WithEnvFrom", func() {
 		It("should add envFrom sources to container", func() {
 			envFrom := []corev1.EnvFromSource{
-				{
-					SecretRef: &corev1.SecretEnvSource{
-						LocalObjectReference: corev1.LocalObjectReference{Name: "test-secret"},
-					},
-				},
+				{SecretRef: &corev1.SecretEnvSource{Name: "test-secret"}},
 			}
 
 			container := ContainerTemplate(
