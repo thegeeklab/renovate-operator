@@ -1,17 +1,17 @@
 ---
-# -- String to partially override chart.fullname template (will maintain the release name)
+# -- String to partially override `chart.fullname` template (will maintain the release name)
 nameOverride: renovate-operator
 
-# -- String to fully override chart.fullname template
+# -- String to fully override `chart.fullname` template
 fullnameOverride: ""
 
 # -- Public base URL of the operator (e.g. `https://renovate.example.com`).
-# Required when receiver.enabled is true; used to register webhooks on the Git platform.
-# Must start with http:// or https://.
+# Required when `receiver.enabled` is `true`. Used to register webhooks on the Git platform.
+# Must start with `http://` or `https://`.
 externalUrl: ""
 
 manager:
-  # -- Set to false to skip manager installation
+  # -- Set to `false` to skip manager installation
   enabled: true
 
   # -- Number of replicas for the manager deployment
@@ -20,7 +20,7 @@ manager:
   image:
     # -- Manager container image repository
     repository: docker.io/thegeeklab/renovate-operator
-    # -- Image tag (defaults to Chart.appVersion if not set)
+    # -- Image tag (defaults to `Chart.appVersion` if not set)
     # tag: ""
     # -- Manager container image pull policy
     pullPolicy: IfNotPresent
@@ -41,8 +41,8 @@ manager:
         fieldRef:
           fieldPath: metadata.namespace
 
-  # -- Env overrides (--set manager.envOverrides.VAR=value)
-  # Same name in env above: this value takes precedence.
+  # -- Environment variable overrides (`--set manager.envOverrides.VAR=value`)
+  # Same name in `env` above: this value takes precedence.
   envOverrides: {}
 
   podSecurityContext:
@@ -126,9 +126,9 @@ frontend:
     port: 80
     # -- Container port name (matches the named port on the manager container)
     targetPort: frontend
-    # -- Node port (only when service.type=NodePort)
+    # -- Node port (only when `service.type=NodePort`)
     # nodePort: 30080
-    # -- Static cluster IP (only when service.type=ClusterIP)
+    # -- Static cluster IP (only when `service.type=ClusterIP`)
     # clusterIP: ""
     # -- Session affinity
     sessionAffinity: None
@@ -140,7 +140,7 @@ frontend:
   ingress:
     # -- Enable Ingress resource
     enabled: false
-    # -- Ingress class name (e.g. "nginx")
+    # -- Ingress class name (e.g. `nginx`)
     className: ""
     # -- Annotations added to the Ingress
     annotations: {}
@@ -159,7 +159,7 @@ frontend:
   gateway:
     # -- Enable Gateway API HTTPRoute (and optionally a Gateway)
     enabled: false
-    # -- Gateway class name (e.g. "nginx", "istio-waypoint", "traefik")
+    # -- Gateway class name (e.g. `nginx`, `istio-waypoint`, `traefik`)
     className: ""
     # -- Labels added to the Gateway and HTTPRoute
     labels: {}
@@ -185,8 +185,8 @@ frontend:
     # -- Section name of the Gateway listener to attach the HTTPRoute to.
     # When empty and a new Gateway is created, the first listener name is used.
     # sectionName: ""
-    # -- Existing Gateway to attach the HTTPRoute to. When empty and listeners
-    # are not empty, a new Gateway is created in the release namespace.
+    # -- Existing Gateway to attach the HTTPRoute to. When empty and `listeners`
+    # is not empty, a new Gateway is created in the release namespace.
     # gatewayName: ""
     # gatewayNamespace: ""
     # -- ReferenceGrant configuration for cross-namespace Gateway attachment.
@@ -198,7 +198,7 @@ frontend:
     addresses: []
     #   - type: IPAddress
     #     value: 192.168.1.1
-    # -- Gateway listeners to create when gatewayName is empty
+    # -- Gateway listeners to create when `gatewayName` is empty
     listeners: []
     #   - name: http
     #     port: 80
@@ -215,7 +215,7 @@ frontend:
 
 # -- Webhook receiver configuration for Git platform webhooks
 receiver:
-  # -- Enable the webhook receiver server (--receiver-bind-address)
+  # -- Enable the webhook receiver server (`--receiver-bind-address`)
   enabled: false
 
   service:
@@ -227,9 +227,9 @@ receiver:
     port: 80
     # -- Container port name (matches the named port on the manager container)
     targetPort: receiver
-    # -- Node port (only when service.type=NodePort)
+    # -- Node port (only when `service.type=NodePort`)
     # nodePort: 30083
-    # -- Static cluster IP (only when service.type=ClusterIP)
+    # -- Static cluster IP (only when `service.type=ClusterIP`)
     # clusterIP: ""
     # -- Session affinity
     sessionAffinity: None
@@ -241,7 +241,7 @@ receiver:
   ingress:
     # -- Enable Ingress resource
     enabled: false
-    # -- Ingress class name (e.g. "nginx")
+    # -- Ingress class name (e.g. `nginx`)
     className: ""
     # -- Annotations added to the Ingress
     annotations: {}
@@ -260,7 +260,7 @@ receiver:
   gateway:
     # -- Enable Gateway API HTTPRoute (and optionally a Gateway)
     enabled: false
-    # -- Gateway class name (e.g. "nginx", "istio-waypoint", "traefik")
+    # -- Gateway class name (e.g. `nginx`, `istio-waypoint`, `traefik`)
     className: ""
     # -- Labels added to the Gateway and HTTPRoute
     labels: {}
@@ -286,8 +286,8 @@ receiver:
     # -- Section name of the Gateway listener to attach the HTTPRoute to.
     # When empty and a new Gateway is created, the first listener name is used.
     # sectionName: ""
-    # -- Existing Gateway to attach the HTTPRoute to. When empty and listeners
-    # are not empty, a new Gateway is created in the release namespace.
+    # -- Existing Gateway to attach the HTTPRoute to. When empty and `listeners`
+    # is not empty, a new Gateway is created in the release namespace.
     # gatewayName: ""
     # gatewayNamespace: ""
     # -- ReferenceGrant configuration for cross-namespace Gateway attachment.
@@ -299,7 +299,7 @@ receiver:
     addresses: []
     #   - type: IPAddress
     #     value: 192.168.1.1
-    # -- Gateway listeners to create when gatewayName is empty
+    # -- Gateway listeners to create when `gatewayName` is empty
     listeners: []
     #   - name: https
     #     port: 443
@@ -313,13 +313,13 @@ receiver:
 
 rbac:
   # -- RBAC resource scope
-  # - false (default): ClusterRole/ClusterRoleBinding (all namespaces)
-  # - true: Role/RoleBinding (release namespace only)
+  # - `false` (default): ClusterRole/ClusterRoleBinding (all namespaces)
+  # - `true`: Role/RoleBinding (release namespace only)
   #
-  # WARNING: When set to false (default), the manager ClusterRole grants full CRUD on
+  # WARNING: When set to `false` (default), the manager ClusterRole grants full CRUD on
   # roles and rolebindings across all namespaces. If the operator is compromised, an attacker
-  # could create a ClusterRoleBinding granting cluster-admin. Consider using rbac.namespaced=true
-  # for reduced privilege escalation surface.
+  # could create a ClusterRoleBinding granting cluster-admin. Consider using `rbac.namespaced=true`
+  # for a reduced privilege escalation surface.
   namespaced: false
 
   # -- Helper roles for CRD management (admin/editor/viewer)
@@ -328,11 +328,11 @@ rbac:
     enabled: false
 
 serviceAccount:
-  # -- Install default ServiceAccount provided
+  # -- Install the default ServiceAccount
   enabled: true
 
-  # -- Existing ServiceAccount name (only when enabled=false)
-  # Note: When enabled=true, respects nameOverride/fullnameOverride
+  # -- Existing ServiceAccount name (only used when `enabled=false`)
+  # Note: When `enabled=true`, respects `nameOverride`/`fullnameOverride`
   # name: ""
 
   # -- Custom ServiceAccount annotations
@@ -352,16 +352,24 @@ metrics:
   enabled: true
   # -- Metrics server port
   port: 8443
-  # -- Enable secure metrics: HTTPS with certs/auth (true) or HTTP (false).
+  # -- Enable secure metrics: HTTPS with certs/auth (`true`) or HTTP (`false`).
   # Note: Metrics authn/authz needs ClusterRole access.
   secure: true
   # -- Maximum number of unique label combinations tracked before series are dropped.
   cardinalityCap: 5000
 
+  # -- ServiceAccounts authorized to scrape the secure metrics endpoint.
+  # A ClusterRoleBinding to the `metrics-reader` ClusterRole is created for each entry.
+  # Required for external scrapers when `metrics.secure` is `true`, including the
+  # Prometheus ServiceAccount when `prometheus.enabled` is also set.
+  readerServiceAccounts: []
+  #   - name: prometheus-kube-prometheus-stack
+  #     namespace: prometheus
+
   ingress:
     # -- Enable Ingress resource
     enabled: false
-    # -- Ingress class name (e.g. "nginx")
+    # -- Ingress class name (e.g. `nginx`)
     className: ""
     # -- Annotations added to the Ingress
     annotations: {}
@@ -380,7 +388,7 @@ metrics:
   gateway:
     # -- Enable Gateway API HTTPRoute (and optionally a Gateway)
     enabled: false
-    # -- Gateway class name (e.g. "nginx", "istio-waypoint", "traefik")
+    # -- Gateway class name (e.g. `nginx`, `istio-waypoint`, `traefik`)
     className: ""
     # -- Labels added to the Gateway and HTTPRoute
     labels: {}
@@ -406,8 +414,8 @@ metrics:
     # -- Section name of the Gateway listener to attach the HTTPRoute to.
     # When empty and a new Gateway is created, the first listener name is used.
     # sectionName: ""
-    # -- Existing Gateway to attach the HTTPRoute to. When empty and listeners
-    # are not empty, a new Gateway is created in the release namespace.
+    # -- Existing Gateway to attach the HTTPRoute to. When empty and `listeners`
+    # is not empty, a new Gateway is created in the release namespace.
     # gatewayName: ""
     # gatewayNamespace: ""
     # -- ReferenceGrant configuration for cross-namespace Gateway attachment.
@@ -419,7 +427,7 @@ metrics:
     addresses: []
     #   - type: IPAddress
     #     value: 192.168.1.1
-    # -- Gateway listeners to create when gatewayName is empty
+    # -- Gateway listeners to create when `gatewayName` is empty
     listeners: []
     #   - name: https
     #     port: 443
@@ -442,11 +450,13 @@ webhook:
   # -- Webhook server port
   port: 9443
   # -- Annotations added to the validating and mutating WebhookConfigurations.
-  # Useful for CA injection, e.g. cert-manager.io/inject-ca-from.
+  # Useful for CA injection, e.g. `cert-manager.io/inject-ca-from`.
   annotations: {}
 
 prometheus:
   # -- Create ServiceMonitor resources for Prometheus Operator
+  # When `metrics.secure` is `true`, add the scraping ServiceAccount to
+  # `metrics.readerServiceAccounts` so the ServiceMonitor can authenticate.
   enabled: false
 
 networkPolicy:
