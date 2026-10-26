@@ -66,3 +66,14 @@ spec:
   # Fail the job when Renovate encounters configuration validation errors.
   # Defaults to false.
   # failOnConfigValidationError: true
+
+  # Raw Renovate configuration object that is deep-merged over the operator-managed configuration.
+  # Values set here take precedence over operator-managed values for overlapping keys.
+  # Must be a JSON object.
+  # config:
+  #   extends:
+  #     - config:recommended
+  #   packageRules:
+  #     - matchPackagePatterns:
+  #         - "*"
+  #       automerge: true

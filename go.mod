@@ -8,6 +8,7 @@ require (
 	github.com/alexedwards/scs/v2 v2.9.0
 	github.com/cenkalti/backoff/v7 v7.0.1
 	github.com/coreos/go-oidc/v3 v3.21.0
+	github.com/evanphx/json-patch/v5 v5.9.11
 	github.com/go-chi/chi/v5 v5.5.0
 	github.com/go-logr/logr v1.4.4
 	github.com/google/go-github/v93 v93.0.0
@@ -49,7 +50,6 @@ require (
 	github.com/davidmz/go-pageant v1.0.2 // indirect
 	github.com/emicklei/go-restful/v3 v3.13.0 // indirect
 	github.com/evanphx/json-patch v4.11.0+incompatible // indirect
-	github.com/evanphx/json-patch/v5 v5.9.11 // indirect
 	github.com/felixge/httpsnoop v1.1.0 // indirect
 	github.com/fsnotify/fsnotify v1.10.1 // indirect
 	github.com/fxamacker/cbor/v2 v2.9.1 // indirect

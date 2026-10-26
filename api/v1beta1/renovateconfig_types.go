@@ -3,6 +3,7 @@ package v1beta1
 import (
 	corev1 "k8s.io/api/core/v1"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 // RenovateConfigSpec defines the desired state of RenovateConfig.
@@ -30,6 +31,12 @@ type RenovateConfigSpec struct {
 	// when configuration validation errors occur. When true, jobs will fail on config errors.
 	// +kubebuilder:validation:Optional
 	FailOnConfigValidationError *bool `json:"failOnConfigValidationError,omitempty"`
+
+	// Config is a raw Renovate configuration object that is deep-merged over the
+	// operator-managed configuration. Values set here take precedence over the
+	// operator-managed values for overlapping keys. Must be a JSON object.
+	// +kubebuilder:validation:Optional
+	Config *runtime.RawExtension `json:"config,omitempty"`
 }
 
 // RenovateConfigStatus defines the observed state of RenovateConfig.

@@ -197,5 +197,36 @@ var _ = Describe("Renovator Renovate Functions", func() {
 
 			Expect(configMap.Data).NotTo(BeNil())
 		})
+
+		It("should merge user-provided config over the generated config", func() {
+			renovator := &renovatev1beta1.Renovator{
+				Spec: renovatev1beta1.RenovatorSpec{
+					Renovate: renovatev1beta1.RenovateConfigSpec{
+						Platform: renovatev1beta1.PlatformSpec{
+							Type:     renovatev1beta1.PlatformType_GITLAB,
+							Endpoint: "https://gitlab.example.com/api/v4/",
+						},
+						Onboarding: new(true),
+						Config: &runtime.RawExtension{
+							Raw: []byte(`{"extends": ["config:recommended"], "onboarding": false}`),
+						},
+					},
+				},
+			}
+
+			reconciler, err := NewReconciler(ctx, fakeClient, scheme, renovator)
+			Expect(err).NotTo(HaveOccurred())
+
+			configMap := &corev1.ConfigMap{}
+			Expect(reconciler.updateConfigMap(configMap)).To(Succeed())
+			Expect(configMap.Data).To(HaveKey("renovate.json"))
+			Expect(configMap.Data["renovate.json"]).To(MatchJSON(`{
+				"onboarding": false,
+				"prHourlyLimit": 0,
+				"platform": "gitlab",
+				"endpoint": "https://gitlab.example.com/api/v4/",
+				"extends": ["config:recommended"]
+			}`))
+		})
 	})
 })

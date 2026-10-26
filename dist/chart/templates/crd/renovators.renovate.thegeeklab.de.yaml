@@ -6947,6 +6947,13 @@ spec:
                       items:
                         type: string
                       type: array
+                    config:
+                      description: |-
+                        Config is a raw Renovate configuration object that is deep-merged over the
+                        operator-managed configuration. Values set here take precedence over the
+                        operator-managed values for overlapping keys. Must be a JSON object.
+                      type: object
+                      x-kubernetes-preserve-unknown-fields: true
                     dryRun:
                       enum:
                         - extract
