@@ -9,6 +9,7 @@ import (
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
 	corev1 "k8s.io/api/core/v1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var _ = Describe("Renovator Webhook", func() {
@@ -262,6 +263,50 @@ var _ = Describe("Renovator Webhook", func() {
 			warnings, err := validator.ValidateCreate(ctx, obj)
 			Expect(err).To(HaveOccurred())
 			Expect(err.Error()).To(ContainSubstring("invalid timezone"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should accept a valid renovate config object", func() {
+			By("setting a valid renovate config object")
+
+			obj.Spec.Renovate.Config = &runtime.RawExtension{
+				Raw: []byte(`{"extends": ["config:recommended"]}`),
+			}
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).NotTo(HaveOccurred())
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should reject a non-object renovate config", func() {
+			By("setting a non-object renovate config")
+
+			obj.Spec.Renovate.Config = &runtime.RawExtension{
+				Raw: []byte(`["not", "an", "object"]`),
+			}
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("config must be a JSON object"))
+			Expect(warnings).To(BeNil())
+		})
+
+		It("Should reject a null renovate config", func() {
+			By("setting a null renovate config")
+
+			obj.Spec.Renovate.Config = &runtime.RawExtension{
+				Raw: []byte(`null`),
+			}
+
+			By("calling the ValidateCreate method")
+
+			warnings, err := validator.ValidateCreate(ctx, obj)
+			Expect(err).To(HaveOccurred())
+			Expect(err.Error()).To(ContainSubstring("config must be a JSON object"))
 			Expect(warnings).To(BeNil())
 		})
 

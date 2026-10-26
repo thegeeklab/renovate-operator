@@ -77,6 +77,15 @@ func (r *Reconciler) updateConfigMap(cm *corev1.ConfigMap) error {
 		return fmt.Errorf("failed to serialize renovate config: %w", err)
 	}
 
+	if r.instance.Spec.Renovate.Config != nil {
+		merged, err := mergeRenovateConfig(rc, r.instance.Spec.Renovate.Config.Raw)
+		if err != nil {
+			return fmt.Errorf("failed to merge renovate config: %w", err)
+		}
+
+		rc = merged
+	}
+
 	if len(rc) > 0 {
 		data[renovate.FilenameRenovateConfig] = string(rc)
 	}

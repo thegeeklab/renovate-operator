@@ -1,6 +1,7 @@
 package v1beta1
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -8,11 +9,13 @@ import (
 	"time"
 
 	renovatev1beta1 "github.com/thegeeklab/renovate-operator/api/v1beta1"
+	"k8s.io/apimachinery/pkg/runtime"
 )
 
 var (
 	ErrInvalidTimezone = errors.New("invalid timezone")
 	ErrInvalidPath     = errors.New("path must be absolute")
+	ErrInvalidConfig   = errors.New("config must be a JSON object")
 )
 
 // validateTimezone returns an error if tz is not a valid IANA timezone name.
@@ -38,6 +41,25 @@ func validateScratchVolumePath(scratch *renovatev1beta1.ScratchVolumeSpec) error
 
 	if !filepath.IsAbs(scratch.Path) || strings.HasPrefix(scratch.Path, "//") {
 		return fmt.Errorf("%w: %q", ErrInvalidPath, scratch.Path)
+	}
+
+	return nil
+}
+
+// validateConfig validates that the raw Renovate configuration is a JSON
+// object. Returns nil if config is nil (field is optional).
+func validateConfig(config *runtime.RawExtension) error {
+	if config == nil {
+		return nil
+	}
+
+	var obj map[string]json.RawMessage
+	if err := json.Unmarshal(config.Raw, &obj); err != nil {
+		return fmt.Errorf("%w: %w", ErrInvalidConfig, err)
+	}
+
+	if obj == nil {
+		return fmt.Errorf("%w: got null", ErrInvalidConfig)
 	}
 
 	return nil

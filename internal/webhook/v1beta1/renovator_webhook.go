@@ -120,7 +120,7 @@ type RenovatorCustomValidator struct{}
 
 // ValidateCreate implements webhook.CustomValidator so a webhook will be registered for the Kind Renovator.
 func (v *RenovatorCustomValidator) ValidateCreate(
-	_ context.Context,
+	ctx context.Context,
 	renovator *renovatev1beta1.Renovator,
 ) (admission.Warnings, error) {
 	if renovator == nil {
@@ -129,6 +129,26 @@ func (v *RenovatorCustomValidator) ValidateCreate(
 
 	renovatorLog.Info("Validation for Renovator upon creation", "name", renovator.GetName())
 
+	return validateRenovator(ctx, renovator)
+}
+
+// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the Kind Renovator.
+func (v *RenovatorCustomValidator) ValidateUpdate(
+	ctx context.Context,
+	_ *renovatev1beta1.Renovator,
+	newRenovator *renovatev1beta1.Renovator,
+) (admission.Warnings, error) {
+	if newRenovator == nil {
+		return nil, fmt.Errorf("%w: %T", ErrRenovatorObjectType, newRenovator)
+	}
+
+	renovatorLog.Info("Validation for Renovator upon update", "name", newRenovator.GetName())
+
+	return validateRenovator(ctx, newRenovator)
+}
+
+// validateRenovator validates the spec fields shared by create and update.
+func validateRenovator(_ context.Context, renovator *renovatev1beta1.Renovator) (admission.Warnings, error) {
 	if err := validateTimezone(renovator.Spec.Timezone); err != nil {
 		return nil, err
 	}
@@ -153,42 +173,7 @@ func (v *RenovatorCustomValidator) ValidateCreate(
 		return nil, err
 	}
 
-	return nil, nil
-}
-
-// ValidateUpdate implements webhook.CustomValidator so a webhook will be registered for the Kind Renovator.
-func (v *RenovatorCustomValidator) ValidateUpdate(
-	_ context.Context,
-	_ *renovatev1beta1.Renovator,
-	newRenovator *renovatev1beta1.Renovator,
-) (admission.Warnings, error) {
-	if newRenovator == nil {
-		return nil, fmt.Errorf("%w: %T", ErrRenovatorObjectType, newRenovator)
-	}
-
-	renovatorLog.Info("Validation for Renovator upon update", "name", newRenovator.GetName())
-
-	if err := validateTimezone(newRenovator.Spec.Timezone); err != nil {
-		return nil, err
-	}
-
-	if err := validateTimezone(newRenovator.Spec.Discovery.Timezone); err != nil {
-		return nil, err
-	}
-
-	if err := validateTimezone(newRenovator.Spec.Runner.Timezone); err != nil {
-		return nil, err
-	}
-
-	if err := validateScratchVolumePath(newRenovator.Spec.ScratchVolume); err != nil {
-		return nil, err
-	}
-
-	if err := validateScratchVolumePath(newRenovator.Spec.Discovery.ScratchVolume); err != nil {
-		return nil, err
-	}
-
-	if err := validateScratchVolumePath(newRenovator.Spec.Runner.ScratchVolume); err != nil {
+	if err := validateConfig(renovator.Spec.Renovate.Config); err != nil {
 		return nil, err
 	}
 
