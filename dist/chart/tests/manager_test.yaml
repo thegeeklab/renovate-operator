@@ -153,7 +153,7 @@ tests:
           content: --receiver-bind-address=:8083
       - contains:
           path: spec.template.spec.containers[0].args
-          content: --external-url="https://renovate.example.com"
+          content: --external-url=https://renovate.example.com
 
   - it: should fail when receiver is enabled without externalUrl
     set:
@@ -168,7 +168,7 @@ tests:
     asserts:
       - notContains:
           path: spec.template.spec.containers[0].args
-          content: --external-url="https://renovate.example.com"
+          content: --external-url=https://renovate.example.com
 
   - it: should fail when externalUrl does not start with http:// or https://
     set:
