@@ -7,7 +7,9 @@ import (
 	"flag"
 	"fmt"
 	"net/http"
+	"net/url"
 	"os"
+	"slices"
 	"strings"
 	"time"
 
@@ -57,9 +59,10 @@ import (
 var (
 	scheme = runtime.NewScheme()
 
-	errWebhookTimeout = errors.New("timeout waiting for webhook")
-	errFlagRequired   = errors.New("missing required flag")
-	errInvalidDNSName = errors.New("invalid DNS name")
+	errWebhookTimeout     = errors.New("timeout waiting for webhook")
+	errFlagRequired       = errors.New("missing required flag")
+	errInvalidDNSName     = errors.New("invalid DNS name")
+	errInvalidExternalURL = errors.New("invalid external URL")
 
 	errCacheNotSynced = errors.New("informer cache not synced")
 
@@ -598,6 +601,20 @@ func setupHTTPServers(
 				err, "Missing required configuration for HTTP server",
 				"server", "receiver",
 				"reason", "Git providers need the public external URL to know where to send webhooks.",
+			)
+
+			return nil, fmt.Errorf("receiver HTTP server validation failed: %w", err)
+		}
+
+		externalURL, err := url.Parse(cfg.ExternalURL)
+		if err != nil || externalURL.Host == "" ||
+			!slices.Contains([]string{"http", "https"}, externalURL.Scheme) {
+			err := fmt.Errorf("%w: --external-url %q", errInvalidExternalURL, cfg.ExternalURL)
+
+			setupLog.Error(
+				err, "Invalid configuration for HTTP server",
+				"server", "receiver",
+				"reason", "--external-url must be an absolute http(s) URL (e.g. https://renovate.example.com).",
 			)
 
 			return nil, fmt.Errorf("receiver HTTP server validation failed: %w", err)
