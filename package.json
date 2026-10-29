@@ -16,7 +16,7 @@
   "author": "Robert Kaussow",
   "license": "MIT",
   "engines": {
-    "node": ">=22 <=24"
+    "node": ">=22 <=26"
   },
   "dependencies": {
     "@floating-ui/dom": "1.8.0",
